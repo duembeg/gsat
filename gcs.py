@@ -6,8 +6,8 @@
 __appname__ = "GCode Step"
 
 __description__ = \
-"gsc is a cross-paltform GCODE debug/step for grbl like GCODE interpreter. "\
-"with features similar to software debuger; like usage of breakpoint, change " \
+"gcode step (gcs) is a cross-platform GCODE debug/step for grbl like GCODE interpreter. "\
+"with features similar to software buggered; like usage of breakpoint, change " \
 "program counter, inspection/modification of variables, and continuing with the "\
 "program flow."
 
@@ -57,10 +57,6 @@ from wx.lib.wordwrap import wordwrap
 """----------------------------------------------------------------------------
    Globals:
 ----------------------------------------------------------------------------"""
-gAboutText = """<p>Sorry, there is no information about this program. It is
-running on version %(wxpy)s of <b>wxPython</b> and %(python)s of <b>Python</b>.
-See <a href="http://wiki.wxpython.org">wxPython Wiki</a></p>"""
-
 gEdityBkColor = wx.WHITE
 gReadOnlyBkColor = wx.Colour(242, 241, 240)
 
@@ -552,7 +548,7 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
          self.wY.SetLabel(statusData[5])
          self.wZ.SetLabel(statusData[6])
          self.sState.SetLabel(statusData[0])
-         self.sSpindle.SetLabel("Uknown")
+         self.sSpindle.SetLabel("Unknown")
          
       if appData.serialPortIsOpen:
          self.refreshButton.Enable()
@@ -658,7 +654,7 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       buttonBox = self.CreateButtons()
       vPanelBoxSizer.Add(buttonBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       
-      joggingPositionBox, self.jX, self.jY, self.jZ, self.jSpindle = self.CreatePositionStaticBox("Joggin Status")
+      joggingPositionBox, self.jX, self.jY, self.jZ, self.jSpindle = self.CreatePositionStaticBox("Jogging Status")
       vPanelBoxSizer.Add(joggingPositionBox, 1, flag=wx.ALL|wx.EXPAND, border=5)
       
       # Finish up init UI
@@ -1080,18 +1076,6 @@ class gcsMainWindow(wx.Frame):
 
       '''
       view_menu = wx.Menu()
-      view_menu.Append(wx.ID_ANY, "Create Text Control")
-      view_menu.Append(wx.ID_ANY, "Create HTML Control")
-      view_menu.Append(wx.ID_ANY, "Create Tree")
-      view_menu.Append(wx.ID_ANY, "Create Grid")
-      view_menu.Append(wx.ID_ANY, "Create Notebook")
-      view_menu.Append(wx.ID_ANY, "Create Size Reporter")
-      view_menu.AppendSeparator()
-      view_menu.Append(wx.ID_ANY, "Use a Grid for the Content Pane")
-      view_menu.Append(wx.ID_ANY, "Use a Text Control for the Content Pane")
-      view_menu.Append(wx.ID_ANY, "Use an HTML Control for the Content Pane")
-      view_menu.Append(wx.ID_ANY, "Use a Tree Control for the Content Pane")
-      view_menu.Append(wx.ID_ANY, "Use a AuiNotebook control for the Content Pane")
       view_menu.Append(wx.ID_ANY, "Use a Size Reporter for the Content Pane")
       view_menu.AppendSeparator()   
       '''
@@ -1465,7 +1449,7 @@ class gcsMainWindow(wx.Frame):
       
       
    """-------------------------------------------------------------------------
-   Handle events comming form working thread 
+   Handle events coming form working thread 
    -------------------------------------------------------------------------"""
    def OnThreadEvent(self, e):
       while (not self.t2mwQueue.empty()):
