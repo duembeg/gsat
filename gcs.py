@@ -77,6 +77,7 @@ gMaxCliCmdHistory = 5
 # -----------------------------------------------------------------------------
 # MENU & TOOLBAR IDs
 # -----------------------------------------------------------------------------
+gID_tbOpen = wx.NewId()
 gID_Run = wx.NewId()
 gID_BreakToggle = wx.NewId()
 gID_Step = wx.NewId()
@@ -104,6 +105,7 @@ gGRBL_CMD_GET_STATUS = "?\n"
 gGRBL_CMD_RESET_TO_ZERO_POS = "G92 X0 Y0 Z0\n"
 gGRBL_CMD_RESET_TO_VAL_POS = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
 gGRBL_CMD_GO_ZERO = "G0 X0 Y0 Z0\n"
+gGRBL_CMD_GO_POS = "G0 X<XVAL> Y<YVAL> Z<ZVAL>\n"
 gGRBL_CMD_EXE_HOME_CYCLE = "G28 X0 Y0 Z0\n"
 gGRBL_CMD_JOG_X = "G0 X<VAL>\n"
 gGRBL_CMD_JOG_Y = "G0 Y<VAL>\n"
@@ -127,6 +129,8 @@ state     | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  |
  STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    |
 -----------------------------------------------------------------------
  BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  |
+-----------------------------------------------------------------------
+ USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    |
 -----------------------------------------------------------------------
 
 --------------------------------------------------------------------------- """
@@ -201,6 +205,24 @@ class gcsAppData():
       self.cliSaveCommandHistory = True
       
 
+"""----------------------------------------------------------------------------
+   gcsLog:
+   custom wxLog
+----------------------------------------------------------------------------"""
+class gcsLog(wx.PyLog):
+    def __init__(self, textCtrl, logTime=0):
+        wx.PyLog.__init__(self)
+        self.tc = textCtrl
+        self.logTime = logTime
+
+    def DoLogString(self, message, timeStamp):
+        #print message, timeStamp
+        #if self.logTime:
+        #    message = time.strftime("%X", time.localtime(timeStamp)) + \
+        #              ": " + message
+        if self.tc:
+            self.tc.AppendText(message + '\n')
+            
 """----------------------------------------------------------------------------
    gcsCliComboBox:
    Control to handel CLI (Comand Line Interface)
@@ -677,13 +699,34 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
          self.jZ.SetValue(statusData[6])
          
       if appData.serialPortIsOpen:
-         #self.refreshButton.Enable()
-         #self.sConncted.SetLabel("Yes")
-         pass
+         self.resettoZeroPositionButton.Enable()
+         self.resettoCurrentPositionButton.Enable()
+         self.goZeroButton.Enable()
+         self.goToCurrentPositionButton.Enable()
+         self.goHomeButton.Enable()
+         self.positiveXButton.Enable()
+         self.negativeXButton.Enable()
+         self.positiveYButton.Enable()
+         self.negativeYButton.Enable()
+         self.positiveZButton.Enable()
+         self.negativeZButton.Enable()
+         self.spindleOnButton.Enable()
+         self.spindleOffButton.Enable()
       else:
-         #self.refreshButton.Disable()
-         #self.sConncted.SetLabel("No")
-         pass
+         self.resettoZeroPositionButton.Disable()
+         self.resettoCurrentPositionButton.Disable()
+         self.goZeroButton.Disable()
+         self.goToCurrentPositionButton.Disable()
+         self.goHomeButton.Disable()
+         self.positiveXButton.Disable()
+         self.negativeXButton.Disable()
+         self.positiveYButton.Disable()
+         self.negativeYButton.Disable()
+         self.positiveZButton.Disable()
+         self.negativeZButton.Disable()
+         self.spindleOnButton.Disable()
+         self.spindleOffButton.Disable()
+                  
       
    def CreateStaticBox(self, label):
       # Static box ------------------------------------------------------------
@@ -765,13 +808,18 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
          wx.ToolTip("Reset machine work position to current jogging values"))
       self.Bind(wx.EVT_BUTTON, self.OnResetToCurrentPos, self.resettoCurrentPositionButton)
       vBoxRightSizer.Add(self.resettoCurrentPositionButton, flag=wx.EXPAND)
-      
 
       self.goZeroButton = wx.Button(self, label="Go Zero Pos")
       self.goZeroButton.SetToolTip(
          wx.ToolTip("Move to Machine Working position X0, Y0, Z0"))
       self.Bind(wx.EVT_BUTTON, self.OnGoZero, self.goZeroButton)
       vBoxRightSizer.Add(self.goZeroButton, flag=wx.EXPAND)
+      
+      self.goToCurrentPositionButton = wx.Button(self, label="Go to Pos")
+      self.goToCurrentPositionButton.SetToolTip(
+         wx.ToolTip("Move to to current jogging values"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoPos, self.goToCurrentPositionButton)
+      vBoxRightSizer.Add(self.goToCurrentPositionButton, flag=wx.EXPAND)
 
       self.goHomeButton = wx.Button(self, label="Go Home Pos")
       self.goHomeButton.SetToolTip(
@@ -905,6 +953,13 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.jY.SetValue(gZeroString)
       self.jZ.SetValue(gZeroString)
       self.mainWindow.SerialWrite(gGRBL_CMD_GO_ZERO)
+      
+   def OnGoPos(self, e):
+      goPosCmd = gGRBL_CMD_GO_POS
+      goPosCmd = goPosCmd.replace("<XVAL>", self.jX.GetValue())
+      goPosCmd = goPosCmd.replace("<YVAL>", self.jY.GetValue())
+      goPosCmd = goPosCmd.replace("<ZVAL>", self.jZ.GetValue())
+      self.mainWindow.SerialWrite(goPosCmd)
    
    def OnGoHome(self, e):
       self.mainWindow.SerialWrite(gGRBL_CMD_EXE_HOME_CYCLE)   
@@ -976,6 +1031,13 @@ class gcsMainWindow(wx.Frame):
       self.outputTextctrl = wx.TextCtrl(self, 
          style=wx.TE_MULTILINE|wx.TE_RICH2|wx.TE_READONLY)
       self.outputTextctrl.SetBackgroundColour(gReadOnlyBkColor)
+      
+      wx.Log_SetActiveTarget(gcsLog(self.outputTextctrl))
+        
+      # for serious debugging
+      #wx.Log_SetActiveTarget(wx.LogStderr())
+      #wx.Log_SetTraceMask(wx.TraceMessages)
+
       
       # main gcode list control
       self.glc = gcsGcodeListCtrl(self)
@@ -1091,6 +1153,7 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Bind events to handlers
       self.Bind(wx.EVT_MENU, self.OnOpen, id=wx.ID_OPEN)
+      self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN, self.OnDropDownToolBarOpen, id=gID_tbOpen)
       self.Bind(wx.EVT_MENU_RANGE, self.OnFileHistory, id=wx.ID_FILE1, id2=wx.ID_FILE9)
       self.Bind(wx.EVT_MENU, self.OnClose, id=wx.ID_EXIT)
       
@@ -1116,10 +1179,9 @@ class gcsMainWindow(wx.Frame):
       
       appToolBar.SetToolBitmapSize(wx.Size(16, 16))
       
-      appToolBar.AddSimpleTool(wx.ID_OPEN, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN))
-      appToolBar.AddSimpleTool(wx.ID_OPEN, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN))
+      appToolBar.AddSimpleTool(gID_tbOpen, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN))
       appToolBar.AddSimpleTool(wx.ID_ABOUT, "About", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))
-      #appToolBar.SetToolDropDown(wx.ID_OPEN, True)
+      appToolBar.SetToolDropDown(gID_tbOpen, True)
       appToolBar.Realize()
 
       self.aui_mgr.AddPane(appToolBar, 
@@ -1127,23 +1189,37 @@ class gcsMainWindow(wx.Frame):
 
       #------------------------------------------------------------------------
       # GCODE Tool Bar
-      gcodeToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
+      self.gcodeToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
          agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
             aui.AUI_TB_OVERFLOW | 
             aui.AUI_TB_TEXT | 
             aui.AUI_TB_HORZ_TEXT)
       
-      gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
+      '''
+      self.gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
+      self.gcodeToolBar.AddSimpleTool(gID_Run, "Run", wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE))
+      self.gcodeToolBar.AddSimpleTool(gID_BreakToggle, "Break Toggle", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))
+      self.gcodeToolBar.AddSimpleTool(gID_Step, "Step", wx.ArtProvider.GetBitmap(wx.ART_GO_DOWN))
+      self.gcodeToolBar.AddSimpleTool(gID_Stop, "Stop", wx.ArtProvider.GetBitmap(wx.ART_CROSS_MARK))
+      self.gcodeToolBar.AddSimpleTool(gID_SetPC, "Set PC", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))
+      self.gcodeToolBar.AddSimpleTool(gID_ShowPC, "Show PC", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))      
+      '''
       
-      gcodeToolBar.AddSimpleTool(gID_Run, "Run", wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE))
-      gcodeToolBar.AddSimpleTool(gID_BreakToggle, "Break Toggle", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))
-      gcodeToolBar.AddSimpleTool(gID_Step, "Step", wx.ArtProvider.GetBitmap(wx.ART_GO_DOWN))
-      gcodeToolBar.AddSimpleTool(gID_Stop, "Stop", wx.ArtProvider.GetBitmap(wx.ART_CROSS_MARK))
-      gcodeToolBar.AddSimpleTool(gID_SetPC, "Set PC", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))
-      gcodeToolBar.AddSimpleTool(gID_ShowPC, "Show PC", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))      
-      gcodeToolBar.Realize()
+      self.gcodeToolBar.AddSimpleTool(gID_Run, "Run", wx.NullBitmap)
+      self.gcodeToolBar.AddSeparator()
+      self.gcodeToolBar.AddSimpleTool(gID_BreakToggle, "Break Toggle", wx.NullBitmap)
+      self.gcodeToolBar.AddSeparator()
+      self.gcodeToolBar.AddSimpleTool(gID_Step, "Step", wx.NullBitmap)
+      self.gcodeToolBar.AddSeparator()
+      self.gcodeToolBar.AddSimpleTool(gID_Stop, "Stop", wx.NullBitmap)
+      self.gcodeToolBar.AddSeparator()
+      self.gcodeToolBar.AddSimpleTool(gID_SetPC, "Set PC", wx.NullBitmap)
+      self.gcodeToolBar.AddSeparator()
+      self.gcodeToolBar.AddSimpleTool(gID_ShowPC, "Show PC", wx.NullBitmap)
+      
+      self.gcodeToolBar.Realize()
 
-      self.aui_mgr.AddPane(gcodeToolBar, 
+      self.aui_mgr.AddPane(self.gcodeToolBar, 
          aui.AuiPaneInfo().Caption("GCODE ToolBar").ToolbarPane().Top().Position(2))
 
       
@@ -1154,6 +1230,40 @@ class gcsMainWindow(wx.Frame):
       self.machineStatusPanel.UpdateUI(self.appData)
       self.machineJoggingPanel.UpdateUI(self.appData)
       
+      if self.appData.fileIsOpen:
+         self.gcodeToolBar.EnableTool(gID_BreakToggle, True)
+         self.gcodeToolBar.EnableTool(gID_Stop, False)
+         self.gcodeToolBar.EnableTool(gID_SetPC, True)
+         self.gcodeToolBar.EnableTool(gID_ShowPC, True)
+         
+         if self.appData.serialPortIsOpen:
+            if self.appData.swState == gSTATE_RUN:
+               self.gcodeToolBar.EnableTool(gID_Run, False)
+               self.gcodeToolBar.EnableTool(gID_BreakToggle, False)               
+               self.gcodeToolBar.EnableTool(gID_Step, False)
+               self.gcodeToolBar.EnableTool(gID_Stop, True)
+               self.gcodeToolBar.EnableTool(gID_SetPC, False)
+               self.gcodeToolBar.EnableTool(gID_ShowPC, True)
+            else:
+               self.gcodeToolBar.EnableTool(gID_Run, True)
+               self.gcodeToolBar.EnableTool(gID_BreakToggle, True)               
+               self.gcodeToolBar.EnableTool(gID_Step, True)
+               self.gcodeToolBar.EnableTool(gID_Stop, False)
+               self.gcodeToolBar.EnableTool(gID_SetPC, True)
+               self.gcodeToolBar.EnableTool(gID_ShowPC, True)
+
+         else:
+            self.gcodeToolBar.EnableTool(gID_Run, False)
+            self.gcodeToolBar.EnableTool(gID_Step, False)
+      else:
+         self.gcodeToolBar.EnableTool(gID_Run, False)
+         self.gcodeToolBar.EnableTool(gID_BreakToggle, False)
+         self.gcodeToolBar.EnableTool(gID_Step, False)
+         self.gcodeToolBar.EnableTool(gID_Stop, False)
+         self.gcodeToolBar.EnableTool(gID_SetPC, False)
+         self.gcodeToolBar.EnableTool(gID_ShowPC, False)
+      
+      self.gcodeToolBar.Realize()
       
    def GetSerialPortList(self):
       spList = []
@@ -1249,6 +1359,35 @@ class gcsMainWindow(wx.Frame):
          
          self.FileOpen(self.appData.gcodeFileName)
          
+   def OnDropDownToolBarOpen(self, e):
+      if not e.IsDropDownClicked():
+         self.OnOpen(e)
+      else:
+         toolbBar = e.GetEventObject()
+         toolbBar.SetToolSticky(e.GetId(), True)
+
+         historyCount =  self.fileHistory.GetCount()
+         
+         if historyCount > 0:
+            # create the popup menu
+            menuPopup = wx.Menu()
+            
+            for index in range(historyCount):
+               m = wx.MenuItem(menuPopup, wx.ID_FILE1+index, 
+                  "&%d %s" % (index,self.fileHistory.GetHistoryFile(index)))
+               menuPopup.AppendItem(m)
+
+         # line up our menu with the button
+         rect = toolbBar.GetToolRect(e.GetId())
+         pt = toolbBar.ClientToScreen(rect.GetBottomLeft())
+         pt = self.ScreenToClient(pt)
+
+         self.PopupMenu(menuPopup, pt)
+
+         # make sure the button is "un-stuck"
+         toolbBar.SetToolSticky(e.GetId(), False)
+
+         
    def OnFileHistory(self, e):
       fileNumber = e.GetId() - wx.ID_FILE1
       self.appData.gcodeFileName = self.fileHistory.GetHistoryFile(fileNumber)
@@ -1259,67 +1398,77 @@ class gcsMainWindow(wx.Frame):
       self.FileOpen(self.appData.gcodeFileName)
          
    def FileOpen(self, fileName):
-      self.appData.gcodeFileName = fileName
-      self.appData.gcodeFileNumLines = 0
-      
-      self.glc.DeleteAllItems()
-      fileLines = []
-
-      statinfo = os.stat(self.appData.gcodeFileName)
-      fileSize = statinfo.st_size
-      gcodeFile = open(self.appData.gcodeFileName, 'r')
-      
-      # create opne fiel progress
-      dlgProgress = wx.ProgressDialog(
-         "Open", "Reading file...",
-         maximum = fileSize,
-         parent=self,
-         style = 
-            wx.PD_APP_MODAL | 
-            wx.PD_AUTO_HIDE | 
-            wx.PD_ELAPSED_TIME | 
-            wx.PD_CAN_ABORT
-      )
-      
-      updateChunk = fileSize/100
-      lastUpdate = 0
-      keepGoing = True
-      
-      for strLine in gcodeFile:
-         # add line to list control
-         self.glc.AddRow(self.appData.gcodeFileNumLines, strLine)
-         self.appData.gcodeFileNumLines += 1 
-         fileLines.append(strLine)
-
-         # update progress dialog
-         currentPosition = gcodeFile.tell()
-         if (currentPosition - lastUpdate) > updateChunk:
-            self.glc.RefrehControl()
-            lastUpdate = currentPosition
-            (keepGoing, skip) = dlgProgress.Update(currentPosition)
-            
-         if not keepGoing:
-            break
-      
-      # finish up
-      dlgProgress.Update(fileSize)
-      dlgProgress.Destroy()
-      gcodeFile.close()
-      
-      if keepGoing:
-         self.appData.gcodeFileLines = fileLines
-         self.appData.fileIsOpen = True
-      else:
-         self.appData.gcodeFileName = ""
-         self.appData.gcodeFileLines = []
+      if os.path.exists(fileName):
+         self.appData.gcodeFileName = fileName
          self.appData.gcodeFileNumLines = 0
-         self.appData.fileIsOpen = False
+         
          self.glc.DeleteAllItems()
+         fileLines = []
 
-      self.appData.breakPoints = set()
-      self.SetPC(0)      
-      self.UpdateUI()
-      self.glc.RefrehControl()   
+         statinfo = os.stat(self.appData.gcodeFileName)
+         fileSize = statinfo.st_size
+         gcodeFile = open(self.appData.gcodeFileName, 'r')
+         
+         # create opne fiel progress
+         dlgProgress = wx.ProgressDialog(
+            "Open", "Reading file...",
+            maximum = fileSize,
+            parent=self,
+            style = 
+               wx.PD_APP_MODAL | 
+               wx.PD_AUTO_HIDE | 
+               wx.PD_ELAPSED_TIME | 
+               wx.PD_CAN_ABORT
+         )
+         
+         updateChunk = fileSize/100
+         lastUpdate = 0
+         keepGoing = True
+         
+         for strLine in gcodeFile:
+            # add line to list control
+            self.glc.AddRow(self.appData.gcodeFileNumLines, strLine)
+            self.appData.gcodeFileNumLines += 1 
+            fileLines.append(strLine)
+
+            # update progress dialog
+            currentPosition = gcodeFile.tell()
+            if (currentPosition - lastUpdate) > updateChunk:
+               self.glc.RefrehControl()
+               lastUpdate = currentPosition
+               (keepGoing, skip) = dlgProgress.Update(currentPosition)
+               
+            if not keepGoing:
+               break
+         
+         # finish up
+         dlgProgress.Update(fileSize)
+         dlgProgress.Destroy()
+         gcodeFile.close()
+         
+         if keepGoing:
+            self.appData.gcodeFileLines = fileLines
+            self.appData.fileIsOpen = True
+         else:
+            self.appData.gcodeFileName = ""
+            self.appData.gcodeFileLines = []
+            self.appData.gcodeFileNumLines = 0
+            self.appData.fileIsOpen = False
+            self.glc.DeleteAllItems()
+
+         self.appData.breakPoints = set()
+         self.SetPC(0)      
+         self.UpdateUI()
+         self.glc.RefrehControl()   
+      else:
+         dlg = wx.MessageDialog(self,
+            "The file dosen't exits.\n" \
+            "File: %s\n\n" \
+            "Please check the path and try again." % fileName, "", 
+            wx.OK|wx.ICON_STOP)
+         result = dlg.ShowModal()
+         dlg.Destroy()
+
       
    def OnRun(self, e):
       if self.workThread is not None:
@@ -1402,6 +1551,7 @@ class gcsMainWindow(wx.Frame):
    def SerialWrite(self, serialData):
       if self.appData.serialPortIsOpen:
          txtOutputData = "> %s" %(serialData)
+         wx.LogMessage("")
          self.outputTextctrl.AppendText(txtOutputData)
       
          if self.appData.swState == gSTATE_RUN:
@@ -1439,7 +1589,7 @@ class gcsMainWindow(wx.Frame):
       aboutDialog.Version = __version__
       aboutDialog.Copyright = __copyright__
       aboutDialog.Description = wordwrap(__description__, 350, wx.ClientDC(self))
-      aboutDialog.WebSite = ("http://en.wikipedia.org/wiki/Hello_world", "Hello World home page")
+      aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "GCode Step home page")
       #aboutDialog.Developers = __authors__
 
       #aboutDialog.License = wordwrap(licenseText, 500, wx.ClientDC(self))
