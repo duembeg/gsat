@@ -1171,21 +1171,26 @@ class gcsMainWindow(wx.Frame):
    def CreateToolBar(self):
       #------------------------------------------------------------------------
       # Main Tool Bar
-      appToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
+      self.appToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
          agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
             aui.AUI_TB_OVERFLOW | 
             aui.AUI_TB_TEXT | 
             aui.AUI_TB_HORZ_TEXT)
-      
-      appToolBar.SetToolBitmapSize(wx.Size(16, 16))
-      
-      appToolBar.AddSimpleTool(gID_tbOpen, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN))
-      appToolBar.AddSimpleTool(wx.ID_ABOUT, "About", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION))
-      appToolBar.SetToolDropDown(gID_tbOpen, True)
-      appToolBar.Realize()
 
-      self.aui_mgr.AddPane(appToolBar, 
+      iconSize = (16, 16)
+      self.appToolBar.SetToolBitmapSize(iconSize)
+            
+      self.appToolBar.AddSimpleTool(gID_tbOpen, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, size=iconSize))
+      self.appToolBar.AddSimpleTool(wx.ID_ABOUT, "About", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, size=iconSize))
+      self.appToolBar.SetToolDropDown(gID_tbOpen, True)
+      self.appToolBar.Realize()
+
+      self.aui_mgr.AddPane(self.appToolBar, 
          aui.AuiPaneInfo().Caption("Main ToolBar").ToolbarPane().Top().Position(1))
+      
+      self.aui_mgr.AddPane(self.appToolBar, 
+         aui.AuiPaneInfo().Caption("Main ToolBar").ToolbarPane().Top().Position(1))
+      
 
       #------------------------------------------------------------------------
       # GCODE Tool Bar
@@ -1222,6 +1227,8 @@ class gcsMainWindow(wx.Frame):
       self.aui_mgr.AddPane(self.gcodeToolBar, 
          aui.AuiPaneInfo().Caption("GCODE ToolBar").ToolbarPane().Top().Position(2))
 
+      self.appToolBar.Refresh()
+      self.gcodeToolBar.Refresh()
       
    def UpdateUI(self):
       self.cli.UpdateUI(self.appData)
@@ -1263,7 +1270,7 @@ class gcsMainWindow(wx.Frame):
          self.gcodeToolBar.EnableTool(gID_SetPC, False)
          self.gcodeToolBar.EnableTool(gID_ShowPC, False)
       
-      self.gcodeToolBar.Realize()
+      self.gcodeToolBar.Refresh()
       
    def GetSerialPortList(self):
       spList = []
