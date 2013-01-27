@@ -31,7 +31,7 @@ __revision__        = __version__
 
 
 """----------------------------------------------------------------------------
-   Depedencies:
+   Dependencies:
 ----------------------------------------------------------------------------"""
 import os
 import sys
@@ -41,12 +41,12 @@ import serial
 import re
 import Queue
 import wx
-import wx.html
 from optparse import OptionParser
 from wx.lib.mixins import listctrl as listmix
 from wx.lib.agw import aui as aui
 from wx.lib.agw import floatspin as FS
 from wx.lib.wordwrap import wordwrap
+from wx import stc as stc
 #from wx.lib.agw import flatmenu as FM
 #from wx.lib.agw import ultimatelistctrl as ULC
 #from wx.lib.agw.artmanager import ArtManager, RendererBase, DCSaver
@@ -70,9 +70,6 @@ gZeroString = "0.0000"
 gNumberFormatString = "%0.4f"
 gOnString = "On"
 gOffString = "Off"
-
-gKeyCliCmdList = "cliCmdHistory"
-gMaxCliCmdHistory = 5
 
 # -----------------------------------------------------------------------------
 # MENU & TOOLBAR IDs
@@ -201,9 +198,6 @@ class gcsAppData():
       self.gcodeFileLines = []
       self.gcodeFileNumLines = 0
 
-      # app settings
-      self.cliSaveCommandHistory = True
-      
 
 """----------------------------------------------------------------------------
    gcsLog:
@@ -225,7 +219,7 @@ class gcsLog(wx.PyLog):
             
 """----------------------------------------------------------------------------
    gcsCliComboBox:
-   Control to handel CLI (Comand Line Interface)
+   Control to handle CLI (Command Line Interface)
 ----------------------------------------------------------------------------"""
 class gcsCliComboBox(wx.ComboBox):
    def __init__(self, parent, ID=wx.ID_ANY, value ="", pos=wx.DefaultPosition,
@@ -237,6 +231,13 @@ class gcsCliComboBox(wx.ComboBox):
       self.appData = gcsAppData()
       self.cliCommand = ""
       self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self)
+      
+      self.configKeySaveCmdHistory = "cliSaveCmdHistory"
+      self.configKeyCmdHistory = "cliCmdHistory"
+      self.configKeyCmdMaxHistory = "cliCmdMaxHistory"
+      self.cliSaveCmdHistory = True
+      self.cliCmdMaxCmdHistory = 100
+      
       
    def UpdateUI(self, appData):
       self.appData = appData
@@ -261,10 +262,23 @@ class gcsCliComboBox(wx.ComboBox):
       self.SetValue("")
       e.Skip()
       
-   def LoadCommandHistory(self, configFile):
-      cliCommandHistory = configFile.Read(gKeyCliCmdList)
-      if len(cliCommandHistory) > 0:
-         cliCommandHistory = cliCommandHistory.split(",")
+   def LoadConfig(self, configFile):
+      # read save cmd history
+      configData = configFile.Read(self.configKeySaveCmdHistory)
+      
+      if len(configData) > 0:
+         self.cliSaveCmdHistory = eval(configData)
+         
+      # read cmd history max count
+      configData = configFile.Read(self.configKeyCmdMaxHistory)
+      
+      if len(configData) > 0:
+         self.cliCmdMaxCmdHistory = eval(configData)
+         
+      # read cmd hsitory
+      configData = configFile.Read(self.configKeyCmdHistory)
+      if len(configData) > 0:
+         cliCommandHistory = configData.split(",")
          for cmd in cliCommandHistory:
             cmd = cmd.strip()
             if len(cmd) > 0:
@@ -272,13 +286,19 @@ class gcsCliComboBox(wx.ComboBox):
                
          self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
             
-   def SaveCommandHistory(self, configFile):
-      if self.appData.cliSaveCommandHistory:
+   def SaveConfig(self, configFile):
+      # write dave cmd history
+      configFile.Write(self.configKeySaveCmdHistory, str(self.cliSaveCmdHistory))
+      
+      # write cmd history max count
+      configFile.Write(self.configKeyCmdMaxHistory, str(self.cliCmdMaxCmdHistory))
+      
+      # write cmd history
+      if self.cliSaveCmdHistory:
          cliCmdHistory = self.GetItems()
          if len(cliCmdHistory) > 0:
             cliCmdHistory =  ",".join(cliCmdHistory)
-            configFile.Write(gKeyCliCmdList, cliCmdHistory)
-
+            configFile.Write(self.configKeyCmdHistory, cliCmdHistory)
       
 """----------------------------------------------------------------------------
    gcsListCtrl:
@@ -386,7 +406,7 @@ class gcsGcodeListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
             
       self.lastPC = pc
       
-   def GotToPC(self, pc):
+   def GoToPC(self, pc):
       if pc < self.GetItemCount():
          self.EnsureVisible(pc)
    
@@ -402,6 +422,155 @@ class gcsGcodeListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
    
    def SetAutoScroll(self, autoScroll):
       self.autoScroll = autoScroll
+
+      
+"""----------------------------------------------------------------------------
+   gcsGcodeStcStyledTextCtrl:
+   Text control to display GCODE and interact with breakpoints
+----------------------------------------------------------------------------"""
+class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
+   def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, 
+      size=wx.DefaultSize, style=0, name=stc.STCNameStr): 
+      
+      stc.StyledTextCtrl.__init__(self, parent, id, pos, size, 
+         style, name)
+         
+      self.handlePC = 0
+      self.autoScroll = False
+         
+      self.InitUI()
+      
+      # bind events
+      self.Bind(wx.EVT_LEFT_DOWN, self.OnCaretChange)
+      self.Bind(wx.EVT_LEFT_UP, self.OnCaretChange)      
+      self.Bind(wx.EVT_KEY_DOWN, self.OnCaretChange)
+      self.Bind(wx.EVT_KEY_UP, self.OnCaretChange)
+         
+   def InitUI(self):
+      # margin 1 for line numbers
+      self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
+      self.SetMarginWidth(0, 50)
+      
+      # margin 1 for markers
+      self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
+      self.SetMarginWidth(1, 16)
+      
+      # margin 2 for markers
+      self.SetMarginType(2, stc.STC_MARGIN_SYMBOL)
+      self.SetMarginWidth(2, 16)      
+      
+      # define markers
+      self.markerPC = 0
+      self.markerBreakpoint = 1
+      self.markerCaretLine = 2
+      self.MarkerDefine(self.markerPC, stc.STC_MARK_ARROW, "BLACK", "GREEN")
+      self.MarkerDefine(self.markerBreakpoint, stc.STC_MARK_CIRCLE, "BLACK", "RED")
+      self.MarkerDefine(self.markerCaretLine, stc.STC_MARK_ROUNDRECT, "BLACK", "#CCCCFF")
+      
+      self.SetMarginMask(1, pow(2,self.markerBreakpoint))
+      self.SetMarginMask(2, pow(2,self.markerPC))
+      
+      # other settings
+      self.SetReadOnly(True)
+      #self.SetCaretLineVisible(True)
+      #self.EnsureCaretVisible()
+      #self.SetCaretLineBack("yellow")
+      
+      self.SetLexer(stc.STC_LEX_PYTHON)
+      self.SetKeyWords(0, "G00 G01 G20 G21 G90 G92 G94 M2 M3 M5 M9 T6 S")
+
+      # more global default styles for all languages
+      #self.StyleSetSpec(stc.STC_STYLE_LINENUMBER,
+      #   "back:#CCC0C0")
+      
+      # comment-blocks
+      self.StyleSetSpec(stc.STC_P_COMMENTBLOCK,
+         "fore:#7F7F7F")
+      # end of line where string is not closed
+      self.StyleSetSpec(stc.STC_P_STRINGEOL,
+         "fore:#000000")
+         
+      self.StyleSetSpec(stc.STC_P_WORD,
+         "fore:#00007F")
+         
+      
+      '''
+      self.StyleSetSpec(stc.STC_STYLE_CONTROLCHAR,
+         "face:%(other)s" % faces)
+      self.StyleSetSpec(stc.STC_STYLE_BRACELIGHT,
+         "fore:#FFFFFF,back:#0000FF,bold")
+      self.StyleSetSpec(stc.STC_STYLE_BRACEBAD,
+         "fore:#000000,back:#FF0000,bold")
+
+      # make the Python styles ...
+      # default
+      self.StyleSetSpec(stc.STC_P_DEFAULT,
+         "fore:#000000,face:%(helv)s,size:%(size)d" % faces)
+      # comments
+      self.StyleSetSpec(stc.STC_P_COMMENTLINE,
+         "fore:#007F00,face:%(other)s,size:%(size)d" % faces)
+      # number
+      self.StyleSetSpec(stc.STC_P_NUMBER,
+         "fore:#007F7F,size:%(size)d" % faces)
+      # string
+      self.StyleSetSpec(stc.STC_P_STRING,
+         "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
+      # single quoted string
+      self.StyleSetSpec(stc.STC_P_CHARACTER,
+         "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
+      # keyword
+      self.StyleSetSpec(stc.STC_P_WORD,
+         "fore:#00007F,bold,size:%(size)d" % faces)
+         
+      # comment-blocks
+      self.StyleSetSpec(stc.STC_P_COMMENTBLOCK,
+         "fore:#7F7F7F,size:%(size)d" % faces)
+      # end of line where string is not closed
+      self.StyleSetSpec(stc.STC_P_STRINGEOL,
+         "fore:#000000,face:%(mono)s,back:#E0C0E0,eol,size:%(size)d"\
+         % faces)
+      '''       
+      
+   def UpdateUI(self, appData):
+      self.CaretChange()
+      
+   def OnCaretChange(self, e):
+      wx.CallAfter(self.CaretChange)
+      e.Skip()   
+      
+   def CaretChange(self):
+      self.MarkerDeleteAll(self.markerCaretLine)
+      self.MarkerAdd(self.GetCurrentLine(), self.markerCaretLine)
+      self.autoScroll = False
+      
+   def UpdatePC(self, pc):
+      self.MarkerDeleteAll(self.markerPC)
+      self.handlePC = self.MarkerAdd(pc, self.markerPC)
+      
+      if self.autoScroll:
+         self.MarkerDeleteAll(self.markerCaretLine)
+         self.MarkerAdd(pc, self.markerCaretLine)
+         self.GotoLine(pc)
+      
+   def GoToPC(self):
+      pc = self.MarkerLineFromHandle(self.handlePC)
+      if pc > -1:
+         self.GotoLine(pc)
+      
+   def UpdateBreakPoint(self, pc, enable):
+      markerBits = self.MarkerGet(pc)
+      if (markerBits & pow(2,self.markerBreakpoint)):
+         self.MarkerDelete(pc, self.markerBreakpoint)
+      else:
+         self.MarkerAdd(pc, self.markerBreakpoint)
+      
+   def GetAutoScroll(self):
+      return self.autoScroll
+   
+   def SetAutoScroll(self, autoScroll):
+      self.autoScroll = autoScroll
+      
+
 
 """----------------------------------------------------------------------------
    gcsConnectionPanel:
@@ -427,7 +596,7 @@ class gcsConnectionPanel(wx.ScrolledWindow):
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.LEFT|wx.TOP|wx.RIGHT, border=5)
       vBoxSizer.Add(gridSizer, 0, flag=wx.ALL, border=5)
 
-      # get serail port list and baud rate speeds
+      # get serial port list and baud rate speeds
       spList = self.mainWindow.GetSerialPortList()
       brList = self.mainWindow.GetSerialBaudRateList()
      
@@ -1040,16 +1209,16 @@ class gcsMainWindow(wx.Frame):
 
       
       # main gcode list control
-      self.glc = gcsGcodeListCtrl(self)
-      self.glc.SetAutoScroll(True)
+      self.gcText = gcsGcodeStcStyledTextCtrl(self)
+      self.gcText.SetAutoScroll(True)
       
       # cli interface
       self.cli = gcsCliComboBox(self)
       self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self.cli)
-      self.cli.LoadCommandHistory(self.configFile)
+      self.cli.LoadConfig(self.configFile)
 
       # add the panes to the manager
-      self.aui_mgr.AddPane(self.glc,
+      self.aui_mgr.AddPane(self.gcText,
          aui.AuiPaneInfo().CenterPane().Caption("GCODE"))
       
       self.aui_mgr.AddPane(self.connectionPanel, 
@@ -1232,7 +1401,7 @@ class gcsMainWindow(wx.Frame):
       
    def UpdateUI(self):
       self.cli.UpdateUI(self.appData)
-      self.glc.UpdateUI(self.appData)
+      self.gcText.UpdateUI(self.appData)
       self.connectionPanel.UpdateUI(self.appData)
       self.machineStatusPanel.UpdateUI(self.appData)
       self.machineJoggingPanel.UpdateUI(self.appData)
@@ -1409,7 +1578,9 @@ class gcsMainWindow(wx.Frame):
          self.appData.gcodeFileName = fileName
          self.appData.gcodeFileNumLines = 0
          
-         self.glc.DeleteAllItems()
+         #self.gcText.DeleteAllItems()
+         self.gcText.SetReadOnly(False)         
+         self.gcText.ClearAll()
          fileLines = []
 
          statinfo = os.stat(self.appData.gcodeFileName)
@@ -1434,14 +1605,13 @@ class gcsMainWindow(wx.Frame):
          
          for strLine in gcodeFile:
             # add line to list control
-            self.glc.AddRow(self.appData.gcodeFileNumLines, strLine)
+            self.gcText.AppendText(strLine)
             self.appData.gcodeFileNumLines += 1 
             fileLines.append(strLine)
 
             # update progress dialog
             currentPosition = gcodeFile.tell()
             if (currentPosition - lastUpdate) > updateChunk:
-               self.glc.RefrehControl()
                lastUpdate = currentPosition
                (keepGoing, skip) = dlgProgress.Update(currentPosition)
                
@@ -1461,12 +1631,12 @@ class gcsMainWindow(wx.Frame):
             self.appData.gcodeFileLines = []
             self.appData.gcodeFileNumLines = 0
             self.appData.fileIsOpen = False
-            self.glc.DeleteAllItems()
+            self.gcText.DeleteAllItems()
 
          self.appData.breakPoints = set()
-         self.SetPC(0)      
+         self.SetPC(0)
+         self.gcText.GoToPC()
          self.UpdateUI()
-         self.glc.RefrehControl()   
       else:
          dlg = wx.MessageDialog(self,
             "The file dosen't exits.\n" \
@@ -1475,6 +1645,8 @@ class gcsMainWindow(wx.Frame):
             wx.OK|wx.ICON_STOP)
          result = dlg.ShowModal()
          dlg.Destroy()
+      
+      self.gcText.SetReadOnly(True)
 
       
    def OnRun(self, e):
@@ -1483,12 +1655,12 @@ class gcsMainWindow(wx.Frame):
             [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
          self.mw2tQueue.join()
          
-         self.glc.SetAutoScroll(True)
+         self.gcText.SetAutoScroll(True)
          self.appData.swState = gSTATE_RUN
          self.UpdateUI()
          
    def OnBreakToggle(self, e):
-      pc = self.glc.GetFirstSelected()
+      pc = self.gcText.GetCurrentLine()
       enable = False
       
       if pc in self.appData.breakPoints:
@@ -1497,7 +1669,7 @@ class gcsMainWindow(wx.Frame):
          self.appData.breakPoints.add(pc)
          enable = True
       
-      self.glc.UpdateBreakPoint(pc, enable)
+      self.gcText.UpdateBreakPoint(pc, enable)
       
    def OnStep(self, e):
       if self.workThread is not None:
@@ -1521,16 +1693,16 @@ class gcsMainWindow(wx.Frame):
       self.SetPC()
       
    def OnShowPC(self, e):
-      self.glc.SetAutoScroll(True)
-      self.glc.GotToPC(self.appData.programCounter)
+      self.gcText.SetAutoScroll(True)
+      self.gcText.GoToPC()
 
          
    def SetPC(self, pc=None):
       if pc is None:
-         pc = self.glc.GetFirstSelected()
+         pc = self.gcText.GetCurrentLine()
 
       self.appData.programCounter = pc
-      self.glc.UpdatePC(pc)
+      self.gcText.UpdatePC(pc)
       
    def MachineStatusAutoRefresh(self, autoRefresh):
       self.appData.machineStatusAutoRefresh = autoRefresh
@@ -1583,7 +1755,7 @@ class gcsMainWindow(wx.Frame):
          self.mw2tQueue.put(threadEvent(gEV_CMD_EXIT, None))
          self.mw2tQueue.join()
 
-      self.cli.SaveCommandHistory(self.configFile)
+      self.cli.SaveConfig(self.configFile)
       
       self.aui_mgr.UnInit()
 
