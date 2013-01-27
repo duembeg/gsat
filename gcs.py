@@ -935,7 +935,8 @@ class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
       '''       
       
    def UpdateUI(self, appData):
-      self.CaretChange()
+      pass
+      #self.CaretChange()
       
    def OnCaretChange(self, e):
       wx.CallAfter(self.CaretChange)
@@ -2112,13 +2113,13 @@ class gcsMainWindow(wx.Frame):
 
       
    def OnRun(self, e):
-      print "OnRun"
       if self.workThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_RUN, 
             [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
          self.mw2tQueue.join()
          
          self.gcText.SetAutoScroll(True)
+         self.gcText.GoToPC()
          self.appData.swState = gSTATE_RUN
          self.UpdateUI()
          
@@ -2507,6 +2508,7 @@ class gcsWorkThread(threading.Thread):
          elif e.event_id == gEV_CMD_STOP:
             if self.cliOptions.vverbose:
                print "** gcsWorkThread got event gEV_CMD_STOP, swState->gSTATE_IDLE"
+               
             self.swState = gSTATE_IDLE
          
          elif e.event_id == gEV_CMD_SEND:
@@ -2594,6 +2596,12 @@ class gcsWorkThread(threading.Thread):
          pass
          
       self.workingProgramCounter += 1
+      
+      # if we stop early make sure to update PC to main UI
+      if self.swState == gSTATE_IDLE:
+         self.t2mwQueue.put(threadEvent(gEV_PC_UPDATE, self.workingProgramCounter))
+         wx.PostEvent(self.notifyWindow, threadQueueEvent(None))      
+
             
    def ProcessRunSate(self):
       # send data to serial port ----------------------------------------------
