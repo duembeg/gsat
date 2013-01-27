@@ -174,8 +174,7 @@ imgPlay = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAAAkAAAAMCAYAAACwXJejAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAAD1JREFUeNpiYGBgOA/EBgwEwH8obiBG0X98pv7HghuIUYRi"
     "KiNUAB9oZGIgEhC0jiyHEwwCvIFJMFoAAgwA9owpXlnrpyAAAAAASUVORK5CYII=")
-    
-    
+
 #------------------------------------------------------------------------------
 # imgNext
 #------------------------------------------------------------------------------
@@ -192,7 +191,6 @@ imgStop = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAABBJREFUeNpiYBgFQxUABBgAAbwAAZK5hs4AAAAASUVORK5C"
     "YII=")
-    
 
 #------------------------------------------------------------------------------
 # imgBreak
@@ -214,7 +212,7 @@ imgLink = PyEmbeddedImage(
     "RL43b0aB5JEn2K9gW5zM5+EFBDLYehCeIBC4YCNh71Vbbs7K+RWEvhxIzFAwuTUqQrlXAxEo"
     "2CQG+dUqowMsmEZeNXfJaBKXLP98OM1jkqvTtqVHHpgc4Z+jMkCLNXHVGgwvPgIMAO5tZgsP"
     "N61OAAAAAElFTkSuQmCC")
- 
+
 #------------------------------------------------------------------------------
 # imgTarget
 #------------------------------------------------------------------------------
@@ -224,7 +222,7 @@ imgTarget = PyEmbeddedImage(
     "SE0UEy+5T3u9pi04d4ZnJubGrBCvEkuiGWJhkojrwEBJor0UFxBlZoR8lJjmC5p46HwkgrMR"
     "oBHpOAmctXgVgaJITE1Uf9S2hWUotnagJhkW25IRulkGBDvpNT+iH4GejjC9ROuMBQzo7ozT"
     "D2n6KX/ymV5/512AAQBxnm3Jdo79HgAAAABJRU5ErkJggg==")
-    
+
 #------------------------------------------------------------------------------
 # imgX
 #------------------------------------------------------------------------------
@@ -234,7 +232,6 @@ imgX = PyEmbeddedImage(
     "aH5PhGYYfo9uyHkSNCO7BO5ndNMbsGhowOJKcJjsx6IQ3WBY4DVgCViszktAMiQBh0thGKcf"
     "E9CiFqs6JgYqAIq9QHEgUhyNFCckqiRlijMT2dkZIMAAQSOoo+oDrMMAAAAASUVORK5CYII=")
 
-    
 """----------------------------------------------------------------------------
    EVENTS definitions to interact with multiple windows:
 ----------------------------------------------------------------------------"""
@@ -1326,7 +1323,7 @@ class gcsMainWindow(wx.Frame):
          aui.AuiPaneInfo().Bottom().Row(2).Caption("Output").BestSize(600,150))
          
       self.aui_mgr.AddPane(self.cli, 
-         aui.AuiPaneInfo().Bottom().Row(1).Caption("Command").BestSize(600,30).Fixed())
+         aui.AuiPaneInfo().Bottom().Row(1).Caption("Command").BestSize(600,30))
 
       self.CreateMenu()
       self.CreateToolBar()
@@ -1339,7 +1336,6 @@ class gcsMainWindow(wx.Frame):
       # add code to load from file...
       
       self.aui_mgr.LoadPerspective(perspectiveDefault)
-      
       self.aui_mgr.Update()
       
       wx.CallAfter(self.UpdateUI)
@@ -1506,7 +1502,7 @@ class gcsMainWindow(wx.Frame):
 
       self.gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
       
-      #self.gcodeToolBar.AddSimpleTool(gID_Run, "Run", imgPlay.GetBitmap(), imgPlayGray.GetBitmap())
+      #self.gcodeToolBar.AddSimpleTool(gID_Run, "Run", imgPlay.GetBitmap())
       runButton = wx.BitmapButton (self.gcodeToolBar, gID_Run, imgPlay.GetBitmap(), 
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       runButton.SetToolTip(wx.ToolTip("Run\tF5"))
