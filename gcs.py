@@ -6,10 +6,10 @@
 __appname__ = "GCode Step"
 
 __description__ = \
-"gcode step (gcs) is a cross-platform GCODE debug/step for grbl like GCODE interpreter. "\
-"with features similar to software buggered; like usage of breakpoint, change " \
-"program counter, inspection/modification of variables, and continuing with the "\
-"program flow."
+"gcode step (gcs) is a cross-platform GCODE debug/step for grbl like "\
+"GCODE interpreter. with features similar to software buggered. With "\
+"features like breakpoint, change current program counter, inspection "\
+" and modification of variables, and continuing with the program flow."
 
 
 # define authorship information
@@ -75,14 +75,20 @@ gOffString = "Off"
 # -----------------------------------------------------------------------------
 # MENU & TOOLBAR IDs
 # -----------------------------------------------------------------------------
-gID_tbOpen = wx.NewId()
-gID_Run = wx.NewId()
-gID_BreakToggle = wx.NewId()
-gID_BreakRemoveAll = wx.NewId()
-gID_Step = wx.NewId()
-gID_Stop = wx.NewId()
-gID_SetPC = wx.NewId()
-gID_GoToPC = wx.NewId()
+gID_TOOLBAR_OPEN                 = wx.NewId()
+gID_MENU_MAIN_TOOLBAR            = wx.NewId()
+gID_MENU_RUN_TOOLBAR             = wx.NewId()
+gID_MENU_OUTPUT_PANEL            = wx.NewId()
+gID_MENU_COMAMND_PANEL           = wx.NewId()
+gID_MENU_MACHINE_STATUS_PANEL    = wx.NewId()
+gID_MENU_MACHINE_JOGGING_PANEL   = wx.NewId()
+gID_MENU_RUN                     = wx.NewId()
+gID_MENU_STEP                    = wx.NewId()
+gID_MENU_STOP                    = wx.NewId()
+gID_MENU_BREAK_TOGGLE            = wx.NewId()
+gID_MENU_BREAK_REMOVE_ALL        = wx.NewId()
+gID_MENU_SET_PC                  = wx.NewId()
+gID_MENU_GOTO_PC                 = wx.NewId()
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -1235,7 +1241,7 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
 ----------------------------------------------------------------------------"""
 class gcsMainWindow(wx.Frame):
    
-   def __init__(self, parent, id=wx.ID_ANY, title="", cli_options=None, 
+   def __init__(self, parent, id=wx.ID_ANY, title="", cmd_line_options=None, 
       pos=wx.DefaultPosition, size=(800, 600), style=wx.DEFAULT_FRAME_STYLE):
       
       wx.Frame.__init__(self, parent, id, title, pos, size, style)
@@ -1253,9 +1259,9 @@ class gcsMainWindow(wx.Frame):
       self.appData = gcsAppData()
             
       # init some variables
-      self.workThread = None
+      self.serialPortThread = None
       
-      self.cliOptions = cli_options
+      self.cmdLineOptions = cmd_line_options
       
       # thread communication queues
       self.mw2tQueue = Queue.Queue()
@@ -1286,11 +1292,11 @@ class gcsMainWindow(wx.Frame):
       self.machineJoggingPanel = gcsMachineJoggingPanel(self)
       
       # output Window
-      self.outputTextctrl = wx.TextCtrl(self, 
+      self.outputText = wx.TextCtrl(self, 
          style=wx.TE_MULTILINE|wx.TE_RICH2|wx.TE_READONLY)
-      self.outputTextctrl.SetBackgroundColour(gReadOnlyBkColor)
+      self.outputText.SetBackgroundColour(gReadOnlyBkColor)
       
-      wx.Log_SetActiveTarget(gcsLog(self.outputTextctrl))
+      wx.Log_SetActiveTarget(gcsLog(self.outputText))
         
       # for serious debugging
       #wx.Log_SetActiveTarget(wx.LogStderr())
@@ -1302,27 +1308,27 @@ class gcsMainWindow(wx.Frame):
       self.gcText.SetAutoScroll(True)
       
       # cli interface
-      self.cli = gcsCliComboBox(self)
-      self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self.cli)
-      self.cli.LoadConfig(self.configFile)
+      self.cliPanel = gcsCliComboBox(self)
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliPanel)
+      self.cliPanel.LoadConfig(self.configFile)
 
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
          aui.AuiPaneInfo().CenterPane().Caption("GCODE"))
       
-      self.aui_mgr.AddPane(self.connectionPanel, 
+      self.aui_mgr.AddPane(self.connectionPanel,
          aui.AuiPaneInfo().Right().Position(1).Caption("Connection").BestSize(300,120))
 
-      self.aui_mgr.AddPane(self.machineStatusPanel,          
+      self.aui_mgr.AddPane(self.machineStatusPanel,
          aui.AuiPaneInfo().Right().Position(2).Caption("Machine Status").BestSize(300,180))
       
-      self.aui_mgr.AddPane(self.machineJoggingPanel,          
+      self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Right().Position(3).Caption("Machine Jogging").BestSize(300,310))
          
-      self.aui_mgr.AddPane(self.outputTextctrl, 
+      self.aui_mgr.AddPane(self.outputText,
          aui.AuiPaneInfo().Bottom().Row(2).Caption("Output").BestSize(600,150))
          
-      self.aui_mgr.AddPane(self.cli, 
+      self.aui_mgr.AddPane(self.cliPanel,
          aui.AuiPaneInfo().Bottom().Row(1).Caption("Command").BestSize(600,30))
 
       self.CreateMenu()
@@ -1347,127 +1353,153 @@ class gcsMainWindow(wx.Frame):
       #self.menuBar = FM.FlatMenuBar(self, wx.ID_ANY, options=FM_OPT_SHOW_TOOLBAR)
       self.menuBar = wx.MenuBar()
       
+      #------------------------------------------------------------------------
+      # File menu
+      fileMenu = wx.Menu()
+      self.menuBar.Append(fileMenu,                   "&File")
+      
+      fileMenu.Append(wx.ID_OPEN,                     "&Open")
+
+      recentMenu = wx.Menu()
+      fileMenu.AppendMenu(wx.ID_ANY, "&Recent Files", recentMenu)
+
       # load history
       self.fileHistory = wx.FileHistory(8)
       self.fileHistory.Load(self.configFile)
-      
-      #------------------------------------------------------------------------
-      # File Menu
-      fileMenu = wx.Menu()
-      fileMenu.Append(wx.ID_OPEN, "&Open")
-
-      recentMenu = wx.Menu()
       self.fileHistory.UseMenu(recentMenu)
       self.fileHistory.AddFilesToMenu()      
-      fileMenu.AppendMenu(wx.ID_ANY, "&Recent Files", recentMenu)      
       
       fileMenu.Append(wx.ID_EXIT, "Exit")
       
       #------------------------------------------------------------------------
-      # File Menu
-      runMenu = wx.Menu()
+      # View menu
+      viewMenu = wx.Menu()
+      self.menuBar.Append(viewMenu,                   "&View")      
       
-      runItem = wx.MenuItem(runMenu, gID_Run, "&Run\tF5")
+      #toolbarMenu = wx.Menu()
+      #fileMenu.AppendMenu(wx.ID_ANY, "&ToolBar", toolbarMenu)      
+      
+      viewMenu.AppendCheckItem(gID_MENU_MAIN_TOOLBAR,          "&Main Tool Bar")
+      viewMenu.AppendCheckItem(gID_MENU_RUN_TOOLBAR,           "&Run Tool Bar")
+      viewMenu.AppendSeparator()         
+      viewMenu.AppendCheckItem(gID_MENU_OUTPUT_PANEL,          "&Output")
+      viewMenu.AppendCheckItem(gID_MENU_COMAMND_PANEL,         "&Command (CLI)")
+      viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL,  "Machine &Status")
+      viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
+      
+      
+      #------------------------------------------------------------------------
+      # Run menu
+      runMenu = wx.Menu()
+      self.menuBar.Append(runMenu, "&Run")
+      
+      runItem = wx.MenuItem(runMenu, gID_MENU_RUN,    "&Run\tF5")
       runItem.SetBitmap(imgPlay.GetBitmap())
       runMenu.AppendItem(runItem)      
       
-      stepItem = wx.MenuItem(runMenu, gID_Step, "S&tep")
+      stepItem = wx.MenuItem(runMenu, gID_MENU_STEP,  "S&tep")
       stepItem.SetBitmap(imgNext.GetBitmap())
       runMenu.AppendItem(stepItem)      
       
-      stopItem = wx.MenuItem(runMenu, gID_Stop, "&Stop")
+      stopItem = wx.MenuItem(runMenu, gID_MENU_STOP,  "&Stop")
       stopItem.SetBitmap(imgStop.GetBitmap())
       runMenu.AppendItem(stopItem)      
 
       runMenu.AppendSeparator()
-      breakItem = wx.MenuItem(runMenu, gID_BreakToggle, "Bra&kpoint Toggle\tF9")
+      breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE, 
+                                                      "Bra&kpoint Toggle\tF9")
       breakItem.SetBitmap(imgBreak.GetBitmap())
       runMenu.AppendItem(breakItem)
-      runMenu.Append(gID_BreakRemoveAll, "Brakpoint &Remove All")
+      runMenu.Append(gID_MENU_BREAK_REMOVE_ALL,       "Brakpoint &Remove All")
       runMenu.AppendSeparator()
-      runMenu.Append(gID_SetPC, "Set &PC")
-      runMenu.Append(gID_GoToPC, "Show PC")
+      runMenu.Append(gID_MENU_SET_PC,                 "Set &PC")
+      runMenu.Append(gID_MENU_GOTO_PC,                "Show PC")
       
       
       #------------------------------------------------------------------------
-      # Help Menu
+      # Help menu
       helpMenu = wx.Menu()
-      helpMenu.Append(wx.ID_ABOUT, "&About", "About GCS")
-
-        
-
-      #fileMenu  = FM.FlatMenu()
-      #recentMenu = FM.FlatMenu()
-
-      #item = FM.FlatMenuItem(fileMenu, wx.ID_OPEN, "&Open File\tCtrl+O", "Open File", wx.ITEM_NORMAL)
-      #fileMenu.AppendItem(item)
-      #self.menuBar.AddTool(wx.ID_OPEN, "Open File")
-      #self.menuBar.AddSeparator()   # Toolbar separator
-
-      #self.fileHistory.UseMenu(recentMenu)
-      #self.fileHistory.AddFilesToMenu()
-      #item = FM.FlatMenuItem(fileMenu, wx.ID_ANY, "&Recent Files", "", wx.ITEM_NORMAL, recentMenu)
-      #fileMenu.AppendItem(item)      
-
-      '''
-      view_menu = wx.Menu()
-      view_menu.Append(wx.ID_ANY, "Use a Size Reporter for the Content Pane")
-      view_menu.AppendSeparator()   
-      '''
-      self.menuBar.Append(fileMenu, "&File")
-      self.menuBar.Append(runMenu, "&Run")
-      self.menuBar.Append(helpMenu, "&Help")
+      self.menuBar.Append(helpMenu,                   "&Help")
       
-      #menuBar.Append(view_menu, "&View")
+      helpMenu.Append(wx.ID_ABOUT,                    "&About", 
+         "About GCS")
 
-      self.SetMenuBar(self.menuBar)
-      #self.menuBar.PositionAUI(self.aui_mgr)      
-      
       #------------------------------------------------------------------------
       # Bind events to handlers
-      self.Bind(wx.EVT_MENU, self.OnOpen, id=wx.ID_OPEN)
-      self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN, self.OnDropDownToolBarOpen, id=gID_tbOpen)
-      self.Bind(wx.EVT_MENU_RANGE, self.OnFileHistory, id=wx.ID_FILE1, id2=wx.ID_FILE9)
-      self.Bind(wx.EVT_MENU, self.OnClose, id=wx.ID_EXIT)
+
+      #------------------------------------------------------------------------
+      # File menu bind
+      self.Bind(wx.EVT_MENU,        self.OnOpen,         id=wx.ID_OPEN)
+      self.Bind(wx.EVT_MENU_RANGE,  self.OnFileHistory,  id=wx.ID_FILE1, id2=wx.ID_FILE9)
+      self.Bind(wx.EVT_MENU,        self.OnClose,        id=wx.ID_EXIT)
+      self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN, 
+                           self.OnDropDownToolBarOpen,   id=gID_TOOLBAR_OPEN)      
+                           
+      #------------------------------------------------------------------------
+      # View menu bind
+      self.Bind(wx.EVT_MENU, self.OnMainToolBar,         id=gID_MENU_MAIN_TOOLBAR)
+      self.Bind(wx.EVT_MENU, self.OnRunToolBar,          id=gID_MENU_RUN_TOOLBAR)
+      self.Bind(wx.EVT_MENU, self.OnOutput,              id=gID_MENU_OUTPUT_PANEL)
+      self.Bind(wx.EVT_MENU, self.OnCommand,             id=gID_MENU_COMAMND_PANEL)
+      self.Bind(wx.EVT_MENU, self.OnMachineStatus,       id=gID_MENU_MACHINE_STATUS_PANEL)
+      self.Bind(wx.EVT_MENU, self.OnMachineJogging,      id=gID_MENU_MACHINE_JOGGING_PANEL)
       
-      self.Bind(wx.EVT_MENU, self.OnRun, id=gID_Run)
-      self.Bind(wx.EVT_MENU, self.OnStep, id=gID_Step)
-      self.Bind(wx.EVT_MENU, self.OnStop, id=gID_Stop)
-      self.Bind(wx.EVT_MENU, self.OnBreakToggle, id=gID_BreakToggle)
-      self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll, id=gID_BreakRemoveAll)      
-      self.Bind(wx.EVT_MENU, self.OnSetPC, id=gID_SetPC)
-      self.Bind(wx.EVT_MENU, self.OnGoToPC, id=gID_GoToPC)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMainToolBarUpdate,
+                                                         id=gID_MENU_MAIN_TOOLBAR)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnRunToolBarUpdate,
+                                                         id=gID_MENU_RUN_TOOLBAR)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnOutputUpdate,   id=gID_MENU_OUTPUT_PANEL)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnCommandUpdate,  id=gID_MENU_COMAMND_PANEL)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineStatusUpdate,
+                                                         id=gID_MENU_MACHINE_STATUS_PANEL)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineJoggingUpdate,
+                                                         id=gID_MENU_MACHINE_JOGGING_PANEL)
+                           
+      #------------------------------------------------------------------------
+      # Run menu bind
+      self.Bind(wx.EVT_MENU, self.OnRun,                 id=gID_MENU_RUN)
+      self.Bind(wx.EVT_MENU, self.OnStep,                id=gID_MENU_STEP)
+      self.Bind(wx.EVT_MENU, self.OnStop,                id=gID_MENU_STOP)
+      self.Bind(wx.EVT_MENU, self.OnBreakToggle,         id=gID_MENU_BREAK_TOGGLE)
+      self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll,      id=gID_MENU_BREAK_REMOVE_ALL)      
+      self.Bind(wx.EVT_MENU, self.OnSetPC,               id=gID_MENU_SET_PC)
+      self.Bind(wx.EVT_MENU, self.OnGoToPC,              id=gID_MENU_GOTO_PC)
       
-      self.Bind(wx.EVT_BUTTON, self.OnRun, id=gID_Run)
-      self.Bind(wx.EVT_BUTTON, self.OnStep, id=gID_Step)
-      self.Bind(wx.EVT_BUTTON, self.OnStop, id=gID_Stop)
-      self.Bind(wx.EVT_BUTTON, self.OnBreakToggle, id=gID_BreakToggle)
-      self.Bind(wx.EVT_BUTTON, self.OnSetPC, id=gID_SetPC)
-      self.Bind(wx.EVT_BUTTON, self.OnGoToPC, id=gID_GoToPC)
+      self.Bind(wx.EVT_BUTTON, self.OnRun,               id=gID_MENU_RUN)
+      self.Bind(wx.EVT_BUTTON, self.OnStep,              id=gID_MENU_STEP)
+      self.Bind(wx.EVT_BUTTON, self.OnStop,              id=gID_MENU_STOP)
+      self.Bind(wx.EVT_BUTTON, self.OnBreakToggle,       id=gID_MENU_BREAK_TOGGLE)
+      self.Bind(wx.EVT_BUTTON, self.OnSetPC,             id=gID_MENU_SET_PC)
+      self.Bind(wx.EVT_BUTTON, self.OnGoToPC,            id=gID_MENU_GOTO_PC)
       
-      self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate, id=gID_Run)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnStepUpdate, id=gID_Step)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnStopUpdate, id=gID_Stop)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnBreakToggleUpdate, id=gID_BreakToggle)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnBreakRemoveAllUpdate, id=gID_BreakRemoveAll)      
-      self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate, id=gID_SetPC)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate, id=gID_GoToPC)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate,      id=gID_MENU_RUN)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnStepUpdate,     id=gID_MENU_STEP)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnStopUpdate,     id=gID_MENU_STOP)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnBreakToggleUpdate, 
+                                                         id=gID_MENU_BREAK_TOGGLE)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnBreakRemoveAllUpdate, 
+                                                         id=gID_MENU_BREAK_REMOVE_ALL)      
+      self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate,    id=gID_MENU_SET_PC)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate,   id=gID_MENU_GOTO_PC)
       
-      
-      self.Bind(wx.EVT_MENU, self.OnAbout, id=wx.ID_ABOUT)
+      #------------------------------------------------------------------------
+      # Help menu bind
+      self.Bind(wx.EVT_MENU, self.OnAbout,               id=wx.ID_ABOUT)
       
       #------------------------------------------------------------------------
       # Create shortcut keys for menu
       acceleratorTable = wx.AcceleratorTable([
-         (wx.ACCEL_ALT,  ord('X'), wx.ID_EXIT),
-         #(wx.ACCEL_CTRL, ord('H'), helpID),
-         #(wx.ACCEL_CTRL, ord('F'), findID),
-         (wx.ACCEL_NORMAL, wx.WXK_F5, gID_Run),
-         (wx.ACCEL_NORMAL, wx.WXK_F9, gID_BreakToggle),
+         #(wx.ACCEL_ALT,       ord('X'),         wx.ID_EXIT),
+         #(wx.ACCEL_CTRL,      ord('H'),         helpID),
+         #(wx.ACCEL_CTRL,      ord('F'),         findID),
+         (wx.ACCEL_NORMAL,    wx.WXK_F5,        gID_MENU_RUN),
+         (wx.ACCEL_NORMAL,    wx.WXK_F9,        gID_MENU_BREAK_TOGGLE),
       ])
       
       self.SetAcceleratorTable(acceleratorTable)
       
+      # finish up...
+      self.SetMenuBar(self.menuBar)      
       
    def CreateToolBar(self):
       #------------------------------------------------------------------------
@@ -1482,13 +1514,13 @@ class gcsMainWindow(wx.Frame):
       iconSize = (16, 16)
       self.appToolBar.SetToolBitmapSize(iconSize)
             
-      self.appToolBar.AddSimpleTool(gID_tbOpen, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, size=iconSize))
+      self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, size=iconSize))
       self.appToolBar.AddSimpleTool(wx.ID_ABOUT, "About", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, size=iconSize))
-      self.appToolBar.SetToolDropDown(gID_tbOpen, True)
+      self.appToolBar.SetToolDropDown(gID_TOOLBAR_OPEN, True)
       self.appToolBar.Realize()
 
       self.aui_mgr.AddPane(self.appToolBar, 
-         aui.AuiPaneInfo().Caption("Main ToolBar").ToolbarPane().Top().Position(1))
+         aui.AuiPaneInfo().Caption("Main Tool Bar").ToolbarPane().Top().Position(1))
       
       #------------------------------------------------------------------------
       # GCODE Tool Bar
@@ -1502,40 +1534,40 @@ class gcsMainWindow(wx.Frame):
 
       self.gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
       
-      #self.gcodeToolBar.AddSimpleTool(gID_Run, "Run", imgPlay.GetBitmap())
-      runButton = wx.BitmapButton (self.gcodeToolBar, gID_Run, imgPlay.GetBitmap(), 
+      #self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, "Run", imgPlay.GetBitmap())
+      runButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_RUN, imgPlay.GetBitmap(), 
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       runButton.SetToolTip(wx.ToolTip("Run\tF5"))
       self.gcodeToolBar.AddControl(runButton)
       
-      #self.gcodeToolBar.AddSimpleTool(gID_Step, "Step", imgNext.GetBitmap())
-      stepButton = wx.BitmapButton (self.gcodeToolBar, gID_Step, imgNext.GetBitmap(), 
+      #self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", imgNext.GetBitmap())
+      stepButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_STEP, imgNext.GetBitmap(), 
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       stepButton.SetToolTip(wx.ToolTip("Step"))
       self.gcodeToolBar.AddControl(stepButton)      
       
-      #self.gcodeToolBar.AddSimpleTool(gID_Stop, "Stop", imgStop.GetBitmap())
-      stopButton = wx.BitmapButton (self.gcodeToolBar, gID_Stop, imgStop.GetBitmap(), 
+      #self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, "Stop", imgStop.GetBitmap())
+      stopButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_STOP, imgStop.GetBitmap(), 
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       stopButton.SetToolTip(wx.ToolTip("Stop"))
       self.gcodeToolBar.AddControl(stopButton)      
       
       self.gcodeToolBar.AddSeparator()
-      #self.gcodeToolBar.AddSimpleTool(gID_BreakToggle, "Break Toggle", imgBreak.GetBitmap())
-      breakToggleButton = wx.BitmapButton (self.gcodeToolBar, gID_BreakToggle, imgBreak.GetBitmap(), 
+      #self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, "Break Toggle", imgBreak.GetBitmap())
+      breakToggleButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_BREAK_TOGGLE, imgBreak.GetBitmap(), 
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       breakToggleButton.SetToolTip(wx.ToolTip("Brakpoint Toggle\tF9"))
       self.gcodeToolBar.AddControl(breakToggleButton)      
       
       self.gcodeToolBar.AddSeparator()
-      #self.gcodeToolBar.AddSimpleTool(gID_SetPC, "Set PC", wx.NullBitmap)
-      setPCButton = wx.Button (self.gcodeToolBar, gID_SetPC, "Set PC",
+      #self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", wx.NullBitmap)
+      setPCButton = wx.Button (self.gcodeToolBar, gID_MENU_SET_PC, "Set PC",
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       setPCButton.SetToolTip(wx.ToolTip("Set PC to current line"))
       self.gcodeToolBar.AddControl(setPCButton)      
 
-      #self.gcodeToolBar.AddSimpleTool(gID_GoToPC, "Go to PC", wx.NullBitmap)
-      goToPCButton = wx.Button (self.gcodeToolBar, gID_GoToPC, "Go to PC",
+      #self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Go to PC", wx.NullBitmap)
+      goToPCButton = wx.Button (self.gcodeToolBar, gID_MENU_GOTO_PC, "Go to PC",
          style=wx.BORDER_NONE|wx.BU_EXACTFIT)
       goToPCButton.SetToolTip(wx.ToolTip("Show PC and follow it"))
       self.gcodeToolBar.AddControl(goToPCButton)      
@@ -1550,24 +1582,24 @@ class gcsMainWindow(wx.Frame):
       
       self.gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
       
-      self.gcodeToolBar.AddSimpleTool(gID_Run, imgPlay.GetBitmap(), "Run\tF5")
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, imgPlay.GetBitmap(), "Run\tF5")
       #self.gcodeToolBar.AddControl(wx.StaticText(self.gcodeToolBar, -1, 'Run'))
-      self.gcodeToolBar.AddSimpleTool(gID_Step, imgNext.GetBitmap(), "Step")
-      self.gcodeToolBar.AddSimpleTool(gID_Stop, imgStop.GetBitmap(), "Stop")
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, imgNext.GetBitmap(), "Step")
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, imgStop.GetBitmap(), "Stop")
       self.gcodeToolBar.AddSeparator()
-      self.gcodeToolBar.AddSimpleTool(gID_BreakToggle, imgBreak.GetBitmap(), "Break Toggle\tF9")
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, imgBreak.GetBitmap(), "Break Toggle\tF9")
       '''
       
       self.gcodeToolBar.Realize()
 
       self.aui_mgr.AddPane(self.gcodeToolBar, 
-         aui.AuiPaneInfo().Caption("GCODE ToolBar").ToolbarPane().Top().Position(2))
+         aui.AuiPaneInfo().Caption("Run Tool Bar").ToolbarPane().Top().Position(2).Gripper())
 
       self.appToolBar.Refresh()
       self.gcodeToolBar.Refresh()
       
    def UpdateUI(self):
-      self.cli.UpdateUI(self.appData)
+      self.cliPanel.UpdateUI(self.appData)
       self.gcText.UpdateUI(self.appData)
       self.connectionPanel.UpdateUI(self.appData)
       self.machineStatusPanel.UpdateUI(self.appData)
@@ -1582,71 +1614,13 @@ class gcsMainWindow(wx.Frame):
       self.Refresh()
       self.Update()
       
-   def GetSerialPortList(self):
-      spList = []
-      
-      if os.name == 'nt':
-         # Scan for available ports.
-         for i in range(256):
-            try:
-               s = serial.Serial(i)
-               spList.append('COM'+str(i + 1))
-               #s.close()
-            except:# serial.SerialException:
-                pass
-      else:
-         spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
-      
-      if len(spList) < 1:
-         spList = ['None']
-
-      return spList
-      
-   def GetSerialBaudRateList(self):
-      brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200']
-      return brList
-      
-   def SerialOpen(self, port, baudrate):
-      self.serPort.baudrate = baudrate
-      
-      if port != "None":
-         if os.name == 'nt':
-            port=r"\\.\%s" % (str(port))
-            
-         self.serPort.port = port
-         self.serPort.timeout=1
-         self.serPort.open()
-         
-         if self.serPort.isOpen():
-            self.workThread = gcsWorkThread(self, self.serPort, self.mw2tQueue, 
-               self.t2mwQueue, self.cliOptions)
-               
-            self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.appData.machineStatusAutoRefresh))
-            self.mw2tQueue.join()
-               
-            self.appData.serialPortIsOpen = True
-      else:
-         dlg = wx.MessageDialog(self,
-            "There is no valid serial port detected.\n" \
-            "connect a valid serial device and press\n"
-            "the serial (Refresh) button.", "", 
-            wx.OK|wx.ICON_STOP)
-         result = dlg.ShowModal()
-         dlg.Destroy()
-         
-      self.UpdateUI()
-      
-   def SerialClose(self):
-      if self.workThread is not None:
-         self.mw2tQueue.put(threadEvent(gEV_CMD_EXIT, None))
-         self.mw2tQueue.join()
-      self.workThread = None
-      self.serPort.close()
-      
-      self.appData.serialPortIsOpen = False
-      self.GrblDetected = False
-      self.UpdateUI()
-      
+   """-------------------------------------------------------------------------
+   gcsMainWindow: UI Event Handlers
+   -------------------------------------------------------------------------"""
+   
+   #---------------------------------------------------------------------------
+   # File Manu Handlers
+   #---------------------------------------------------------------------------
    def OnOpen(self, e):
       """ File Open """
       # get current file data
@@ -1789,10 +1763,70 @@ class gcsMainWindow(wx.Frame):
          dlg.Destroy()
       
       self.gcText.SetReadOnly(True)
-
       
+   #---------------------------------------------------------------------------
+   # View Manu Handlers
+   #---------------------------------------------------------------------------
+   def OnViewMenu(self, e, pane):
+      panelInfo = self.aui_mgr.GetPane(pane)
+      
+      if panelInfo.IsShown():
+         panelInfo.Hide()
+      else:
+         panelInfo.Show()
+
+      self.aui_mgr.Update()
+
+   def OnViewMenuUpdate(self, e, pane):
+      panelInfo = self.aui_mgr.GetPane(pane)
+      if panelInfo.IsShown():
+         e.Check(True)
+      else:
+         e.Check(False)
+   
+   def OnMainToolBar(self, e):
+      self.OnViewMenu(e, self.appToolBar)
+         
+   def OnMainToolBarUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.appToolBar)
+      
+   def OnRunToolBar(self, e):
+      panelInfo = self.aui_mgr.GetPane(self.gcodeToolBar)
+      #panelInfo.Gripper()
+      self.OnViewMenu(e, self.gcodeToolBar)
+         
+   def OnRunToolBarUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.gcodeToolBar)
+      
+   def OnOutput(self, e):
+      self.OnViewMenu(e, self.outputText)
+
+   def OnOutputUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.outputText)
+      
+   def OnCommand(self, e):
+      self.OnViewMenu(e, self.cliPanel)   
+         
+   def OnCommandUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.cliPanel)
+
+   def OnMachineStatus(self, e):
+      self.OnViewMenu(e, self.machineStatusPanel)
+         
+   def OnMachineStatusUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.machineStatusPanel)   
+      
+   def OnMachineJogging(self, e):
+      self.OnViewMenu(e, self.machineJoggingPanel)         
+
+   def OnMachineJoggingUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.machineJoggingPanel)
+      
+   #---------------------------------------------------------------------------
+   # Run Manu Handlers
+   #---------------------------------------------------------------------------
    def OnRun(self, e):
-      if self.workThread is not None:
+      if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_RUN, 
             [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
          self.mw2tQueue.join()
@@ -1809,10 +1843,10 @@ class gcsMainWindow(wx.Frame):
           self.appData.swState == gSTATE_BREAK):
           
          e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_Run, True)
+         self.gcodeToolBar.EnableTool(gID_MENU_RUN, True)
       else:
          e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_Run, False)
+         self.gcodeToolBar.EnableTool(gID_MENU_RUN, False)
          
    def OnBreakToggle(self, e):
       pc = self.gcText.GetCurrentLine()
@@ -1832,10 +1866,10 @@ class gcsMainWindow(wx.Frame):
           self.appData.swState == gSTATE_BREAK):
           
          e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_BreakToggle, True)
+         self.gcodeToolBar.EnableTool(gID_MENU_BREAK_TOGGLE, True)
       else:
          e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_BreakToggle, False)
+         self.gcodeToolBar.EnableTool(gID_MENU_BREAK_TOGGLE, False)
          
    def OnBreakRemoveAll(self, e):
       self.breakPoints = set()
@@ -1851,7 +1885,7 @@ class gcsMainWindow(wx.Frame):
          e.Enable(False)
          
    def OnStep(self, e):
-      if self.workThread is not None:
+      if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_STEP, 
             [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
          self.mw2tQueue.join()
@@ -1866,10 +1900,10 @@ class gcsMainWindow(wx.Frame):
           self.appData.swState == gSTATE_BREAK):
           
          e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_Step, True)
+         self.gcodeToolBar.EnableTool(gID_MENU_STEP, True)
       else:
          e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_Step, False)
+         self.gcodeToolBar.EnableTool(gID_MENU_STEP, False)
       
    def OnStop(self, e):
       self.Stop()
@@ -1881,10 +1915,10 @@ class gcsMainWindow(wx.Frame):
          self.appData.swState != gSTATE_BREAK:
          
          e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_Stop, True)
+         self.gcodeToolBar.EnableTool(gID_MENU_STOP, True)
       else:
          e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_Stop, False)
+         self.gcodeToolBar.EnableTool(gID_MENU_STOP, False)
          
    def OnSetPC(self, e):
       self.SetPC()
@@ -1895,10 +1929,10 @@ class gcsMainWindow(wx.Frame):
           self.appData.swState == gSTATE_BREAK):
           
          e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_SetPC, True)
+         self.gcodeToolBar.EnableTool(gID_MENU_SET_PC, True)
       else:
          e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_SetPC, False)
+         self.gcodeToolBar.EnableTool(gID_MENU_SET_PC, False)
       
    def OnGoToPC(self, e):
       self.gcText.SetAutoScroll(True)
@@ -1907,26 +1941,22 @@ class gcsMainWindow(wx.Frame):
    def OnGoToPCUpdate(self, e):
       if self.appData.fileIsOpen:
          e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_GoToPC, True)
+         self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, True)
       else:
          e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_GoToPC, False)
+         self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, False)
       
-
-   def OnEnter(self, e):
-      cliCommand = self.cli.GetCommand()
-
-      if len(cliCommand) > 0:
-         serialData = "%s\n" % (cliCommand)
-         self.SerialWrite(serialData)
-
+   #---------------------------------------------------------------------------
+   # Help Manu Handlers
+   #---------------------------------------------------------------------------
    def OnAbout(self, event):
       # First we create and fill the info object
       aboutDialog = wx.AboutDialogInfo()
       aboutDialog.Name = __appname__
       aboutDialog.Version = __version__
       aboutDialog.Copyright = __copyright__
-      aboutDialog.Description = wordwrap(__description__, 350, wx.ClientDC(self))
+      #aboutDialog.Description = __description__
+      aboutDialog.Description = wordwrap(__description__, 400, wx.ClientDC(self))
       aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "GCode Step home page")
       #aboutDialog.Developers = __authors__
 
@@ -1935,17 +1965,95 @@ class gcsMainWindow(wx.Frame):
       # Then we call wx.AboutBox giving it that info object
       wx.AboutBox(aboutDialog)
       
+   #---------------------------------------------------------------------------
+   # Other UI Handlers
+   #---------------------------------------------------------------------------
+   def OnCliEnter(self, e):
+      cliCommand = self.cliPanel.GetCommand()
+
+      if len(cliCommand) > 0:
+         serialData = "%s\n" % (cliCommand)
+         self.SerialWrite(serialData)
+      
    def OnClose(self, e):
-      if self.workThread is not None:
+      if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_EXIT, None))
          self.mw2tQueue.join()
 
-      self.cli.SaveConfig(self.configFile)
+      self.cliPanel.SaveConfig(self.configFile)
       self.aui_mgr.UnInit()
       self.Destroy()
+
+   """-------------------------------------------------------------------------
+   gcsMainWindow: General Functions
+   -------------------------------------------------------------------------"""
+   def GetSerialPortList(self):
+      spList = []
       
+      if os.name == 'nt':
+         # Scan for available ports.
+         for i in range(256):
+            try:
+               s = serial.Serial(i)
+               spList.append('COM'+str(i + 1))
+               #s.close()
+            except:# serial.SerialException:
+                pass
+      else:
+         spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
+      
+      if len(spList) < 1:
+         spList = ['None']
+
+      return spList
+      
+   def GetSerialBaudRateList(self):
+      brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200']
+      return brList
+      
+   def SerialOpen(self, port, baudrate):
+      self.serPort.baudrate = baudrate
+      
+      if port != "None":
+         if os.name == 'nt':
+            port=r"\\.\%s" % (str(port))
+            
+         self.serPort.port = port
+         self.serPort.timeout=1
+         self.serPort.open()
+         
+         if self.serPort.isOpen():
+            self.serialPortThread = gcsSserialPortThread(self, self.serPort, self.mw2tQueue, 
+               self.t2mwQueue, self.cmdLineOptions)
+               
+            self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.appData.machineStatusAutoRefresh))
+            self.mw2tQueue.join()
+               
+            self.appData.serialPortIsOpen = True
+      else:
+         dlg = wx.MessageDialog(self,
+            "There is no valid serial port detected.\n" \
+            "connect a valid serial device and press\n"
+            "the serial (Refresh) button.", "", 
+            wx.OK|wx.ICON_STOP)
+         result = dlg.ShowModal()
+         dlg.Destroy()
+         
+      self.UpdateUI()
+      
+   def SerialClose(self):
+      if self.serialPortThread is not None:
+         self.mw2tQueue.put(threadEvent(gEV_CMD_EXIT, None))
+         self.mw2tQueue.join()
+      self.serialPortThread = None
+      self.serPort.close()
+      
+      self.appData.serialPortIsOpen = False
+      self.GrblDetected = False
+      self.UpdateUI()
+   
    def Stop(self):
-      if self.workThread is not None:
+      if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_STOP, None))
          self.mw2tQueue.join()
          
@@ -1962,7 +2070,7 @@ class gcsMainWindow(wx.Frame):
    def MachineStatusAutoRefresh(self, autoRefresh):
       self.appData.machineStatusAutoRefresh = autoRefresh
 
-      if self.workThread is not None:
+      if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.appData.machineStatusAutoRefresh))
          self.mw2tQueue.join()
       
@@ -1977,11 +2085,11 @@ class gcsMainWindow(wx.Frame):
       if self.appData.serialPortIsOpen:
          txtOutputData = "> %s" %(serialData)
          wx.LogMessage("")
-         self.outputTextctrl.AppendText(txtOutputData)
+         self.outputText.AppendText(txtOutputData)
       
          if self.appData.swState == gSTATE_RUN:
             # if we are in run state let thread do teh writing
-            if self.workThread is not None:
+            if self.serialPortThread is not None:
                self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, serialData))
                self.mw2tQueue.join()
          else:
@@ -1993,11 +2101,12 @@ class gcsMainWindow(wx.Frame):
          #if self.appData.machineStatusAutoRefresh and serialData != "?":
          #   self.serPort.write("?")
 
-      elif self.cliOptions.verbose:
+      elif self.cmdLineOptions.verbose:
          print "gcsMainWindow ERROR: attempt serial write with port closed!!"
       
    """-------------------------------------------------------------------------
-   Handle events coming form working thread 
+   gcsMainWindow: Serial Port Thread Event Handlers
+   Handle events coming from serial port thread
    -------------------------------------------------------------------------"""
    def OnThreadEvent(self, e):
       while (not self.t2mwQueue.empty()):
@@ -2005,18 +2114,18 @@ class gcsMainWindow(wx.Frame):
          te = self.t2mwQueue.get()
          
          if te.event_id == gEV_ABORT:
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_ABORT."
-            self.outputTextctrl.AppendText(te.data)
-            self.workThread = None               
+            self.outputText.AppendText(te.data)
+            self.serialPortThread = None               
             self.SerialClose()
             
          elif te.event_id == gEV_DATA_IN:
             teData = te.data
             
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_DATA_IN."
-            self.outputTextctrl.AppendText("%s" % teData)
+            self.outputText.AppendText("%s" % teData)
             
 
             # -----------------------------------------------------------------
@@ -2046,23 +2155,23 @@ class gcsMainWindow(wx.Frame):
             rematch = gReMachineStatus.match(teData)
             if rematch is not None:
                statusData = rematch.groups()
-               if self.cliOptions.vverbose:
+               if self.cmdLineOptions.vverbose:
                   print "gcsMainWindow re.status.match %s" % str(statusData)
                self.machineStatusPanel.UpdateUI(self.appData, statusData)
                self.machineJoggingPanel.UpdateUI(self.appData, statusData)
             
          elif te.event_id == gEV_DATA_OUT:
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_DATA_OUT."
-            self.outputTextctrl.AppendText("> %s" % te.data)
+            self.outputText.AppendText("> %s" % te.data)
             
          elif te.event_id == gEV_PC_UPDATE:
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_PC_UPDATE [%s]." % str(te.data)
             self.SetPC(te.data)
             
          elif te.event_id == gEV_RUN_END:
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_RUN_END."
             self.appData.swState = gSTATE_IDLE
             self.Refresh()
@@ -2070,13 +2179,13 @@ class gcsMainWindow(wx.Frame):
             self.SetPC(0)
             
          elif te.event_id == gEV_STEP_END:
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_STEP_END."
             self.appData.swState = gSTATE_IDLE
             self.UpdateUI()
 
          elif te.event_id == gEV_HIT_BRK_PT:
-            if self.cliOptions.vverbose:
+            if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_HIT_BRK_PT."
             self.appData.swState = gSTATE_BREAK
             self.UpdateUI()
@@ -2120,13 +2229,13 @@ def get_cli_params():
    return (options, args)
    
 """----------------------------------------------------------------------------
-   gcsWorkThread:
+   gcsSserialPortThread:
    Threads that monitor serial port for new data and sends events to 
    main window.
 ----------------------------------------------------------------------------"""
-class gcsWorkThread(threading.Thread):
+class gcsSserialPortThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cli_options):
+   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
@@ -2135,7 +2244,7 @@ class gcsWorkThread(threading.Thread):
       self.serPort = serial
       self.mw2tQueue = in_queue
       self.t2mwQueue = out_queue
-      self.cliOptions = cli_options
+      self.cmdLineOptions = cmd_line_options
       
       self.gcodeDataLines = []
       self.breakPointSet = set()
@@ -2152,7 +2261,8 @@ class gcsWorkThread(threading.Thread):
       self.start()
         
    """-------------------------------------------------------------------------
-   Handle events coming form main Window
+   gcsSserialPortThread: Main Window Event Handlers
+   Handle events coming from main UI
    -------------------------------------------------------------------------"""
    def ProcessQueue(self):
       # process events from queue ---------------------------------------------
@@ -2161,14 +2271,14 @@ class gcsWorkThread(threading.Thread):
          e = self.mw2tQueue.get()
          
          if e.event_id == gEV_CMD_EXIT:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got event gEV_CMD_EXIT."
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got event gEV_CMD_EXIT."
             self.endThread = True
             self.swState = gSTATE_IDLE
             
          elif e.event_id == gEV_CMD_RUN:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got event gEV_CMD_RUN, swState->gSTATE_RUN"
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got event gEV_CMD_RUN, swState->gSTATE_RUN"
             self.gcodeDataLines = e.data[0]
             self.initialProgramCounter = e.data[1]
             self.workingProgramCounter = self.initialProgramCounter
@@ -2176,8 +2286,8 @@ class gcsWorkThread(threading.Thread):
             self.swState = gSTATE_RUN
             
          elif e.event_id == gEV_CMD_STEP:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got event gEV_CMD_STEP, swState->gSTATE_STEP"
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got event gEV_CMD_STEP, swState->gSTATE_STEP"
             self.gcodeDataLines = e.data[0]
             self.initialProgramCounter = e.data[1]
             self.workingProgramCounter = self.initialProgramCounter
@@ -2185,29 +2295,32 @@ class gcsWorkThread(threading.Thread):
             self.swState = gSTATE_STEP
             
          elif e.event_id == gEV_CMD_STOP:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got event gEV_CMD_STOP, swState->gSTATE_IDLE"
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got event gEV_CMD_STOP, swState->gSTATE_IDLE"
                
             self.swState = gSTATE_IDLE
          
          elif e.event_id == gEV_CMD_SEND:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got event gEV_CMD_SEND."
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got event gEV_CMD_SEND."
             self.SerialWrite(e.data)
             responseData = self.WaitForResponse()
             
          elif e.event_id == gEV_CMD_AUTO_STATUS:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got event gEV_CMD_AUTO_STATUS."
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got event gEV_CMD_AUTO_STATUS."
             self.machineAutoStatus = e.data
          
          else:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread got unknown event!! [%s]." % str(e.event_id)
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread got unknown event!! [%s]." % str(e.event_id)
             
          # item qcknowledge
          self.mw2tQueue.task_done()
          
+   """-------------------------------------------------------------------------
+   gcsSserialPortThread: General Fucntions
+   -------------------------------------------------------------------------"""
    def SerialWrite(self, serialData):
       # sent data to UI
       self.t2mwQueue.put(threadEvent(gEV_DATA_OUT, serialData))
@@ -2216,7 +2329,7 @@ class gcsWorkThread(threading.Thread):
       # send command
       self.serPort.write(serialData)
          
-      if self.cliOptions.verbose:
+      if self.cmdLineOptions.verbose:
          print serialData.strip()
 
    def SerialRead(self):
@@ -2227,7 +2340,7 @@ class gcsWorkThread(threading.Thread):
          self.t2mwQueue.put(threadEvent(gEV_DATA_IN, serialData))
          wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
          
-      if self.cliOptions.verbose:
+      if self.cmdLineOptions.verbose:
          if (len(serialData) > 0) or (self.swState != gSTATE_IDLE and \
             self.swState != gSTATE_BREAK):
             print "->%s<-" % serialData.strip()
@@ -2290,8 +2403,8 @@ class gcsWorkThread(threading.Thread):
          self.swState = gSTATE_IDLE
          self.t2mwQueue.put(threadEvent(gEV_RUN_END, None))
          wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
-         if self.cliOptions.vverbose:
-            print "** gcsWorkThread reach last PC, swState->gSTATE_IDLE"
+         if self.cmdLineOptions.vverbose:
+            print "** gcsSserialPortThread reach last PC, swState->gSTATE_IDLE"
          return
 
       # update PC
@@ -2304,8 +2417,8 @@ class gcsWorkThread(threading.Thread):
          self.swState = gSTATE_BREAK
          self.t2mwQueue.put(threadEvent(gEV_HIT_BRK_PT, None))
          wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
-         if self.cliOptions.vverbose:
-            print "** gcsWorkThread encounter breakpoint PC[%s], swState->gSTATE_BREAK" % \
+         if self.cmdLineOptions.vverbose:
+            print "** gcsSserialPortThread encounter breakpoint PC[%s], swState->gSTATE_BREAK" % \
                (self.workingProgramCounter)
          return
 
@@ -2330,8 +2443,8 @@ class gcsWorkThread(threading.Thread):
          self.swState = gSTATE_IDLE
          self.t2mwQueue.put(threadEvent(gEV_STEP_END, None))
          wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
-         if self.cliOptions.vverbose:
-            print "** gcsWorkThread reach last PC, swState->gSTATE_IDLE"
+         if self.cmdLineOptions.vverbose:
+            print "** gcsSserialPortThread reach last PC, swState->gSTATE_IDLE"
          return
 
       # update PC
@@ -2343,8 +2456,8 @@ class gcsWorkThread(threading.Thread):
          self.swState = gSTATE_IDLE
          self.t2mwQueue.put(threadEvent(gEV_STEP_END, None))
          wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
-         if self.cliOptions.vverbose:
-            print "** gcsWorkThread finish STEP cmd, swState->gSTATE_IDLE"            
+         if self.cmdLineOptions.vverbose:
+            print "** gcsSserialPortThread finish STEP cmd, swState->gSTATE_IDLE"            
          return
 
       gcode = self.gcodeDataLines[self.workingProgramCounter]
@@ -2368,8 +2481,8 @@ class gcsWorkThread(threading.Thread):
       # This is the code executing in the new thread. 
       self.endThread = False
       
-      if self.cliOptions.vverbose:
-         print "** gcsWorkThread start."
+      if self.cmdLineOptions.vverbose:
+         print "** gcsSserialPortThread start."
       
       while(self.endThread != True):
 
@@ -2390,21 +2503,21 @@ class gcsWorkThread(threading.Thread):
             elif self.swState == gSTATE_BREAK:
                self.ProcessIdleSate()
             else:
-               print "** gcsWorkThread unexpected state [%d], moving back to IDLE." \
+               print "** gcsSserialPortThread unexpected state [%d], moving back to IDLE." \
                   ", swState->gSTATE_IDLE " % (self.swState)
                self.ProcessIdleSate()
                self.swState = gSTATE_IDLE
          else:
-            if self.cliOptions.vverbose:
-               print "** gcsWorkThread unexpected serial port closed, ABORT."
+            if self.cmdLineOptions.vverbose:
+               print "** gcsSserialPortThread unexpected serial port closed, ABORT."
          
             # add data to queue and signal main window to consume
             self.t2mwQueue.put(threadEvent(gEV_ABORT, "** Serial Port is close, thread terminating.\n"))
             wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
             break
             
-      if self.cliOptions.vverbose:
-         print "** gcsWorkThread exit."
+      if self.cmdLineOptions.vverbose:
+         print "** gcsSserialPortThread exit."
 
 """----------------------------------------------------------------------------
    start here:
@@ -2412,8 +2525,8 @@ class gcsWorkThread(threading.Thread):
 ----------------------------------------------------------------------------"""
 if __name__ == '__main__':
    
-   (cli_options, cli_args) = get_cli_params()
+   (cmd_line_options, cli_args) = get_cli_params()
 
    app = wx.App(0)
-   gcsMainWindow(None, title=__appname__, cli_options=cli_options)
+   gcsMainWindow(None, title=__appname__, cmd_line_options=cmd_line_options)
    app.MainLoop()
