@@ -7,9 +7,9 @@ __appname__ = "GCode Step"
 
 __description__ = \
 "gcode step (gcs) is a cross-platform GCODE debug/step for grbl like "\
-"GCODE interpreter. with features similar to software buggered. With "\
-"features like breakpoint, change current program counter, inspection "\
-" and modification of variables, and continuing with the program flow."
+"GCODE interpreters. With features similar to software debuggers. Features "\
+"Such as breakpoint, change current program counter, inspection and modification "\
+"of variables."
 
 
 # define authorship information
@@ -19,7 +19,7 @@ __credits__     = []
 __copyright__   = 'Copyright (c) 2013'
 __license__     = 'GPL'
 
-# maintanence information
+# maintenance information
 __maintainer__  = 'Wilhelm Duembeg'
 __email__       = 'duembeg.github@gmail.com'
 
@@ -48,6 +48,8 @@ from wx.lib.agw import floatspin as FS
 from wx.lib.wordwrap import wordwrap
 from wx import stc as stc
 from wx.lib.embeddedimage import PyEmbeddedImage
+from wx.lib.imageutils import grayOut
+
 #from wx.lib.agw import flatmenu as FM
 #from wx.lib.agw import ultimatelistctrl as ULC
 #from wx.lib.agw.artmanager import ArtManager, RendererBase, DCSaver
@@ -73,9 +75,10 @@ gOnString = "On"
 gOffString = "Off"
 
 # -----------------------------------------------------------------------------
-# MENU & TOOLBAR IDs
+# MENU & TOOL BAR IDs
 # -----------------------------------------------------------------------------
 gID_TOOLBAR_OPEN                 = wx.NewId()
+gID_TOOLBAR_STATUS               = wx.NewId()
 gID_MENU_MAIN_TOOLBAR            = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
 gID_MENU_OUTPUT_PANEL            = wx.NewId()
@@ -176,38 +179,97 @@ gEV_PC_UPDATE        = 2060
 #------------------------------------------------------------------------------
 # imgPlay
 #------------------------------------------------------------------------------
-imgPlay = PyEmbeddedImage(
+imgPlayBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAAAkAAAAMCAYAAACwXJejAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAAD1JREFUeNpiYGBgOA/EBgwEwH8obiBG0X98pv7HghuIUYRi"
     "KiNUAB9oZGIgEhC0jiyHEwwCvIFJMFoAAgwA9owpXlnrpyAAAAAASUVORK5CYII=")
+    
+imgPlayGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAkAAAAMCAYAAACwXJejAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAFpJREFUeNpiWLVm/XkgNmDAA5iAGKQApLABlyJGoOR/JP4F"
+    "IE4MCwm8gG4SMsBqKrpJDNhMxacIBhqZGIgALHjk4NbhUtQIlGzAZRLWIGDBpRtdEVbdyAAg"
+    "wABvdyig5iK8MwAAAABJRU5ErkJggg==")
 
 #------------------------------------------------------------------------------
 # imgNext
 #------------------------------------------------------------------------------
-imgNext = PyEmbeddedImage(
+imgNextBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAAEpJREFUeNpiYGBgOA/EBgxEAkYg/g9lNwJxAw51KOL/kTAu"
     "25DVoHBguIFUDei2EaUB2TY4n4mBDEAVJxHtaYLBSlbEkZQ0AAIMAP0iRUaBrrwYAAAAAElF"
     "TkSuQmCC")
+    
+imgNextGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAG5JREFUeNpiWLVm/XkgNmAgEjACFf+HshvDQgIbsCkCqmnA"
+    "pgEELgBxIlDjBTQNcDVMaIaBnHYe2UR0wIRDvB6X31jw+A9mWyMxNjCQ6iRYABiihxwuJ+EM"
+    "YhYspmIEKy4NOE0FySFHCklJAyDAANgNMTiyyuGLAAAAAElFTkSuQmCC")
 
 #------------------------------------------------------------------------------
 # imgStop
 #------------------------------------------------------------------------------
-imgStop = PyEmbeddedImage(
+imgStopBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAABBJREFUeNpiYBgFQxUABBgAAbwAAZK5hs4AAAAASUVORK5C"
     "YII=")
 
+imgStopGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAABpJREFUeNpiXLVmPQMhwMRABBhVRG9FAAEGAJNWAh2OVT6Z"
+    "AAAAAElFTkSuQmCC")
+
 #------------------------------------------------------------------------------
 # imgBreak
 #------------------------------------------------------------------------------
-imgBreak = PyEmbeddedImage(
+imgBreakBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAABHNCSVQICAgIfAhkiAAAAAlw"
     "SFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwA"
     "AABnSURBVCiRlZLBCYAwDEWf9eLRETKCR7d0BFfoZu0GekmqBJHkQaCU9xNICw8CnEADLq2m"
     "d4Jjc6Kvps7o/Ce/QzIDB7D7kR8swEqw+5gy6SFMycgW6Am/F6AmAhWSa7Vk6uEMIfA1bljY"
     "QE3Ku/NzAAAAAElFTkSuQmCC")
+    
+imgBreakGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAABHNCSVQICAgIfAhkiAAAAAlw"
+    "SFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwA"
+    "AACQSURBVCiRldFBDcJAEEbhr6MACUigEuqgTZraIXXCmZBQB0gACUhYCRwYCOkBlnecvH9m"
+    "dqeRHE/nLfbosclywYJ5Goc7NCnvcPkQ1xR00zjcmux8/SJ/htrINX7J0tlH7lxLH5Xd31Pi"
+    "DxmE52NqKeH5z7UsgblySsEcecHuR+h1uHvANA43tDisgiVrbToeRb4ma1Mqad0AAAAASUVO"
+    "RK5CYII=")
 
+#------------------------------------------------------------------------------
+# imgMapPin
+#------------------------------------------------------------------------------
+imgMapPinBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAQCAYAAAArij59AAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAG5JREFUeNpiYICAACC+D8T/ofg+VAwu+R8HBiuC6TwPFQiA"
+    "smEmoapGN5WJgQhA0Ir5eBw5nyhfgMB7LJLvkd0xH5fx+AIrAN0373EZDwP9SAr6sSlQQFKg"
+    "gCvQzkMxHDCjKfgJxCeB+AJMACDAAMwHRnRv4T3AAAAAAElFTkSuQmCC")
+    
+imgMapPinGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAQCAYAAAArij59AAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAKFJREFUeNpiZACCVWvWBwCpfiBWYICAB0BcGBYSuIERKrme"
+    "ATsIZILqBIELIAEovgAV62dBMrYRZCTUSgaoqQpMDAQAC9RBIFPqoTpBoB7mWJCCA0CcAMQG"
+    "WBx7AGTFRjw2bGSEOuo9kBJAk/wAdLQgzJEbsOgGi8EUYLMGLMYI46FZAzYe2QQQWICNjaxg"
+    "Ig42AgCtOQ/C6CHJgE8nQIABAPO2MFm6XNGsAAAAAElFTkSuQmCC")
+
+#------------------------------------------------------------------------------
+# imgGoToMapPin
+#------------------------------------------------------------------------------
+imgGoToMapPinBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QEeDxgqvS66/wAAAH9JREFUOMtjYBhKQICB"
+    "gWE/AwPDfyjeDxUjGsA0n4dimCEoYD5UEpvJMM0wADMEDhKQnIfNEJwGOCDh83gMuY/FC/cZ"
+    "kDRgw8g29mOR7yfFAAMs8gakeAHZG3DnkxKI6N7oxxbX+KKRgYGBQQHJAAVyU+R+5ATEQoYB"
+    "CwdXDgMA7JJL1nAmIzsAAAAASUVORK5CYII=")
+
+imgGoToMapPinGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QEeDxgX5Ub27gAAANFJREFUOMvNkM0NwjAM"
+    "hT+iDsAIjFA2CCNEinJmBDZBTAC9RpHSDdoNyAZ0BEbgYpBV8dNyAUuW/Pves+HXtpg6GFNe"
+    "AhmwUuoBV80guy8XyS2QqxHLEaiBTfDuOgKwQAnerWX2DFijlrfAVgA6kfz5BzFlq/K9ACBS"
+    "H0piyhdgpU6ogaECuhfgtfTWkrfAThEAtGbGE5tnNQNslBfVLFIDIHhXgEH1h+BdMcG7PnjX"
+    "y31P79eSx7FRDCfg9GYZ4PAinm4x5S6m/Hh89QVGw1/ZDZmwQ5xuOfBFAAAAAElFTkSuQmCC")
+    
 #------------------------------------------------------------------------------
 # imgLink
 #------------------------------------------------------------------------------
@@ -262,7 +324,7 @@ class threadEvent():
 
 """----------------------------------------------------------------------------
    gcsStateData:
-   provides varius data information
+   provides various data information
 ----------------------------------------------------------------------------"""
 class gcsAppData():
    def __init__(self):
@@ -1053,7 +1115,7 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
 
       spinBoxSizer.Add(self.spinCtrl, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       
-      # Add Cehckbox for sync with work position
+      # Add Checkbox for sync with work position
       self.useWorkPosCheckBox = wx.CheckBox (self, label="Use Work Pos")
       self.useWorkPosCheckBox.SetToolTip(
          wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
@@ -1342,6 +1404,9 @@ class gcsMainWindow(wx.Frame):
       # add code to load from file...
       
       self.aui_mgr.LoadPerspective(perspectiveDefault)
+      
+      self.aui_mgr.SetAGWFlags(self.aui_mgr.GetAGWFlags()|aui.AUI_MGR_ALLOW_ACTIVE_PANE )
+
       self.aui_mgr.Update()
       
       wx.CallAfter(self.UpdateUI)
@@ -1361,7 +1426,8 @@ class gcsMainWindow(wx.Frame):
       fileMenu.Append(wx.ID_OPEN,                     "&Open")
 
       recentMenu = wx.Menu()
-      fileMenu.AppendMenu(wx.ID_ANY, "&Recent Files", recentMenu)
+      fileMenu.AppendMenu(wx.ID_ANY,                  "&Recent Files", 
+         recentMenu)
 
       # load history
       self.fileHistory = wx.FileHistory(8)
@@ -1369,15 +1435,12 @@ class gcsMainWindow(wx.Frame):
       self.fileHistory.UseMenu(recentMenu)
       self.fileHistory.AddFilesToMenu()      
       
-      fileMenu.Append(wx.ID_EXIT, "Exit")
+      fileMenu.Append(wx.ID_EXIT,                     "E&xit")
       
       #------------------------------------------------------------------------
       # View menu
       viewMenu = wx.Menu()
       self.menuBar.Append(viewMenu,                   "&View")      
-      
-      #toolbarMenu = wx.Menu()
-      #fileMenu.AppendMenu(wx.ID_ANY, "&ToolBar", toolbarMenu)      
       
       viewMenu.AppendCheckItem(gID_MENU_MAIN_TOOLBAR,          "&Main Tool Bar")
       viewMenu.AppendCheckItem(gID_MENU_RUN_TOOLBAR,           "&Run Tool Bar")
@@ -1387,34 +1450,46 @@ class gcsMainWindow(wx.Frame):
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL,  "Machine &Status")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
       
-      
       #------------------------------------------------------------------------
       # Run menu
       runMenu = wx.Menu()
       self.menuBar.Append(runMenu, "&Run")
       
       runItem = wx.MenuItem(runMenu, gID_MENU_RUN,    "&Run\tF5")
-      runItem.SetBitmap(imgPlay.GetBitmap())
+      runItem.SetBitmap(imgPlayBlack.GetBitmap())
+      runItem.SetDisabledBitmap(imgPlayGray.GetBitmap())
       runMenu.AppendItem(runItem)      
       
       stepItem = wx.MenuItem(runMenu, gID_MENU_STEP,  "S&tep")
-      stepItem.SetBitmap(imgNext.GetBitmap())
+      stepItem.SetBitmap(imgNextBlack.GetBitmap())
+      stepItem.SetDisabledBitmap(imgNextGray.GetBitmap())      
       runMenu.AppendItem(stepItem)      
       
       stopItem = wx.MenuItem(runMenu, gID_MENU_STOP,  "&Stop")
-      stopItem.SetBitmap(imgStop.GetBitmap())
+      stopItem.SetBitmap(imgStopBlack.GetBitmap())
+      stopItem.SetDisabledBitmap(imgStopGray.GetBitmap())            
       runMenu.AppendItem(stopItem)      
 
       runMenu.AppendSeparator()
       breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE, 
-                                                      "Bra&kpoint Toggle\tF9")
-      breakItem.SetBitmap(imgBreak.GetBitmap())
+                                                      "Brea&kpoint Toggle\tF9")
+      breakItem.SetBitmap(imgBreakBlack.GetBitmap())
+      breakItem.SetDisabledBitmap(imgBreakGray.GetBitmap())
       runMenu.AppendItem(breakItem)
-      runMenu.Append(gID_MENU_BREAK_REMOVE_ALL,       "Brakpoint &Remove All")
-      runMenu.AppendSeparator()
-      runMenu.Append(gID_MENU_SET_PC,                 "Set &PC")
-      runMenu.Append(gID_MENU_GOTO_PC,                "Show PC")
       
+      runMenu.Append(gID_MENU_BREAK_REMOVE_ALL,       "Breakpoint &Remove All")
+      runMenu.AppendSeparator()
+
+      setPCItem = wx.MenuItem(runMenu, gID_MENU_SET_PC,"Set &PC")
+      setPCItem.SetBitmap(imgMapPinBlack.GetBitmap())
+      setPCItem.SetDisabledBitmap(imgMapPinGray.GetBitmap())            
+      runMenu.AppendItem(setPCItem)      
+
+      gotoPCItem = wx.MenuItem(runMenu, gID_MENU_GOTO_PC,
+                                                      "&Goto PC")
+      gotoPCItem.SetBitmap(imgGoToMapPinBlack.GetBitmap())
+      gotoPCItem.SetDisabledBitmap(imgGoToMapPinGray.GetBitmap())            
+      runMenu.AppendItem(gotoPCItem)      
       
       #------------------------------------------------------------------------
       # Help menu
@@ -1502,16 +1577,19 @@ class gcsMainWindow(wx.Frame):
       self.SetMenuBar(self.menuBar)      
       
    def CreateToolBar(self):
+      iconSize = (16, 16)
+      
       #------------------------------------------------------------------------
       # Main Tool Bar
       self.appToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
          agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
+            aui.AUI_TB_GRIPPER |
             aui.AUI_TB_OVERFLOW | 
             aui.AUI_TB_TEXT | 
             aui.AUI_TB_HORZ_TEXT
          )
 
-      iconSize = (16, 16)
+      
       self.appToolBar.SetToolBitmapSize(iconSize)
             
       self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, size=iconSize))
@@ -1527,68 +1605,46 @@ class gcsMainWindow(wx.Frame):
 
       self.gcodeToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
          agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
-            aui.AUI_TB_OVERFLOW | 
-            aui.AUI_TB_TEXT | 
-            aui.AUI_TB_HORZ_TEXT)
-      
+            aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW
+            #aui.AUI_TB_TEXT | 
+            #aui.AUI_TB_HORZ_TEXT |
+      )
 
-      self.gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
+      self.gcodeToolBar.SetToolBitmapSize(iconSize)
       
-      #self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, "Run", imgPlay.GetBitmap())
-      runButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_RUN, imgPlay.GetBitmap(), 
-         style=wx.BORDER_NONE|wx.BU_EXACTFIT)
-      runButton.SetToolTip(wx.ToolTip("Run\tF5"))
-      self.gcodeToolBar.AddControl(runButton)
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, "Run", imgPlayBlack.GetBitmap(), 
+         "Run\tF5")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_RUN, imgPlayGray.GetBitmap())
+      #self.gcodeToolBar.AddTool(gID_MENU_RUN, "Run", imgPlayBlack.GetBitmap(), 
+      #   imgPlayGray.GetBitmap(), aui.ITEM_NORMAL, "Run\tF5", "", None)
       
-      #self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", imgNext.GetBitmap())
-      stepButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_STEP, imgNext.GetBitmap(), 
-         style=wx.BORDER_NONE|wx.BU_EXACTFIT)
-      stepButton.SetToolTip(wx.ToolTip("Step"))
-      self.gcodeToolBar.AddControl(stepButton)      
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", imgNextBlack.GetBitmap(),
+         "Step")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STEP, imgNextGray.GetBitmap())
       
-      #self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, "Stop", imgStop.GetBitmap())
-      stopButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_STOP, imgStop.GetBitmap(), 
-         style=wx.BORDER_NONE|wx.BU_EXACTFIT)
-      stopButton.SetToolTip(wx.ToolTip("Stop"))
-      self.gcodeToolBar.AddControl(stopButton)      
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, "Stop", imgStopBlack.GetBitmap(),
+         "Stop")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STOP, imgStopGray.GetBitmap())
       
       self.gcodeToolBar.AddSeparator()
-      #self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, "Break Toggle", imgBreak.GetBitmap())
-      breakToggleButton = wx.BitmapButton (self.gcodeToolBar, gID_MENU_BREAK_TOGGLE, imgBreak.GetBitmap(), 
-         style=wx.BORDER_NONE|wx.BU_EXACTFIT)
-      breakToggleButton.SetToolTip(wx.ToolTip("Brakpoint Toggle\tF9"))
-      self.gcodeToolBar.AddControl(breakToggleButton)      
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, "Break Toggle", 
+         imgBreakBlack.GetBitmap(), "Breakpoint Toggle\tF9")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_BREAK_TOGGLE, imgBreakGray.GetBitmap())
       
       self.gcodeToolBar.AddSeparator()
-      #self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", wx.NullBitmap)
-      setPCButton = wx.Button (self.gcodeToolBar, gID_MENU_SET_PC, "Set PC",
-         style=wx.BORDER_NONE|wx.BU_EXACTFIT)
-      setPCButton.SetToolTip(wx.ToolTip("Set PC to current line"))
-      self.gcodeToolBar.AddControl(setPCButton)      
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", imgMapPinBlack.GetBitmap(),
+         "Set PC")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, imgMapPinGray.GetBitmap())         
 
-      #self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Go to PC", wx.NullBitmap)
-      goToPCButton = wx.Button (self.gcodeToolBar, gID_MENU_GOTO_PC, "Go to PC",
-         style=wx.BORDER_NONE|wx.BU_EXACTFIT)
-      goToPCButton.SetToolTip(wx.ToolTip("Show PC and follow it"))
-      self.gcodeToolBar.AddControl(goToPCButton)      
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", imgGoToMapPinBlack.GetBitmap(),
+         "Goto PC")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, imgGoToMapPinGray.GetBitmap())         
       
-      '''
-      self.gcodeToolBar = wx.ToolBar(self, 
-         style=wx.TB_HORIZONTAL |
-         #wx.NO_BORDER |
-         #wx.TB_FLAT
-         #wx.TB_TEXT
-      0)
-      
-      self.gcodeToolBar.SetToolBitmapSize(wx.Size(16, 16))
-      
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, imgPlay.GetBitmap(), "Run\tF5")
-      #self.gcodeToolBar.AddControl(wx.StaticText(self.gcodeToolBar, -1, 'Run'))
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, imgNext.GetBitmap(), "Step")
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, imgStop.GetBitmap(), "Stop")
       self.gcodeToolBar.AddSeparator()
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, imgBreak.GetBitmap(), "Break Toggle\tF9")
-      '''
+      
+      self.gcodeToolBar.AddLabel(wx.ID_ANY, "Status:", 50)
+      self.gcodeToolBar.AddLabel(gID_TOOLBAR_STATUS, "IDLE", 50)
       
       self.gcodeToolBar.Realize()
 
@@ -1605,11 +1661,8 @@ class gcsMainWindow(wx.Frame):
       self.machineStatusPanel.UpdateUI(self.appData)
       self.machineJoggingPanel.UpdateUI(self.appData)
       
-      self.appToolBar.Refresh()
-      self.appToolBar.Update()
-      
-      self.gcodeToolBar.Refresh()
-      self.gcodeToolBar.Update()
+      # Force update tool bar items
+      self.OnRunToolBarForceUpdate()
       
       self.Refresh()
       self.Update()
@@ -1619,7 +1672,7 @@ class gcsMainWindow(wx.Frame):
    -------------------------------------------------------------------------"""
    
    #---------------------------------------------------------------------------
-   # File Manu Handlers
+   # File Menu Handlers
    #---------------------------------------------------------------------------
    def OnOpen(self, e):
       """ File Open """
@@ -1755,7 +1808,7 @@ class gcsMainWindow(wx.Frame):
          self.UpdateUI()
       else:
          dlg = wx.MessageDialog(self,
-            "The file dosen't exits.\n" \
+            "The file doesn't exits.\n" \
             "File: %s\n\n" \
             "Please check the path and try again." % fileName, "", 
             wx.OK|wx.ICON_STOP)
@@ -1765,7 +1818,7 @@ class gcsMainWindow(wx.Frame):
       self.gcText.SetReadOnly(True)
       
    #---------------------------------------------------------------------------
-   # View Manu Handlers
+   # View Menu Handlers
    #---------------------------------------------------------------------------
    def OnViewMenu(self, e, pane):
       panelInfo = self.aui_mgr.GetPane(pane)
@@ -1783,17 +1836,27 @@ class gcsMainWindow(wx.Frame):
          e.Check(True)
       else:
          e.Check(False)
+      #self.aui_mgr.Update()
    
    def OnMainToolBar(self, e):
       self.OnViewMenu(e, self.appToolBar)
+      
+      panelInfo = self.aui_mgr.GetPane(self.appToolBar)
+      if panelInfo.IsShown() and panelInfo.IsDocked():
+         self.appToolBar.SetGripperVisible(True)
+         self.aui_mgr.Update()
          
    def OnMainToolBarUpdate(self, e):
       self.OnViewMenuUpdate(e, self.appToolBar)
       
    def OnRunToolBar(self, e):
       panelInfo = self.aui_mgr.GetPane(self.gcodeToolBar)
-      #panelInfo.Gripper()
       self.OnViewMenu(e, self.gcodeToolBar)
+      
+      panelInfo = self.aui_mgr.GetPane(self.gcodeToolBar)
+      if panelInfo.IsShown() and panelInfo.IsDocked():
+         self.gcodeToolBar.SetGripperVisible(True)
+         self.aui_mgr.Update()
          
    def OnRunToolBarUpdate(self, e):
       self.OnViewMenuUpdate(e, self.gcodeToolBar)
@@ -1823,8 +1886,25 @@ class gcsMainWindow(wx.Frame):
       self.OnViewMenuUpdate(e, self.machineJoggingPanel)
       
    #---------------------------------------------------------------------------
-   # Run Manu Handlers
+   # Run Menu/ToolBar Handlers
    #---------------------------------------------------------------------------
+   def OnRunToolBarForceUpdate(self):
+      self.OnRunUpdate()
+      self.OnStepUpdate()
+      self.OnStopUpdate()
+      self.OnBreakToggleUpdate()
+      self.OnSetPCUpdate()
+      self.OnGoToPCUpdate()
+      
+      if self.appData.swState == gSTATE_IDLE:
+         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "IDLE")
+      elif self.appData.swState == gSTATE_RUN:
+         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "RUN")
+      elif self.appData.swState == gSTATE_STEP:
+         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "STEP")
+      elif self.appData.swState == gSTATE_BREAK:
+         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "BREAK")
+   
    def OnRun(self, e):
       if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_RUN, 
@@ -1836,17 +1916,59 @@ class gcsMainWindow(wx.Frame):
          self.appData.swState = gSTATE_RUN
          self.UpdateUI()
          
-   def OnRunUpdate(self, e):
+   def OnRunUpdate(self, e=None):
+      state = False
       if self.appData.fileIsOpen and \
          self.appData.serialPortIsOpen and \
          (self.appData.swState == gSTATE_IDLE or \
           self.appData.swState == gSTATE_BREAK):
           
-         e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_MENU_RUN, True)
-      else:
-         e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_MENU_RUN, False)
+         state = True
+         
+      if e is not None:
+         e.Enable(state)
+      
+      self.gcodeToolBar.EnableTool(gID_MENU_RUN, state)
+
+   def OnStep(self, e):
+      if self.serialPortThread is not None:
+         self.mw2tQueue.put(threadEvent(gEV_CMD_STEP, 
+            [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
+         self.mw2tQueue.join()
+         
+         self.appData.swState = gSTATE_STEP
+         self.UpdateUI()
+
+   def OnStepUpdate(self, e=None):
+      state = False
+      if self.appData.fileIsOpen and \
+         self.appData.serialPortIsOpen and \
+         (self.appData.swState == gSTATE_IDLE or \
+          self.appData.swState == gSTATE_BREAK):
+          
+         state = True
+         
+      if e is not None:
+         e.Enable(state)
+      
+      self.gcodeToolBar.EnableTool(gID_MENU_STEP, state)
+      
+   def OnStop(self, e):
+      self.Stop()
+      
+   def OnStopUpdate(self, e=None):
+      state = False   
+      if self.appData.fileIsOpen and \
+         self.appData.serialPortIsOpen and \
+         self.appData.swState != gSTATE_IDLE and \
+         self.appData.swState != gSTATE_BREAK:
+         
+         state = True
+         
+      if e is not None:
+         e.Enable(state)
+      
+      self.gcodeToolBar.EnableTool(gID_MENU_STOP, state)
          
    def OnBreakToggle(self, e):
       pc = self.gcText.GetCurrentLine()
@@ -1860,16 +1982,18 @@ class gcsMainWindow(wx.Frame):
       
       self.gcText.UpdateBreakPoint(pc, enable)
       
-   def OnBreakToggleUpdate(self, e):
+   def OnBreakToggleUpdate(self, e=None):
+      state = False
       if self.appData.fileIsOpen and \
          (self.appData.swState == gSTATE_IDLE or \
           self.appData.swState == gSTATE_BREAK):
           
-         e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_MENU_BREAK_TOGGLE, True)
-      else:
-         e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_MENU_BREAK_TOGGLE, False)
+         state = True         
+         
+      if e is not None:
+         e.Enable(state)
+      
+      self.gcodeToolBar.EnableTool(gID_MENU_BREAK_TOGGLE, state)
          
    def OnBreakRemoveAll(self, e):
       self.breakPoints = set()
@@ -1884,70 +2008,38 @@ class gcsMainWindow(wx.Frame):
       else:
          e.Enable(False)
          
-   def OnStep(self, e):
-      if self.serialPortThread is not None:
-         self.mw2tQueue.put(threadEvent(gEV_CMD_STEP, 
-            [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
-         self.mw2tQueue.join()
-         
-         self.appData.swState = gSTATE_STEP
-         self.UpdateUI()
-
-   def OnStepUpdate(self, e):
-      if self.appData.fileIsOpen and \
-         self.appData.serialPortIsOpen and \
-         (self.appData.swState == gSTATE_IDLE or \
-          self.appData.swState == gSTATE_BREAK):
-          
-         e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_MENU_STEP, True)
-      else:
-         e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_MENU_STEP, False)
-      
-   def OnStop(self, e):
-      self.Stop()
-      
-   def OnStopUpdate(self, e):
-      if self.appData.fileIsOpen and \
-         self.appData.serialPortIsOpen and \
-         self.appData.swState != gSTATE_IDLE and \
-         self.appData.swState != gSTATE_BREAK:
-         
-         e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_MENU_STOP, True)
-      else:
-         e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_MENU_STOP, False)
-         
    def OnSetPC(self, e):
       self.SetPC()
       
-   def OnSetPCUpdate(self, e):
+   def OnSetPCUpdate(self, e=None):
+      state = False
       if self.appData.fileIsOpen and \
          (self.appData.swState == gSTATE_IDLE or \
           self.appData.swState == gSTATE_BREAK):
-          
-         e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_MENU_SET_PC, True)
-      else:
-         e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_MENU_SET_PC, False)
+
+         state = True         
+         
+      if e is not None:
+         e.Enable(state)
+      
+      self.gcodeToolBar.EnableTool(gID_MENU_SET_PC, state)
       
    def OnGoToPC(self, e):
       self.gcText.SetAutoScroll(True)
       self.gcText.GoToPC()
       
-   def OnGoToPCUpdate(self, e):
+   def OnGoToPCUpdate(self, e=None):
+      state = False   
       if self.appData.fileIsOpen:
-         e.Enable(True)
-         self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, True)
-      else:
-         e.Enable(False)
-         self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, False)
+         state = True         
+         
+      if e is not None:
+         e.Enable(state)
+      
+      self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
       
    #---------------------------------------------------------------------------
-   # Help Manu Handlers
+   # Help Menu Handlers
    #---------------------------------------------------------------------------
    def OnAbout(self, event):
       # First we create and fill the info object
@@ -2319,7 +2411,7 @@ class gcsSserialPortThread(threading.Thread):
          self.mw2tQueue.task_done()
          
    """-------------------------------------------------------------------------
-   gcsSserialPortThread: General Fucntions
+   gcsSserialPortThread: General Functions
    -------------------------------------------------------------------------"""
    def SerialWrite(self, serialData):
       # sent data to UI
