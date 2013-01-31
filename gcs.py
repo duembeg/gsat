@@ -3,7 +3,7 @@
    gcode-step.py: 
 ----------------------------------------------------------------------------"""
 
-__appname__ = "GCode Step and Alignment Tool"
+__appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
 "GCODE Step and Alignment Tool (gstat) is a cross-platform GCODE debug/step for "\
@@ -78,7 +78,9 @@ gOffString = "Off"
 # MENU & TOOL BAR IDs
 # -----------------------------------------------------------------------------
 gID_TOOLBAR_OPEN                 = wx.NewId()
-gID_TOOLBAR_STATUS               = wx.NewId()
+gID_TOOLBAR_LINK_STATUS          = wx.NewId()
+gID_TOOLBAR_PROGRAM_STATUS       = wx.NewId()
+gID_TOOLBAR_MACHINE_STATUS       = wx.NewId()
 gID_MENU_MAIN_TOOLBAR            = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
 gID_MENU_OUTPUT_PANEL            = wx.NewId()
@@ -290,13 +292,51 @@ imgGoToMapPinGray = PyEmbeddedImage(
 #------------------------------------------------------------------------------
 # imgLink
 #------------------------------------------------------------------------------
-imgLink = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAL9JREFUeNqcU4ENwyAMo7uAE3bCTqCf9ITtg37CPtgJ9IOe"
-    "0H7APuhSKZE8FJJpkSwhiI0JSQj/xY1QTwxOYmJILIQ3oRAir9WInHQYqOxEJa+QuLHY1gj8"
-    "RL43b0aB5JEn2K9gW5zM5+EFBDLYehCeIBC4YCNh71Vbbs7K+RWEvhxIzFAwuTUqQrlXAxEo"
-    "2CQG+dUqowMsmEZeNXfJaBKXLP98OM1jkqvTtqVHHpgc4Z+jMkCLNXHVGgwvPgIMAO5tZgsP"
-    "N61OAAAAAElFTkSuQmCC")
+imgLinkBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAIJJREFUeNqMklENwCAMRJGABCQgASk4Q0IlTAISkICErU3a"
+    "pTkgocmFj3uFgxLCXUVWZ707M7FITdHj4I5wZk01hwMNjie4QYxl9wSwVHXgkp8AtotWXQc2"
+    "WGYxC2Rt6hM2+KMLwFNj/7V7DQ/n01CsYZzgAEPxjYQxMH+8+SOfAAMA5uhAq8s6MmkAAAAA"
+    "SUVORK5CYII=")
+    
+imgLinkGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAMJJREFUeNqMUcENwjAQC1EHYISOEDYgGxQJ8YYROgITdAR4"
+    "IyTYIGzQjNARMkJ9yFedIkCcZF3b89lOunJ/1O3+WKMlIDQfhi3aAHT89AJkIQC5qciBSkKY"
+    "gAJsOc5A9F/IV2BTux/2u+JNjIWMwYmRApUzn51GGiqy1NP0UV10oWPmHm6SOYu9COD9gt6q"
+    "gDcRC2MltSf5yFlvHZaMmrkiRzhO7wX+lLpGxlBytmdI5jaccZKrPauyXVBy5EF/1izAANwx"
+    "SG7WniymAAAAAElFTkSuQmCC")
+
+#------------------------------------------------------------------------------
+# imgProgram
+#------------------------------------------------------------------------------
+imgProgramBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAADtJREFUeNpiZGBg+M9AAmAB4kYGWoP/eHADqU46wEB3wIjN"
+    "nYQ0/B8UTgKpcYBivPHwH8nJ80FsgAADAED0F9tfAEgbAAAAAElFTkSuQmCC")
+
+imgProgramGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAENJREFUeNpiXLVm/X8GEgALEDcy0BIwEnBSY1hIYAMpTjrA"
+    "QHcA8kMDqcFaP/BOAgUtUJ0DkOlArJNAhsYDcQJAgAEA5GUVItPEBAYAAAAASUVORK5CYII=")
+
+#------------------------------------------------------------------------------
+# imgMachine
+#------------------------------------------------------------------------------
+imgMachineBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAJBJREFUeNpiYMAECkD8H4oV0CWZobQBEG8HYk4gDofyQUAA"
+    "iBWBeDoQnwTiFzCN55FMxYVBahiYoBoWMhAGC2EaQO7UR5JYAMSMULwASRykRoERah0yYETj"
+    "o8gzoUl+QOMLMOAIxvlInpuPJIcuDg/mAiJCqQDZFqKDlQEp4s5DTUF3RgFUzgBXeONNGgAB"
+    "BgCNuTduNsD3hAAAAABJRU5ErkJggg==")
+    
+imgMachineGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAALNJREFUeNpiZEADq9asVwBS96FcxbCQwAfI8oxQRQZAaj4Q"
+    "LwRifSBOgMovAOKLQBwPxIlAzRdYoBIgxQZQjAwSkNggNYZMUM5CBsIArIYJ6mZ9JIkFQKsZ"
+    "QRjqJBjQB6llBBL/kY2BKkQOBBR5JjRrP6ApFkB3F0iDIpLVAkBF85Hk+5GdClILC9YCNEls"
+    "oBDo3AkwJ8UTEUrxyH5IBOILIFPQQmYBVOwCVA0DI6lJAyDAABhTNnd80v1mAAAAAElFTkSu"
+    "QmCC")
 
 #------------------------------------------------------------------------------
 # imgTarget
@@ -1626,7 +1666,6 @@ class gcsMainWindow(wx.Frame):
       
       #------------------------------------------------------------------------
       # GCODE Tool Bar
-
       self.gcodeToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
          agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
             aui.AUI_TB_GRIPPER |
@@ -1665,18 +1704,40 @@ class gcsMainWindow(wx.Frame):
          "Goto PC")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, imgGoToMapPinGray.GetBitmap())         
       
-      self.gcodeToolBar.AddSeparator()
-      
-      self.gcodeToolBar.AddLabel(wx.ID_ANY, "Status:", 50)
-      self.gcodeToolBar.AddLabel(gID_TOOLBAR_STATUS, "IDLE", 50)
-      
       self.gcodeToolBar.Realize()
 
       self.aui_mgr.AddPane(self.gcodeToolBar, 
-         aui.AuiPaneInfo().Name("RUN_TOOLBAR").Caption("Run Tool Bar").ToolbarPane().Top().Position(2).Gripper())
+         aui.AuiPaneInfo().Name("GCODE_TOOLBAR").Caption("Program Tool Bar").ToolbarPane().Top().Position(2).Gripper())
 
-      self.appToolBar.Refresh()
-      self.gcodeToolBar.Refresh()
+      #------------------------------------------------------------------------
+      # Status Tool Bar
+      self.statusToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
+         agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
+            aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            #aui.AUI_TB_TEXT | 
+            aui.AUI_TB_HORZ_TEXT
+      )
+      
+      self.statusToolBar.SetToolBitmapSize(iconSize)
+      
+      self.statusToolBar.AddSimpleTool(gID_TOOLBAR_LINK_STATUS, "123456789", imgLinkGray.GetBitmap(),
+         "Link Status")
+      self.statusToolBar.SetToolDisabledBitmap(gID_MENU_RUN, imgLinkGray.GetBitmap())
+      
+      self.statusToolBar.AddSimpleTool(gID_TOOLBAR_PROGRAM_STATUS, "123456", imgProgramBlack.GetBitmap(),
+         "Program Status")
+      self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_PROGRAM_STATUS, imgProgramBlack.GetBitmap())
+      
+      self.statusToolBar.AddSimpleTool(gID_TOOLBAR_MACHINE_STATUS, "123456", imgMachineBlack.GetBitmap(),
+         "Machine Status")
+      self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_MACHINE_STATUS, imgMachineGray.GetBitmap())
+      
+      self.statusToolBar.Realize()
+
+      self.aui_mgr.AddPane(self.statusToolBar, 
+         aui.AuiPaneInfo().Name("STATUS_TOOLBAR").Caption("Status Tool Bar").ToolbarPane().Top().Position(2).Gripper())
+         
       
    def UpdateUI(self):
       self.cliPanel.UpdateUI(self.appData)
@@ -1686,6 +1747,7 @@ class gcsMainWindow(wx.Frame):
       self.machineJoggingPanel.UpdateUI(self.appData)
       
       # Force update tool bar items
+      self.OnStatusToolBarForceUpdate()
       self.OnRunToolBarForceUpdate()
       
       self.Refresh()
@@ -1929,15 +1991,6 @@ class gcsMainWindow(wx.Frame):
       self.OnBreakToggleUpdate()
       self.OnSetPCUpdate()
       self.OnGoToPCUpdate()
-      
-      if self.appData.swState == gSTATE_IDLE:
-         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "IDLE")
-      elif self.appData.swState == gSTATE_RUN:
-         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "RUN")
-      elif self.appData.swState == gSTATE_STEP:
-         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "STEP")
-      elif self.appData.swState == gSTATE_BREAK:
-         self.gcodeToolBar.SetToolLabel(gID_TOOLBAR_STATUS, "BREAK")
    
    def OnRun(self, e):
       if self.serialPortThread is not None:
@@ -2071,6 +2124,35 @@ class gcsMainWindow(wx.Frame):
          e.Enable(state)
       
       self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
+      
+   #---------------------------------------------------------------------------
+   # Status Menu/ToolBar Handlers
+   #---------------------------------------------------------------------------
+   def OnStatusToolBarForceUpdate(self):   
+      # Link status
+      if self.appData.serialPortIsOpen:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "LINKED")
+         self.statusToolBar.SetToolBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkBlack.GetBitmap())
+         self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkBlack.GetBitmap())
+      else:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "UNLINKED")
+         self.statusToolBar.SetToolBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkGray.GetBitmap())
+         self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkGray.GetBitmap())
+         
+      # Program status
+      if self.appData.swState == gSTATE_IDLE:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "IDLE")
+      elif self.appData.swState == gSTATE_RUN:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "RUN")
+      elif self.appData.swState == gSTATE_STEP:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "STEP")
+      elif self.appData.swState == gSTATE_BREAK:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "BREAK")
+         
+      #Machine status
+      self.statusToolBar.EnableTool(gID_TOOLBAR_MACHINE_STATUS, self.appData.serialPortIsOpen)
+      self.statusToolBar.SetToolLabel(gID_TOOLBAR_MACHINE_STATUS, "IDLE")
+      
       
    #---------------------------------------------------------------------------
    # Help Menu Handlers
