@@ -83,6 +83,7 @@ gID_TOOLBAR_PROGRAM_STATUS       = wx.NewId()
 gID_TOOLBAR_MACHINE_STATUS       = wx.NewId()
 gID_MENU_MAIN_TOOLBAR            = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
+gID_MENU_STATUS_TOOLBAR          = wx.NewId()
 gID_MENU_OUTPUT_PANEL            = wx.NewId()
 gID_MENU_COMAMND_PANEL           = wx.NewId()
 gID_MENU_MACHINE_STATUS_PANEL    = wx.NewId()
@@ -1418,7 +1419,7 @@ class gcsMainWindow(wx.Frame):
       #wx.Log_SetTraceMask(wx.TraceMessages)
       
       # main gcode list control
-      self.gcText = gcsGcodeStcStyledTextCtrl(self)
+      self.gcText = gcsGcodeStcStyledTextCtrl(self, style=wx.NO_BORDER)
       self.gcText.SetAutoScroll(True)
       
       # cli interface
@@ -1448,17 +1449,17 @@ class gcsMainWindow(wx.Frame):
       self.CreateMenu()
       self.CreateToolBar()
       
+      # tell the manager to "commit" all the changes just made
+      self.aui_mgr.SetAGWFlags(self.aui_mgr.GetAGWFlags()|aui.AUI_MGR_ALLOW_ACTIVE_PANE )
+
       # load default layout
       perspectiveDefault = self.aui_mgr.SavePerspective()
       self.SaveLayoutData(gConfigWindowResetLayout)
       
       self.LoadLayoutData(gConfigWindowDefaultLayout, False)
       
-      # tell the manager to "commit" all the changes just made
-      self.aui_mgr.SetAGWFlags(self.aui_mgr.GetAGWFlags()|aui.AUI_MGR_ALLOW_ACTIVE_PANE )
-
+      # finish up
       self.aui_mgr.Update()
-      
       wx.CallAfter(self.UpdateUI)
       
    def CreateMenu(self):
@@ -1499,6 +1500,7 @@ class gcsMainWindow(wx.Frame):
       
       viewMenu.AppendCheckItem(gID_MENU_MAIN_TOOLBAR,          "&Main Tool Bar")
       viewMenu.AppendCheckItem(gID_MENU_RUN_TOOLBAR,           "&Run Tool Bar")
+      viewMenu.AppendCheckItem(gID_MENU_STATUS_TOOLBAR,        "Status &Tool Bar")
       viewMenu.AppendSeparator()         
       viewMenu.AppendCheckItem(gID_MENU_OUTPUT_PANEL,          "&Output")
       viewMenu.AppendCheckItem(gID_MENU_COMAMND_PANEL,         "&Command (CLI)")
@@ -1575,6 +1577,7 @@ class gcsMainWindow(wx.Frame):
       # View menu bind
       self.Bind(wx.EVT_MENU, self.OnMainToolBar,         id=gID_MENU_MAIN_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnRunToolBar,          id=gID_MENU_RUN_TOOLBAR)
+      self.Bind(wx.EVT_MENU, self.OnStatusToolBar,       id=gID_MENU_STATUS_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnOutput,              id=gID_MENU_OUTPUT_PANEL)
       self.Bind(wx.EVT_MENU, self.OnCommand,             id=gID_MENU_COMAMND_PANEL)
       self.Bind(wx.EVT_MENU, self.OnMachineStatus,       id=gID_MENU_MACHINE_STATUS_PANEL)
@@ -1587,6 +1590,8 @@ class gcsMainWindow(wx.Frame):
                                                          id=gID_MENU_MAIN_TOOLBAR)
       self.Bind(wx.EVT_UPDATE_UI, self.OnRunToolBarUpdate,
                                                          id=gID_MENU_RUN_TOOLBAR)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnStatusToolBarUpdate,
+                                                         id=gID_MENU_STATUS_TOOLBAR)
       self.Bind(wx.EVT_UPDATE_UI, self.OnOutputUpdate,   id=gID_MENU_OUTPUT_PANEL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnCommandUpdate,  id=gID_MENU_COMAMND_PANEL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineStatusUpdate,
@@ -1646,11 +1651,12 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Main Tool Bar
       self.appToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
-         agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
-            aui.AUI_TB_GRIPPER |
+         agwStyle=aui.AUI_TB_GRIPPER |
             aui.AUI_TB_OVERFLOW | 
             aui.AUI_TB_TEXT | 
-            aui.AUI_TB_HORZ_TEXT
+            aui.AUI_TB_HORZ_TEXT |
+            #aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_DEFAULT_STYLE 
          )
 
       
@@ -1667,11 +1673,12 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # GCODE Tool Bar
       self.gcodeToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
-         agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
-            aui.AUI_TB_GRIPPER |
-            aui.AUI_TB_OVERFLOW
+         agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
             #aui.AUI_TB_TEXT | 
             #aui.AUI_TB_HORZ_TEXT |
+            #aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_DEFAULT_STYLE 
       )
 
       self.gcodeToolBar.SetToolBitmapSize(iconSize)
@@ -1712,11 +1719,12 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Status Tool Bar
       self.statusToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, 
-         agwStyle=aui.AUI_TB_DEFAULT_STYLE | 
-            aui.AUI_TB_GRIPPER |
+         agwStyle=aui.AUI_TB_GRIPPER |
             aui.AUI_TB_OVERFLOW |
             #aui.AUI_TB_TEXT | 
-            aui.AUI_TB_HORZ_TEXT
+            aui.AUI_TB_HORZ_TEXT | 
+            #aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_DEFAULT_STYLE 
       )
       
       self.statusToolBar.SetToolBitmapSize(iconSize)
@@ -1737,7 +1745,11 @@ class gcsMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.statusToolBar, 
          aui.AuiPaneInfo().Name("STATUS_TOOLBAR").Caption("Status Tool Bar").ToolbarPane().Top().Position(2).Gripper())
-         
+
+      # finish up
+      self.appToolBar.Refresh()
+      self.gcodeToolBar.Refresh()
+      self.statusToolBar.Refresh()
       
    def UpdateUI(self):
       self.cliPanel.UpdateUI(self.appData)
@@ -1749,9 +1761,8 @@ class gcsMainWindow(wx.Frame):
       # Force update tool bar items
       self.OnStatusToolBarForceUpdate()
       self.OnRunToolBarForceUpdate()
-      
-      self.Refresh()
-      self.Update()
+
+      self.aui_mgr.Update()
       
    """-------------------------------------------------------------------------
    gcsMainWindow: UI Event Handlers
@@ -1924,28 +1935,31 @@ class gcsMainWindow(wx.Frame):
          e.Check(False)
       #self.aui_mgr.Update()
    
-   def OnMainToolBar(self, e):
-      self.OnViewMenu(e, self.appToolBar)
+   def OnViewMenuToolBar(self, e, toolBar):
+      self.OnViewMenu(e, toolBar)
       
-      panelInfo = self.aui_mgr.GetPane(self.appToolBar)
+      panelInfo = self.aui_mgr.GetPane(toolBar)
       if panelInfo.IsShown() and panelInfo.IsDocked():
-         self.appToolBar.SetGripperVisible(True)
+         toolBar.SetGripperVisible(True)
          self.aui_mgr.Update()
+         
+   def OnMainToolBar(self, e):
+      self.OnViewMenuToolBar(e, self.appToolBar)
          
    def OnMainToolBarUpdate(self, e):
       self.OnViewMenuUpdate(e, self.appToolBar)
       
    def OnRunToolBar(self, e):
-      panelInfo = self.aui_mgr.GetPane(self.gcodeToolBar)
-      self.OnViewMenu(e, self.gcodeToolBar)
-      
-      panelInfo = self.aui_mgr.GetPane(self.gcodeToolBar)
-      if panelInfo.IsShown() and panelInfo.IsDocked():
-         self.gcodeToolBar.SetGripperVisible(True)
-         self.aui_mgr.Update()
+      self.OnViewMenuToolBar(e, self.gcodeToolBar)
          
    def OnRunToolBarUpdate(self, e):
       self.OnViewMenuUpdate(e, self.gcodeToolBar)
+      
+   def OnStatusToolBar(self, e):
+      self.OnViewMenuToolBar(e, self.statusToolBar)
+         
+   def OnStatusToolBarUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.statusToolBar)
       
    def OnOutput(self, e):
       self.OnViewMenu(e, self.outputText)
@@ -1973,6 +1987,7 @@ class gcsMainWindow(wx.Frame):
       
    def OnLoadDefaultLayout(self, e):
       self.LoadLayoutData(gConfigWindowDefaultLayout)
+      self.aui_mgr.Update()
    
    def OnSaveDefaultLayout(self, e):
       self.SaveLayoutData(gConfigWindowDefaultLayout)
@@ -1991,6 +2006,7 @@ class gcsMainWindow(wx.Frame):
       self.OnBreakToggleUpdate()
       self.OnSetPCUpdate()
       self.OnGoToPCUpdate()
+      self.gcodeToolBar.Refresh()
    
    def OnRun(self, e):
       if self.serialPortThread is not None:
@@ -2153,6 +2169,8 @@ class gcsMainWindow(wx.Frame):
       self.statusToolBar.EnableTool(gID_TOOLBAR_MACHINE_STATUS, self.appData.serialPortIsOpen)
       self.statusToolBar.SetToolLabel(gID_TOOLBAR_MACHINE_STATUS, "IDLE")
       
+      self.statusToolBar.Refresh()
+      
       
    #---------------------------------------------------------------------------
    # Help Menu Handlers
@@ -2190,7 +2208,9 @@ class gcsMainWindow(wx.Frame):
 
       self.cliPanel.SaveConfig(self.configFile)
       self.aui_mgr.UnInit()
+      
       self.Destroy()
+      e.Skip()
 
    """-------------------------------------------------------------------------
    gcsMainWindow: General Functions
