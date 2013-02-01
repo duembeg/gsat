@@ -737,7 +737,6 @@ class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
       
    def UpdateUI(self, appData):
       pass
-      #self.CaretChange()
       
    def OnCaretChange(self, e):
       wx.CallAfter(self.CaretChange)
@@ -780,9 +779,69 @@ class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
    
    def SetAutoScroll(self, autoScroll):
       self.autoScroll = autoScroll
+
+"""----------------------------------------------------------------------------
+   gcsOutputStcStyledTextCtrl:
+   Text control to display output from different sources
+----------------------------------------------------------------------------"""
+class gcsOutputStcStyledTextCtrl(stc.StyledTextCtrl):
+   def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, 
+      size=wx.DefaultSize, style=0, name=stc.STCNameStr): 
       
+      stc.StyledTextCtrl.__init__(self, parent, id, pos, size, 
+         style, name)
+         
+      self.autoScroll = True
+         
+      self.InitUI()
+      
+      # bind events
+      self.Bind(wx.EVT_LEFT_DOWN, self.OnCaretChange)
+      self.Bind(wx.EVT_LEFT_UP, self.OnCaretChange)      
+      self.Bind(wx.EVT_KEY_DOWN, self.OnCaretChange)
+      self.Bind(wx.EVT_KEY_UP, self.OnCaretChange)
+         
+   def InitUI(self):
+      # margin 1 for line numbers
+      #self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
+      #self.SetMarginWidth(0, 50)
+      
+      # other settings
+      #self.SetReadOnly(True)
+      self.SetCaretLineVisible(True)
+      self.EnsureCaretVisible()
+      self.SetCaretLineBack("#8B9BBA")
+      
+   def UpdateUI(self, appData):
+      pass
+      
+   def OnCaretChange(self, e):
+      wx.CallAfter(self.EvaluateAutoScroll)
+      e.Skip()   
+      
+   def EvaluateAutoScroll(self):
+      lastLineOnScreen = self.GetFirstVisibleLine() + self.LinesOnScreen()
+      
+      if self.GetLineCount() <= lastLineOnScreen:
+         self.autoScroll = True
+      else:
+         self.autoScroll = False
+      
+   def GetAutoScroll(self):
+      return self.autoScroll
 
+   def SetAutoScroll(self, autoScroll):
+      self.autoScroll = autoScroll
+      
+   def ScrollToEnd(self):
+      self.ScrollToLine(self.GetLineCount())
+      
+   def AppendText(self, string):
+      stc.StyledTextCtrl.AppendText(self, string)
 
+      if self.autoScroll:
+         wx.CallAfter(self.ScrollToEnd)
+      
 """----------------------------------------------------------------------------
    gcsConnectionPanel:
    controls to connect disconnect with the machine.
@@ -1408,10 +1467,7 @@ class gcsMainWindow(wx.Frame):
       self.machineJoggingPanel = gcsMachineJoggingPanel(self)
       
       # output Window
-      self.outputText = wx.TextCtrl(self, 
-         style=wx.TE_MULTILINE|wx.TE_RICH2|wx.TE_READONLY)
-      self.outputText.SetBackgroundColour(gReadOnlyBkColor)
-      
+      self.outputText = gcsOutputStcStyledTextCtrl(self, style=wx.NO_BORDER)
       wx.Log_SetActiveTarget(gcsLog(self.outputText))
         
       # for serious debugging
