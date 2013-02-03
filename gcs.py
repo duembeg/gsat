@@ -6,7 +6,7 @@
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
-"GCODE Step and Alignment Tool (gstat) is a cross-platform GCODE debug/step for "\
+"GCODE Step and Alignment Tool (gcs) is a cross-platform GCODE debug/step for "\
 "grbl like GCODE interpreters. With features similar to software debuggers. Features "\
 "Such as breakpoint, change current program counter, inspection and modification "\
 "of variables."
@@ -64,10 +64,11 @@ gEdityBkColor = wx.WHITE
 gReadOnlyBkColor = wx.Colour(242, 241, 240)
 
 
-gWILDCARD = "ngc (*.ngc)|*.ngc|" \
-           "nc (*.nc)|*.nc|" \
-           "gcode (*.gcode)|*.gcode|" \
-           "All files (*.*)|*.*"
+gWILDCARD = \
+   "ngc (*.ngc)|*.ngc|" \
+   "nc (*.nc)|*.nc|" \
+   "gcode (*.gcode)|*.gcode|" \
+   "All files (*.*)|*.*"
 
 gZeroString = "0.0000"
 gNumberFormatString = "%0.4f"
@@ -100,18 +101,6 @@ gID_MENU_BREAK_TOGGLE            = wx.NewId()
 gID_MENU_BREAK_REMOVE_ALL        = wx.NewId()
 gID_MENU_SET_PC                  = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
-
-# -----------------------------------------------------------------------------
-# config file keys
-# -----------------------------------------------------------------------------
-gConfigKeySaveCmdHistory         = "/cli/SaveCmdHistory"
-gConfigKeyCmdHistory             = "/cli/CmdHistory"
-gConfigKeyCmdMaxHistory          = "/cli/CmdMaxHistory"
-
-gConfigWindowMaxFileHistory      = "/window/MaxFileHistory"
-gConfigWindowDefaultLayout       = "/window/DefaultLayout"
-gConfigWindowResetLayout         = "/window/ResetLayout"
-
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -187,6 +176,104 @@ gEV_DATA_IN          = 2040
 gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
            
+"""----------------------------------------------------------------------------
+   gcsStateData:
+   provides various data information
+----------------------------------------------------------------------------"""
+class gcsStateData():
+   def __init__(self):
+   
+      # state status
+      self.swState = gSTATE_IDLE
+      
+      # link status
+      self.serialPortIsOpen = False
+      
+      # machine status
+      self.grblDetected = False
+      self.machineStatusAutoRefresh = False      
+      self.machineStatusString ="Idle"
+      
+      # program status
+      self.programCounter = 0
+      self.breakPoints = set()
+      self.fileIsOpen = False
+      self.gcodeFileName = ""
+      self.gcodeFileLines = []
+      
+"""----------------------------------------------------------------------------
+   gcsStateData:
+   provides various data information
+----------------------------------------------------------------------------"""
+class gcsConfigData():
+   def __init__(self):
+      # -----------------------------------------------------------------------
+      # config keys
+      
+      # main app keys
+      self.keyMainAppkeyMaxFileHistory    = "/mainApp/MaxFileHistory"
+      self.keyMainAppDefaultLayout        = "/mainApp/DefaultLayout"
+      self.keyMainAppResetLayout          = "/mainApp/ResetLayout"
+
+      # cli keys
+      self.keyCliSaveCmdHistory           = "/cli/SaveCmdHistory"
+      self.keyCliCmdMaxHistory            = "/cli/CmdMaxHistory"
+      self.keyCliCmdHistory               = "/cli/CmdHistory"
+      
+      # link data
+      self.keyLinkPort                    = "/link/port"
+      self.keyLinkBaud                    = "/link/baud"
+      
+      # -----------------------------------------------------------------------
+      # config data
+      
+      # main app data
+      self.dataMainAppkeyMaxFileHistory    = 8
+      
+      # cli data
+      self.dataCliSaveCmdHistory           = True
+      self.dataCliCmdMaxHistory            = 100
+      
+      # link data
+      self.dataLinkPort                    = ""
+      self.dataLinkBaud                    = "9600"
+      self.dataLinkPortList                = ""
+      self.dataLinkBaudList                = ""
+      
+      
+   def Load(self, configFile):
+      # read main app data
+      configData = configFile.Read(self.keyMainAppkeyMaxFileHistory)
+      if len(configData) > 0:
+         self.dataMainAppkeyMaxFileHistory = eval(configData)
+
+      # read cli data
+      configData = configFile.Read(self.keyCliSaveCmdHistory)
+      if len(configData) > 0:
+         self.dataCliSaveCmdHistory = eval(configData)
+
+      configData = configFile.Read(self.keyCliCmdMaxHistory)
+      if len(configData) > 0:
+         self.dataCliCmdMaxHistory = eval(configData)
+         
+      # read link data
+      self.dataLinkPort = configFile.Read(self.keyLinkPort)
+      configData = configFile.Read(self.keyLinkBaud)
+      if len(configData) > 0:
+         self.dataLinkBaud = configData
+
+   def Save(self, configFile):
+      # write main app data
+      configFile.Write(self.keyMainAppkeyMaxFileHistory, str(self.dataMainAppkeyMaxFileHistory))
+
+      # write cli data
+      configFile.Write(self.keyCliSaveCmdHistory, str(self.dataCliSaveCmdHistory))
+      configFile.Write(self.keyCliCmdMaxHistory, str(self.dataCliCmdMaxHistory))
+      
+      # write link data
+      configFile.Write(self.keyLinkPort, str(self.dataLinkPort))
+      configFile.Write(self.keyLinkBaud, str(self.dataLinkBaud))
+      
 """----------------------------------------------------------------------------
    Embedded Images
    These images generated by /usr/bin/img2py
@@ -381,27 +468,6 @@ class threadEvent():
       self.data = data
 
 """----------------------------------------------------------------------------
-   gcsStateData:
-   provides various data information
-----------------------------------------------------------------------------"""
-class gcsAppData():
-   def __init__(self):
-      self.swState = gSTATE_IDLE
-      
-      self.serialPortIsOpen = False
-      self.grblDetected = False
-      self.machineStatusAutoRefresh = False      
-      
-      self.programCounter = 0
-      self.breakPoints = set()
-
-      self.fileIsOpen = False
-      self.gcodeFileName = ""
-      self.gcodeFileLines = []
-      self.gcodeFileNumLines = 0
-
-
-"""----------------------------------------------------------------------------
    gcsLog:
    custom wxLog
 ----------------------------------------------------------------------------"""
@@ -420,26 +486,157 @@ class gcsLog(wx.PyLog):
             self.tc.AppendText(message + '\n')
             
 """----------------------------------------------------------------------------
+   gcsLinkPanel:
+   controls to connect disconnect with the machine.
+----------------------------------------------------------------------------"""
+class gcsLinkPanel(wx.ScrolledWindow):
+   def __init__(self, parent, configData, **args):
+      wx.ScrolledWindow.__init__(self, parent, **args)
+
+      self.configData = configData
+      
+      self.InitUI()
+      
+      width,height = self.GetSizeTuple()
+      scroll_unit = 10
+      self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      flexGridSizer = wx.FlexGridSizer(2,2)
+      gridSizer = wx.GridSizer(1,3)
+      
+      vBoxSizer.Add(flexGridSizer, 0, flag=wx.LEFT|wx.TOP|wx.RIGHT, border=5)
+      vBoxSizer.Add(gridSizer, 0, flag=wx.ALL, border=5)
+
+      # get serial port list and baud rate speeds
+      spList = self.configData.dataLinkPortList
+      brList = self.configData.dataLinkBaudList
+     
+      # Add serial port controls
+      spText = wx.StaticText(self, label="Serial Port:")
+      flexGridSizer.Add(spText, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.spComboBox = wx.ComboBox(self, -1, value=self.configData.dataLinkPort, 
+         choices=spList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+      flexGridSizer.Add(self.spComboBox, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      # Add baud rate controls
+      srText = wx.StaticText(self, label="Baud Rate:")
+      flexGridSizer.Add(srText, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.sbrComboBox = wx.ComboBox(self, -1, value=self.configData.dataLinkBaud, 
+         choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+      flexGridSizer.Add(self.sbrComboBox, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.SetSizer(vBoxSizer)
+      self.Layout()
+         
+   def GetSerialPort(self):
+      return self.spComboBox.GetValue() 
+      
+   def GetBaudRate(self):
+      return self.sbrComboBox.GetValue()
+      
+"""----------------------------------------------------------------------------
+   gcsSettingsDialog:
+   Dialog to control program settings
+----------------------------------------------------------------------------"""
+class gcsSettingsDialog(wx.Dialog):
+   def __init__(self, parent, configData, id=wx.ID_ANY, title="Settings", 
+      style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER):
+            
+      wx.Dialog.__init__(self, parent, id, title, style=style)
+      
+      self.configData = configData
+      
+      self.InitUI()
+      
+   def InitUI(self):
+      sizer = wx.BoxSizer(wx.VERTICAL)
+      
+      # init note book
+      self.imageList = wx.ImageList(16, 16)
+      self.imageList.Add(imgProgramBlack.GetBitmap())
+      self.imageList.Add(imgLinkBlack.GetBitmap())
+
+      self.noteBook = wx.Notebook(self, size=(450,300), style=wx.BK_LEFT)
+                             
+      self.noteBook.AssignImageList(self.imageList)
+      
+      # add pages
+      win = wx.Panel(self.noteBook, -1)
+      self.noteBook.AddPage(win, "Blue")
+        
+      st = wx.StaticText(win, -1,
+                          "You can put nearly any type of window here,\n"
+                          "and if the platform supports it then the\n"
+                          "tabs can be on any side of the notebook.",
+                          (10, 10))
+
+      # now put an image on the first tab we just created:
+      self.noteBook.SetPageImage(0, 0)
+
+      self.AddLinkPage()
+      
+      win = wx.Panel(self.noteBook, -1)
+      self.noteBook.AddPage(win, "Green")
+      
+      self.noteBook.Layout()
+      
+      sizer.Add(self.noteBook, 1, wx.ALL|wx.EXPAND, 5)
+
+      # buttons
+      line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
+      sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
+
+      btnsizer = wx.StdDialogButtonSizer()
+
+      btn = wx.Button(self, wx.ID_OK)
+      btnsizer.AddButton(btn)
+
+      btn = wx.Button(self, wx.ID_CANCEL)
+      btnsizer.AddButton(btn)
+      
+      btnsizer.Realize()
+
+      sizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5)
+
+      self.SetSizer(sizer)
+      sizer.Fit(self)
+      self.SetAutoLayout(True)
+      
+      #self.Bind(wx.ID_OK, self.OnOK)      
+      
+   def AddLinkPage(self):
+      self.linkPage = gcsLinkPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.linkPage, "Link")
+      self.noteBook.SetPageImage(1, 1)
+      
+   def UpdatConfigData(self):
+      self.configData.dataLinkPort = self.linkPage.GetSerialPort()
+      self.configData.dataLinkBaud = self.linkPage.GetBaudRate()
+
+"""----------------------------------------------------------------------------
    gcsCliComboBox:
    Control to handle CLI (Command Line Interface)
 ----------------------------------------------------------------------------"""
 class gcsCliComboBox(wx.ComboBox):
-   def __init__(self, parent, ID=wx.ID_ANY, value ="", pos=wx.DefaultPosition,
+   def __init__(self, parent, configData, ID=wx.ID_ANY, value ="", pos=wx.DefaultPosition,
                  size=wx.DefaultSize, choices=[], style=0):
       
       wx.ComboBox.__init__(self, parent, ID, value, pos, size, choices,
          style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER)
          
-      self.appData = gcsAppData()
+      self.stateData = gcsStateData()
       self.cliCommand = ""
       self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self)
       
-      self.cliSaveCmdHistory = True
-      self.cliCmdMaxCmdHistory = 100
+      self.configData = configData
       
-   def UpdateUI(self, appData):
-      self.appData = appData
-      if appData.serialPortIsOpen and not appData.swState == gSTATE_RUN:
+   def UpdateUI(self, stateData):
+      self.stateData = stateData
+      if stateData.serialPortIsOpen and not stateData.swState == gSTATE_RUN:
          self.Enable()
       else:
          self.Disable()
@@ -451,7 +648,7 @@ class gcsCliComboBox(wx.ComboBox):
       cliCommand = self.GetValue()
       
       if cliCommand != self.cliCommand:
-         if self.GetCount() > self.cliCmdMaxCmdHistory:
+         if self.GetCount() > self.configData.dataCliCmdMaxHistory:
             self.Delete(0)
             
          self.cliCommand = cliCommand
@@ -460,23 +657,12 @@ class gcsCliComboBox(wx.ComboBox):
       self.SetValue("")
       e.Skip()
       
-   def LoadConfig(self, configFile):
-      # read save cmd history
-      configData = configFile.Read(gConfigKeySaveCmdHistory)
-      
-      if len(configData) > 0:
-         self.cliSaveCmdHistory = eval(configData)
-         
-      # read cmd history max count
-      configData = configFile.Read(gConfigKeyCmdMaxHistory)
-      
-      if len(configData) > 0:
-         self.cliCmdMaxCmdHistory = eval(configData)
+   def Load(self, configFile):
          
       # read cmd hsitory
-      configData = configFile.Read(gConfigKeyCmdHistory)
+      configData = configFile.Read(self.configData.keyCliCmdHistory)
       if len(configData) > 0:
-         cliCommandHistory = configData.split(",")
+         cliCommandHistory = configData.split("|")
          for cmd in cliCommandHistory:
             cmd = cmd.strip()
             if len(cmd) > 0:
@@ -484,19 +670,14 @@ class gcsCliComboBox(wx.ComboBox):
                
          self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
             
-   def SaveConfig(self, configFile):
-      # write dave cmd history
-      configFile.Write(gConfigKeySaveCmdHistory, str(self.cliSaveCmdHistory))
-      
-      # write cmd history max count
-      configFile.Write(gConfigKeyCmdMaxHistory, str(self.cliCmdMaxCmdHistory))
-      
+   def Save(self, configFile):
+   
       # write cmd history
-      if self.cliSaveCmdHistory:
+      if self.configData.dataCliSaveCmdHistory:
          cliCmdHistory = self.GetItems()
          if len(cliCmdHistory) > 0:
-            cliCmdHistory =  ",".join(cliCmdHistory)
-            configFile.Write(gConfigKeyCmdHistory, cliCmdHistory)
+            cliCmdHistory =  "|".join(cliCmdHistory)
+            configFile.Write(self.configData.keyCliCmdHistory, cliCmdHistory)
       
 """----------------------------------------------------------------------------
    gcsListCtrl:
@@ -515,7 +696,7 @@ class gcsListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
             
       listmix.ListCtrlAutoWidthMixin.__init__(self)
       
-      self.appData = gcsAppData()
+      self.stateData = gcsStateData()
       
    def AddRow(self, index, strNmae, strData):
       self.InsertStringItem(index, strNmae)
@@ -531,7 +712,7 @@ class gcsListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
       self.SetColumnWidth(1, wx.LIST_AUTOSIZE)
       self.SetSize(self.GetSize());
       
-   def UpdateUI(self, appData):
+   def UpdateUI(self, stateData):
       pass
       
             
@@ -551,7 +732,7 @@ class gcsGcodeListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
             
       listmix.ListCtrlAutoWidthMixin.__init__(self)
       
-      self.appData = gcsAppData()
+      self.stateData = gcsStateData()
       
       self.InitUI()
         
@@ -573,9 +754,9 @@ class gcsGcodeListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
       
       self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
       
-   def UpdateUI(self, appData):
-      self.appData = appData
-      self.UpdatePC(self.appData.programCounter)
+   def UpdateUI(self, stateData):
+      self.stateData = stateData
+      self.UpdatePC(self.stateData.programCounter)
       
    def OnSelect(self, e):
       self.autoScroll = False
@@ -735,7 +916,7 @@ class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
          % faces)
       '''       
       
-   def UpdateUI(self, appData):
+   def UpdateUI(self, stateData):
       pass
       
    def OnCaretChange(self, e):
@@ -800,6 +981,7 @@ class gcsOutputStcStyledTextCtrl(stc.StyledTextCtrl):
       self.Bind(wx.EVT_LEFT_UP, self.OnCaretChange)      
       self.Bind(wx.EVT_KEY_DOWN, self.OnCaretChange)
       self.Bind(wx.EVT_KEY_UP, self.OnCaretChange)
+      self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
          
    def InitUI(self):
       # margin 1 for line numbers
@@ -812,12 +994,17 @@ class gcsOutputStcStyledTextCtrl(stc.StyledTextCtrl):
       self.EnsureCaretVisible()
       self.SetCaretLineBack("#8B9BBA")
       
-   def UpdateUI(self, appData):
+   def UpdateUI(self, stateData):
       pass
       
    def OnCaretChange(self, e):
-      wx.CallAfter(self.EvaluateAutoScroll)
-      e.Skip()   
+      self.autoScroll = False
+      #wx.CallAfter(self.EvaluateAutoScroll)
+      e.Skip()  
+
+   def OnKillFocus(self, e):
+      self.autoScroll = True
+      e.Skip()  
       
    def EvaluateAutoScroll(self):
       lastLineOnScreen = self.GetFirstVisibleLine() + self.LinesOnScreen()
@@ -841,103 +1028,6 @@ class gcsOutputStcStyledTextCtrl(stc.StyledTextCtrl):
 
       if self.autoScroll:
          wx.CallAfter(self.ScrollToEnd)
-      
-"""----------------------------------------------------------------------------
-   gcsConnectionPanel:
-   controls to connect disconnect with the machine.
-----------------------------------------------------------------------------"""
-class gcsConnectionPanel(wx.ScrolledWindow):
-   def __init__(self, parent, **args):
-      wx.ScrolledWindow.__init__(self, parent, **args)
-
-      self.mainWindow = parent
-      
-      self.InitUI()
-      width,height = self.GetSizeTuple()
-      scroll_unit = 10
-      self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
-
-   def InitUI(self):
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      flexGridSizer = wx.FlexGridSizer(2,2)
-      gridSizer = wx.GridSizer(1,3)
-      
-      #vBoxSizer.Add(wx.StaticText(self))
-      vBoxSizer.Add(flexGridSizer, 0, flag=wx.LEFT|wx.TOP|wx.RIGHT, border=5)
-      vBoxSizer.Add(gridSizer, 0, flag=wx.ALL, border=5)
-
-      # get serial port list and baud rate speeds
-      spList = self.mainWindow.GetSerialPortList()
-      brList = self.mainWindow.GetSerialBaudRateList()
-     
-      # Add serial port controls
-      spText = wx.StaticText(self, label="Serial Port:")
-      flexGridSizer.Add(spText, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      
-      self.spComboBox = wx.ComboBox(self, -1, value=spList[0], 
-         choices=spList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
-      flexGridSizer.Add(self.spComboBox, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-      
-      # Add baud rate controls
-      srText = wx.StaticText(self, label="Baud Rate:")
-      flexGridSizer.Add(srText, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      
-      self.sbrComboBox = wx.ComboBox(self, -1, value=brList[3], 
-         choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
-      flexGridSizer.Add(self.sbrComboBox, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-      
-      
-      # Add open/close/refresh buttons
-      self.openButton = wx.Button(self, label="Open")
-      self.openButton.SetToolTip(wx.ToolTip("Open serial port"))
-      self.Bind(wx.EVT_BUTTON, self.OnOpen, self.openButton)
-      gridSizer.Add(self.openButton)
-
-      self.closeButton = wx.Button(self, label="Close")
-      self.closeButton.SetToolTip(wx.ToolTip("Close serial port"))
-      self.Bind(wx.EVT_BUTTON, self.OnClose, self.closeButton)
-      self.closeButton.Disable()
-      gridSizer.Add(self.closeButton)
-      
-      self.closeRefresh = wx.Button(self, wx.ID_REFRESH)
-      self.closeRefresh.SetToolTip(wx.ToolTip("Refresh serial port list"))
-      self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.closeRefresh)
-      gridSizer.Add(self.closeRefresh)
-      
-      self.SetSizer(vBoxSizer)
-      self.Layout()
-      
-   def UpdateUI(self, appData):
-      self.appData = appData
-      if appData.serialPortIsOpen:
-         self.openButton.Disable()
-         self.closeButton.Enable()
-         self.closeRefresh.Disable()
-      else:
-         self.openButton.Enable()
-         self.closeButton.Disable()
-         self.closeRefresh.Enable()
-         
-   def OnOpen(self, e):
-      self.mainWindow.SerialOpen(self.spComboBox.GetValue(), 
-         self.sbrComboBox.GetValue())
-
-   def OnClose(self, e):
-      self.mainWindow.SerialClose()
-
-   def OnRefresh(self, e):
-      spList = self.mainWindow.GetSerialPortList()
-      brList = self.mainWindow.GetSerialBaudRateList()
-      
-      self.spComboBox.Clear()
-      for sPort in spList:
-         self.spComboBox.Append(sPort)
-      self.spComboBox.SetValue(spList[0])
-      
-      self.sbrComboBox.Clear()
-      for sBaoudRate in brList:
-         self.sbrComboBox.Append(sBaoudRate)
-      self.sbrComboBox.SetValue(brList[3])
 
 """----------------------------------------------------------------------------
    gcsMachineStatusPanel:
@@ -964,7 +1054,7 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       # Add Static Boxes ------------------------------------------------------
       wBox, self.wX, self.wY, self.wZ = self.CreatePositionStaticBox("Work Position")
       mBox, self.mX, self.mY, self.mZ = self.CreatePositionStaticBox("Machine Position")
-      sBox, self.sConncted, self.sState, self.sSpindle = self.CreateStatusStaticBox("Status")
+      sBox, self.sConncted, self.sState = self.CreateStatusStaticBox("Status")
      
       gridSizer.Add(wBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       gridSizer.Add(mBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
@@ -991,8 +1081,8 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       self.SetSizer(gridSizer)
       self.Layout()
       
-   def UpdateUI(self, appData, statusData=None):
-      self.appData = appData
+   def UpdateUI(self, stateData, statusData=None):
+      self.stateData = stateData
       # adata is expected to be an array of strings as follows
       # statusData[0] : Machine state
       # statusData[1] : Machine X
@@ -1009,14 +1099,16 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
          self.wY.SetLabel(statusData[5])
          self.wZ.SetLabel(statusData[6])
          self.sState.SetLabel(statusData[0])
-         self.sSpindle.SetLabel("Unknown")
+         #self.sSpindle.SetLabel("?")
          
-      if appData.serialPortIsOpen:
+      if stateData.serialPortIsOpen:
          self.refreshButton.Enable()
          self.sConncted.SetLabel("Yes")
       else:
          self.refreshButton.Disable()
          self.sConncted.SetLabel("No")
+      
+      self.Update()
       
    def CreateStaticBox(self, label):
       # Static box -------------------------------------------------
@@ -1075,13 +1167,13 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(runningStatus, 0, flag=wx.ALIGN_LEFT)
       
       # Add Spindle Status
-      spindleText = wx.StaticText(self, label="Spindle:")
-      spindleStatus = wx.StaticText(self, label=gOffString)
-      spindleStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(spindleStatus, 0, flag=wx.ALIGN_LEFT)
+      #spindleText = wx.StaticText(self, label="Spindle:")
+      #spindleStatus = wx.StaticText(self, label=gOffString)
+      #spindleStatus.SetForegroundColour(self.machineDataColor)
+      #flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_LEFT)
+      #flexGridSizer.Add(spindleStatus, 0, flag=wx.ALIGN_LEFT)
 
-      return positionBoxSizer, connectedStatus, runningStatus, spindleStatus
+      return positionBoxSizer, connectedStatus, runningStatus#, spindleStatus
       
    def OnRefresh(self, e):
       self.mainWindow.GetMachineStatus()
@@ -1122,8 +1214,8 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.SetSizer(vPanelBoxSizer)
       self.Layout()
 
-   def UpdateUI(self, appData, statusData=None):
-      self.appData = appData
+   def UpdateUI(self, stateData, statusData=None):
+      self.stateData = stateData
       # adata is expected to be an array of strings as follows
       # statusData[0] : Machine state
       # statusData[1] : Machine X
@@ -1137,7 +1229,7 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
          self.jY.SetValue(statusData[5])
          self.jZ.SetValue(statusData[6])
          
-      if appData.serialPortIsOpen:
+      if stateData.serialPortIsOpen:
          self.resettoZeroPositionButton.Enable()
          self.resettoCurrentPositionButton.Enable()
          self.goZeroButton.Enable()
@@ -1422,7 +1514,7 @@ class gcsMainWindow(wx.Frame):
       wx.Frame.__init__(self, parent, id, title, pos, size, style)
       
       # init config file
-      self.configFile = wx.FileConfig("gstat", style=wx.CONFIG_USE_LOCAL_FILE)
+      self.configFile = wx.FileConfig("gcs", style=wx.CONFIG_USE_LOCAL_FILE)
         
       # register for thread events
       EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
@@ -1431,7 +1523,13 @@ class gcsMainWindow(wx.Frame):
       self.serPort = serial.Serial()
       
       # create app data obj
-      self.appData = gcsAppData()
+      self.stateData = gcsStateData()
+      
+      # create app data obj
+      self.configData = gcsConfigData()
+      self.configData.Load(self.configFile)
+      self.configData.dataLinkPortList = self.GetSerialPortList()
+      self.configData.dataLinkBaudList = self.GetSerialBaudRateList()
             
       # init some variables
       self.serialPortThread = None
@@ -1458,11 +1556,7 @@ class gcsMainWindow(wx.Frame):
       # notify AUI which frame to use
       self.aui_mgr.SetManagedWindow(self)
       
-      #self.CreateStatusBar()
-      #self.GetStatusBar().SetStatusText("Ready")
-      
-      
-      self.connectionPanel = gcsConnectionPanel(self)
+      #self.connectionPanel = gcsConnectionPanel(self)
       self.machineStatusPanel = gcsMachineStatusPanel(self)
       self.machineJoggingPanel = gcsMachineJoggingPanel(self)
       
@@ -1479,22 +1573,22 @@ class gcsMainWindow(wx.Frame):
       self.gcText.SetAutoScroll(True)
       
       # cli interface
-      self.cliPanel = gcsCliComboBox(self)
+      self.cliPanel = gcsCliComboBox(self, self.configData)
       self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliPanel)
-      self.cliPanel.LoadConfig(self.configFile)
+      self.cliPanel.Load(self.configFile)
 
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
          aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("GCODE"))
       
-      self.aui_mgr.AddPane(self.connectionPanel,
-         aui.AuiPaneInfo().Name("CON_PANEL").Right().Position(1).Caption("Connection").BestSize(300,120))
+      #self.aui_mgr.AddPane(self.connectionPanel,
+      #   aui.AuiPaneInfo().Name("CON_PANEL").Right().Position(1).Caption("Connection").BestSize(300,120))
 
       self.aui_mgr.AddPane(self.machineStatusPanel,
-         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Position(2).Caption("Machine Status").BestSize(300,180))
+         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Position(1).Caption("Machine Status").BestSize(300,180))
       
       self.aui_mgr.AddPane(self.machineJoggingPanel,
-         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(3).Caption("Machine Jogging").BestSize(300,310))
+         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(2).Caption("Machine Jogging").BestSize(300,310))
          
       self.aui_mgr.AddPane(self.outputText,
          aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(2).Caption("Output").BestSize(600,150))
@@ -1510,9 +1604,9 @@ class gcsMainWindow(wx.Frame):
 
       # load default layout
       perspectiveDefault = self.aui_mgr.SavePerspective()
-      self.SaveLayoutData(gConfigWindowResetLayout)
+      self.SaveLayoutData(self.configData.keyMainAppResetLayout)
       
-      self.LoadLayoutData(gConfigWindowDefaultLayout, False)
+      self.LoadLayoutData(self.configData.keyMainAppDefaultLayout, False)
       
       # finish up
       self.aui_mgr.Update()
@@ -1537,11 +1631,7 @@ class gcsMainWindow(wx.Frame):
          recentMenu)
 
       # load history
-      maxFileHistory = self.configFile.ReadInt(gConfigWindowMaxFileHistory)
-      if maxFileHistory == 0:
-         maxFileHistory = 8 
-         self.configFile.WriteInt(gConfigWindowMaxFileHistory, maxFileHistory)
-               
+      maxFileHistory = self.configData.dataMainAppkeyMaxFileHistory
       self.fileHistory = wx.FileHistory(maxFileHistory)
       self.fileHistory.Load(self.configFile)
       self.fileHistory.UseMenu(recentMenu)
@@ -1549,6 +1639,13 @@ class gcsMainWindow(wx.Frame):
       
       fileMenu.Append(wx.ID_EXIT,                     "E&xit")
       
+      #------------------------------------------------------------------------
+      # Edit menu
+      #viewEdit = wx.Menu()
+      #self.menuBar.Append(viewEdit,                   "&Edit")
+      
+      #viewEdit.Append(wx.ID_PREFERENCES,              "&Settings")
+
       #------------------------------------------------------------------------
       # View menu
       viewMenu = wx.Menu()
@@ -1568,6 +1665,8 @@ class gcsMainWindow(wx.Frame):
       viewMenu.Append(gID_MENU_RESET_DEFAULT_LAYOUT,           "R&eset Layout")
       #viewMenu.Append(gID_MENU_LOAD_LAYOUT,                    "Loa&d Layout...")
       #viewMenu.Append(gID_MENU_SAVE_LAYOUT,                    "Sa&ve Layout...")
+      viewMenu.AppendSeparator()      
+      viewMenu.Append(wx.ID_PREFERENCES,                       "&Settings")
       
       #------------------------------------------------------------------------
       # Run menu
@@ -1631,6 +1730,10 @@ class gcsMainWindow(wx.Frame):
                            
       #------------------------------------------------------------------------
       # View menu bind
+      self.Bind(wx.EVT_MENU, self.OnSettings,            id=wx.ID_PREFERENCES)
+      
+      #------------------------------------------------------------------------
+      # View menu bind
       self.Bind(wx.EVT_MENU, self.OnMainToolBar,         id=gID_MENU_MAIN_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnRunToolBar,          id=gID_MENU_RUN_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnStatusToolBar,       id=gID_MENU_STATUS_TOOLBAR)
@@ -1685,6 +1788,13 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Help menu bind
       self.Bind(wx.EVT_MENU, self.OnAbout,               id=wx.ID_ABOUT)
+      
+      
+      #------------------------------------------------------------------------
+      # Status tool bar
+      self.Bind(wx.EVT_MENU, self.OnLinkStatus,          id=gID_TOOLBAR_LINK_STATUS)
+      self.Bind(wx.EVT_MENU, self.OnMachineStatus,       id=gID_TOOLBAR_MACHINE_STATUS)
+      
       
       #------------------------------------------------------------------------
       # Create shortcut keys for menu
@@ -1808,11 +1918,10 @@ class gcsMainWindow(wx.Frame):
       self.statusToolBar.Refresh()
       
    def UpdateUI(self):
-      self.cliPanel.UpdateUI(self.appData)
-      self.gcText.UpdateUI(self.appData)
-      self.connectionPanel.UpdateUI(self.appData)
-      self.machineStatusPanel.UpdateUI(self.appData)
-      self.machineJoggingPanel.UpdateUI(self.appData)
+      self.cliPanel.UpdateUI(self.stateData)
+      self.gcText.UpdateUI(self.stateData)
+      self.machineStatusPanel.UpdateUI(self.stateData)
+      self.machineJoggingPanel.UpdateUI(self.stateData)
       
       # Force update tool bar items
       self.OnStatusToolBarForceUpdate()
@@ -1830,7 +1939,7 @@ class gcsMainWindow(wx.Frame):
    def OnOpen(self, e):
       """ File Open """
       # get current file data
-      currentPath = self.appData.gcodeFileName
+      currentPath = self.stateData.gcodeFileName
       (currentDir, currentFile) = os.path.split(currentPath)
       
       if len(currentDir) == 0:
@@ -1847,15 +1956,15 @@ class gcsMainWindow(wx.Frame):
       
       if dlgFile.ShowModal() == wx.ID_OK:
          # got file, open and present progress
-         self.appData.gcodeFileName = dlgFile.GetPath()
+         self.stateData.gcodeFileName = dlgFile.GetPath()
          self.lineNumber = 0
         
          # save history
-         self.fileHistory.AddFileToHistory(self.appData.gcodeFileName)
+         self.fileHistory.AddFileToHistory(self.stateData.gcodeFileName)
          self.fileHistory.Save(self.configFile)
          self.configFile.Flush()  
          
-         self.FileOpen(self.appData.gcodeFileName)
+         self.FileOpen(self.stateData.gcodeFileName)
          
    def OnDropDownToolBarOpen(self, e):
       if not e.IsDropDownClicked():
@@ -1884,30 +1993,28 @@ class gcsMainWindow(wx.Frame):
 
          # make sure the button is "un-stuck"
          toolbBar.SetToolSticky(e.GetId(), False)
-
          
    def OnFileHistory(self, e):
       fileNumber = e.GetId() - wx.ID_FILE1
-      self.appData.gcodeFileName = self.fileHistory.GetHistoryFile(fileNumber)
-      self.fileHistory.AddFileToHistory(self.appData.gcodeFileName)  # move up the list
+      self.stateData.gcodeFileName = self.fileHistory.GetHistoryFile(fileNumber)
+      self.fileHistory.AddFileToHistory(self.stateData.gcodeFileName)  # move up the list
       self.fileHistory.Save(self.configFile)
       self.configFile.Flush()  
       
-      self.FileOpen(self.appData.gcodeFileName)
+      self.FileOpen(self.stateData.gcodeFileName)
          
    def FileOpen(self, fileName):
       if os.path.exists(fileName):
-         self.appData.gcodeFileName = fileName
-         self.appData.gcodeFileNumLines = 0
+         self.stateData.gcodeFileName = fileName
          
          #self.gcText.DeleteAllItems()
          self.gcText.SetReadOnly(False)         
          self.gcText.ClearAll()
          fileLines = []
 
-         statinfo = os.stat(self.appData.gcodeFileName)
+         statinfo = os.stat(self.stateData.gcodeFileName)
          fileSize = statinfo.st_size
-         gcodeFile = open(self.appData.gcodeFileName, 'r')
+         gcodeFile = open(self.stateData.gcodeFileName, 'r')
          
          # create opne fiel progress
          dlgProgress = wx.ProgressDialog(
@@ -1928,7 +2035,6 @@ class gcsMainWindow(wx.Frame):
          for strLine in gcodeFile:
             # add line to list control
             self.gcText.AppendText(strLine)
-            self.appData.gcodeFileNumLines += 1 
             fileLines.append(strLine)
 
             # update progress dialog
@@ -1946,16 +2052,15 @@ class gcsMainWindow(wx.Frame):
          gcodeFile.close()
          
          if keepGoing:
-            self.appData.gcodeFileLines = fileLines
-            self.appData.fileIsOpen = True
+            self.stateData.gcodeFileLines = fileLines
+            self.stateData.fileIsOpen = True
          else:
-            self.appData.gcodeFileName = ""
-            self.appData.gcodeFileLines = []
-            self.appData.gcodeFileNumLines = 0
-            self.appData.fileIsOpen = False
+            self.stateData.gcodeFileName = ""
+            self.stateData.gcodeFileLines = []
+            self.stateData.fileIsOpen = False
             self.gcText.DeleteAllItems()
 
-         self.appData.breakPoints = set()
+         self.stateData.breakPoints = set()
          self.SetPC(0)
          self.gcText.GoToPC()
          self.UpdateUI()
@@ -1970,6 +2075,24 @@ class gcsMainWindow(wx.Frame):
       
       self.gcText.SetReadOnly(True)
       
+   #---------------------------------------------------------------------------
+   # Edit Menu Handlers
+   #---------------------------------------------------------------------------
+   def OnSettings(self, e):
+      wx.LogMessage("Port: %s" % self.configData.dataLinkPort)
+      wx.LogMessage("Baud: %s" % self.configData.dataLinkBaud)
+   
+      dlg = gcsSettingsDialog(self, self.configData)
+      
+      result = dlg.ShowModal()
+      
+      if result == wx.ID_OK:
+         dlg.UpdatConfigData()
+      
+      dlg.Destroy()
+      wx.LogMessage("Port: %s" % self.configData.dataLinkPort)
+      wx.LogMessage("Baud: %s" % self.configData.dataLinkBaud)
+   
    #---------------------------------------------------------------------------
    # View Menu Handlers
    #---------------------------------------------------------------------------
@@ -2042,15 +2165,15 @@ class gcsMainWindow(wx.Frame):
       self.OnViewMenuUpdate(e, self.machineJoggingPanel)
       
    def OnLoadDefaultLayout(self, e):
-      self.LoadLayoutData(gConfigWindowDefaultLayout)
+      self.LoadLayoutData(self.configData.keyMainAppDefaultLayout)
       self.aui_mgr.Update()
    
    def OnSaveDefaultLayout(self, e):
-      self.SaveLayoutData(gConfigWindowDefaultLayout)
+      self.SaveLayoutData(self.configData.keyMainAppDefaultLayout)
       
    def OnResetDefaultLayout(self, e):
-      self.configFile.DeleteGroup(gConfigWindowDefaultLayout)
-      self.LoadLayoutData(gConfigWindowResetLayout)
+      self.configFile.DeleteGroup(self.configData.keyMainAppDefaultLayout)
+      self.LoadLayoutData(self.configData.keyMainAppResetLayout)
    
    #---------------------------------------------------------------------------
    # Run Menu/ToolBar Handlers
@@ -2067,20 +2190,20 @@ class gcsMainWindow(wx.Frame):
    def OnRun(self, e):
       if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_RUN, 
-            [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
+            [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
          self.mw2tQueue.join()
          
          self.gcText.SetAutoScroll(True)
          self.gcText.GoToPC()
-         self.appData.swState = gSTATE_RUN
+         self.stateData.swState = gSTATE_RUN
          self.UpdateUI()
          
    def OnRunUpdate(self, e=None):
       state = False
-      if self.appData.fileIsOpen and \
-         self.appData.serialPortIsOpen and \
-         (self.appData.swState == gSTATE_IDLE or \
-          self.appData.swState == gSTATE_BREAK):
+      if self.stateData.fileIsOpen and \
+         self.stateData.serialPortIsOpen and \
+         (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
           
          state = True
          
@@ -2092,18 +2215,18 @@ class gcsMainWindow(wx.Frame):
    def OnStep(self, e):
       if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_STEP, 
-            [self.appData.gcodeFileLines, self.appData.programCounter, self.appData.breakPoints]))
+            [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
          self.mw2tQueue.join()
          
-         self.appData.swState = gSTATE_STEP
+         self.stateData.swState = gSTATE_STEP
          self.UpdateUI()
 
    def OnStepUpdate(self, e=None):
       state = False
-      if self.appData.fileIsOpen and \
-         self.appData.serialPortIsOpen and \
-         (self.appData.swState == gSTATE_IDLE or \
-          self.appData.swState == gSTATE_BREAK):
+      if self.stateData.fileIsOpen and \
+         self.stateData.serialPortIsOpen and \
+         (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
           
          state = True
          
@@ -2117,10 +2240,10 @@ class gcsMainWindow(wx.Frame):
       
    def OnStopUpdate(self, e=None):
       state = False   
-      if self.appData.fileIsOpen and \
-         self.appData.serialPortIsOpen and \
-         self.appData.swState != gSTATE_IDLE and \
-         self.appData.swState != gSTATE_BREAK:
+      if self.stateData.fileIsOpen and \
+         self.stateData.serialPortIsOpen and \
+         self.stateData.swState != gSTATE_IDLE and \
+         self.stateData.swState != gSTATE_BREAK:
          
          state = True
          
@@ -2133,19 +2256,19 @@ class gcsMainWindow(wx.Frame):
       pc = self.gcText.GetCurrentLine()
       enable = False
       
-      if pc in self.appData.breakPoints:
-         self.appData.breakPoints.remove(pc)
+      if pc in self.stateData.breakPoints:
+         self.stateData.breakPoints.remove(pc)
       else:
-         self.appData.breakPoints.add(pc)
+         self.stateData.breakPoints.add(pc)
          enable = True
       
       self.gcText.UpdateBreakPoint(pc, enable)
       
    def OnBreakToggleUpdate(self, e=None):
       state = False
-      if self.appData.fileIsOpen and \
-         (self.appData.swState == gSTATE_IDLE or \
-          self.appData.swState == gSTATE_BREAK):
+      if self.stateData.fileIsOpen and \
+         (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
           
          state = True         
          
@@ -2159,9 +2282,9 @@ class gcsMainWindow(wx.Frame):
       self.gcText.UpdateBreakPoint(-1, False)
       
    def OnBreakRemoveAllUpdate(self, e):
-      if self.appData.fileIsOpen and \
-         (self.appData.swState == gSTATE_IDLE or \
-          self.appData.swState == gSTATE_BREAK):
+      if self.stateData.fileIsOpen and \
+         (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
           
          e.Enable(True)
       else:
@@ -2172,9 +2295,9 @@ class gcsMainWindow(wx.Frame):
       
    def OnSetPCUpdate(self, e=None):
       state = False
-      if self.appData.fileIsOpen and \
-         (self.appData.swState == gSTATE_IDLE or \
-          self.appData.swState == gSTATE_BREAK):
+      if self.stateData.fileIsOpen and \
+         (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
 
          state = True         
          
@@ -2189,7 +2312,7 @@ class gcsMainWindow(wx.Frame):
       
    def OnGoToPCUpdate(self, e=None):
       state = False   
-      if self.appData.fileIsOpen:
+      if self.stateData.fileIsOpen:
          state = True         
          
       if e is not None:
@@ -2202,36 +2325,44 @@ class gcsMainWindow(wx.Frame):
    #---------------------------------------------------------------------------
    def OnStatusToolBarForceUpdate(self):   
       # Link status
-      if self.appData.serialPortIsOpen:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "LINKED")
+      if self.stateData.serialPortIsOpen:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Linked")
          self.statusToolBar.SetToolBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkBlack.GetBitmap())
          self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkBlack.GetBitmap())
       else:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "UNLINKED")
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Unlinked")
          self.statusToolBar.SetToolBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkGray.GetBitmap())
          self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_LINK_STATUS, imgLinkGray.GetBitmap())
          
       # Program status
-      if self.appData.swState == gSTATE_IDLE:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "IDLE")
-      elif self.appData.swState == gSTATE_RUN:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "RUN")
-      elif self.appData.swState == gSTATE_STEP:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "STEP")
-      elif self.appData.swState == gSTATE_BREAK:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "BREAK")
+      if self.stateData.swState == gSTATE_IDLE:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Idle")
+      elif self.stateData.swState == gSTATE_RUN:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Run")
+      elif self.stateData.swState == gSTATE_STEP:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Step")
+      elif self.stateData.swState == gSTATE_BREAK:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Break")
          
       #Machine status
-      self.statusToolBar.EnableTool(gID_TOOLBAR_MACHINE_STATUS, self.appData.serialPortIsOpen)
-      self.statusToolBar.SetToolLabel(gID_TOOLBAR_MACHINE_STATUS, "IDLE")
+      self.statusToolBar.EnableTool(gID_TOOLBAR_MACHINE_STATUS, self.stateData.serialPortIsOpen)
+      self.statusToolBar.SetToolLabel(gID_TOOLBAR_MACHINE_STATUS, self.stateData.machineStatusString)
       
       self.statusToolBar.Refresh()
       
+   def OnLinkStatus(self, e):
+      if self.stateData.serialPortIsOpen:
+         self.SerialClose()
+      else:
+         self.SerialOpen(self.configData.dataLinkPort, self.configData.dataLinkBaud)
+
+   def OnMachineStatus(self, e):
+      self.GetMachineStatus()
       
    #---------------------------------------------------------------------------
    # Help Menu Handlers
    #---------------------------------------------------------------------------
-   def OnAbout(self, event):
+   def OnAbout(self, e):
       # First we create and fill the info object
       aboutDialog = wx.AboutDialogInfo()
       aboutDialog.Name = __appname__
@@ -2262,7 +2393,8 @@ class gcsMainWindow(wx.Frame):
          self.mw2tQueue.put(threadEvent(gEV_CMD_EXIT, None))
          self.mw2tQueue.join()
 
-      self.cliPanel.SaveConfig(self.configFile)
+      self.configData.Save(self.configFile)
+      self.cliPanel.Save(self.configFile)
       self.aui_mgr.UnInit()
       
       self.Destroy()
@@ -2292,8 +2424,8 @@ class gcsMainWindow(wx.Frame):
       return spList
       
    def GetSerialBaudRateList(self):
-      brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200']
-      return brList
+      sbList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200']
+      return sbList
       
    def SerialOpen(self, port, baudrate):
       self.serPort.baudrate = baudrate
@@ -2310,10 +2442,10 @@ class gcsMainWindow(wx.Frame):
             self.serialPortThread = gcsSserialPortThread(self, self.serPort, self.mw2tQueue, 
                self.t2mwQueue, self.cmdLineOptions)
                
-            self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.appData.machineStatusAutoRefresh))
+            self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
             self.mw2tQueue.join()
                
-            self.appData.serialPortIsOpen = True
+            self.stateData.serialPortIsOpen = True
       else:
          dlg = wx.MessageDialog(self,
             "There is no valid serial port detected.\n" \
@@ -2332,7 +2464,7 @@ class gcsMainWindow(wx.Frame):
       self.serialPortThread = None
       self.serPort.close()
       
-      self.appData.serialPortIsOpen = False
+      self.stateData.serialPortIsOpen = False
       self.GrblDetected = False
       self.UpdateUI()
    
@@ -2341,37 +2473,37 @@ class gcsMainWindow(wx.Frame):
          self.mw2tQueue.put(threadEvent(gEV_CMD_STOP, None))
          self.mw2tQueue.join()
          
-         self.appData.swState = gSTATE_IDLE
+         self.stateData.swState = gSTATE_IDLE
          self.UpdateUI()
       
    def SetPC(self, pc=None):
       if pc is None:
          pc = self.gcText.GetCurrentLine()
 
-      self.appData.programCounter = pc
+      self.stateData.programCounter = pc
       self.gcText.UpdatePC(pc)
       
    def MachineStatusAutoRefresh(self, autoRefresh):
-      self.appData.machineStatusAutoRefresh = autoRefresh
+      self.stateData.machineStatusAutoRefresh = autoRefresh
 
       if self.serialPortThread is not None:
-         self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.appData.machineStatusAutoRefresh))
+         self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
          self.mw2tQueue.join()
       
       if autoRefresh:
          self.GetMachineStatus()
       
    def GetMachineStatus(self):
-      if self.appData.serialPortIsOpen:
+      if self.stateData.serialPortIsOpen:
          self.SerialWrite(gGRBL_CMD_GET_STATUS)
          
    def SerialWrite(self, serialData):
-      if self.appData.serialPortIsOpen:
+      if self.stateData.serialPortIsOpen:
          txtOutputData = "> %s" %(serialData)
-         wx.LogMessage("")
+         #wx.LogMessage("")
          self.outputText.AppendText(txtOutputData)
       
-         if self.appData.swState == gSTATE_RUN:
+         if self.stateData.swState == gSTATE_RUN:
             # if we are in run state let thread do teh writing
             if self.serialPortThread is not None:
                self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, serialData))
@@ -2382,7 +2514,7 @@ class gcsMainWindow(wx.Frame):
          # this won't work well is too  early, mechanical movement
          # say G01X300 might take a long time, but grbl will reutn almost
          # immediately with "ok"
-         #if self.appData.machineStatusAutoRefresh and serialData != "?":
+         #if self.stateData.machineStatusAutoRefresh and serialData != "?":
          #   self.serPort.write("?")
 
       elif self.cmdLineOptions.verbose:
@@ -2461,7 +2593,7 @@ class gcsMainWindow(wx.Frame):
             # Grbl version, also useful to detect grbl connect
             rematch = gReGrblVersion.match(teData)
             if rematch is not None:
-               if self.appData.swState == gSTATE_RUN:
+               if self.stateData.swState == gSTATE_RUN:
                   # something went really bad we shouldn't see this while-in 
                   # RUN state
                   self.Stop()
@@ -2472,8 +2604,8 @@ class gcsMainWindow(wx.Frame):
                   result = dlg.ShowModal()
                   dlg.Destroy()
                else:
-                  self.appData.grblDetected = True
-                  if self.appData.machineStatusAutoRefresh:
+                  self.stateData.grblDetected = True
+                  if self.stateData.machineStatusAutoRefresh:
                      self.GetMachineStatus()
                self.UpdateUI()                     
             
@@ -2483,8 +2615,9 @@ class gcsMainWindow(wx.Frame):
                statusData = rematch.groups()
                if self.cmdLineOptions.vverbose:
                   print "gcsMainWindow re.status.match %s" % str(statusData)
-               self.machineStatusPanel.UpdateUI(self.appData, statusData)
-               self.machineJoggingPanel.UpdateUI(self.appData, statusData)
+               self.stateData.machineStatusString = statusData[0]
+               self.machineStatusPanel.UpdateUI(self.stateData, statusData)
+               self.machineJoggingPanel.UpdateUI(self.stateData, statusData)
             
          elif te.event_id == gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
@@ -2499,7 +2632,7 @@ class gcsMainWindow(wx.Frame):
          elif te.event_id == gEV_RUN_END:
             if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_RUN_END."
-            self.appData.swState = gSTATE_IDLE
+            self.stateData.swState = gSTATE_IDLE
             self.Refresh()
             self.UpdateUI()
             self.SetPC(0)
@@ -2507,13 +2640,13 @@ class gcsMainWindow(wx.Frame):
          elif te.event_id == gEV_STEP_END:
             if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_STEP_END."
-            self.appData.swState = gSTATE_IDLE
+            self.stateData.swState = gSTATE_IDLE
             self.UpdateUI()
 
          elif te.event_id == gEV_HIT_BRK_PT:
             if self.cmdLineOptions.vverbose:
                print "gcsMainWindow got event gEV_HIT_BRK_PT."
-            self.appData.swState = gSTATE_BREAK
+            self.stateData.swState = gSTATE_BREAK
             self.UpdateUI()
 
          # item acknowledgment
