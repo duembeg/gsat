@@ -188,11 +188,14 @@ class gcsStateData():
       self.swState = gSTATE_IDLE
       
       # link status
+      self.grblDetected = False      
       self.serialPortIsOpen = False
+      self.serialPort = ""
+      self.serialPortBaud = "9600"
       
       # machine status
-      self.grblDetected = False
-      self.machineStatusAutoRefresh = False      
+      self.machineStatusAutoRefresh = False
+      self.machineStatusAutoRefreshPeriod = 1
       self.machineStatusString ="Idle"
       
       # program status
@@ -216,24 +219,24 @@ class gcsConfigData():
       self.keyMainAppDefaultLayout        = "/mainApp/DefaultLayout"
       self.keyMainAppResetLayout          = "/mainApp/ResetLayout"
 
+      # link data
+      self.keyLinkPort                    = "/link/Port"
+      self.keyLinkBaud                    = "/link/Baud"
+      
       # cli keys
       self.keyCliSaveCmdHistory           = "/cli/SaveCmdHistory"
       self.keyCliCmdMaxHistory            = "/cli/CmdMaxHistory"
       self.keyCliCmdHistory               = "/cli/CmdHistory"
       
       # link data
-      self.keyLinkPort                    = "/link/port"
-      self.keyLinkBaud                    = "/link/baud"
+      self.keyMachineAutoRefresh          = "/machine/AutoRefresh"
+      self.keyMachineAutoRefreshPeriod    = "/machine/AutoRefreshPeriod"
       
       # -----------------------------------------------------------------------
-      # config data
+      # config data (and default values)
       
       # main app data
       self.dataMainAppkeyMaxFileHistory    = 8
-      
-      # cli data
-      self.dataCliSaveCmdHistory           = True
-      self.dataCliCmdMaxHistory            = 100
       
       # link data
       self.dataLinkPort                    = ""
@@ -241,12 +244,26 @@ class gcsConfigData():
       self.dataLinkPortList                = ""
       self.dataLinkBaudList                = ""
       
+      # cli data
+      self.dataCliSaveCmdHistory           = True
+      self.dataCliCmdMaxHistory            = 100
+      
+      # machine data
+      self.dataMachineAutoRefresh          = False
+      self.dataMachineAutoRefreshPeriod    = 1
+      
       
    def Load(self, configFile):
       # read main app data
       configData = configFile.Read(self.keyMainAppkeyMaxFileHistory)
       if len(configData) > 0:
          self.dataMainAppkeyMaxFileHistory = eval(configData)
+
+      # read link data
+      self.dataLinkPort = configFile.Read(self.keyLinkPort)
+      configData = configFile.Read(self.keyLinkBaud)
+      if len(configData) > 0:
+         self.dataLinkBaud = configData
 
       # read cli data
       configData = configFile.Read(self.keyCliSaveCmdHistory)
@@ -257,23 +274,30 @@ class gcsConfigData():
       if len(configData) > 0:
          self.dataCliCmdMaxHistory = eval(configData)
          
-      # read link data
-      self.dataLinkPort = configFile.Read(self.keyLinkPort)
-      configData = configFile.Read(self.keyLinkBaud)
+      # read machine data
+      configData = configFile.Read(self.keyMachineAutoRefresh)
       if len(configData) > 0:
-         self.dataLinkBaud = configData
+         self.dataMachineAutoRefresh = eval(configData)
 
+      configData = configFile.Read(self.keyMachineAutoRefreshPeriod)
+      if len(configData) > 0:
+         self.dataMachineAutoRefreshPeriod = eval(configData)
+         
    def Save(self, configFile):
       # write main app data
       configFile.Write(self.keyMainAppkeyMaxFileHistory, str(self.dataMainAppkeyMaxFileHistory))
 
+      # write link data
+      configFile.Write(self.keyLinkPort, str(self.dataLinkPort))
+      configFile.Write(self.keyLinkBaud, str(self.dataLinkBaud))
+      
       # write cli data
       configFile.Write(self.keyCliSaveCmdHistory, str(self.dataCliSaveCmdHistory))
       configFile.Write(self.keyCliCmdMaxHistory, str(self.dataCliCmdMaxHistory))
       
-      # write link data
-      configFile.Write(self.keyLinkPort, str(self.dataLinkPort))
-      configFile.Write(self.keyLinkBaud, str(self.dataLinkBaud))
+      # write machine data
+      configFile.Write(self.keyMachineAutoRefresh, str(self.dataMachineAutoRefresh))
+      configFile.Write(self.keyMachineAutoRefreshPeriod, str(self.dataMachineAutoRefreshPeriod))
       
 """----------------------------------------------------------------------------
    Embedded Images
@@ -562,11 +586,9 @@ class gcsLinkSettingsPanel(scrolled.ScrolledPanel):
       
       self.SetSizer(vBoxSizer)
          
-   def GetSerialPort(self):
-      return self.spComboBox.GetValue() 
-      
-   def GetBaudRate(self):
-      return self.sbrComboBox.GetValue()
+   def UpdatConfigData(self):
+      self.configData.dataLinkPort = self.spComboBox.GetValue() 
+      self.configData.dataLinkBaud = self.sbrComboBox.GetValue()
       
 """----------------------------------------------------------------------------
    gcsCliSettingsPanel:
@@ -588,16 +610,12 @@ class gcsCliSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
       flexGridSizer = wx.FlexGridSizer(2,2)
 
-      # get serial port list and baud rate speeds
-      saveCmdHistory = self.configData.dataCliSaveCmdHistory
-      maxCmdHistory = self.configData.dataCliCmdMaxHistory
-      
       # Add cehck box
       st = wx.StaticText(self, wx.ID_ANY, "Save Command History")
       flexGridSizer.Add(st, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
       
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "")
-      self.cb.SetValue(saveCmdHistory)
+      self.cb = wx.CheckBox(self, wx.ID_ANY)
+      self.cb.SetValue(self.configData.dataCliSaveCmdHistory)
       flexGridSizer.Add(self.cb, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
 
       # Add spin ctrl
@@ -606,17 +624,59 @@ class gcsCliSettingsPanel(scrolled.ScrolledPanel):
       
       self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
       self.sc.SetRange(1,1000)
-      self.sc.SetValue(maxCmdHistory)
+      self.sc.SetValue(self.configData.dataCliCmdMaxHistory)
+      flexGridSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
+      self.SetSizer(vBoxSizer)
+      
+   def UpdatConfigData(self):
+      self.configData.dataCliSaveCmdHistory = self.cb.GetValue()
+      self.configData.dataCliCmdMaxHistory = self.sc.GetValue()
+      
+"""----------------------------------------------------------------------------
+   gcsMachineSettingsPanel:
+   Machine settings.
+----------------------------------------------------------------------------"""
+class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, configData, **args):
+      scrolled.ScrolledPanel.__init__(self, parent, 
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = configData
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      flexGridSizer = wx.FlexGridSizer(2,2)
+
+      # Add cehck box
+      st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh")
+      flexGridSizer.Add(st, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.cb = wx.CheckBox(self, wx.ID_ANY)
+      self.cb.SetValue(self.configData.dataMachineAutoRefresh)
+      flexGridSizer.Add(self.cb, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+
+      # Add spin ctrl
+      st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh Period")
+      flexGridSizer.Add(st, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.sc.SetRange(1,1000000)
+      self.sc.SetValue(self.configData.dataMachineAutoRefreshPeriod)
       flexGridSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
       
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
       self.SetSizer(vBoxSizer)
          
-   def GetSaveCmdHistory(self):
-      return self.cb.GetValue()
-      
-   def GetCmdMaxHistory(self):
-      return self.sc.GetValue()
+   def UpdatConfigData(self):
+      self.configData.dataMachineAutoRefresh = self.cb.GetValue()
+      self.configData.dataMachineAutoRefreshPeriod = self.sc.GetValue()
       
 """----------------------------------------------------------------------------
    gcsSettingsDialog:
@@ -706,8 +766,8 @@ class gcsSettingsDialog(wx.Dialog):
       self.noteBook.SetPageImage(3, 3)
 
    def AddMachinePage(self):
-      win = wx.Panel(self.noteBook, -1)
-      self.noteBook.AddPage(win, "Machine")
+      self.machinePage = gcsMachineSettingsPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.machinePage, "Machine")
       self.noteBook.SetPageImage(4, 4)
       
    def AddJoggingPage(self):
@@ -716,11 +776,10 @@ class gcsSettingsDialog(wx.Dialog):
       self.noteBook.SetPageImage(5, 5)
       
    def UpdatConfigData(self):
-      self.configData.dataCliSaveCmdHistory = self.cliPage.GetSaveCmdHistory()
-      self.configData.dataCliCmdMaxHistory = self.cliPage.GetCmdMaxHistory()
+      self.linkPage.UpdatConfigData()
+      self.cliPage.UpdatConfigData()
+      self.machinePage.UpdatConfigData()
       
-      self.configData.dataLinkPort = self.linkPage.GetSerialPort()
-      self.configData.dataLinkBaud = self.linkPage.GetBaudRate()
 
 """----------------------------------------------------------------------------
    gcsCliComboBox:
@@ -1153,7 +1212,6 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
    def InitUI(self):
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
       gridSizer = wx.GridSizer(2,2)
       
       # Add Static Boxes ------------------------------------------------------
@@ -1166,20 +1224,15 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       gridSizer.Add(sBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       
       # Add Buttons -----------------------------------------------------------
-      self.autoRefreshCheckBox = wx.CheckBox (self, label="Auto Refresh")
-      self.autoRefreshCheckBox.SetToolTip(
-         wx.ToolTip("Aromatically update machine status (experimental)"))
-      self.Bind(wx.EVT_CHECKBOX, self.OnAutoRefresh, self.autoRefreshCheckBox)
-      vBoxSizer.Add(self.autoRefreshCheckBox)
-      
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)      
       self.refreshButton = wx.Button(self, wx.ID_REFRESH)
       self.refreshButton.SetToolTip(
          wx.ToolTip("Refresh machine status"))
       self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
-      vBoxSizer.Add(self.refreshButton)
+      vBoxSizer.Add(self.refreshButton, 0, flag=wx.TOP|wx.EXPAND, border=5)
       self.refreshButton.Disable()
       
-      gridSizer.Add(vBoxSizer, 0, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      gridSizer.Add(vBoxSizer, 0, flag=wx.EXPAND|wx.ALIGN_LEFT|wx.ALL, border=5)
 
       
       # Finish up init UI
@@ -1282,10 +1335,6 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       
    def OnRefresh(self, e):
       self.mainWindow.GetMachineStatus()
-
-   def OnAutoRefresh(self, e):
-      self.mainWindow.MachineStatusAutoRefresh(e.IsChecked())
-
 
 """----------------------------------------------------------------------------
    gcsMachineJoggingPanel:
@@ -1607,9 +1656,12 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       pass
 
 """----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
    gcsMainWindow:
    Main Window Inits the UI and other panels, it also controls the worker 
    threads and resources such as serial port.
+-------------------------------------------------------------------------------   
 ----------------------------------------------------------------------------"""
 class gcsMainWindow(wx.Frame):
    
@@ -1638,6 +1690,7 @@ class gcsMainWindow(wx.Frame):
             
       # init some variables
       self.serialPortThread = None
+      self.machineAutoRefreshTimer = None
       
       self.cmdLineOptions = cmd_line_options
       
@@ -2184,10 +2237,13 @@ class gcsMainWindow(wx.Frame):
    # Edit Menu Handlers
    #---------------------------------------------------------------------------
    def OnSettings(self, e):
-      wx.LogMessage("Port: %s" % str(self.configData.dataCliSaveCmdHistory))
-      wx.LogMessage("Port: %s" % str(self.configData.dataCliCmdMaxHistory))
-      wx.LogMessage("Port: %s" % self.configData.dataLinkPort)
-      wx.LogMessage("Baud: %s" % self.configData.dataLinkBaud)
+      #wx.LogMessage("Link Port: %s" % self.configData.dataLinkPort)
+      #wx.LogMessage("Link Baud: %s" % self.configData.dataLinkBaud)
+      #wx.LogMessage("Cli Save: %s" % str(self.configData.dataCliSaveCmdHistory))
+      #wx.LogMessage("Cli Cmd: %s" % str(self.configData.dataCliCmdMaxHistory))
+      #wx.LogMessage("Machine Auto: %s" % str(self.configData.dataMachineAutoRefresh))
+      #wx.LogMessage("Machine Auto Period: %s" % str(self.configData.dataMachineAutoRefreshPeriod))
+      
    
       dlg = gcsSettingsDialog(self, self.configData)
       
@@ -2195,13 +2251,30 @@ class gcsMainWindow(wx.Frame):
       
       if result == wx.ID_OK:
          dlg.UpdatConfigData()
+         
+         # re open serial port if open
+         if self.stateData.serialPortIsOpen and \
+            (self.stateData.serialPort != self.configData.dataLinkPort or \
+            self.stateData.serialBaud != self.configData.dataLinkBaud):
+            
+            self.SerialClose()
+            self.SerialOpen(self.configData.dataLinkPort, self.configData.dataLinkBaud)
+         
+         if self.stateData.machineStatusAutoRefresh != self.configData.dataMachineAutoRefresh or \
+            self.stateData.machineStatusAutoRefreshPeriod != self.configData.dataMachineAutoRefreshPeriod:
+
+            self.AutoRefreshTimerStop()
+            self.AutoRefreshTimerStart()
       
       dlg.Destroy()
-      wx.LogMessage("Port: %s" % str(self.configData.dataCliSaveCmdHistory))
-      wx.LogMessage("Port: %s" % str(self.configData.dataCliCmdMaxHistory))
-      wx.LogMessage("Port: %s" % self.configData.dataLinkPort)
-      wx.LogMessage("Baud: %s" % self.configData.dataLinkBaud)
-   
+      
+      #wx.LogMessage("Link Port: %s" % self.configData.dataLinkPort)
+      #wx.LogMessage("Link Baud: %s" % self.configData.dataLinkBaud)
+      #wx.LogMessage("Cli Save: %s" % str(self.configData.dataCliSaveCmdHistory))
+      #wx.LogMessage("Cli Cmd: %s" % str(self.configData.dataCliCmdMaxHistory))
+      #wx.LogMessage("Machine Auto: %s" % str(self.configData.dataMachineAutoRefresh))
+      #wx.LogMessage("Machine Auto Period: %s" % str(self.configData.dataMachineAutoRefreshPeriod))
+      
    #---------------------------------------------------------------------------
    # View Menu Handlers
    #---------------------------------------------------------------------------
@@ -2498,6 +2571,9 @@ class gcsMainWindow(wx.Frame):
          self.SerialWrite(serialData)
       
    def OnClose(self, e):
+      if self.stateData.serialPortIsOpen:
+         self.SerialClose()
+   
       if self.serialPortThread is not None:
          self.mw2tQueue.put(threadEvent(gEV_CMD_EXIT, None))
          self.mw2tQueue.join()
@@ -2512,6 +2588,31 @@ class gcsMainWindow(wx.Frame):
    """-------------------------------------------------------------------------
    gcsMainWindow: General Functions
    -------------------------------------------------------------------------"""
+   def AutoRefreshTimerStart(self):
+      self.stateData.machineStatusAutoRefresh = self.configData.dataMachineAutoRefresh
+      self.stateData.machineStatusAutoRefreshPeriod = self.configData.dataMachineAutoRefreshPeriod
+   
+      if self.stateData.machineStatusAutoRefresh:
+         if self.machineAutoRefreshTimer is not None:
+            self.machineAutoRefreshTimer.cancel()
+         
+         self.machineAutoRefreshTimer = threading.Timer(
+            self.stateData.machineStatusAutoRefreshPeriod, self.AutoRefreshTimerAction)
+            
+         self.machineAutoRefreshTimer.start()
+   
+   def AutoRefreshTimerStop(self):
+      if self.machineAutoRefreshTimer is not None:
+         self.machineAutoRefreshTimer.cancel()
+         self.machineAutoRefreshTimer = None
+   
+   def AutoRefreshTimerAction(self):
+      self.SerialWrite(gGRBL_CMD_GET_STATUS)
+      if self.stateData.machineStatusAutoRefresh:
+         self.machineAutoRefreshTimer = threading.Timer(
+            self.stateData.machineStatusAutoRefreshPeriod, self.AutoRefreshTimerAction)
+         self.machineAutoRefreshTimer.start()
+   
    def GetSerialPortList(self):
       spList = []
       
@@ -2536,14 +2637,15 @@ class gcsMainWindow(wx.Frame):
       sbList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200']
       return sbList
       
-   def SerialOpen(self, port, baudrate):
-      self.serPort.baudrate = baudrate
+   def SerialOpen(self, port, baud):
+      self.serPort.baudrate = baud
       
       if port != "None":
+         portName = port
          if os.name == 'nt':
-            port=r"\\.\%s" % (str(port))
+            portName=r"\\.\%s" % (str(port))
             
-         self.serPort.port = port
+         self.serPort.port = portName
          self.serPort.timeout=1
          self.serPort.open()
          
@@ -2555,6 +2657,9 @@ class gcsMainWindow(wx.Frame):
             self.mw2tQueue.join()
                
             self.stateData.serialPortIsOpen = True
+            self.stateData.serialPort = port
+            self.stateData.serialBaud = baud
+            self.AutoRefreshTimerStart()
       else:
          dlg = wx.MessageDialog(self,
             "There is no valid serial port detected.\n" \
@@ -2575,7 +2680,25 @@ class gcsMainWindow(wx.Frame):
       
       self.stateData.serialPortIsOpen = False
       self.GrblDetected = False
+      self.AutoRefreshTimerStop()
       self.UpdateUI()
+      
+   def SerialWrite(self, serialData):
+      if self.stateData.serialPortIsOpen:
+         txtOutputData = "> %s" %(serialData)
+         #wx.LogMessage("")
+         self.outputText.AppendText(txtOutputData)
+      
+         if self.stateData.swState == gSTATE_RUN:
+            # if we are in run state let thread do teh writing
+            if self.serialPortThread is not None:
+               self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, serialData))
+               self.mw2tQueue.join()
+         else:
+            self.serPort.write(serialData)
+
+      elif self.cmdLineOptions.verbose:
+         print "gcsMainWindow ERROR: attempt serial write with port closed!!"
    
    def Stop(self):
       if self.serialPortThread is not None:
@@ -2605,29 +2728,6 @@ class gcsMainWindow(wx.Frame):
    def GetMachineStatus(self):
       if self.stateData.serialPortIsOpen:
          self.SerialWrite(gGRBL_CMD_GET_STATUS)
-         
-   def SerialWrite(self, serialData):
-      if self.stateData.serialPortIsOpen:
-         txtOutputData = "> %s" %(serialData)
-         #wx.LogMessage("")
-         self.outputText.AppendText(txtOutputData)
-      
-         if self.stateData.swState == gSTATE_RUN:
-            # if we are in run state let thread do teh writing
-            if self.serialPortThread is not None:
-               self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, serialData))
-               self.mw2tQueue.join()
-         else:
-            self.serPort.write(serialData)
-            
-         # this won't work well is too  early, mechanical movement
-         # say G01X300 might take a long time, but grbl will reutn almost
-         # immediately with "ok"
-         #if self.stateData.machineStatusAutoRefresh and serialData != "?":
-         #   self.serPort.write("?")
-
-      elif self.cmdLineOptions.verbose:
-         print "gcsMainWindow ERROR: attempt serial write with port closed!!"
          
    def LoadLayoutData(self, key, update=True):
       dimesnionsData = layoutData = self.configFile.Read(key+"/Dimensions")
@@ -2727,6 +2827,7 @@ class gcsMainWindow(wx.Frame):
                self.stateData.machineStatusString = statusData[0]
                self.machineStatusPanel.UpdateUI(self.stateData, statusData)
                self.machineJoggingPanel.UpdateUI(self.stateData, statusData)
+               self.UpdateUI()
             
          elif te.event_id == gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
