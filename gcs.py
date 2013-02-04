@@ -656,15 +656,18 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
 
       # Add cehck box
       st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh")
-      flexGridSizer.Add(st, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
       
-      self.cb = wx.CheckBox(self, wx.ID_ANY)
+      self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
       self.cb.SetValue(self.configData.dataMachineAutoRefresh)
-      flexGridSizer.Add(self.cb, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      self.cb.SetToolTip(
+         wx.ToolTip("Send '?' Status request (experimental)"))
+      flexGridSizer.Add(self.cb, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+
 
       # Add spin ctrl
       st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh Period")
-      flexGridSizer.Add(st, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
       
       self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
       self.sc.SetRange(1,1000000)
@@ -741,13 +744,7 @@ class gcsSettingsDialog(wx.Dialog):
    def AddProgramPage(self):
       win = wx.Panel(self.noteBook, -1)
       self.noteBook.AddPage(win, "Program")
-        
-      st = wx.StaticText(win, -1,
-                          "You can put nearly any type of window here,\n"
-                          "and if the platform supports it then the\n"
-                          "tabs can be on any side of the notebook.",
-                          (10, 10))
-
+      st = wx.StaticText(win, -1, "Main Program panel stuff goes here")
       self.noteBook.SetPageImage(0, 0)
       
    def AddLinkPage(self):
@@ -758,6 +755,7 @@ class gcsSettingsDialog(wx.Dialog):
    def AddOutputPage(self):
       win = wx.Panel(self.noteBook, -1)
       self.noteBook.AddPage(win, "Output")
+      st = wx.StaticText(win, -1, "Output panel stuff goes here")
       self.noteBook.SetPageImage(2, 2)
 
    def AddCliPage(self):
@@ -773,6 +771,7 @@ class gcsSettingsDialog(wx.Dialog):
    def AddJoggingPage(self):
       win = wx.Panel(self.noteBook, -1)
       self.noteBook.AddPage(win, "Jogging")
+      st = wx.StaticText(win, -1, "Jogging panel stuff goes here")
       self.noteBook.SetPageImage(5, 5)
       
    def UpdatConfigData(self):
@@ -2607,7 +2606,11 @@ class gcsMainWindow(wx.Frame):
          self.machineAutoRefreshTimer = None
    
    def AutoRefreshTimerAction(self):
-      self.SerialWrite(gGRBL_CMD_GET_STATUS)
+      #self.SerialWrite(gGRBL_CMD_GET_STATUS)
+      if self.serialPortThread is not None:
+         self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, gGRBL_CMD_GET_STATUS))
+         self.mw2tQueue.join()
+
       if self.stateData.machineStatusAutoRefresh:
          self.machineAutoRefreshTimer = threading.Timer(
             self.stateData.machineStatusAutoRefreshPeriod, self.AutoRefreshTimerAction)
@@ -2685,9 +2688,9 @@ class gcsMainWindow(wx.Frame):
       
    def SerialWrite(self, serialData):
       if self.stateData.serialPortIsOpen:
-         txtOutputData = "> %s" %(serialData)
+         #txtOutputData = "> %s" %(serialData)
          #wx.LogMessage("")
-         self.outputText.AppendText(txtOutputData)
+         #self.outputText.AppendText(txtOutputData)
       
          if self.stateData.swState == gSTATE_RUN:
             # if we are in run state let thread do teh writing
