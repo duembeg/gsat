@@ -2157,7 +2157,7 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Status tool bar
       self.Bind(wx.EVT_MENU, self.OnLinkStatus,          id=gID_TOOLBAR_LINK_STATUS)
-      self.Bind(wx.EVT_MENU, self.OnMachineGetStatus,       id=gID_TOOLBAR_MACHINE_STATUS)
+      self.Bind(wx.EVT_MENU, self.OnGetMachineStatus,    id=gID_TOOLBAR_MACHINE_STATUS)
       
       
       #------------------------------------------------------------------------
@@ -2752,7 +2752,7 @@ class gcsMainWindow(wx.Frame):
       else:
          self.SerialOpen(self.configData.dataLinkPort, self.configData.dataLinkBaud)
 
-   def OnMachineGetStatus(self, e):
+   def OnGetMachineStatus(self, e):
       self.GetMachineStatus()
       
    #---------------------------------------------------------------------------
