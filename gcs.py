@@ -90,6 +90,7 @@ gID_MENU_OUTPUT_PANEL            = wx.NewId()
 gID_MENU_COMAMND_PANEL           = wx.NewId()
 gID_MENU_MACHINE_STATUS_PANEL    = wx.NewId()
 gID_MENU_MACHINE_JOGGING_PANEL   = wx.NewId()
+gID_MENU_CV2_PANEL               = wx.NewId()
 gID_MENU_LOAD_DEFAULT_LAYOUT     = wx.NewId()
 gID_MENU_SAVE_DEFAULT_LAYOUT     = wx.NewId()
 gID_MENU_RESET_DEFAULT_LAYOUT    = wx.NewId()
@@ -102,6 +103,9 @@ gID_MENU_BREAK_TOGGLE            = wx.NewId()
 gID_MENU_BREAK_REMOVE_ALL        = wx.NewId()
 gID_MENU_SET_PC                  = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
+
+gID_TIMER_MACHINE_REFRESH        = wx.NewId()
+gID_TIMER_CV2_CAPTURE            = wx.NewId()
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -219,7 +223,7 @@ class gcsConfigData():
       self.keyMainAppDefaultLayout        = "/mainApp/DefaultLayout"
       self.keyMainAppResetLayout          = "/mainApp/ResetLayout"
 
-      # link data
+      # link keys
       self.keyLinkPort                    = "/link/Port"
       self.keyLinkBaud                    = "/link/Baud"
       
@@ -228,15 +232,19 @@ class gcsConfigData():
       self.keyCliCmdMaxHistory            = "/cli/CmdMaxHistory"
       self.keyCliCmdHistory               = "/cli/CmdHistory"
       
-      # link data
+      # machine keys
       self.keyMachineAutoRefresh          = "/machine/AutoRefresh"
       self.keyMachineAutoRefreshPeriod    = "/machine/AutoRefreshPeriod"
+      
+      # CV2 keys
+      self.keyCV2Enable                   = "/cv2/Enable"
+      self.keyCV2CapturePeriod            = "/cv2/CapturePeriod"
       
       # -----------------------------------------------------------------------
       # config data (and default values)
       
       # main app data
-      self.dataMainAppkeyMaxFileHistory    = 8
+      self.dataMainAppMaxFileHistory       = 8
       
       # link data
       self.dataLinkPort                    = ""
@@ -250,15 +258,18 @@ class gcsConfigData():
       
       # machine data
       self.dataMachineAutoRefresh          = False
-      self.dataMachineAutoRefreshPeriod    = 1
+      self.dataMachineAutoRefreshPeriod    = 1000
       
+      # CV2 data
+      self.dataCV2Enable                   = False
+      self.dataCV2CapturePeriod            = 100
       
    def Load(self, configFile):
       # read main app data
       configData = configFile.Read(self.keyMainAppkeyMaxFileHistory)
       if len(configData) > 0:
-         self.dataMainAppkeyMaxFileHistory = eval(configData)
-
+         self.dataMainAppMaxFileHistory = eval(configData)
+         
       # read link data
       self.dataLinkPort = configFile.Read(self.keyLinkPort)
       configData = configFile.Read(self.keyLinkBaud)
@@ -283,9 +294,19 @@ class gcsConfigData():
       if len(configData) > 0:
          self.dataMachineAutoRefreshPeriod = eval(configData)
          
+      # read CV2 data
+      configData = configFile.Read(self.keyCV2Enable)
+      if len(configData) > 0:
+         self.dataCV2Enable = eval(configData)
+         
+      configData = configFile.Read(self.keyCV2CapturePeriod)
+      if len(configData) > 0:
+         self.dataCV2CapturePeriod = eval(configData)
+         
+         
    def Save(self, configFile):
       # write main app data
-      configFile.Write(self.keyMainAppkeyMaxFileHistory, str(self.dataMainAppkeyMaxFileHistory))
+      configFile.Write(self.keyMainAppkeyMaxFileHistory, str(self.dataMainAppMaxFileHistory))
 
       # write link data
       configFile.Write(self.keyLinkPort, str(self.dataLinkPort))
@@ -298,6 +319,10 @@ class gcsConfigData():
       # write machine data
       configFile.Write(self.keyMachineAutoRefresh, str(self.dataMachineAutoRefresh))
       configFile.Write(self.keyMachineAutoRefreshPeriod, str(self.dataMachineAutoRefreshPeriod))
+      
+      # write CV2 data 
+      configFile.Write(self.keyCV2Enable, str(self.dataCV2Enable))
+      configFile.Write(self.keyCV2CapturePeriod, str(self.dataCV2CapturePeriod))
       
 """----------------------------------------------------------------------------
    Embedded Images
@@ -498,6 +523,16 @@ imgMoveBlack = PyEmbeddedImage(
     "ZSBJbWFnZVJlYWR5ccllPAAAAE9JREFUeNpiYMAP5kMxWQCk8T8Uz6dEM9mGMCBpJhuQZMB8"
     "EgyYj8vPpLhsPr4A+4/HNSgBy8RAJUCRF6gSiIMjHVA9Kc+nNB8QlZ0BAgwA0Tszh6S715cA"
     "AAAASUVORK5CYII=")
+    
+#------------------------------------------------------------------------------
+# imgEye
+#------------------------------------------------------------------------------
+imgEyeBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAMCAYAAABr5z2BAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAH9JREFUeNpiYMAEAkA8H4jfA/F/KH4PFRNgIAAC0DSi4/dQ"
+    "NVhBAprCBiB2gOIGNIMTCGk2wGKBAS5DDNCc2QAVbyAg9h/qOob72ASx+J8BKocsdp8JSHxg"
+    "IB98wOY3Yr2AEla4AhEU7wqEApEq0UiVhISclPuxJOV+bEkZIMAAk+1cU80Xw/EAAAAASUVO"
+    "RK5CYII=")
 
 
 """----------------------------------------------------------------------------
@@ -666,7 +701,7 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
 
 
       # Add spin ctrl
-      st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh Period")
+      st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh Period (milliseconds)")
       flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
       
       self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
@@ -680,6 +715,51 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
    def UpdatConfigData(self):
       self.configData.dataMachineAutoRefresh = self.cb.GetValue()
       self.configData.dataMachineAutoRefreshPeriod = self.sc.GetValue()
+      
+"""----------------------------------------------------------------------------
+   gcsCV2SettingsPanel:
+   CV2 settings.
+----------------------------------------------------------------------------"""
+class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, configData, **args):
+      scrolled.ScrolledPanel.__init__(self, parent, 
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = configData
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      flexGridSizer = wx.FlexGridSizer(2,2)
+
+      # Add cehck box
+      st = wx.StaticText(self, wx.ID_ANY, "Enable CV2")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
+      self.cb.SetValue(self.configData.dataCV2Enable)
+      flexGridSizer.Add(self.cb, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+
+
+      # Add spin ctrl
+      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Period (milliseconds)")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.sc.SetRange(1,1000000)
+      self.sc.SetValue(self.configData.dataCV2CapturePeriod)
+      flexGridSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
+      self.SetSizer(vBoxSizer)
+         
+   def UpdatConfigData(self):
+      self.configData.dataCV2Enable = self.cb.GetValue()
+      self.configData.dataCV2CapturePeriod = self.sc.GetValue()
       
 """----------------------------------------------------------------------------
    gcsSettingsDialog:
@@ -706,18 +786,20 @@ class gcsSettingsDialog(wx.Dialog):
       self.imageList.Add(imgCliBlack.GetBitmap())      
       self.imageList.Add(imgMachineBlack.GetBitmap())
       self.imageList.Add(imgMoveBlack.GetBitmap())
+      self.imageList.Add(imgEyeBlack.GetBitmap())
 
       self.noteBook = wx.Notebook(self, size=(550,300), style=wx.BK_LEFT)
       
       self.noteBook.AssignImageList(self.imageList)
       
       # add pages
-      self.AddProgramPage()
-      self.AddLinkPage()
-      self.AddOutputPage()
-      self.AddCliPage()
-      self.AddMachinePage()
-      self.AddJoggingPage()
+      self.AddProgramPage(0)
+      self.AddLinkPage(1)
+      self.AddOutputPage(2)
+      self.AddCliPage(3)
+      self.AddMachinePage(4)
+      self.AddJoggingPage(5)
+      self.AddCV2Panel(6)
       
       #self.noteBook.Layout()
       sizer.Add(self.noteBook, 1, wx.ALL|wx.EXPAND, 5)
@@ -741,43 +823,49 @@ class gcsSettingsDialog(wx.Dialog):
       self.SetSizerAndFit(sizer)
       #self.SetAutoLayout(True)
       
-   def AddProgramPage(self):
+   def AddProgramPage(self, page):
       win = wx.Panel(self.noteBook, -1)
       self.noteBook.AddPage(win, "Program")
       st = wx.StaticText(win, -1, "Main Program panel stuff goes here")
-      self.noteBook.SetPageImage(0, 0)
+      self.noteBook.SetPageImage(page, 0)
       
-   def AddLinkPage(self):
+   def AddLinkPage(self, page):
       self.linkPage = gcsLinkSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.linkPage, "Link")
-      self.noteBook.SetPageImage(1, 1)
+      self.noteBook.SetPageImage(page, 1)
       
-   def AddOutputPage(self):
+   def AddOutputPage(self, page):
       win = wx.Panel(self.noteBook, -1)
       self.noteBook.AddPage(win, "Output")
       st = wx.StaticText(win, -1, "Output panel stuff goes here")
-      self.noteBook.SetPageImage(2, 2)
+      self.noteBook.SetPageImage(page, 2)
 
-   def AddCliPage(self):
+   def AddCliPage(self, page):
       self.cliPage = gcsCliSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.cliPage, "Cli")
-      self.noteBook.SetPageImage(3, 3)
+      self.noteBook.SetPageImage(page, 3)
 
-   def AddMachinePage(self):
+   def AddMachinePage(self, page):
       self.machinePage = gcsMachineSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.machinePage, "Machine")
-      self.noteBook.SetPageImage(4, 4)
+      self.noteBook.SetPageImage(page, 4)
       
-   def AddJoggingPage(self):
+   def AddJoggingPage(self, page):
       win = wx.Panel(self.noteBook, -1)
       self.noteBook.AddPage(win, "Jogging")
       st = wx.StaticText(win, -1, "Jogging panel stuff goes here")
-      self.noteBook.SetPageImage(5, 5)
+      self.noteBook.SetPageImage(page, 5)
       
+   def AddCV2Panel(self, page):
+      self.CV2Page = gcsCV2SettingsPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.CV2Page, "CV2")
+      self.noteBook.SetPageImage(page, 6)
+     
    def UpdatConfigData(self):
       self.linkPage.UpdatConfigData()
       self.cliPage.UpdatConfigData()
       self.machinePage.UpdatConfigData()
+      self.CV2Page.UpdatConfigData()
       
 
 """----------------------------------------------------------------------------
@@ -979,6 +1067,8 @@ class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
          
       self.handlePC = 0
       self.autoScroll = False
+      
+      self.stateData = gcsStateData()
          
       self.InitUI()
       
@@ -1136,6 +1226,8 @@ class gcsOutputStcStyledTextCtrl(stc.StyledTextCtrl):
          style, name)
          
       self.autoScroll = True
+      
+      self.stateData = gcsStateData()
          
       self.InitUI()
       
@@ -1203,10 +1295,12 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
 
       self.mainWindow = parent
       
+      self.stateData = gcsStateData()
+      
       self.machineDataColor = wx.RED
       
       self.InitUI()
-      width,height = self.GetSizeTuple()
+      width,height = self.GetSize()
       scroll_unit = 10
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
@@ -1228,7 +1322,7 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       self.refreshButton.SetToolTip(
          wx.ToolTip("Refresh machine status"))
       self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
-      vBoxSizer.Add(self.refreshButton, 0, flag=wx.TOP|wx.EXPAND, border=5)
+      vBoxSizer.Add(self.refreshButton, 0, flag=wx.TOP, border=5)
       self.refreshButton.Disable()
       
       gridSizer.Add(vBoxSizer, 0, flag=wx.EXPAND|wx.ALIGN_LEFT|wx.ALL, border=5)
@@ -1345,6 +1439,8 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
       self.mainWindow = parent
+      
+      self.stateData = gcsStateData()
       
       self.useMachineWorkPosition = False
       
@@ -1655,6 +1751,104 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       pass
 
 """----------------------------------------------------------------------------
+   gcsCV2Panel:
+   Status information about machine, controls to enable auto and manual 
+   refresh.
+----------------------------------------------------------------------------"""
+class gcsCV2Panel(wx.ScrolledWindow):
+   def __init__(self, parent, configData, **args):
+      wx.ScrolledWindow.__init__(self, parent, **args)
+
+      self.haveInitCV2 = False
+      self.mainWindow = parent
+      self.stateData = gcsStateData()
+      self.configData = configData
+      self.captureTimer = None
+      
+      self.InitUI()
+      
+      self.InitCV2()
+      
+      width,height = self.GetSizeTuple()
+      scroll_unit = 10
+      self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
+      
+      # register for close events
+      self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+
+
+   def InitUI(self):
+      vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      self.capturePanel = wx.Panel(self, -1)
+      vPanelBoxSizer.Add(self.capturePanel, 1, wx.EXPAND)
+      
+      # Finish up init UI
+      self.SetSizer(vPanelBoxSizer)
+      self.Layout()
+
+   def InitCV2(self):
+      if self.configData.dataCV2Enable:
+         
+         # import extar packages
+         if not self.haveInitCV2:
+            import cv2.cv as cv
+            self.haveInitCV2 = True
+            self.cv=cv
+            
+         #set up camera
+         self.captureDevice = self.cv.CaptureFromCAM(0)
+         self.cv.WaitKey(200)
+         
+         # setup capture timer
+         if self.captureTimer is None:
+            self.captureTimer = wx.Timer(self, gID_TIMER_CV2_CAPTURE)
+            
+            # register for timer events
+            self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, self.captureTimer)
+         else:
+            self.captureTimer.Stop()
+         
+   def StartCapture(self):
+      if self.captureTimer is not None:
+         self.captureTimer.Start(self.configData.dataCV2CapturePeriod)
+   
+   def StopCapture(self):
+      if self.captureTimer is not None:
+         self.captureTimer.Stop()
+
+   def UpdateUI(self, stateData, statusData=None):
+      self.stateData = stateData
+      self.StartCapture()
+   
+   def OnCaptureTimer(self, e):
+      frame = self.cv.QueryFrame(self.captureDevice)
+        
+      #cv.ShowImage("Window",frame)
+      if frame is not None:
+         offset=(0,0)
+         self.cv.Line(frame, (320,0), (320,480) , 255)
+         self.cv.Line(frame, (0,240), (640,240) , 255)
+         self.cv.Circle(frame, (320,240), 66, 255)
+         self.cv.Circle(frame, (320,240), 22, 255)
+      
+         offset=(0,0)
+         
+         self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
+         
+         sizePanel = self.capturePanel.GetClientSize()
+         image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
+
+         self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
+         #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
+         bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+         dc = wx.ClientDC(self.capturePanel)
+         dc.DrawBitmap(bitmap, offset[0], offset[1], False)
+   
+   def OnDestroy(self, e):
+      self.StopCapture()
+      e.Skip()
+      
+"""----------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
    gcsMainWindow:
@@ -1686,7 +1880,7 @@ class gcsMainWindow(wx.Frame):
       self.configData.Load(self.configFile)
       self.configData.dataLinkPortList = self.GetSerialPortList()
       self.configData.dataLinkBaudList = self.GetSerialBaudRateList()
-            
+      
       # init some variables
       self.serialPortThread = None
       self.machineAutoRefreshTimer = None
@@ -1715,6 +1909,7 @@ class gcsMainWindow(wx.Frame):
       
       #self.connectionPanel = gcsConnectionPanel(self)
       self.machineStatusPanel = gcsMachineStatusPanel(self)
+      self.CV2Panel = gcsCV2Panel(self, self.configData)
       self.machineJoggingPanel = gcsMachineJoggingPanel(self)
       
       # output Window
@@ -1737,21 +1932,29 @@ class gcsMainWindow(wx.Frame):
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
          aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("GCODE"))
-      
-      #self.aui_mgr.AddPane(self.connectionPanel,
-      #   aui.AuiPaneInfo().Name("CON_PANEL").Right().Position(1).Caption("Connection").BestSize(300,120))
 
       self.aui_mgr.AddPane(self.machineStatusPanel,
-         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Position(1).Caption("Machine Status").BestSize(300,180))
-      
+         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Position(1).Caption("Machine Status")\
+            .BestSize(300,180)
+      )
+
+      self.aui_mgr.AddPane(self.CV2Panel,
+         aui.AuiPaneInfo().Name("CV2_PANEL").Right().Position(2).Caption("Computer Vision")\
+            .BestSize(600,480).Hide()
+      )
+
       self.aui_mgr.AddPane(self.machineJoggingPanel,
-         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(2).Caption("Machine Jogging").BestSize(300,310))
+         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(3).Caption("Machine Jogging")\
+            .BestSize(300,310)
+      )
          
       self.aui_mgr.AddPane(self.outputText,
-         aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(2).Caption("Output").BestSize(600,150))
+         aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(2).Caption("Output").BestSize(600,150)
+      )
          
       self.aui_mgr.AddPane(self.cliPanel,
-         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(1).Caption("Command").BestSize(600,30))
+         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(1).Caption("Command").BestSize(600,30)
+      )
 
       self.CreateMenu()
       self.CreateToolBar()
@@ -1788,7 +1991,7 @@ class gcsMainWindow(wx.Frame):
          recentMenu)
 
       # load history
-      maxFileHistory = self.configData.dataMainAppkeyMaxFileHistory
+      maxFileHistory = self.configData.dataMainAppMaxFileHistory
       self.fileHistory = wx.FileHistory(maxFileHistory)
       self.fileHistory.Load(self.configFile)
       self.fileHistory.UseMenu(recentMenu)
@@ -1816,6 +2019,7 @@ class gcsMainWindow(wx.Frame):
       viewMenu.AppendCheckItem(gID_MENU_COMAMND_PANEL,         "&Command (CLI)")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL,  "Machine &Status")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
+      viewMenu.AppendCheckItem(gID_MENU_CV2_PANEL,             "Computer &Vision")
       viewMenu.AppendSeparator()
       viewMenu.Append(gID_MENU_LOAD_DEFAULT_LAYOUT,            "&Load Layout")
       viewMenu.Append(gID_MENU_SAVE_DEFAULT_LAYOUT,            "S&ave Layout")
@@ -1898,6 +2102,7 @@ class gcsMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnCommand,             id=gID_MENU_COMAMND_PANEL)
       self.Bind(wx.EVT_MENU, self.OnMachineStatus,       id=gID_MENU_MACHINE_STATUS_PANEL)
       self.Bind(wx.EVT_MENU, self.OnMachineJogging,      id=gID_MENU_MACHINE_JOGGING_PANEL)
+      self.Bind(wx.EVT_MENU, self.OnComputerVision,      id=gID_MENU_CV2_PANEL)
       self.Bind(wx.EVT_MENU, self.OnLoadDefaultLayout,   id=gID_MENU_LOAD_DEFAULT_LAYOUT)
       self.Bind(wx.EVT_MENU, self.OnSaveDefaultLayout,   id=gID_MENU_SAVE_DEFAULT_LAYOUT)
       self.Bind(wx.EVT_MENU, self.OnResetDefaultLayout,  id=gID_MENU_RESET_DEFAULT_LAYOUT)      
@@ -1914,7 +2119,9 @@ class gcsMainWindow(wx.Frame):
                                                          id=gID_MENU_MACHINE_STATUS_PANEL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineJoggingUpdate,
                                                          id=gID_MENU_MACHINE_JOGGING_PANEL)
-
+      self.Bind(wx.EVT_UPDATE_UI, self.OnComputerVisionUpdate,
+                                                         id=gID_MENU_CV2_PANEL)
+                                                         
       #------------------------------------------------------------------------
       # Run menu bind
       self.Bind(wx.EVT_MENU, self.OnRun,                 id=gID_MENU_RUN)
@@ -1950,7 +2157,7 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Status tool bar
       self.Bind(wx.EVT_MENU, self.OnLinkStatus,          id=gID_TOOLBAR_LINK_STATUS)
-      self.Bind(wx.EVT_MENU, self.OnMachineStatus,       id=gID_TOOLBAR_MACHINE_STATUS)
+      self.Bind(wx.EVT_MENU, self.OnMachineGetStatus,       id=gID_TOOLBAR_MACHINE_STATUS)
       
       
       #------------------------------------------------------------------------
@@ -2079,6 +2286,7 @@ class gcsMainWindow(wx.Frame):
       self.gcText.UpdateUI(self.stateData)
       self.machineStatusPanel.UpdateUI(self.stateData)
       self.machineJoggingPanel.UpdateUI(self.stateData)
+      self.CV2Panel.UpdateUI(self.stateData)
       
       # Force update tool bar items
       self.OnStatusToolBarForceUpdate()
@@ -2334,6 +2542,7 @@ class gcsMainWindow(wx.Frame):
       self.OnViewMenuUpdate(e, self.cliPanel)
 
    def OnMachineStatus(self, e):
+      print "got here"
       self.OnViewMenu(e, self.machineStatusPanel)
          
    def OnMachineStatusUpdate(self, e):
@@ -2344,6 +2553,12 @@ class gcsMainWindow(wx.Frame):
 
    def OnMachineJoggingUpdate(self, e):
       self.OnViewMenuUpdate(e, self.machineJoggingPanel)
+      
+   def OnComputerVision(self, e):
+      self.OnViewMenu(e, self.CV2Panel)         
+
+   def OnComputerVisionUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.CV2Panel)
       
    def OnLoadDefaultLayout(self, e):
       self.LoadLayoutData(self.configData.keyMainAppDefaultLayout)
@@ -2537,7 +2752,7 @@ class gcsMainWindow(wx.Frame):
       else:
          self.SerialOpen(self.configData.dataLinkPort, self.configData.dataLinkBaud)
 
-   def OnMachineStatus(self, e):
+   def OnMachineGetStatus(self, e):
       self.GetMachineStatus()
       
    #---------------------------------------------------------------------------
@@ -2593,28 +2808,22 @@ class gcsMainWindow(wx.Frame):
    
       if self.stateData.machineStatusAutoRefresh:
          if self.machineAutoRefreshTimer is not None:
-            self.machineAutoRefreshTimer.cancel()
-         
-         self.machineAutoRefreshTimer = threading.Timer(
-            self.stateData.machineStatusAutoRefreshPeriod, self.AutoRefreshTimerAction)
+            self.machineAutoRefreshTimer.Stop()
+         else:
+            t = self.machineAutoRefreshTimer = wx.Timer(self, gID_TIMER_MACHINE_REFRESH)
+            self.Bind(wx.EVT_TIMER, self.OnAutoRefreshTimerAction, t)
             
-         self.machineAutoRefreshTimer.start()
+         self.machineAutoRefreshTimer.Start(self.stateData.machineStatusAutoRefreshPeriod)
    
    def AutoRefreshTimerStop(self):
       if self.machineAutoRefreshTimer is not None:
-         self.machineAutoRefreshTimer.cancel()
-         self.machineAutoRefreshTimer = None
+         self.machineAutoRefreshTimer.Stop()
    
-   def AutoRefreshTimerAction(self):
-      #self.SerialWrite(gGRBL_CMD_GET_STATUS)
-      if self.serialPortThread is not None:
-         self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, gGRBL_CMD_GET_STATUS))
-         self.mw2tQueue.join()
-
-      if self.stateData.machineStatusAutoRefresh:
-         self.machineAutoRefreshTimer = threading.Timer(
-            self.stateData.machineStatusAutoRefreshPeriod, self.AutoRefreshTimerAction)
-         self.machineAutoRefreshTimer.start()
+   def OnAutoRefreshTimerAction(self, e):
+      self.SerialWrite(gGRBL_CMD_GET_STATUS)
+      #if self.serialPortThread is not None:
+      #   self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, gGRBL_CMD_GET_STATUS))
+      #   self.mw2tQueue.join()
    
    def GetSerialPortList(self):
       spList = []
@@ -2688,16 +2897,15 @@ class gcsMainWindow(wx.Frame):
       
    def SerialWrite(self, serialData):
       if self.stateData.serialPortIsOpen:
-         #txtOutputData = "> %s" %(serialData)
-         #wx.LogMessage("")
-         #self.outputText.AppendText(txtOutputData)
-      
          if self.stateData.swState == gSTATE_RUN:
             # if we are in run state let thread do teh writing
             if self.serialPortThread is not None:
                self.mw2tQueue.put(threadEvent(gEV_CMD_SEND, serialData))
                self.mw2tQueue.join()
          else:
+            txtOutputData = "> %s" %(serialData)
+            wx.LogMessage("")
+            self.outputText.AppendText(txtOutputData)
             self.serPort.write(serialData)
 
       elif self.cmdLineOptions.verbose:
