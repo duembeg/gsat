@@ -338,148 +338,166 @@ class gcsConfigData():
 # imgPlay
 #------------------------------------------------------------------------------
 imgPlayBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAkAAAAMCAYAAACwXJejAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAD1JREFUeNpiYGBgOA/EBgwEwH8obiBG0X98pv7HghuIUYRi"
-    "KiNUAB9oZGIgEhC0jiyHEwwCvIFJMFoAAgwA9owpXlnrpyAAAAAASUVORK5CYII=")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByQcz8ytbwAAAD1JREFUOMtjYBhs4DwD"
+    "A4MBJQb8h+IGSg34T65r/mPBDZQaQJJr/hPAGK5honY00sQLDQMSjQ0DlpTpDtgBljgwXOs4"
+    "7F8AAAAASUVORK5CYII=")
     
 imgPlayGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAkAAAAMCAYAAACwXJejAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAFpJREFUeNpiWLVm/XkgNmDAA5iAGKQApLABlyJGoOR/JP4F"
-    "IE4MCwm8gG4SMsBqKrpJDNhMxacIBhqZGIgALHjk4NbhUtQIlGzAZRLWIGDBpRtdEVbdyAAg"
-    "wABvdyig5iK8MwAAAABJRU5ErkJggg==")
-
-#------------------------------------------------------------------------------
-# imgNext
-#------------------------------------------------------------------------------
-imgNextBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAEpJREFUeNpiYGBgOA/EBgxEAkYg/g9lNwJxAw51KOL/kTAu"
-    "25DVoHBguIFUDei2EaUB2TY4n4mBDEAVJxHtaYLBSlbEkZQ0AAIMAP0iRUaBrrwYAAAAAElF"
-    "TkSuQmCC")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDAltTu1DwAAAGhJREFUOMtjYBhUYNWa"
+    "9edXrVlvQIoeJjS+AQMDw/lVa9Y3EGsAI5oL/iNxLzAwMCSGhQReIMUFJLsGnwsYiHENE5Fe"
+    "xekaJkpjjoVIdTi9QIwBjWEhgQ3kuICoaGQhx1Z8BhBl6+ACAO6qKKDvuKECAAAAAElFTkSu"
+    "QmCC")
     
-imgNextGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAG5JREFUeNpiWLVm/XkgNmAgEjACFf+HshvDQgIbsCkCqmnA"
-    "pgEELgBxIlDjBTQNcDVMaIaBnHYe2UR0wIRDvB6X31jw+A9mWyMxNjCQ6iRYABiihxwuJ+EM"
-    "YhYspmIEKy4NOE0FySFHCklJAyDAANgNMTiyyuGLAAAAAElFTkSuQmCC")
+#------------------------------------------------------------------------------
+# imgStep
+#------------------------------------------------------------------------------
+imgStepBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByQo7nhZ2gAAAFVJREFUOMtjYBhM4DwD"
+    "A4MBqZoYkdj/oXQjAwNDAw71DTjYcANgGJdrkNXglYThBkoNQHcNWQYguwbDACZqRiNNvEB2"
+    "IBIdjSxYFOFLSI1UT8oDDtgBGphE0gAEAQAAAAAASUVORK5CYII=")    
+
+imgStepGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDAxr+FhcgAAAH5JREFUOMvNkssJgDAQ"
+    "RJ/BgrSUgHi3kph2JJBSTEd6UcnBdf2BDiyEZDMz+4HfYAhxHEKsrv4rMoJpOfq2sb0gst2v"
+    "OWYnzx24cVkgEQBUwJgrSjDKu9N6U57o0+rG33HA0xIAElBLk9FKEEeqESSgaxubNHvlRVX/"
+    "+ip/jxlYXDC1MBW5zgAAAABJRU5ErkJggg==")
 
 #------------------------------------------------------------------------------
 # imgStop
 #------------------------------------------------------------------------------
 imgStopBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAABBJREFUeNpiYBgFQxUABBgAAbwAAZK5hs4AAAAASUVORK5C"
-    "YII=")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByQzZB2QNgAAACBJREFUOMtjYBhowIjE"
+    "/k+OXiZKXTBqwKgBg8OAAQfsALZSAR8mQXhTAAAAAElFTkSuQmCC")
 
 imgStopGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAABpJREFUeNpiXLVmPQMhwMRABBhVRG9FAAEGAJNWAh2OVT6Z"
-    "AAAAAElFTkSuQmCC")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDA7TzSIbAAAACtJREFUOMtjYBhowAhj"
+    "rFqz/j8pGsNCAhkZGBgYmCh1wagBowYMDgMGHgAAE+AEGJkQ9b4AAAAASUVORK5CYII=")
 
 #------------------------------------------------------------------------------
 # imgBreak
 #------------------------------------------------------------------------------
 imgBreakBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAABHNCSVQICAgIfAhkiAAAAAlw"
-    "SFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwA"
-    "AABnSURBVCiRlZLBCYAwDEWf9eLRETKCR7d0BFfoZu0GekmqBJHkQaCU9xNICw8CnEADLq2m"
-    "d4Jjc6Kvps7o/Ce/QzIDB7D7kR8swEqw+5gy6SFMycgW6Am/F6AmAhWSa7Vk6uEMIfA1bljY"
-    "QE3Ku/NzAAAAAElFTkSuQmCC")
-    
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByUExbsEeAAAAGpJREFUOMvNks0JwCAM"
+    "Rp+9dA1H6Mau4GZxA3uJIJL+BNvSwHcR3zOYwB8rAgkQoGpEz+IVvA3gGNE7hy+fwb3E7CTd"
+    "gFuSJRCHQBoUOkF1fnYAWGZH1guKgyuWIDsE+ZUxTi/SI6v8ea07bSVKp5t5VZAAAAAASUVO"
+    "RK5CYII=")    
+
 imgBreakGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAABHNCSVQICAgIfAhkiAAAAAlw"
-    "SFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwA"
-    "AACQSURBVCiRldFBDcJAEEbhr6MACUigEuqgTZraIXXCmZBQB0gACUhYCRwYCOkBlnecvH9m"
-    "dqeRHE/nLfbosclywYJ5Goc7NCnvcPkQ1xR00zjcmux8/SJ/htrINX7J0tlH7lxLH5Xd31Pi"
-    "DxmE52NqKeH5z7UsgblySsEcecHuR+h1uHvANA43tDisgiVrbToeRb4ma1Mqad0AAAAASUVO"
-    "RK5CYII=")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDENmZUstAAAAKRJREFUOMvNksENwjAM"
+    "RR+dICMwAhmhG6RS1XWibsK5qtRswAgwQkfwCFwcKYQACRf4t/z4v1iO4dc65MaybkfAAw4w"
+    "agsQgHkah/0lYFm3E3BJgrkE6KdxuD0B9OXrm3AKsbGTLrnwFWG0xsdDCnANs3MlgGkAmBLg"
+    "K3XZcGolJUBoAIQSYK7sQrT2EaD/2n+AxEXai0PUDbPAOQOJejbdwv/QHX1yKEbBwq96AAAA"
+    "AElFTkSuQmCC")
 
 #------------------------------------------------------------------------------
 # imgMapPin
 #------------------------------------------------------------------------------
 imgMapPinBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAQCAYAAAArij59AAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAG5JREFUeNpiYICAACC+D8T/ofg+VAwu+R8HBiuC6TwPFQiA"
-    "smEmoapGN5WJgQhA0Ir5eBw5nyhfgMB7LJLvkd0xH5fx+AIrAN0373EZDwP9SAr6sSlQQFKg"
-    "gCvQzkMxHDCjKfgJxCeB+AJMACDAAMwHRnRv4T3AAAAAAElFTkSuQmCC")
-    
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByUbSLMJjQAAAIVJREFUOMu1UsENgCAM"
+    "vOjDNRiJDXEEGcMXbsAIvH3ppyRo2tJIvKRJU9rrXQPAwwPIAC6KTDUTfDP4DhNJ3ZxowFNe"
+    "lXTBbWtVPTDhBwxbCMoRg8VCVMij1UZhtheuUTriZqyJBHFEPmejSE3aP1iF3AzXKHBfP1Wi"
+    "EDF3CE4AO4BDeF9u6hE4W09LwyQAAAAASUVORK5CYII=")
+
 imgMapPinGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAQCAYAAAArij59AAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAKFJREFUeNpiZACCVWvWBwCpfiBWYICAB0BcGBYSuIERKrme"
-    "ATsIZILqBIELIAEovgAV62dBMrYRZCTUSgaoqQpMDAQAC9RBIFPqoTpBoB7mWJCCA0CcAMQG"
-    "WBx7AGTFRjw2bGSEOuo9kBJAk/wAdLQgzJEbsOgGi8EUYLMGLMYI46FZAzYe2QQQWICNjaxg"
-    "Ig42AgCtOQ/C6CHJgE8nQIABAPO2MFm6XNGsAAAAAElFTkSuQmCC")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDEdhCI80AAAALtJREFUOMulksEJwzAM"
+    "RV9CB2g3yAgdpYaQc1foBCEThG7QszE42SAbJCNkg3aEXpRSjFw79IOxkOSvL1kFCqzzF6AH"
+    "KnGtwK2pzRDmFpHHHh0mJCmVpF7uBTByliD2wUEh2GR3WzXrPKKqCpNL/oSmYJVKrVQGaL9i"
+    "SYIJuAJnZZhTTgvjD8Vj8htlaE/gGLhfTW1OuUMcMn1RgjG3tSLWbNCGKj+1B4+InU1wj9j5"
+    "sM7P1vl57yayp/IbNw0yBMDu12oAAAAASUVORK5CYII=")
 
 #------------------------------------------------------------------------------
 # imgGoToMapPin
 #------------------------------------------------------------------------------
-imgGoToMapPinBlack = PyEmbeddedImage(
+imgGotoMapPinBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
-    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QEeDxgqvS66/wAAAH9JREFUOMtjYBhKQICB"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByUthwmcFAAAAH9JREFUOMtjYBhKQICB"
     "gWE/AwPDfyjeDxUjGsA0n4dimCEoYD5UEpvJMM0wADMEDhKQnIfNEJwGOCDh83gMuY/FC/cZ"
     "kDRgw8g29mOR7yfFAAMs8gakeAHZG3DnkxKI6N7oxxbX+KKRgYGBQQHJAAVyU+R+5ATEQoYB"
     "CwdXDgMA7JJL1nAmIzsAAAAASUVORK5CYII=")
 
-imgGoToMapPinGray = PyEmbeddedImage(
+imgGotoMapPinGray = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
-    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QEeDxgX5Ub27gAAANFJREFUOMvNkM0NwjAM"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDErS5ipSQAAANFJREFUOMvNkM0NwjAM"
     "hT+iDsAIjFA2CCNEinJmBDZBTAC9RpHSDdoNyAZ0BEbgYpBV8dNyAUuW/Pves+HXtpg6GFNe"
     "AhmwUuoBV80guy8XyS2QqxHLEaiBTfDuOgKwQAnerWX2DFijlrfAVgA6kfz5BzFlq/K9ACBS"
     "H0piyhdgpU6ogaECuhfgtfTWkrfAThEAtGbGE5tnNQNslBfVLFIDIHhXgEH1h+BdMcG7PnjX"
     "y31P79eSx7FRDCfg9GYZ4PAinm4x5S6m/Hh89QVGw1/ZDZmwQ5xuOfBFAAAAAElFTkSuQmCC")
-    
+
 #------------------------------------------------------------------------------
 # imgLink
 #------------------------------------------------------------------------------
 imgLinkBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAIJJREFUeNqMklENwCAMRJGABCQgASk4Q0IlTAISkICErU3a"
-    "pTkgocmFj3uFgxLCXUVWZ707M7FITdHj4I5wZk01hwMNjie4QYxl9wSwVHXgkp8AtotWXQc2"
-    "WGYxC2Rt6hM2+KMLwFNj/7V7DQ/n01CsYZzgAEPxjYQxMH+8+SOfAAMA5uhAq8s6MmkAAAAA"
-    "SUVORK5CYII=")
-    
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByQPS3LssQAAAIZJREFUOMvVk7ENwCAM"
+    "BK9LywiMwAiMks0YgREyAiMwAiOQxkiWlci0uKHA9/xbBk6rADRg7jRHoErzBB4FNw9OwJDm"
+    "rsAFh124GNvu69HAALcC3fzVwGtwt5zdE1iZA5BN1iL31RPQVrOBh8T8ra9pazjtLskS6Lsw"
+    "Zkm0UPVs2/zhqM91vQGtQLINi2ipAAAAAElFTkSuQmCC")
+
 imgLinkGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAMJJREFUeNqMUcENwjAQC1EHYISOEDYgGxQJ8YYROgITdAR4"
-    "IyTYIGzQjNARMkJ9yFedIkCcZF3b89lOunJ/1O3+WKMlIDQfhi3aAHT89AJkIQC5qciBSkKY"
-    "gAJsOc5A9F/IV2BTux/2u+JNjIWMwYmRApUzn51GGiqy1NP0UV10oWPmHm6SOYu9COD9gt6q"
-    "gDcRC2MltSf5yFlvHZaMmrkiRzhO7wX+lLpGxlBytmdI5jaccZKrPauyXVBy5EF/1izAANwx"
-    "SG7WniymAAAAAElFTkSuQmCC")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDAXfezkjwAAANRJREFUOMvNksENgzAQ"
+    "BIeIAiiBEkgH0AGWLL+TEighFVACvBES6YB0gEughJSQzzmyTkCUV3IfW/bu3u7Z8OtKvgEP"
+    "45QBM1A4axKA9ACcAy1Qy9EDyIAC8AGX7pAL6ZQBK/AESrn2QBWwpw/kHjhrjLPmuSkgtt9k"
+    "Z81VIgTbXvbsRWgVGeAerYt2owVqydwM41QCXuz2wzh1QB4Jbs9ABjaH55JoHXCRu+bIQZzR"
+    "A16RK2fNuikgn0TXIrYD2R/NYFafJDjpgZvuvCUQyFX8zv9fL21vSWog3NHrAAAAAElFTkSu"
+    "QmCC")
 
 #------------------------------------------------------------------------------
 # imgProgram
 #------------------------------------------------------------------------------
 imgProgramBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAQCAYAAAAiYZ4HAAAABmJLR0QA/wD/AP+gvaeTAAAA"
-    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIDBBgmXR7spwAAAQdJREFUKM+VkE1Lw0AQ"
-    "hp/dxoMHjb34RbEXD4LgpSD05J8VxYsoKBXFjxaFimyqCIKHKojaQgvGhB4CkvEU2aQ2tC/M"
-    "YZn32Zl5ASSnWsAcGcmkUNLI+ygFjQOkoD/g6MZzAXPYMGWtC/cjoNQE03zz5wEpOE7lv5t0"
-    "dg+t1RTAdbsXAK2aaRcBlfQd23xQv61ultxo/7K5Fn71X4H1aPDtAn7iUdY6yuuGJRHx4xgl"
-    "Ik4cSywiP9VycWAHk01JAPZOG8tAf/ekvpr1DQFeN3SB6O4jmAHMSODq6WXFgh9NJ1i03sMp"
-    "9T7fpwHOHp43dmoXW5Wl2c728fmC7UkdTb4kC4wlzYT6BWdMkrS3oWthAAAAAElFTkSuQmCC")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByQBrMrBtgAAAQ5JREFUOMulkztLA0EU"
+    "Rs9MVsRC1zS+CKaxEASbgJDKPyuKjSgoEcVHgkJEZqMIgkUMiJpAAq67pFiQvVbqsroPyQdT"
+    "DJw5zJ2PgZ9IymoB02RERpV8gWniVEkeQarkW7B/6diA2WuYstaFmwRJ6g1M88mdAaRgWZWE"
+    "NwFAJ82jtRoDuGj3PaBVM+0ioOKc9dfh3fpVda1kBztnzWX/bdABVoLhuw24cVbFRgBQTs8v"
+    "iYgbhigRscJQQhH5qJaLwyiX1YIAbB81FoDB1mF9KaOt3wKn59tAcP3iTQImt+D8/nExAt2Z"
+    "rjcX2We30H99ngA4vn1Y3aydrlfmp7obByezef/CvzgrAcgdzWgZ/wSAzJS7vHbo9AAAAABJ"
+    "RU5ErkJggg==")
 
+imgProgramGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDAHYFv06wAAASFJREFUOMtjZICCVWvW"
+    "/2cgAMJCAhnRxZgYSADYLGFEl0S3BZsmZDUkuQCboSzYFGw5eo7/2/OHH9jF5BR+vnqE1zCs"
+    "Lvj2/OEHOTNH8Z+vHj0g5BqcXmBiYmRlYGBgkDV1UGNgYGDgVdQTxBYLWL3AJirF/uDEvp8s"
+    "wpIan9+/uc/AwMDw8+tHfgYGhg9EGSCnriX2X02T998/Bsb////z8gk5Cvz///8P0V4wkuB9"
+    "cvfo3s+m0nyf71+7yPno1P4PD65fkiQpDBgYGBjOvfjMz/jp7VNFS2c+5i/vbhNtwIFr9+Sg"
+    "LvkICVAGbpJi4fWzJ5wMDAwMuy/e1PvDzS989+je5784+cSxqcUaiKEudjeRkzkaG78BxORK"
+    "snMjNgAAn3VnJ3rOqJsAAAAASUVORK5CYII=")
+    
 #------------------------------------------------------------------------------
 # imgMachine
 #------------------------------------------------------------------------------
 imgMachineBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAJBJREFUeNpiYMAECkD8H4oV0CWZobQBEG8HYk4gDofyQUAA"
-    "iBWBeDoQnwTiFzCN55FMxYVBahiYoBoWMhAGC2EaQO7UR5JYAMSMULwASRykRoERah0yYETj"
-    "o8gzoUl+QOMLMOAIxvlInpuPJIcuDg/mAiJCqQDZFqKDlQEp4s5DTUF3RgFUzgBXeONNGgAB"
-    "BgCNuTduNsD3hAAAAABJRU5ErkJggg==")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAI5JREFUeNqsU4kJwCAMDE6UEdpN3FBHcAPdRDdoLSQQ0gi2"
+    "GjgUcjnyAozNd1wEDxOGipiFQFbCaAVXIj9vEMGMoDg4SncWr7Lqh+DKQU4IJCUYO05CVL6k"
+    "089Gvdp0XzKXYaWIhsBhcR1ssOUSRoRAaePAB1vGuLxI3MTS0ejfjLnzXkhO2XpMv8/5FmAA"
+    "pdh8malagfIAAAAASUVORK5CYII=")
     
 imgMachineGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAALNJREFUeNpiZEADq9asVwBS96FcxbCQwAfI8oxQRQZAaj4Q"
-    "LwRifSBOgMovAOKLQBwPxIlAzRdYoBIgxQZQjAwSkNggNYZMUM5CBsIArIYJ6mZ9JIkFQKsZ"
-    "QRjqJBjQB6llBBL/kY2BKkQOBBR5JjRrP6ApFkB3F0iDIpLVAkBF85Hk+5GdClILC9YCNEls"
-    "oBDo3AkwJ8UTEUrxyH5IBOILIFPQQmYBVOwCVA0DI6lJAyDAABhTNnd80v1mAAAAAElFTkSu"
-    "QmCC")
-
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAPhJREFUeNqkU8ENwjAMbCIGKJuEDdoNUgnxphN0BMQInaC8"
+    "EVK7AWxANiEjYEt25VoGBFg6pU7P8Tl2XPHCzpdxD8tAbrvbNieL50VAoCC2zvpGDnLZdxwM"
+    "yxVQAjLgBogq2QSoBKcGVYkVBPpR0BoNtVFxwqyAVDwE4ZNlyL5e3AHJ1pJrwqT+zVxHF9ex"
+    "JA6GDI3qyqhKS4DeU6uCynA0ZPfKx5jBF38aHtCSHGkHg9spH2Na96bGiWRnOjBad7QSm5XR"
+    "9/hCebUYZepE+UXpJY+9F/VkHhKj71yS5CQ9idiWwK8O/Ltob4L9jVCL/vKAX5/zU4ABAGYG"
+    "WP8eAwg4AAAAAElFTkSuQmCC")
+    
 #------------------------------------------------------------------------------
 # imgTarget
 #------------------------------------------------------------------------------
-imgTarget = PyEmbeddedImage(
+imgTargetBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAAJxJREFUeNrEU8ENgCAMZARGcQRGYARHYCNGcoSOwAhYk5ac"
     "SE0UEy+5T3u9pi04d4ZnJubGrBCvEkuiGWJhkojrwEBJor0UFxBlZoR8lJjmC5p46HwkgrMR"
@@ -489,7 +507,7 @@ imgTarget = PyEmbeddedImage(
 #------------------------------------------------------------------------------
 # imgX
 #------------------------------------------------------------------------------
-imgX = PyEmbeddedImage(
+imgXBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
     "ZSBJbWFnZVJlYWR5ccllPAAAAHlJREFUeNpiYMAECUC8H4j/o+H9UDmcQAGIz2PRiI7PQ9Vi"
     "aH5PhGYYfo9uyHkSNCO7BO5ndNMbsGhowOJKcJjsx6IQ3WBY4DVgCViszktAMiQBh0thGKcf"
@@ -499,9 +517,9 @@ imgX = PyEmbeddedImage(
 # imgLog
 #------------------------------------------------------------------------------
 imgLogBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAOCAYAAAAmL5yKAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAADNJREFUeNpiZGBgeM8AAYJQ+j8DCYCRUgMGHjBiESPJSxQb"
-    "MDjDgCQvUWzAaDpgYAAIMAC6EhABxj82bQAAAABJRU5ErkJggg==")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByMsplQLBAAAAC9JREFUOMtjYKAQMDIw"
+    "MLyHsgWh9H9SDGBiGPKAEYsYSWEyTMOApDAZTQeDIAzYAXvGCBBY8UOKAAAAAElFTkSuQmCC")
 
 #------------------------------------------------------------------------------
 # imgCli
@@ -528,11 +546,11 @@ imgMoveBlack = PyEmbeddedImage(
 # imgEye
 #------------------------------------------------------------------------------
 imgEyeBlack = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAMCAYAAABr5z2BAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAH9JREFUeNpiYMAEAkA8H4jfA/F/KH4PFRNgIAAC0DSi4/dQ"
-    "NVhBAprCBiB2gOIGNIMTCGk2wGKBAS5DDNCc2QAVbyAg9h/qOob72ASx+J8BKocsdp8JSHxg"
-    "IB98wOY3Yr2AEla4AhEU7wqEApEq0UiVhISclPuxJOV+bEkZIMAAk+1cU80Xw/EAAAAASUVO"
-    "RK5CYII=")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByMaae6enQAAAI9JREFUOMvNksEJgDAM"
+    "RR9evHYER+gIjuAIukmdwBEczRHaDfQSoYRIBEX8kMtPfpomH/6IAKxABnaJLFzwxIMS6shS"
+    "Y2JUhQnoJZJqPHriaDwQr5pENWYSPjncLtOxWaTxfyRXc1sDlAcXKw0wqSbnBHPFzSqHaCZv"
+    "iQHovCW+csZXjFRbeTGsvNyx8udoD31xVkhwngFgAAAAAElFTkSuQmCC")
 
 
 """----------------------------------------------------------------------------
@@ -609,7 +627,8 @@ class gcsLinkSettingsPanel(scrolled.ScrolledPanel):
       
       self.spComboBox = wx.ComboBox(self, -1, value=self.configData.dataLinkPort, 
          choices=spList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
-      flexGridSizer.Add(self.spComboBox, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.spComboBox, 
+         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
       
       # Add baud rate controls
       srText = wx.StaticText(self, label="Baud Rate:")
@@ -617,7 +636,8 @@ class gcsLinkSettingsPanel(scrolled.ScrolledPanel):
       
       self.sbrComboBox = wx.ComboBox(self, -1, value=self.configData.dataLinkBaud, 
          choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
-      flexGridSizer.Add(self.sbrComboBox, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.sbrComboBox, 
+         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
       
       self.SetSizer(vBoxSizer)
          
@@ -651,7 +671,8 @@ class gcsCliSettingsPanel(scrolled.ScrolledPanel):
       
       self.cb = wx.CheckBox(self, wx.ID_ANY)
       self.cb.SetValue(self.configData.dataCliSaveCmdHistory)
-      flexGridSizer.Add(self.cb, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.cb, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
 
       # Add spin ctrl
       st = wx.StaticText(self, wx.ID_ANY, "Max Command History")
@@ -660,7 +681,8 @@ class gcsCliSettingsPanel(scrolled.ScrolledPanel):
       self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
       self.sc.SetRange(1,1000)
       self.sc.SetValue(self.configData.dataCliCmdMaxHistory)
-      flexGridSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.sc, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
       
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
       self.SetSizer(vBoxSizer)
@@ -697,7 +719,8 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
       self.cb.SetValue(self.configData.dataMachineAutoRefresh)
       self.cb.SetToolTip(
          wx.ToolTip("Send '?' Status request (experimental)"))
-      flexGridSizer.Add(self.cb, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.cb, 
+         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
 
 
       # Add spin ctrl
@@ -707,7 +730,8 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
       self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
       self.sc.SetRange(1,1000000)
       self.sc.SetValue(self.configData.dataMachineAutoRefreshPeriod)
-      flexGridSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.sc, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
       
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
       self.SetSizer(vBoxSizer)
@@ -742,8 +766,8 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       
       self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
       self.cb.SetValue(self.configData.dataCV2Enable)
-      flexGridSizer.Add(self.cb, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-
+      flexGridSizer.Add(self.cb, 
+         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL,border=5)
 
       # Add spin ctrl
       st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Period (milliseconds)")
@@ -752,7 +776,8 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
       self.sc.SetRange(1,1000000)
       self.sc.SetValue(self.configData.dataCV2CapturePeriod)
-      flexGridSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.sc, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
       
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
       self.SetSizer(vBoxSizer)
@@ -788,7 +813,7 @@ class gcsSettingsDialog(wx.Dialog):
       self.imageList.Add(imgMoveBlack.GetBitmap())
       self.imageList.Add(imgEyeBlack.GetBitmap())
 
-      self.noteBook = wx.Notebook(self, size=(550,300), style=wx.BK_LEFT)
+      self.noteBook = wx.Notebook(self, size=(640,300))#, style=wx.BK_LEFT)
       
       self.noteBook.AssignImageList(self.imageList)
       
@@ -858,7 +883,7 @@ class gcsSettingsDialog(wx.Dialog):
       
    def AddCV2Panel(self, page):
       self.CV2Page = gcsCV2SettingsPanel(self.noteBook, self.configData)
-      self.noteBook.AddPage(self.CV2Page, "CV2")
+      self.noteBook.AddPage(self.CV2Page, "Computer Vision")
       self.noteBook.SetPageImage(page, 6)
      
    def UpdatConfigData(self):
@@ -2036,24 +2061,20 @@ class gcsMainWindow(wx.Frame):
       
       runItem = wx.MenuItem(runMenu, gID_MENU_RUN,    "&Run\tF5")
       runItem.SetBitmap(imgPlayBlack.GetBitmap())
-      runItem.SetDisabledBitmap(imgPlayGray.GetBitmap())
       runMenu.AppendItem(runItem)      
       
       stepItem = wx.MenuItem(runMenu, gID_MENU_STEP,  "S&tep")
-      stepItem.SetBitmap(imgNextBlack.GetBitmap())
-      stepItem.SetDisabledBitmap(imgNextGray.GetBitmap())      
+      stepItem.SetBitmap(imgStepBlack.GetBitmap())
       runMenu.AppendItem(stepItem)      
       
       stopItem = wx.MenuItem(runMenu, gID_MENU_STOP,  "&Stop")
       stopItem.SetBitmap(imgStopBlack.GetBitmap())
-      stopItem.SetDisabledBitmap(imgStopGray.GetBitmap())            
       runMenu.AppendItem(stopItem)      
 
       runMenu.AppendSeparator()
       breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE, 
                                                       "Brea&kpoint Toggle\tF9")
       breakItem.SetBitmap(imgBreakBlack.GetBitmap())
-      breakItem.SetDisabledBitmap(imgBreakGray.GetBitmap())
       runMenu.AppendItem(breakItem)
       
       runMenu.Append(gID_MENU_BREAK_REMOVE_ALL,       "Breakpoint &Remove All")
@@ -2061,13 +2082,11 @@ class gcsMainWindow(wx.Frame):
 
       setPCItem = wx.MenuItem(runMenu, gID_MENU_SET_PC,"Set &PC")
       setPCItem.SetBitmap(imgMapPinBlack.GetBitmap())
-      setPCItem.SetDisabledBitmap(imgMapPinGray.GetBitmap())            
       runMenu.AppendItem(setPCItem)      
 
       gotoPCItem = wx.MenuItem(runMenu, gID_MENU_GOTO_PC,
                                                       "&Goto PC")
-      gotoPCItem.SetBitmap(imgGoToMapPinBlack.GetBitmap())
-      gotoPCItem.SetDisabledBitmap(imgGoToMapPinGray.GetBitmap())            
+      gotoPCItem.SetBitmap(imgGotoMapPinBlack.GetBitmap())
       runMenu.AppendItem(gotoPCItem)      
       
       #------------------------------------------------------------------------
@@ -2219,9 +2238,9 @@ class gcsMainWindow(wx.Frame):
       #self.gcodeToolBar.AddTool(gID_MENU_RUN, "Run", imgPlayBlack.GetBitmap(), 
       #   imgPlayGray.GetBitmap(), aui.ITEM_NORMAL, "Run\tF5", "", None)
       
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", imgNextBlack.GetBitmap(),
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", imgStepBlack.GetBitmap(),
          "Step")
-      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STEP, imgNextGray.GetBitmap())
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STEP, imgStepGray.GetBitmap())
       
       self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, "Stop", imgStopBlack.GetBitmap(),
          "Stop")
@@ -2237,9 +2256,9 @@ class gcsMainWindow(wx.Frame):
          "Set PC")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, imgMapPinGray.GetBitmap())         
 
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", imgGoToMapPinBlack.GetBitmap(),
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", imgGotoMapPinBlack.GetBitmap(),
          "Goto PC")
-      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, imgGoToMapPinGray.GetBitmap())         
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, imgGotoMapPinGray.GetBitmap())         
       
       self.gcodeToolBar.Realize()
 
