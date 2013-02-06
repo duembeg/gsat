@@ -812,9 +812,12 @@ class gcsSettingsDialog(wx.Dialog):
       self.imageList.Add(imgMachineBlack.GetBitmap())
       self.imageList.Add(imgMoveBlack.GetBitmap())
       self.imageList.Add(imgEyeBlack.GetBitmap())
-
-      self.noteBook = wx.Notebook(self, size=(640,300))#, style=wx.BK_LEFT)
       
+      if os.name == 'nt':
+         self.noteBook = wx.Notebook(self, size=(640,300))
+      else:
+         self.noteBook = wx.Notebook(self, size=(640,300), style=wx.BK_LEFT)      
+         
       self.noteBook.AssignImageList(self.imageList)
       
       # add pages
@@ -831,7 +834,7 @@ class gcsSettingsDialog(wx.Dialog):
 
       # buttons
       line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
-      sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
+      sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT|wx.TOP, border=5)
 
       btnsizer = wx.StdDialogButtonSizer()
 
@@ -883,7 +886,7 @@ class gcsSettingsDialog(wx.Dialog):
       
    def AddCV2Panel(self, page):
       self.CV2Page = gcsCV2SettingsPanel(self.noteBook, self.configData)
-      self.noteBook.AddPage(self.CV2Page, "Computer Vision")
+      self.noteBook.AddPage(self.CV2Page, " OpenCV2")
       self.noteBook.SetPageImage(page, 6)
      
    def UpdatConfigData(self):
@@ -1973,12 +1976,12 @@ class gcsMainWindow(wx.Frame):
             .BestSize(300,310)
       )
          
-      self.aui_mgr.AddPane(self.outputText,
-         aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(2).Caption("Output").BestSize(600,150)
-      )
-         
       self.aui_mgr.AddPane(self.cliPanel,
-         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(1).Caption("Command").BestSize(600,30)
+         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(2).Caption("Command").BestSize(600,30)
+      )
+
+      self.aui_mgr.AddPane(self.outputText,
+         aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(1).Caption("Output").BestSize(600,150)
       )
 
       self.CreateMenu()
@@ -3418,6 +3421,79 @@ class gcsSserialPortThread(threading.Thread):
       if self.cmdLineOptions.vverbose:
          print "** gcsSserialPortThread exit."
 
+"""----------------------------------------------------------------------------
+   gcsComputerVisionThread:
+   Threads that capture and processes vide frames.
+----------------------------------------------------------------------------"""
+class gcsComputerVisionThread(threading.Thread):
+   """Worker Thread Class."""
+   def __init__(self, notify_window, in_queue, out_queue, cmd_line_options, configData):
+      """Init Worker Thread Class."""
+      threading.Thread.__init__(self)
+
+      # init local variables
+      self.notifyWindow = notify_window
+      self.mw2tQueue = in_queue
+      self.t2mwQueue = out_queue
+      self.cmdLineOptions = cmd_line_options
+      self.configData
+      
+      # start thread
+      self.start()
+        
+   """-------------------------------------------------------------------------
+   gcscomputerVisionThread: Main Window Event Handlers
+   Handle events coming from main UI
+   -------------------------------------------------------------------------"""
+   def ProcessQueue(self):
+      # process events from queue ---------------------------------------------
+      if not self.mw2tQueue.empty():
+         # get item from queue
+         e = self.mw2tQueue.get()
+         
+         if e.event_id == gEV_CMD_EXIT:
+            if self.cmdLineOptions.vverbose:
+               print "** gcscomputerVisionThread got event gEV_CMD_EXIT."
+            self.endThread = True
+            
+         elif e.event_id == gEV_CMD_START_CAPTURE:
+            if self.cmdLineOptions.vverbose:
+               print "** gcscomputerVisionThread got event gEV_CMD_START_CAPTURE."
+            
+         elif e.event_id == gEV_CMD_END_CAPTURE:
+            if self.cmdLineOptions.vverbose:
+               print "** gcscomputerVisionThread got event gEV_CMD_END_CAPTURE."
+            
+         # item qcknowledge
+         self.mw2tQueue.task_done()
+         
+   """-------------------------------------------------------------------------
+   gcscomputerVisionThread: General Functions
+   -------------------------------------------------------------------------"""
+   
+   def run(self):
+      """Run Worker Thread."""
+      # This is the code executing in the new thread. 
+      self.endThread = False
+      
+      if self.cmdLineOptions.vverbose:
+         print "** gcscomputerVisionThread start."
+      
+      while(self.endThread != True):
+
+         # process input queue for new commands or actions
+         self.ProcessQueue()
+         
+         # check if we need to exit now
+         if self.endThread:
+            break
+         
+            wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
+            break
+            
+      if self.cmdLineOptions.vverbose:
+         print "** gcscomputerVisionThread exit."
+         
 """----------------------------------------------------------------------------
    start here:
    Python script start up code.
