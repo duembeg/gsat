@@ -40,6 +40,7 @@ import threading
 import serial
 import re
 import Queue
+import time
 import wx
 from optparse import OptionParser
 from wx.lib.mixins import listctrl as listmix
@@ -123,17 +124,17 @@ gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
 # -----------------------------------------------------------------------------
 # Grbl commands
 # -----------------------------------------------------------------------------
-gGRBL_CMD_GET_STATUS = "?\n"
-gGRBL_CMD_RESET_TO_ZERO_POS = "G92 X0 Y0 Z0\n"
-gGRBL_CMD_RESET_TO_VAL_POS = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_GO_ZERO = "G0 X0 Y0 Z0\n"
-gGRBL_CMD_GO_POS = "G0 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_EXE_HOME_CYCLE = "G28 X0 Y0 Z0\n"
-gGRBL_CMD_JOG_X = "G0 X<VAL>\n"
-gGRBL_CMD_JOG_Y = "G0 Y<VAL>\n"
-gGRBL_CMD_JOG_Z = "G0 Z<VAL>\n"
-gGRBL_CMD_SPINDLE_ON = "M3\n"
-gGRBL_CMD_SPINDLE_OFF = "M5\n"
+gGRBL_CMD_GET_STATUS          = "?\n"
+gGRBL_CMD_RESET_TO_ZERO_POS   = "G92 X0 Y0 Z0\n"
+gGRBL_CMD_RESET_TO_VAL_POS    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gGRBL_CMD_GO_ZERO             = "G00 X0 Y0 Z0\n"
+gGRBL_CMD_GO_POS              = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gGRBL_CMD_EXE_HOME_CYCLE      = "G28 X0 Y0 Z0\n"
+gGRBL_CMD_JOG_X               = "G00 X<VAL>\n"
+gGRBL_CMD_JOG_Y               = "G00 Y<VAL>\n"
+gGRBL_CMD_JOG_Z               = "G00 Z<VAL>\n"
+gGRBL_CMD_SPINDLE_ON          = "M3\n"
+gGRBL_CMD_SPINDLE_OFF         = "M5\n"
 
 # -----------------------------------------------------------------------------
 # state machine commands
@@ -180,6 +181,14 @@ gEV_DATA_OUT         = 2030
 gEV_DATA_IN          = 2040
 gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
+
+# -----------------------------------------------------------------------------
+# Thread/ComputerVisionWindow communication events
+# -----------------------------------------------------------------------------
+gEV_CMD_CV_EXIT            = 1000
+
+gEV_CMD_CV_START_CAPTURE   = 3000
+gEV_CMD_CV_END_CAPTURE     = 3010
            
 """----------------------------------------------------------------------------
    gcsStateData:
@@ -594,6 +603,37 @@ class gcsLog(wx.PyLog):
             self.tc.AppendText(message + '\n')
             
 """----------------------------------------------------------------------------
+   gcsProgramSettingsPanel:
+   Link settings.
+----------------------------------------------------------------------------"""
+class gcsProgramSettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, configData, **args):
+      scrolled.ScrolledPanel.__init__(self, parent, 
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = configData
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      self.scrollSmartRB = wx.RadioButton(self, -1, "Smart Auto Scroll", style=wx.RB_GROUP)
+      self.scrollAutoRB = wx.RadioButton(self, -1, "Auto Scroll")
+      self.scrollNoRB = wx.RadioButton(self, -1, "No Auto Scroll")
+      
+      vBoxSizer.Add(self.scrollSmartRB)
+      vBoxSizer.Add(self.scrollAutoRB)
+      vBoxSizer.Add(self.scrollNoRB)
+      
+      self.SetSizer(vBoxSizer)
+         
+   def UpdatConfigData(self):
+      pass
+      
+"""----------------------------------------------------------------------------
    gcsLinkSettingsPanel:
    Link settings.
 ----------------------------------------------------------------------------"""
@@ -741,52 +781,6 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
       self.configData.dataMachineAutoRefreshPeriod = self.sc.GetValue()
       
 """----------------------------------------------------------------------------
-   gcsCV2SettingsPanel:
-   CV2 settings.
-----------------------------------------------------------------------------"""
-class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
-   def __init__(self, parent, configData, **args):
-      scrolled.ScrolledPanel.__init__(self, parent, 
-         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
-
-      self.configData = configData
-
-      self.InitUI()
-      self.SetAutoLayout(True)
-      self.SetupScrolling()
-      #self.FitInside()
-
-   def InitUI(self):
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      flexGridSizer = wx.FlexGridSizer(2,2)
-
-      # Add cehck box
-      st = wx.StaticText(self, wx.ID_ANY, "Enable CV2")
-      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-      
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
-      self.cb.SetValue(self.configData.dataCV2Enable)
-      flexGridSizer.Add(self.cb, 
-         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL,border=5)
-
-      # Add spin ctrl
-      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Period (milliseconds)")
-      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-      
-      self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
-      self.sc.SetRange(1,1000000)
-      self.sc.SetValue(self.configData.dataCV2CapturePeriod)
-      flexGridSizer.Add(self.sc, 
-         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
-      
-      vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
-      self.SetSizer(vBoxSizer)
-         
-   def UpdatConfigData(self):
-      self.configData.dataCV2Enable = self.cb.GetValue()
-      self.configData.dataCV2CapturePeriod = self.sc.GetValue()
-      
-"""----------------------------------------------------------------------------
    gcsSettingsDialog:
    Dialog to control program settings
 ----------------------------------------------------------------------------"""
@@ -852,9 +846,8 @@ class gcsSettingsDialog(wx.Dialog):
       #self.SetAutoLayout(True)
       
    def AddProgramPage(self, page):
-      win = wx.Panel(self.noteBook, -1)
-      self.noteBook.AddPage(win, "Program")
-      st = wx.StaticText(win, -1, "Main Program panel stuff goes here")
+      self.linkPage = gcsProgramSettingsPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.linkPage, "Program")
       self.noteBook.SetPageImage(page, 0)
       
    def AddLinkPage(self, page):
@@ -1134,13 +1127,13 @@ class gcsGcodeStcStyledTextCtrl(stc.StyledTextCtrl):
       self.SetMarginMask(2, pow(2,self.markerPC))
       
       # other settings
-      self.SetReadOnly(True)
+      #self.SetReadOnly(True)
       #self.SetCaretLineVisible(True)
       #self.EnsureCaretVisible()
       #self.SetCaretLineBack("yellow")
       
       self.SetLexer(stc.STC_LEX_PYTHON)
-      self.SetKeyWords(0, "G00 G01 G20 G21 G90 G92 G94 M2 M3 M5 M9 T6 S")
+      self.SetKeyWords(0, "G00 G01 G02 G03 G04 G05 G20 G21 G90 G92 G94 M2 M3 M5 M9 T6 S")
 
       # more global default styles for all languages
       #self.StyleSetSpec(stc.STC_STYLE_LINENUMBER,
@@ -1472,6 +1465,11 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       
       self.useMachineWorkPosition = False
       
+      self.stackData = False
+      self.stackX = 0
+      self.stackY = 0
+      self.stackZ = 0
+      
       self.InitUI()
       width,height = self.GetSizeTuple()
       scroll_unit = 10
@@ -1479,13 +1477,20 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
 
    def InitUI(self):
       vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      hPanelBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
       
       # Add Controls ----------------------------------------------------------
-      buttonBox = self.CreateButtons()
+      buttonBox = self.CreateJoggingButtons()
       vPanelBoxSizer.Add(buttonBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       
-      joggingPositionBox, self.jX, self.jY, self.jZ, self.jSpindle = self.CreatePositionStaticBox("Jogging Status")
-      vPanelBoxSizer.Add(joggingPositionBox, 1, flag=wx.ALL|wx.EXPAND, border=5)
+      positionStatus = self.CreatePositionStatus()
+      hPanelBoxSizer.Add(positionStatus, 0, flag=wx.EXPAND)
+      
+      positionGotoButtons = self.CreateGotoButtons()
+      hPanelBoxSizer.Add(positionGotoButtons, 0, flag=wx.LEFT|wx.EXPAND, border=10)
+
+      
+      vPanelBoxSizer.Add(hPanelBoxSizer, 1, flag=wx.ALL|wx.EXPAND, border=5)
       
       # Finish up init UI
       self.SetSizer(vPanelBoxSizer)
@@ -1543,51 +1548,12 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
    
       return staticBoxSizer
       
-   def CreatePositionStaticBox(self, label):
-      # Position static box ---------------------------------------------------
-      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+   def CreatePositionStatus(self):
       vBoxLeftSizer = wx.BoxSizer(wx.VERTICAL)
-      vBoxRightSizer = wx.BoxSizer(wx.VERTICAL)
       
-      hBoxSizer.Add(vBoxLeftSizer, 0, flag=wx.EXPAND)
-      hBoxSizer.Add(vBoxRightSizer, 0, flag=wx.EXPAND|wx.ALIGN_LEFT|wx.LEFT|wx.TOP, border=5)
-      
-      positionBoxSizer = self.CreateStaticBox(label)      
-      flexGridSizer = wx.FlexGridSizer(4,2)
-      positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
-      vBoxLeftSizer.Add(positionBoxSizer, 0, flag=wx.EXPAND)
-
-      # Add X pos
-      xText = wx.StaticText(self, label="X:")
-      xPosition = wx.TextCtrl(self, value=gZeroString)
-      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(xPosition, 1, flag=wx.EXPAND)
-      
-      # Add Y Pos
-      yText = wx.StaticText(self, label="Y:")
-      yPosition = wx.TextCtrl(self, value=gZeroString)
-      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(yPosition, 1, flag=wx.EXPAND)
-      
-      # Add Z Pos
-      zText = wx.StaticText(self, label="Z:")
-      zPosition = wx.TextCtrl(self, value=gZeroString)
-      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(zPosition, 1, flag=wx.EXPAND)
-
-      # Add Spindle status
-      spindleText = wx.StaticText(self, label="SP:")
-      spindleStatus = wx.TextCtrl(self, value=gOffString, style=wx.TE_READONLY)
-      spindleStatus.SetBackgroundColour(gReadOnlyBkColor)
-      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(spindleStatus, 1, flag=wx.EXPAND)
-      
-      # add spin ctrl
-      spinBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      vBoxLeftSizer.Add(spinBoxSizer)
-      
+      # add status controls
       spinText = wx.StaticText(self, -1, "Step Size:  ")
-      spinBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      vBoxLeftSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
       
       self.spinCtrl = FS.FloatSpin(self, -1, 
          min_val=0, max_val=99999, increment=0.10, value=1.0, 
@@ -1595,7 +1561,40 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.spinCtrl.SetFormat("%f")
       self.spinCtrl.SetDigits(4)
 
-      spinBoxSizer.Add(self.spinCtrl, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      vBoxLeftSizer.Add(self.spinCtrl, 0, 
+         flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
+      
+      #positionBoxSizer = self.CreateStaticBox(label)      
+      spinText = wx.StaticText(self, -1, "Jogging Status:  ")
+      vBoxLeftSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      
+      flexGridSizer = wx.FlexGridSizer(4,2)
+      vBoxLeftSizer.Add(flexGridSizer,0 , flag=wx.ALL|wx.EXPAND, border=5)
+
+      # Add X pos
+      xText = wx.StaticText(self, label="X:")
+      self.jX = wx.TextCtrl(self, value=gZeroString)
+      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jX, 1, flag=wx.EXPAND)
+      
+      # Add Y Pos
+      yText = wx.StaticText(self, label="Y:")
+      self.jY = wx.TextCtrl(self, value=gZeroString)
+      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jY, 1, flag=wx.EXPAND)
+      
+      # Add Z Pos
+      zText = wx.StaticText(self, label="Z:")
+      self.jZ = wx.TextCtrl(self, value=gZeroString)
+      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jZ, 1, flag=wx.EXPAND)
+
+      # Add Spindle status
+      spindleText = wx.StaticText(self, label="SP:")
+      self.jSpindle = wx.TextCtrl(self, value=gOffString, style=wx.TE_READONLY)
+      self.jSpindle.SetBackgroundColour(gReadOnlyBkColor)
+      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
       
       # Add Checkbox for sync with work position
       self.useWorkPosCheckBox = wx.CheckBox (self, label="Use Work Pos")
@@ -1604,41 +1603,54 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
       vBoxLeftSizer.Add(self.useWorkPosCheckBox)
       
+      return vBoxLeftSizer
+      
+   def CreateGotoButtons(self):
+      vBoxRightSizer = wx.BoxSizer(wx.VERTICAL)
+      
+      spinText = wx.StaticText(self, -1, "")
+      vBoxRightSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
+     
       # add Buttons
-      self.resettoZeroPositionButton = wx.Button(self, label="Rst to Zero")
+      self.resettoZeroPositionButton = wx.Button(self, label="Reset to Zero")
       self.resettoZeroPositionButton.SetToolTip(
          wx.ToolTip("Reset machine work position to X0, Y0, Z0"))
       self.Bind(wx.EVT_BUTTON, self.OnResetToZeroPos, self.resettoZeroPositionButton)
-      vBoxRightSizer.Add(self.resettoZeroPositionButton, flag=wx.EXPAND)
+      vBoxRightSizer.Add(self.resettoZeroPositionButton, flag=wx.TOP|wx.EXPAND, border=5)
       
-      self.resettoCurrentPositionButton = wx.Button(self, label="Rst to Pos")
-      self.resettoCurrentPositionButton.SetToolTip(
-         wx.ToolTip("Reset machine work position to current jogging values"))
-      self.Bind(wx.EVT_BUTTON, self.OnResetToCurrentPos, self.resettoCurrentPositionButton)
-      vBoxRightSizer.Add(self.resettoCurrentPositionButton, flag=wx.EXPAND)
-
-      self.goZeroButton = wx.Button(self, label="Go Zero Pos")
+      self.goZeroButton = wx.Button(self, label="Goto Zero")
       self.goZeroButton.SetToolTip(
          wx.ToolTip("Move to Machine Working position X0, Y0, Z0"))
       self.Bind(wx.EVT_BUTTON, self.OnGoZero, self.goZeroButton)
       vBoxRightSizer.Add(self.goZeroButton, flag=wx.EXPAND)
       
-      self.goToCurrentPositionButton = wx.Button(self, label="Go to Pos")
+      self.resettoCurrentPositionButton = wx.Button(self, label="Reset to Jog")
+      self.resettoCurrentPositionButton.SetToolTip(
+         wx.ToolTip("Reset machine work position to current jogging values"))
+      self.Bind(wx.EVT_BUTTON, self.OnResetToCurrentPos, self.resettoCurrentPositionButton)
+      vBoxRightSizer.Add(self.resettoCurrentPositionButton, flag=wx.EXPAND)
+      
+      self.goToCurrentPositionButton = wx.Button(self, label="Goto Jog")
       self.goToCurrentPositionButton.SetToolTip(
          wx.ToolTip("Move to to current jogging values"))
       self.Bind(wx.EVT_BUTTON, self.OnGoPos, self.goToCurrentPositionButton)
       vBoxRightSizer.Add(self.goToCurrentPositionButton, flag=wx.EXPAND)
 
-      self.goHomeButton = wx.Button(self, label="Go Home Pos")
+      self.goHomeButton = wx.Button(self, label="Goto Home")
       self.goHomeButton.SetToolTip(
          wx.ToolTip("Execute Machine Homing Cycle"))
       self.Bind(wx.EVT_BUTTON, self.OnGoHome, self.goHomeButton)
       vBoxRightSizer.Add(self.goHomeButton, flag=wx.EXPAND)
+
+      self.pushPopJogButton = wx.Button(self, label="Push Jog")
+      self.pushPopJogButton.SetToolTip(
+         wx.ToolTip("Push/pop current jogging values into/from stack"))
+      self.Bind(wx.EVT_BUTTON, self.OnPushPopJog, self.pushPopJogButton)
+      vBoxRightSizer.Add(self.pushPopJogButton, flag=wx.EXPAND)
       
+      return vBoxRightSizer
       
-      return hBoxSizer, xPosition, yPosition, zPosition, spindleStatus
-      
-   def CreateButtons(self):      
+   def CreateJoggingButtons(self):
       # Add Buttons -----------------------------------------------------------
       hButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
       vYButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -1771,6 +1783,20 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
    
    def OnGoHome(self, e):
       self.mainWindow.SerialWrite(gGRBL_CMD_EXE_HOME_CYCLE)   
+   
+   def OnPushPopJog(self, e):
+      if self.stackData:
+         self.stackData = False
+         self.jX.SetValue(self.stackX)
+         self.jY.SetValue(self.stackY)
+         self.jZ.SetValue(self.stackZ)
+         self.pushPopJogButton.SetLabel("Push Jog")
+      else:
+         self.stackData = True
+         self.stackX = self.jX.GetValue()
+         self.stackY = self.jY.GetValue()
+         self.stackZ = self.jZ.GetValue()
+         self.pushPopJogButton.SetLabel("Pop Jog")
 
    def OnUseMachineWorkPosition(self, e):
       self.useMachineWorkPosition = e.IsChecked()
@@ -1778,104 +1804,6 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
    def OnRefresh(self, e):
       pass
 
-"""----------------------------------------------------------------------------
-   gcsCV2Panel:
-   Status information about machine, controls to enable auto and manual 
-   refresh.
-----------------------------------------------------------------------------"""
-class gcsCV2Panel(wx.ScrolledWindow):
-   def __init__(self, parent, configData, **args):
-      wx.ScrolledWindow.__init__(self, parent, **args)
-
-      self.haveInitCV2 = False
-      self.mainWindow = parent
-      self.stateData = gcsStateData()
-      self.configData = configData
-      self.captureTimer = None
-      
-      self.InitUI()
-      
-      self.InitCV2()
-      
-      width,height = self.GetSizeTuple()
-      scroll_unit = 10
-      self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
-      
-      # register for close events
-      self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
-
-
-   def InitUI(self):
-      vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      self.capturePanel = wx.Panel(self, -1)
-      vPanelBoxSizer.Add(self.capturePanel, 1, wx.EXPAND)
-      
-      # Finish up init UI
-      self.SetSizer(vPanelBoxSizer)
-      self.Layout()
-
-   def InitCV2(self):
-      if self.configData.dataCV2Enable:
-         
-         # import extar packages
-         if not self.haveInitCV2:
-            import cv2.cv as cv
-            self.haveInitCV2 = True
-            self.cv=cv
-            
-         #set up camera
-         self.captureDevice = self.cv.CaptureFromCAM(0)
-         self.cv.WaitKey(200)
-         
-         # setup capture timer
-         if self.captureTimer is None:
-            self.captureTimer = wx.Timer(self, gID_TIMER_CV2_CAPTURE)
-            
-            # register for timer events
-            self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, self.captureTimer)
-         else:
-            self.captureTimer.Stop()
-         
-   def StartCapture(self):
-      if self.captureTimer is not None:
-         self.captureTimer.Start(self.configData.dataCV2CapturePeriod)
-   
-   def StopCapture(self):
-      if self.captureTimer is not None:
-         self.captureTimer.Stop()
-
-   def UpdateUI(self, stateData, statusData=None):
-      self.stateData = stateData
-      self.StartCapture()
-   
-   def OnCaptureTimer(self, e):
-      frame = self.cv.QueryFrame(self.captureDevice)
-        
-      #cv.ShowImage("Window",frame)
-      if frame is not None:
-         offset=(0,0)
-         self.cv.Line(frame, (320,0), (320,480) , 255)
-         self.cv.Line(frame, (0,240), (640,240) , 255)
-         self.cv.Circle(frame, (320,240), 66, 255)
-         self.cv.Circle(frame, (320,240), 22, 255)
-      
-         offset=(0,0)
-         
-         self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
-         
-         sizePanel = self.capturePanel.GetClientSize()
-         image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
-
-         self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
-         #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
-         bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
-         dc = wx.ClientDC(self.capturePanel)
-         dc.DrawBitmap(bitmap, offset[0], offset[1], False)
-   
-   def OnDestroy(self, e):
-      self.StopCapture()
-      e.Skip()
-      
 """----------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1963,7 +1891,7 @@ class gcsMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.machineStatusPanel,
          aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Position(1).Caption("Machine Status")\
-            .BestSize(300,180)
+            .BestSize(320,180)
       )
 
       self.aui_mgr.AddPane(self.CV2Panel,
@@ -1973,7 +1901,7 @@ class gcsMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(3).Caption("Machine Jogging")\
-            .BestSize(300,310)
+            .BestSize(320,340)
       )
          
       self.aui_mgr.AddPane(self.cliPanel,
@@ -2105,7 +2033,7 @@ class gcsMainWindow(wx.Frame):
 
       #------------------------------------------------------------------------
       # File menu bind
-      self.Bind(wx.EVT_MENU,        self.OnOpen,         id=wx.ID_OPEN)
+      self.Bind(wx.EVT_MENU,        self.OnFileOpen,     id=wx.ID_OPEN)
       self.Bind(wx.EVT_MENU_RANGE,  self.OnFileHistory,  id=wx.ID_FILE1, id2=wx.ID_FILE9)
       self.Bind(wx.EVT_MENU,        self.OnClose,        id=wx.ID_EXIT)
       self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN, 
@@ -2323,7 +2251,7 @@ class gcsMainWindow(wx.Frame):
    #---------------------------------------------------------------------------
    # File Menu Handlers
    #---------------------------------------------------------------------------
-   def OnOpen(self, e):
+   def OnFileOpen(self, e):
       """ File Open """
       # get current file data
       currentPath = self.stateData.gcodeFileName
@@ -2351,11 +2279,11 @@ class gcsMainWindow(wx.Frame):
          self.fileHistory.Save(self.configFile)
          self.configFile.Flush()  
          
-         self.FileOpen(self.stateData.gcodeFileName)
+         self.OnDoFileOpen(e, self.stateData.gcodeFileName)
          
    def OnDropDownToolBarOpen(self, e):
       if not e.IsDropDownClicked():
-         self.OnOpen(e)
+         self.OnFileOpen(e)
       else:
          toolbBar = e.GetEventObject()
          toolbBar.SetToolSticky(e.GetId(), True)
@@ -2388,14 +2316,13 @@ class gcsMainWindow(wx.Frame):
       self.fileHistory.Save(self.configFile)
       self.configFile.Flush()  
       
-      self.FileOpen(self.stateData.gcodeFileName)
+      self.OnDoFileOpen(e, self.stateData.gcodeFileName)
          
-   def FileOpen(self, fileName):
+   def OnDoFileOpen(self, e, fileName=None):
       if os.path.exists(fileName):
          self.stateData.gcodeFileName = fileName
          
-         #self.gcText.DeleteAllItems()
-         self.gcText.SetReadOnly(False)         
+         #self.gcText.SetReadOnly(False)         
          self.gcText.ClearAll()
          fileLines = []
 
@@ -2441,11 +2368,13 @@ class gcsMainWindow(wx.Frame):
          if keepGoing:
             self.stateData.gcodeFileLines = fileLines
             self.stateData.fileIsOpen = True
+            self.SetTitle("%s - %s" % (os.path.basename(self.stateData.gcodeFileName), __appname__))
          else:
             self.stateData.gcodeFileName = ""
             self.stateData.gcodeFileLines = []
             self.stateData.fileIsOpen = False
-            self.gcText.DeleteAllItems()
+            self.gcText.ClearAll()
+            self.SetTitle("%s" % (__appname__))
 
          self.stateData.breakPoints = set()
          self.SetPC(0)
@@ -2460,7 +2389,7 @@ class gcsMainWindow(wx.Frame):
          result = dlg.ShowModal()
          dlg.Destroy()
       
-      self.gcText.SetReadOnly(True)
+      #self.gcText.SetReadOnly(True)
       
    #---------------------------------------------------------------------------
    # Edit Menu Handlers
@@ -2607,6 +2536,10 @@ class gcsMainWindow(wx.Frame):
    
    def OnRun(self, e):
       if self.serialPortThread is not None:
+         #import pdb;pdb.set_trace()
+         rawText = self.gcText.GetText()
+         #import pdb;pdb.set_trace()
+         self.stateData.gcodeFileLines = rawText.splitlines(True)
          self.mw2tQueue.put(threadEvent(gEV_CMD_RUN, 
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
          self.mw2tQueue.join()
@@ -3422,19 +3355,203 @@ class gcsSserialPortThread(threading.Thread):
          print "** gcsSserialPortThread exit."
 
 """----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+   Computer Vision Section:
+   Code related to the operation and interaction with OpenCV.
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------   
+----------------------------------------------------------------------------"""
+"""----------------------------------------------------------------------------
+   gcsCV2SettingsPanel:
+   CV2 settings.
+----------------------------------------------------------------------------"""
+class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, configData, **args):
+      scrolled.ScrolledPanel.__init__(self, parent, 
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = configData
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      flexGridSizer = wx.FlexGridSizer(2,2)
+
+      # Add cehck box
+      st = wx.StaticText(self, wx.ID_ANY, "Enable CV2")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
+      self.cb.SetValue(self.configData.dataCV2Enable)
+      flexGridSizer.Add(self.cb, 
+         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL,border=5)
+
+      # Add spin ctrl
+      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Period (milliseconds)")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.sc.SetRange(1,1000000)
+      self.sc.SetValue(self.configData.dataCV2CapturePeriod)
+      flexGridSizer.Add(self.sc, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+      
+      vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
+      self.SetSizer(vBoxSizer)
+         
+   def UpdatConfigData(self):
+      self.configData.dataCV2Enable = self.cb.GetValue()
+      self.configData.dataCV2CapturePeriod = self.sc.GetValue()
+
+
+"""----------------------------------------------------------------------------
+   gcsCV2Panel:
+   Status information about machine, controls to enable auto and manual 
+   refresh.
+----------------------------------------------------------------------------"""
+class gcsCV2Panel(wx.ScrolledWindow):
+   def __init__(self, parent, configData, **args):
+      wx.ScrolledWindow.__init__(self, parent, **args)
+
+      self.haveInitCV2 = False
+      self.mainWindow = parent
+      self.stateData = gcsStateData()
+      self.configData = configData
+      self.captureTimer = None
+      
+      self.InitUI()
+      
+      self.InitCV2()
+      
+      width,height = self.GetSizeTuple()
+      scroll_unit = 10
+      self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
+      
+      # register for close events
+      self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+
+
+   def InitUI(self):
+      vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      
+      # capture panel
+      self.capturePanel = wx.Panel(self, -1)
+      vPanelBoxSizer.Add(self.capturePanel, 1, wx.EXPAND)
+      
+      # buttons
+      line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
+      vPanelBoxSizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT|wx.TOP, border=5)
+
+      btnsizer = wx.StdDialogButtonSizer()
+
+      self.spindleOnButton = wx.Button(self, label="Move to CAM")
+      self.spindleOnButton.SetToolTip(wx.ToolTip("Move CAM corss-hair to target"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
+      btnsizer.Add(self.spindleOnButton)
+
+      self.spindleOnButton = wx.Button(self, label="Move to Tool")
+      self.spindleOnButton.SetToolTip(wx.ToolTip("Move Tool to target"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
+      btnsizer.Add(self.spindleOnButton)
+
+      self.spindleOnButton = wx.Button(self, label="Capture")
+      self.spindleOnButton.SetToolTip(wx.ToolTip("Togle CAM capture on/off"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
+      btnsizer.Add(self.spindleOnButton)
+
+      
+      btnsizer.Realize()
+
+      vPanelBoxSizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5)
+
+
+      
+      # Finish up init UI
+      self.SetSizer(vPanelBoxSizer)
+      self.Layout()
+
+   def InitCV2(self):
+      if self.configData.dataCV2Enable:
+         
+         # import extar packages
+         if not self.haveInitCV2:
+            import cv2.cv as cv
+            self.haveInitCV2 = True
+            self.cv=cv
+            
+         #set up camera
+         self.captureDevice = self.cv.CaptureFromCAM(0)
+         self.cv.WaitKey(200)
+         
+         # setup capture timer
+         if self.captureTimer is None:
+            self.captureTimer = wx.Timer(self, gID_TIMER_CV2_CAPTURE)
+            
+            # register for timer events
+            self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, self.captureTimer)
+         else:
+            self.captureTimer.Stop()
+         
+   def StartCapture(self):
+      if self.captureTimer is not None:
+         self.captureTimer.Start(self.configData.dataCV2CapturePeriod)
+   
+   def StopCapture(self):
+      if self.captureTimer is not None:
+         self.captureTimer.Stop()
+
+   def UpdateUI(self, stateData, statusData=None):
+      self.stateData = stateData
+      self.StartCapture()
+   
+   def OnCaptureTimer(self, e):
+      frame = self.cv.QueryFrame(self.captureDevice)
+        
+      #cv.ShowImage("Window",frame)
+      if frame is not None:
+         offset=(0,0)
+         self.cv.Line(frame, (320,0), (320,480) , 255)
+         self.cv.Line(frame, (0,240), (640,240) , 255)
+         self.cv.Circle(frame, (320,240), 66, 255)
+         self.cv.Circle(frame, (320,240), 22, 255)
+      
+         offset=(0,0)
+         
+         self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
+         
+         sizePanel = self.capturePanel.GetClientSize()
+         image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
+
+         self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
+         #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
+         bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+         dc = wx.ClientDC(self.capturePanel)
+         dc.DrawBitmap(bitmap, offset[0], offset[1], False)
+   
+   def OnDestroy(self, e):
+      self.StopCapture()
+      e.Skip()
+      
+"""----------------------------------------------------------------------------
    gcsComputerVisionThread:
    Threads that capture and processes vide frames.
 ----------------------------------------------------------------------------"""
 class gcsComputerVisionThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, in_queue, out_queue, cmd_line_options, configData):
+   def __init__(self, notify_window, in_queue, out_queue, configData, cmd_line_options):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
       # init local variables
       self.notifyWindow = notify_window
-      self.mw2tQueue = in_queue
-      self.t2mwQueue = out_queue
+      self.cvw2tQueue = in_queue
+      self.t2cvwQueue = out_queue
       self.cmdLineOptions = cmd_line_options
       self.configData
       
@@ -3447,33 +3564,59 @@ class gcsComputerVisionThread(threading.Thread):
    -------------------------------------------------------------------------"""
    def ProcessQueue(self):
       # process events from queue ---------------------------------------------
-      if not self.mw2tQueue.empty():
+      if not self.cvw2tQueue.empty():
          # get item from queue
-         e = self.mw2tQueue.get()
+         e = self.cvw2tQueue.get()
          
-         if e.event_id == gEV_CMD_EXIT:
+         if e.event_id == gEV_CMD_CV_EXIT:
             if self.cmdLineOptions.vverbose:
                print "** gcscomputerVisionThread got event gEV_CMD_EXIT."
             self.endThread = True
             
-         elif e.event_id == gEV_CMD_START_CAPTURE:
-            if self.cmdLineOptions.vverbose:
-               print "** gcscomputerVisionThread got event gEV_CMD_START_CAPTURE."
-            
-         elif e.event_id == gEV_CMD_END_CAPTURE:
-            if self.cmdLineOptions.vverbose:
-               print "** gcscomputerVisionThread got event gEV_CMD_END_CAPTURE."
-            
          # item qcknowledge
-         self.mw2tQueue.task_done()
+         self.cv2tQueue.task_done()
          
    """-------------------------------------------------------------------------
    gcscomputerVisionThread: General Functions
    -------------------------------------------------------------------------"""
+   def CaptureFrame(self, e):
+      frame = self.cv.QueryFrame(self.captureDevice)
+        
+      #cv.ShowImage("Window",frame)
+      if frame is not None:
+         offset=(0,0)
+         self.cv.Line(frame, (320,0), (320,480) , 255)
+         self.cv.Line(frame, (0,240), (640,240) , 255)
+         self.cv.Circle(frame, (320,240), 66, 255)
+         self.cv.Circle(frame, (320,240), 22, 255)
+      
+         offset=(0,0)
+         
+         self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
+         
+         sizePanel = self.capturePanel.GetClientSize()
+         image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
+
+         self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
+         #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
+         bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+         dc = wx.ClientDC(self.capturePanel)
+         dc.DrawBitmap(bitmap, offset[0], offset[1], False)
+
    
    def run(self):
-      """Run Worker Thread."""
-      # This is the code executing in the new thread. 
+      """
+      Worker Thread.
+      This is the code executing in the new thread context. 
+      """
+      import cv2.cv as cv
+      self.cv=cv
+            
+      #set up camera
+      self.captureDevice = self.cv.CaptureFromCAM(0)
+      self.cv.WaitKey(200)
+      
+      # init before work loop
       self.endThread = False
       
       if self.cmdLineOptions.vverbose:
@@ -3484,20 +3627,30 @@ class gcsComputerVisionThread(threading.Thread):
          # process input queue for new commands or actions
          self.ProcessQueue()
          
+         # capture frame
+         self.CaptureFrame()
+
+         # sleep for a period
+         time.sleep(self.configData.dataCV2CapturePeriod)
+         
          # check if we need to exit now
          if self.endThread:
-            break
-         
-            wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
             break
             
       if self.cmdLineOptions.vverbose:
          print "** gcscomputerVisionThread exit."
-         
+
+
 """----------------------------------------------------------------------------
-   start here:
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+   start here: (ENTRY POINT FOR SCRIPT, MAIN, Main)
    Python script start up code.
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 ----------------------------------------------------------------------------"""
+
 if __name__ == '__main__':
    
    (cmd_line_options, cli_args) = get_cli_params()
