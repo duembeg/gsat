@@ -187,8 +187,8 @@ gEV_PC_UPDATE        = 2060
 # -----------------------------------------------------------------------------
 gEV_CMD_CV_EXIT            = 1000
 
-gEV_CMD_CV_START_CAPTURE   = 3000
-gEV_CMD_CV_END_CAPTURE     = 3010
+gEV_CMD_CV_IMAGE           = 3000
+
            
 """----------------------------------------------------------------------------
    gcsStateData:
@@ -620,13 +620,41 @@ class gcsProgramSettingsPanel(scrolled.ScrolledPanel):
 
    def InitUI(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      self.scrollSmartRB = wx.RadioButton(self, -1, "Smart Auto Scroll", style=wx.RB_GROUP)
-      self.scrollAutoRB = wx.RadioButton(self, -1, "Auto Scroll")
-      self.scrollNoRB = wx.RadioButton(self, -1, "No Auto Scroll")
       
-      vBoxSizer.Add(self.scrollSmartRB)
-      vBoxSizer.Add(self.scrollAutoRB)
-      vBoxSizer.Add(self.scrollNoRB)
+      # Scrolling section
+      text = wx.StaticText(self, label="Scrolling:")
+      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.scrollSmartRB = wx.RadioButton(self, -1, "Smart Auto Scroll", style=wx.RB_GROUP)
+      self.scrollAlwaysRB = wx.RadioButton(self, -1, "Always Auto Scroll")
+      self.scrollNeverRB = wx.RadioButton(self, -1, "Never Auto Scroll")
+      hBoxSizer.Add(self.scrollSmartRB, wx.ALL, border=5)
+      hBoxSizer.Add(self.scrollAlwaysRB, wx.ALL, border=5)
+      hBoxSizer.Add(self.scrollNeverRB, wx.ALL, border=5)
+      vBoxSizer.Add(hBoxSizer, 0, wx.ALL|wx.EXPAND, border=5)
+      
+      # General Controls
+      line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
+      text = wx.StaticText(self, label="General Controls:")
+      vBoxSizer.Add(line, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, border=5)      
+      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      
+      gBoxSizer = wx.GridSizer(1,3)
+      
+      self.checkLineNumbers = wx.CheckBox (self, label="Line Numbers")
+      gBoxSizer.Add(self.checkLineNumbers)
+      
+      self.checkCaretLine = wx.CheckBox (self, label="Highlite Current Line")
+      gBoxSizer.Add(self.checkCaretLine)
+      
+      self.checkEditable = wx.CheckBox (self, label="Editable")
+      gBoxSizer.Add(self.checkEditable)
+      
+      vBoxSizer.Add(gBoxSizer, 0, wx.ALL|wx.EXPAND, border=5)
+
+
+      
       
       self.SetSizer(vBoxSizer)
          
@@ -755,7 +783,7 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
       st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh")
       flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
       
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
+      self.cb = wx.CheckBox(self, wx.ID_ANY) #, style=wx.ALIGN_RIGHT)
       self.cb.SetValue(self.configData.dataMachineAutoRefresh)
       self.cb.SetToolTip(
          wx.ToolTip("Send '?' Status request (experimental)"))
@@ -890,43 +918,47 @@ class gcsSettingsDialog(wx.Dialog):
       
 
 """----------------------------------------------------------------------------
-   gcsCliComboBox:
+   gcsCliPanel:
    Control to handle CLI (Command Line Interface)
 ----------------------------------------------------------------------------"""
-class gcsCliComboBox(wx.ComboBox):
-   def __init__(self, parent, configData, ID=wx.ID_ANY, value ="", pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, choices=[], style=0):
-      
-      wx.ComboBox.__init__(self, parent, ID, value, pos, size, choices,
-         style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER)
-         
+class gcsCliPanel(wx.Panel):
+   def __init__(self, parent, configData, *args, **kwargs):
+      wx.Panel.__init__(self, parent, *args, **kwargs)
+
       self.stateData = gcsStateData()
       self.cliCommand = ""
-      self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self)
-      
       self.configData = configData
+      
+      self.UnitUI()
+      
+   def UnitUI(self):
+      sizer = wx.BoxSizer(wx.VERTICAL)      
+      self.comboBox = wx.ComboBox(self, style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER)
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self.comboBox)
+      sizer.Add(self.comboBox, 1, wx.EXPAND|wx.ALL, border=1)
+      self.SetSizerAndFit(sizer)
       
    def UpdateUI(self, stateData):
       self.stateData = stateData
       if stateData.serialPortIsOpen and not stateData.swState == gSTATE_RUN:
-         self.Enable()
+         self.comboBox.Enable()
       else:
-         self.Disable()
+         self.comboBox.Disable()
       
    def GetCommand(self):
       return self.cliCommand
       
    def OnEnter(self, e):
-      cliCommand = self.GetValue()
+      cliCommand = self.comboBox.GetValue()
       
       if cliCommand != self.cliCommand:
-         if self.GetCount() > self.configData.dataCliCmdMaxHistory:
-            self.Delete(0)
+         if self.comboBox.GetCount() > self.configData.dataCliCmdMaxHistory:
+            self.comboBox.Delete(0)
             
          self.cliCommand = cliCommand
-         self.Append(self.cliCommand)
+         self.comboBox.Append(self.cliCommand)
          
-      self.SetValue("")
+      self.comboBox.SetValue("")
       e.Skip()
       
    def Load(self, configFile):
@@ -938,7 +970,7 @@ class gcsCliComboBox(wx.ComboBox):
          for cmd in cliCommandHistory:
             cmd = cmd.strip()
             if len(cmd) > 0:
-               self.Append(cmd.strip())
+               self.comboBox.Append(cmd.strip())
                
          self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
             
@@ -946,7 +978,7 @@ class gcsCliComboBox(wx.ComboBox):
    
       # write cmd history
       if self.configData.dataCliSaveCmdHistory:
-         cliCmdHistory = self.GetItems()
+         cliCmdHistory = self.comboBox.GetItems()
          if len(cliCmdHistory) > 0:
             cliCmdHistory =  "|".join(cliCmdHistory)
             configFile.Write(self.configData.keyCliCmdHistory, cliCmdHistory)
@@ -1465,10 +1497,9 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       
       self.useMachineWorkPosition = False
       
-      self.stackData = False
-      self.stackX = 0
-      self.stackY = 0
-      self.stackZ = 0
+      self.memoX = gZeroString
+      self.memoY = gZeroString
+      self.memoZ = gZeroString
       
       self.InitUI()
       width,height = self.GetSizeTuple()
@@ -1642,11 +1673,18 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.Bind(wx.EVT_BUTTON, self.OnGoHome, self.goHomeButton)
       vBoxRightSizer.Add(self.goHomeButton, flag=wx.EXPAND)
 
-      self.pushPopJogButton = wx.Button(self, label="Push Jog")
-      self.pushPopJogButton.SetToolTip(
-         wx.ToolTip("Push/pop current jogging values into/from stack"))
-      self.Bind(wx.EVT_BUTTON, self.OnPushPopJog, self.pushPopJogButton)
-      vBoxRightSizer.Add(self.pushPopJogButton, flag=wx.EXPAND)
+      self.saveJogButton = wx.Button(self, label="Save Jog")
+      self.saveJogButton.SetToolTip(
+         wx.ToolTip("Saves current jogging values to memory"))
+      self.Bind(wx.EVT_BUTTON, self.OnSaveJog, self.saveJogButton)
+      vBoxRightSizer.Add(self.saveJogButton, flag=wx.EXPAND)
+      
+      self.loadJogButton = wx.Button(self, label="Load Jog")
+      self.loadJogButton.SetToolTip(
+         wx.ToolTip("Loads current jogging from memory"))
+      self.Bind(wx.EVT_BUTTON, self.OnLoadJog, self.loadJogButton)
+      vBoxRightSizer.Add(self.loadJogButton, flag=wx.EXPAND)
+      
       
       return vBoxRightSizer
       
@@ -1784,19 +1822,16 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
    def OnGoHome(self, e):
       self.mainWindow.SerialWrite(gGRBL_CMD_EXE_HOME_CYCLE)   
    
-   def OnPushPopJog(self, e):
-      if self.stackData:
-         self.stackData = False
-         self.jX.SetValue(self.stackX)
-         self.jY.SetValue(self.stackY)
-         self.jZ.SetValue(self.stackZ)
-         self.pushPopJogButton.SetLabel("Push Jog")
-      else:
+   def OnLoadJog(self, e):
+      self.jX.SetValue(self.memoX)
+      self.jY.SetValue(self.memoY)
+      self.jZ.SetValue(self.memoZ)
+         
+   def OnSaveJog(self, e):
          self.stackData = True
-         self.stackX = self.jX.GetValue()
-         self.stackY = self.jY.GetValue()
-         self.stackZ = self.jZ.GetValue()
-         self.pushPopJogButton.SetLabel("Pop Jog")
+         self.memoX = self.jX.GetValue()
+         self.memoY = self.jY.GetValue()
+         self.memoZ = self.jZ.GetValue()
 
    def OnUseMachineWorkPosition(self, e):
       self.useMachineWorkPosition = e.IsChecked()
@@ -1865,7 +1900,7 @@ class gcsMainWindow(wx.Frame):
       
       #self.connectionPanel = gcsConnectionPanel(self)
       self.machineStatusPanel = gcsMachineStatusPanel(self)
-      self.CV2Panel = gcsCV2Panel(self, self.configData)
+      self.CV2Panel = gcsCV2Panel(self, self.configData, self.cmdLineOptions)
       self.machineJoggingPanel = gcsMachineJoggingPanel(self)
       
       # output Window
@@ -1881,8 +1916,8 @@ class gcsMainWindow(wx.Frame):
       self.gcText.SetAutoScroll(True)
       
       # cli interface
-      self.cliPanel = gcsCliComboBox(self, self.configData)
-      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliPanel)
+      self.cliPanel = gcsCliPanel(self, self.configData)
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliPanel.comboBox)
       self.cliPanel.Load(self.configFile)
 
       # add the panes to the manager
@@ -2820,9 +2855,6 @@ class gcsMainWindow(wx.Frame):
             self.serialPortThread = gcsSserialPortThread(self, self.serPort, self.mw2tQueue, 
                self.t2mwQueue, self.cmdLineOptions)
                
-            self.mw2tQueue.put(threadEvent(gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
-            self.mw2tQueue.join()
-               
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
             self.stateData.serialBaud = baud
@@ -3416,26 +3448,42 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
    refresh.
 ----------------------------------------------------------------------------"""
 class gcsCV2Panel(wx.ScrolledWindow):
-   def __init__(self, parent, configData, **args):
+   def __init__(self, parent, config_data, cmd_line_options, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
-      self.haveInitCV2 = False
+      self.capture = False
       self.mainWindow = parent
       self.stateData = gcsStateData()
-      self.configData = configData
+      self.configData = config_data
       self.captureTimer = None
+      self.cmdLineOptions = cmd_line_options
+      
+      if self.cmdLineOptions.vverbose:
+         print "gcsCV2Panel ALIVE."
+
+      
+      # thread communication queues
+      self.cvw2tQueue = Queue.Queue()
+      self.t2cvwQueue = Queue.Queue()
+      
+      self.visionThread = None
+      self.captureTimer = wx.Timer(self, gID_TIMER_CV2_CAPTURE)
+      self.bmp = None
       
       self.InitUI()
-      
-      self.InitCV2()
       
       width,height = self.GetSizeTuple()
       scroll_unit = 10
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
       
-      # register for close events
+      # register for events
+      self.Bind(wx.EVT_PAINT, self.OnPaint)      
+      self.Bind(wx.EVT_IDLE, self.OnIdle)
+      self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, id=gID_TIMER_CV2_CAPTURE)
       self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
-
+      
+      # register for thread events
+      EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
 
    def InitUI(self):
       vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -3460,83 +3508,104 @@ class gcsCV2Panel(wx.ScrolledWindow):
       #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
       btnsizer.Add(self.spindleOnButton)
 
-      self.spindleOnButton = wx.Button(self, label="Capture")
-      self.spindleOnButton.SetToolTip(wx.ToolTip("Togle CAM capture on/off"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      btnsizer.Add(self.spindleOnButton)
+      self.captureButton = wx.Button(self, label="Start Capture")
+      self.captureButton.SetToolTip(wx.ToolTip("Toggle video capture on/off"))
+      self.Bind(wx.EVT_BUTTON, self.OnCapture, self.captureButton)
+      btnsizer.Add(self.captureButton)
 
       
       btnsizer.Realize()
 
       vPanelBoxSizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5)
-
-
-      
+     
       # Finish up init UI
       self.SetSizer(vPanelBoxSizer)
       self.Layout()
-
-   def InitCV2(self):
-      if self.configData.dataCV2Enable:
-         
-         # import extar packages
-         if not self.haveInitCV2:
-            import cv2.cv as cv
-            self.haveInitCV2 = True
-            self.cv=cv
-            
-         #set up camera
-         self.captureDevice = self.cv.CaptureFromCAM(0)
-         self.cv.WaitKey(200)
-         
-         # setup capture timer
-         if self.captureTimer is None:
-            self.captureTimer = wx.Timer(self, gID_TIMER_CV2_CAPTURE)
-            
-            # register for timer events
-            self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, self.captureTimer)
-         else:
-            self.captureTimer.Stop()
-         
-   def StartCapture(self):
-      if self.captureTimer is not None:
-         self.captureTimer.Start(self.configData.dataCV2CapturePeriod)
-   
-   def StopCapture(self):
-      if self.captureTimer is not None:
-         self.captureTimer.Stop()
-
+      
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
-      self.StartCapture()
-   
-   def OnCaptureTimer(self, e):
-      frame = self.cv.QueryFrame(self.captureDevice)
-        
-      #cv.ShowImage("Window",frame)
-      if frame is not None:
-         offset=(0,0)
-         self.cv.Line(frame, (320,0), (320,480) , 255)
-         self.cv.Line(frame, (0,240), (640,240) , 255)
-         self.cv.Circle(frame, (320,240), 66, 255)
-         self.cv.Circle(frame, (320,240), 22, 255)
       
-         offset=(0,0)
-         
-         self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
-         
-         sizePanel = self.capturePanel.GetClientSize()
-         image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
+   def OnThreadEvent(self, e):
+      self.ProcessThreadQueue()
+      
+   def OnCapture(self, w):
+      if self.capture:
+         self.captureButton.SetLabel("Start Capture")
+         self.capture = False
+         self.StopCapture()
+      else:
+         self.captureButton.SetLabel("Stop Capture")
+         self.capture = True
+         self.StartCapture()
+      
+   def OnCaptureTimer(self, e):
+      self.ProcessThreadQueue()
 
-         self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
-         #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
-         bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
-         dc = wx.ClientDC(self.capturePanel)
-         dc.DrawBitmap(bitmap, offset[0], offset[1], False)
+   def OnIdle(self, e):
+      #self.ProcessThreadQueue()
+      #e.RequestMore()
+      pass
+      e.Skip()
+      
+   def OnPaint(self, e):
+      self.Paint()
+      e.Skip()      
    
    def OnDestroy(self, e):
       self.StopCapture()
       e.Skip()
+      
+   def ProcessThreadQueue(self):
+      goitem = False
+      
+      while (not self.t2cvwQueue.empty()):
+         te = self.t2cvwQueue.get()
+         goitem = True
+         
+         if te.event_id == gEV_CMD_CV_IMAGE:
+            if self.cmdLineOptions.vverbose:
+               print "** gcsCV2Panel got event gEV_CMD_CV_IMAGE."
+            image = te.data
+            self.bmp = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+            self.Paint()
+            
+      # acknoledge thread
+      if goitem:
+         self.t2cvwQueue.task_done()
+      
+   def Paint(self):
+      if self.bmp is not None:
+         offset=(0,0)
+         dc = wx.ClientDC(self.capturePanel)
+         dc.DrawBitmap(self.bmp, offset[0], offset[1], False)
+         
+   def StartCapture(self):
+      if self.visionThread is None:
+         self.visionThread = gcsComputerVisionThread(self, self.cvw2tQueue, self.t2cvwQueue, 
+            self.configData, self.cmdLineOptions)
+            
+      if self.captureTimer is not None:
+         self.captureTimer.Start(self.configData.dataCV2CapturePeriod)
+   
+   def StopCapture(self):
+      if self.captureTimer is not None:   
+         self.captureTimer.Stop()
+         
+      if self.visionThread is not None:
+         self.cvw2tQueue.put(threadEvent(gEV_CMD_CV_EXIT, None))
+         
+         goitem = False
+         while (not self.t2cvwQueue.empty()):
+            te = self.t2cvwQueue.get()
+            goitem = True
+         
+         # make sure to unlock thread
+         if goitem:
+            self.t2cvwQueue.task_done()
+         
+         #self.cvw2tQueue.join()
+         self.visionThread = None
+     
       
 """----------------------------------------------------------------------------
    gcsComputerVisionThread:
@@ -3544,7 +3613,7 @@ class gcsCV2Panel(wx.ScrolledWindow):
 ----------------------------------------------------------------------------"""
 class gcsComputerVisionThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, in_queue, out_queue, configData, cmd_line_options):
+   def __init__(self, notify_window, in_queue, out_queue, config_data, cmd_line_options):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
@@ -3553,7 +3622,10 @@ class gcsComputerVisionThread(threading.Thread):
       self.cvw2tQueue = in_queue
       self.t2cvwQueue = out_queue
       self.cmdLineOptions = cmd_line_options
-      self.configData
+      self.configData = config_data
+
+      if self.cmdLineOptions.vverbose:
+         print "gcsComputerVisionThread ALIVE."
       
       # start thread
       self.start()
@@ -3574,13 +3646,16 @@ class gcsComputerVisionThread(threading.Thread):
             self.endThread = True
             
          # item qcknowledge
-         self.cv2tQueue.task_done()
+         self.cvw2tQueue.task_done()
          
    """-------------------------------------------------------------------------
    gcscomputerVisionThread: General Functions
    -------------------------------------------------------------------------"""
-   def CaptureFrame(self, e):
+   def CaptureFrame(self):
       frame = self.cv.QueryFrame(self.captureDevice)
+      
+      if self.cmdLineOptions.vverbose:
+         print "** gcscomputerVisionThread Capture Frame."
         
       #cv.ShowImage("Window",frame)
       if frame is not None:
@@ -3594,14 +3669,17 @@ class gcsComputerVisionThread(threading.Thread):
          
          self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
          
-         sizePanel = self.capturePanel.GetClientSize()
-         image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
+         #sizePanel = self.capturePanel.GetClientSize()
+         #image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
 
-         self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
+         #self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
          #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
-         bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
-         dc = wx.ClientDC(self.capturePanel)
-         dc.DrawBitmap(bitmap, offset[0], offset[1], False)
+         image = frame
+         #bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+         #dc = wx.ClientDC(self.capturePanel)
+         #dc.DrawBitmap(bitmap, offset[0], offset[1], False)
+         
+         return frame
 
    
    def run(self):
@@ -3614,7 +3692,9 @@ class gcsComputerVisionThread(threading.Thread):
             
       #set up camera
       self.captureDevice = self.cv.CaptureFromCAM(0)
-      self.cv.WaitKey(200)
+      
+      # let camera hardware settle
+      time.sleep(1)
       
       # init before work loop
       self.endThread = False
@@ -3624,14 +3704,19 @@ class gcsComputerVisionThread(threading.Thread):
       
       while(self.endThread != True):
 
-         # process input queue for new commands or actions
-         self.ProcessQueue()
-         
          # capture frame
-         self.CaptureFrame()
+         frame = self.CaptureFrame()
+         
+         # sned frame to window, and wait...
+         #wx.PostEvent(self.notifyWindow, threadQueueEvent(None))
+         self.t2cvwQueue.put(threadEvent(gEV_CMD_CV_IMAGE, frame))
+         self.t2cvwQueue.join()
 
          # sleep for a period
-         time.sleep(self.configData.dataCV2CapturePeriod)
+         time.sleep(self.configData.dataCV2CapturePeriod/1000)
+         
+         # process input queue for new commands or actions
+         self.ProcessQueue()
          
          # check if we need to exit now
          if self.endThread:
@@ -3658,3 +3743,7 @@ if __name__ == '__main__':
    app = wx.App(0)
    gcsMainWindow(None, title=__appname__, cmd_line_options=cmd_line_options)
    app.MainLoop()
+
+   
+   
+   
