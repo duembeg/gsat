@@ -1931,7 +1931,7 @@ class gcsMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.CV2Panel,
          aui.AuiPaneInfo().Name("CV2_PANEL").Right().Position(2).Caption("Computer Vision")\
-            .BestSize(600,480).Hide()
+            .BestSize(640,530).Hide()
       )
 
       self.aui_mgr.AddPane(self.machineJoggingPanel,
@@ -3472,10 +3472,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
       
       self.InitUI()
       
-      width,height = self.GetSizeTuple()
-      scroll_unit = 10
-      self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
-      
       # register for events
       self.Bind(wx.EVT_PAINT, self.OnPaint)      
       self.Bind(wx.EVT_IDLE, self.OnIdle)
@@ -3489,8 +3485,19 @@ class gcsCV2Panel(wx.ScrolledWindow):
       vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
       
       # capture panel
-      self.capturePanel = wx.Panel(self, -1)
-      vPanelBoxSizer.Add(self.capturePanel, 1, wx.EXPAND)
+      scSizer = wx.BoxSizer(wx.VERTICAL)
+      self.scrollPanel = scrolled.ScrolledPanel(self, -1)
+      
+      self.capturePanel = wx.Panel(self.scrollPanel, -1, size=(640,480))
+      
+      scSizer.Add(self.capturePanel)
+      self.scrollPanel.SetSizer(scSizer)
+      self.scrollPanel.SetAutoLayout(True)
+      width,height = self.capturePanel.GetSize()
+      scu = 10
+      self.scrollPanel.SetScrollbars(scu, scu, width/scu, height/scu)
+      
+      vPanelBoxSizer.Add(self.scrollPanel, 1, wx.EXPAND)
       
       # buttons
       line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
@@ -3520,7 +3527,11 @@ class gcsCV2Panel(wx.ScrolledWindow):
      
       # Finish up init UI
       self.SetSizer(vPanelBoxSizer)
-      self.Layout()
+      self.SetAutoLayout(True)
+      width,height = self.GetSize()
+      scu = 10
+      self.SetScrollbars(scu, scu, width/scu, height/scu)
+      
       
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
@@ -3566,8 +3577,10 @@ class gcsCV2Panel(wx.ScrolledWindow):
             if self.cmdLineOptions.vverbose:
                print "** gcsCV2Panel got event gEV_CMD_CV_IMAGE."
             image = te.data
-            self.bmp = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
-            self.Paint()
+            
+            if image is not None:
+               self.bmp = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+               self.Paint()
             
       # acknoledge thread
       if goitem:
