@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
-   gcode-step.py: 
+   gcs.py: 
 ----------------------------------------------------------------------------"""
 
 __appname__ = "Gcode Step and Alignment Tool"
@@ -17,7 +17,8 @@ __authors__     = ['Wilhelm Duembeg']
 __author__      = ','.join(__authors__)
 __credits__     = []
 __copyright__   = 'Copyright (c) 2013'
-__license__     = 'GPL'
+__license__     = 'GPL v2'
+__license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
 # maintenance information
 __maintainer__  = 'Wilhelm Duembeg'
@@ -25,7 +26,7 @@ __email__       = 'duembeg.github@gmail.com'
 
 # define version information
 __requires__        = ['pySerial', 'wxPython']
-__version_info__    = (0, 0, 1)
+__version_info__    = (0, 8, 0)
 __version__         = 'v%i.%02i.%02i' % __version_info__
 __revision__        = __version__
 
@@ -106,7 +107,10 @@ gID_MENU_SET_PC                  = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
 
 gID_TIMER_MACHINE_REFRESH        = wx.NewId()
-gID_TIMER_CV2_CAPTURE            = wx.NewId()
+
+gID_CV2_GOTO_CAM                 = wx.NewId()
+gID_CV2_GOTO_TOOL                = wx.NewId()
+gID_CV2_CAPTURE_TIMER            = wx.NewId()
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -248,6 +252,10 @@ class gcsConfigData():
       # CV2 keys
       self.keyCV2Enable                   = "/cv2/Enable"
       self.keyCV2CapturePeriod            = "/cv2/CapturePeriod"
+      self.keyCV2CaptureWidth             = "/cv2/CaptureWidth"
+      self.keyCV2CaptureHeight            = "/cv2/CaptureHeight"
+      self.keyCV2XOffset                  = "/cv2/X-Offset"
+      self.keyCV2YOffset                  = "/cv2/Y-Offset"
       
       # -----------------------------------------------------------------------
       # config data (and default values)
@@ -272,6 +280,10 @@ class gcsConfigData():
       # CV2 data
       self.dataCV2Enable                   = False
       self.dataCV2CapturePeriod            = 100
+      self.dataCV2CaptureWidth             = 640
+      self.dataCV2CaptureHeight            = 480
+      self.dataCV2XOffset                  = 0
+      self.dataCV2YOffset                  = 0
       
    def Load(self, configFile):
       # read main app data
@@ -311,6 +323,22 @@ class gcsConfigData():
       configData = configFile.Read(self.keyCV2CapturePeriod)
       if len(configData) > 0:
          self.dataCV2CapturePeriod = eval(configData)
+
+      configData = configFile.Read(self.keyCV2CaptureWidth)
+      if len(configData) > 0:
+         self.dataCV2CaptureWidth = eval(configData)
+         
+      configData = configFile.Read(self.keyCV2CaptureHeight)
+      if len(configData) > 0:
+         self.dataCV2CaptureHeight = eval(configData)
+
+      configData = configFile.Read(self.keyCV2XOffset)
+      if len(configData) > 0:
+         self.dataCV2XOffset = eval(configData)
+
+      configData = configFile.Read(self.keyCV2YOffset)
+      if len(configData) > 0:
+         self.dataCV2YOffset = eval(configData)
          
          
    def Save(self, configFile):
@@ -332,6 +360,10 @@ class gcsConfigData():
       # write CV2 data 
       configFile.Write(self.keyCV2Enable, str(self.dataCV2Enable))
       configFile.Write(self.keyCV2CapturePeriod, str(self.dataCV2CapturePeriod))
+      configFile.Write(self.keyCV2CaptureWidth, str(self.dataCV2CaptureWidth))
+      configFile.Write(self.keyCV2CaptureHeight, str(self.dataCV2CaptureHeight))
+      configFile.Write(self.keyCV2XOffset, str(self.dataCV2XOffset))
+      configFile.Write(self.keyCV2YOffset, str(self.dataCV2YOffset))      
       
 """----------------------------------------------------------------------------
    Embedded Images
@@ -1681,7 +1713,7 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       
       self.loadJogButton = wx.Button(self, label="Load Jog")
       self.loadJogButton.SetToolTip(
-         wx.ToolTip("Loads current jogging from memory"))
+         wx.ToolTip("Loads jogging from memory"))
       self.Bind(wx.EVT_BUTTON, self.OnLoadJog, self.loadJogButton)
       vBoxRightSizer.Add(self.loadJogButton, flag=wx.EXPAND)
       
@@ -2759,7 +2791,7 @@ class gcsMainWindow(wx.Frame):
       aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "GCode Step home page")
       #aboutDialog.Developers = __authors__
 
-      #aboutDialog.License = wordwrap(licenseText, 500, wx.ClientDC(self))
+      aboutDialog.License = __license_str__
 
       # Then we call wx.AboutBox giving it that info object
       wx.AboutBox(aboutDialog)
@@ -3416,31 +3448,87 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       flexGridSizer = wx.FlexGridSizer(2,2)
 
       # Add cehck box
-      st = wx.StaticText(self, wx.ID_ANY, "Enable CV2")
-      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-      
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "") #, style=wx.ALIGN_RIGHT)
+      self.cb = wx.CheckBox(self, wx.ID_ANY, "Enable CV2") #, style=wx.ALIGN_RIGHT)
       self.cb.SetValue(self.configData.dataCV2Enable)
       flexGridSizer.Add(self.cb, 
-         flag=wx.ALL|wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL,border=5)
-
-      # Add spin ctrl
-      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Period (milliseconds)")
-      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-      
-      self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
-      self.sc.SetRange(1,1000000)
-      self.sc.SetValue(self.configData.dataCV2CapturePeriod)
-      flexGridSizer.Add(self.sc, 
          flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
       
+      st = wx.StaticText(self, wx.ID_ANY, "")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+
+      # Add spin ctrl for capture period
+      self.scPeriod = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.scPeriod.SetRange(1,1000000)
+      self.scPeriod.SetValue(self.configData.dataCV2CapturePeriod)
+      self.scPeriod.SetToolTip(
+         wx.ToolTip("NOTE: UI may become unresponsive if this value is too short\n"\
+                    "Sugested value 100ms or grater"
+      ))
+      flexGridSizer.Add(self.scPeriod, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+         
+      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Period (milliseconds)")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+         
+
+      # Add spin ctrl for capture width
+      self.scWidth = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.scWidth.SetRange(1,10000)
+      self.scWidth.SetValue(self.configData.dataCV2CaptureWidth)
+      flexGridSizer.Add(self.scWidth, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+         
+      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Width")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+
+      # Add spin ctrl for capture height
+      self.scHeight = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.scHeight.SetRange(1,10000)
+      self.scHeight.SetValue(self.configData.dataCV2CaptureHeight)
+      flexGridSizer.Add(self.scHeight, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+         
+      st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Height")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      
+      
+      # Add spin ctrl for offset x
+      self.scXoffset = FS.FloatSpin(self, -1, 
+         min_val=-100000, max_val=100000, increment=0.10, value=1.0, 
+         agwStyle=FS.FS_LEFT)
+      self.scXoffset.SetFormat("%f")
+      self.scXoffset.SetDigits(4)
+      self.scXoffset.SetValue(self.configData.dataCV2XOffset)      
+      flexGridSizer.Add(self.scXoffset, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+         
+      st = wx.StaticText(self, wx.ID_ANY, "CAM X Offset")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+
+      # Add spin ctrl for offset y
+      self.scYoffset = FS.FloatSpin(self, -1, 
+         min_val=-100000, max_val=100000, increment=0.10, value=1.0, 
+         agwStyle=FS.FS_LEFT)
+      self.scYoffset.SetFormat("%f")
+      self.scYoffset.SetDigits(4)
+      self.scYoffset.SetValue(self.configData.dataCV2YOffset)
+      flexGridSizer.Add(self.scYoffset, 
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+         
+      st = wx.StaticText(self, wx.ID_ANY, "CAM Y Offset")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+         
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
       self.SetSizer(vBoxSizer)
          
    def UpdatConfigData(self):
       self.configData.dataCV2Enable = self.cb.GetValue()
-      self.configData.dataCV2CapturePeriod = self.sc.GetValue()
-
+      self.configData.dataCV2CapturePeriod = self.scPeriod.GetValue()
+      self.configData.dataCV2CaptureWidth = self.scWidth.GetValue()
+      self.configData.dataCV2CaptureHeight = self.scHeight.GetValue()
+      self.configData.dataCV2XOffset = self.scXoffset.GetValue()
+      self.configData.dataCV2YOffset = self.scYoffset.GetValue()
 
 """----------------------------------------------------------------------------
    gcsCV2Panel:
@@ -3467,15 +3555,15 @@ class gcsCV2Panel(wx.ScrolledWindow):
       self.t2cvwQueue = Queue.Queue()
       
       self.visionThread = None
-      self.captureTimer = wx.Timer(self, gID_TIMER_CV2_CAPTURE)
+      self.captureTimer = wx.Timer(self, gID_CV2_CAPTURE_TIMER)
       self.bmp = None
       
       self.InitUI()
       
       # register for events
-      self.Bind(wx.EVT_PAINT, self.OnPaint)      
+      self.Bind(wx.EVT_PAINT, self.OnPaint)
       self.Bind(wx.EVT_IDLE, self.OnIdle)
-      self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, id=gID_TIMER_CV2_CAPTURE)
+      self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, id=gID_CV2_CAPTURE_TIMER)
       self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
       
       # register for thread events
@@ -3497,6 +3585,8 @@ class gcsCV2Panel(wx.ScrolledWindow):
       scu = 10
       self.scrollPanel.SetScrollbars(scu, scu, width/scu, height/scu)
       
+      self.scrollPanel.Bind(wx.EVT_SCROLLWIN, self.OnScroll)
+      
       vPanelBoxSizer.Add(self.scrollPanel, 1, wx.EXPAND)
       
       # buttons
@@ -3505,19 +3595,26 @@ class gcsCV2Panel(wx.ScrolledWindow):
 
       btnsizer = wx.StdDialogButtonSizer()
 
-      self.spindleOnButton = wx.Button(self, label="Move to CAM")
-      self.spindleOnButton.SetToolTip(wx.ToolTip("Move CAM corss-hair to target"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      btnsizer.Add(self.spindleOnButton)
+      self.gotoToolButton = wx.Button(self, gID_CV2_GOTO_TOOL, label="Goto Tool")
+      self.gotoToolButton.SetToolTip(wx.ToolTip("Move Tool to target"))
+      #self.Bind(wx.EVT_BUTTON, self.gotoToolButton, self.OnGotoTool)
+      btnsizer.Add(self.gotoToolButton)
+      
+      self.gotoCamButton = wx.Button(self, gID_CV2_GOTO_CAM, label="Goto CAM")
+      self.gotoCamButton.SetToolTip(wx.ToolTip("Move CAM corss-hair to target"))
+      #self.Bind(wx.EVT_BUTTON, self.gotoCamButton, self.onGotoCAM)
+      btnsizer.Add(self.gotoCamButton)
 
-      self.spindleOnButton = wx.Button(self, label="Move to Tool")
-      self.spindleOnButton.SetToolTip(wx.ToolTip("Move Tool to target"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      btnsizer.Add(self.spindleOnButton)
+      self.centerScrollButton = wx.Button(self, label="Center")
+      self.centerScrollButton.SetToolTip(wx.ToolTip("Center scroll bars"))
+      self.Bind(wx.EVT_BUTTON, self.OnCenterScroll, self.centerScrollButton)
+      btnsizer.Add(self.centerScrollButton)
 
-      self.captureButton = wx.Button(self, label="Start Capture")
+      self.captureButton = wx.Button(self, label="Start CAM")
       self.captureButton.SetToolTip(wx.ToolTip("Toggle video capture on/off"))
       self.Bind(wx.EVT_BUTTON, self.OnCapture, self.captureButton)
+      self.Bind(wx.EVT_BUTTON, self.OnCapture, self.captureButton)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnCaptureUpdate, self.captureButton)
       btnsizer.Add(self.captureButton)
 
       
@@ -3536,35 +3633,51 @@ class gcsCV2Panel(wx.ScrolledWindow):
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
       
-   def OnThreadEvent(self, e):
-      self.ProcessThreadQueue()
-      
    def OnCapture(self, w):
       if self.capture:
-         self.captureButton.SetLabel("Start Capture")
+         self.captureButton.SetLabel("Start CAM")
          self.capture = False
          self.StopCapture()
       else:
-         self.captureButton.SetLabel("Stop Capture")
+         self.captureButton.SetLabel("Stop CAM")
          self.capture = True
          self.StartCapture()
-      
+         
+   def OnCaptureUpdate(self, e):
+      e.Enable(self.configData.dataCV2Enable)
+         
    def OnCaptureTimer(self, e):
       self.ProcessThreadQueue()
+      
+   def OnCenterScroll(self, e):
+      self.CenterScroll()
+      
+   def OnDestroy(self, e):
+      self.StopCapture()
+      e.Skip()
 
    def OnIdle(self, e):
-      #self.ProcessThreadQueue()
-      #e.RequestMore()
-      pass
+      self.Paint()
       e.Skip()
       
    def OnPaint(self, e):
       self.Paint()
       e.Skip()      
-   
-   def OnDestroy(self, e):
-      self.StopCapture()
+      
+   def OnScroll(self, e):
+      if not self.capture:
+         wx.CallAfter(self.Paint)
       e.Skip()
+      
+   def OnThreadEvent(self, e):
+      self.ProcessThreadQueue()
+      
+   def CenterScroll(self):
+      x,y = self.capturePanel.GetClientSize()
+      sx, sy = self.scrollPanel.GetSize()
+      sux, suy = self.scrollPanel.GetScrollPixelsPerUnit()
+      
+      self.scrollPanel.Scroll((x-sx)/2/sux, (y-sy)/2/suy)
       
    def ProcessThreadQueue(self):
       goitem = False
@@ -3593,12 +3706,14 @@ class gcsCV2Panel(wx.ScrolledWindow):
          dc.DrawBitmap(self.bmp, offset[0], offset[1], False)
          
    def StartCapture(self):
-      if self.visionThread is None:
+      if self.visionThread is None and self.configData.dataCV2Enable:
          self.visionThread = gcsComputerVisionThread(self, self.cvw2tQueue, self.t2cvwQueue, 
             self.configData, self.cmdLineOptions)
             
-      if self.captureTimer is not None:
+      if self.captureTimer is not None and self.configData.dataCV2Enable:
          self.captureTimer.Start(self.configData.dataCV2CapturePeriod)
+         
+      self.CenterScroll()
    
    def StopCapture(self):
       if self.captureTimer is not None:   
@@ -3618,7 +3733,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
          
          #self.cvw2tQueue.join()
          self.visionThread = None
-     
       
 """----------------------------------------------------------------------------
    gcsComputerVisionThread:
