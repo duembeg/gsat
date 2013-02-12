@@ -3576,7 +3576,8 @@ class gcsCV2Panel(wx.ScrolledWindow):
       scSizer = wx.BoxSizer(wx.VERTICAL)
       self.scrollPanel = scrolled.ScrolledPanel(self, -1)
       
-      self.capturePanel = wx.Panel(self.scrollPanel, -1, size=(640,480))
+      self.capturePanel = wx.Panel(self.scrollPanel, -1, size=
+         (self.configData.dataCV2CaptureWidth, self.configData.dataCV2CaptureHeight))
       
       scSizer.Add(self.capturePanel)
       self.scrollPanel.SetSizer(scSizer)
@@ -3787,24 +3788,28 @@ class gcsComputerVisionThread(threading.Thread):
       #cv.ShowImage("Window",frame)
       if frame is not None:
          offset=(0,0)
-         self.cv.Line(frame, (320,0), (320,480) , 255)
-         self.cv.Line(frame, (0,240), (640,240) , 255)
-         self.cv.Circle(frame, (320,240), 66, 255)
-         self.cv.Circle(frame, (320,240), 22, 255)
+         width = self.configData.dataCV2CaptureWidth
+         widthHalf = self.configData.dataCV2CaptureWidth/2
+         height = self.configData.dataCV2CaptureHeight
+         heightHalf = self.configData.dataCV2CaptureHeight/2
+         
+         self.cv.Line(frame, (widthHalf, 0),  (widthHalf,height) , 255)
+         self.cv.Line(frame, (0,heightHalf), (width,heightHalf) , 255)
+         self.cv.Circle(frame, (widthHalf,heightHalf), 66, 255)
+         self.cv.Circle(frame, (widthHalf,heightHalf), 22, 255)
       
          offset=(0,0)
          
          self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
          
+         # important cannot call any wx. UI fucntions from this thread
+         # bad things will happen
          #sizePanel = self.capturePanel.GetClientSize()
          #image = self.cv.CreateImage(sizePanel, frame.depth, frame.nChannels) 
 
          #self.cv.Resize(frame, image, self.cv.CV_INTER_NN)
          #self.cv.Resize(frame, image, self.cv.CV_INTER_LINEAR)
          image = frame
-         #bitmap = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
-         #dc = wx.ClientDC(self.capturePanel)
-         #dc.DrawBitmap(bitmap, offset[0], offset[1], False)
          
          return frame
 
@@ -3822,6 +3827,13 @@ class gcsComputerVisionThread(threading.Thread):
       
       # let camera hardware settle
       time.sleep(1)
+      
+      # init sensor frame size
+      self.cv.SetCaptureProperty(self.captureDevice, 
+         self.cv.CV_CAP_PROP_FRAME_WIDTH, self.configData.dataCV2CaptureWidth)
+         
+      self.cv.SetCaptureProperty(self.captureDevice, 
+         self.cv.CV_CAP_PROP_FRAME_HEIGHT, self.configData.dataCV2CaptureHeight)
       
       # init before work loop
       self.endThread = False
