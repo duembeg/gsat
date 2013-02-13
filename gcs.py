@@ -1265,6 +1265,16 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
          "fore:#000000,face:%(mono)s,back:#E0C0E0,eol,size:%(size)d"\
          % faces)
       '''       
+   def UpdateUI(self, stateData):
+      self.stateData = stateData
+      
+      if (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
+         
+         self.SetReadOnly(self.configReadOnly)
+      else:
+         # cannot update while we are on a non-IDLE state
+         self.SetReadOnly(True)
       
    def UpdatePC(self, pc):
       if pc > -1:
