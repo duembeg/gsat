@@ -2772,7 +2772,8 @@ class gcsMainWindow(wx.Frame):
       aboutDialog.Version = __version__
       aboutDialog.Copyright = __copyright__
       #aboutDialog.Description = __description__
-      aboutDialog.Description = wordwrap(__description__, 400, wx.ClientDC(self))
+      #aboutDialog.Description = wordwrap(__description__, 400, wx.ClientDC(self))
+      aboutDialog.Description = __description__
       aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "GCode Step home page")
       #aboutDialog.Developers = __authors__
 
