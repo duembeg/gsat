@@ -26,7 +26,7 @@ __email__       = 'duembeg.github@gmail.com'
 
 # define version information
 __requires__        = ['pySerial', 'wxPython']
-__version_info__    = (0, 8, 0)
+__version_info__    = (0, 9, 0)
 __version__         = 'v%i.%02i.%02i' % __version_info__
 __revision__        = __version__
 
@@ -2299,6 +2299,7 @@ class gcsMainWindow(wx.Frame):
       # finish up
       self.aui_mgr.Update()
       wx.CallAfter(self.UpdateUI)
+      self.SetPC(0)
 
    def CreateMenu(self):
 
@@ -2325,6 +2326,8 @@ class gcsMainWindow(wx.Frame):
       self.fileHistory.UseMenu(recentMenu)
       self.fileHistory.AddFilesToMenu()
 
+      fileMenu.Append(wx.ID_SAVE,                     "&Save")
+      fileMenu.Append(wx.ID_SAVEAS,                   "Save &As")
       fileMenu.Append(wx.ID_EXIT,                     "E&xit")
 
       #------------------------------------------------------------------------
@@ -2407,9 +2410,15 @@ class gcsMainWindow(wx.Frame):
       # File menu bind
       self.Bind(wx.EVT_MENU,        self.OnFileOpen,     id=wx.ID_OPEN)
       self.Bind(wx.EVT_MENU_RANGE,  self.OnFileHistory,  id=wx.ID_FILE1, id2=wx.ID_FILE9)
+      self.Bind(wx.EVT_MENU,        self.OnFileSave,     id=wx.ID_SAVE)
+      self.Bind(wx.EVT_MENU,        self.OnFileSaveAs,   id=wx.ID_SAVEAS)
       self.Bind(wx.EVT_MENU,        self.OnClose,        id=wx.ID_EXIT)
       self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN,
                            self.OnDropDownToolBarOpen,   id=gID_TOOLBAR_OPEN)
+
+      self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveUpdate, id=wx.ID_SAVE)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveAsUpdate,
+                                                         id=wx.ID_SAVEAS)
 
       #------------------------------------------------------------------------
       # View menu bind
@@ -2515,7 +2524,9 @@ class gcsMainWindow(wx.Frame):
       self.appToolBar.SetToolBitmapSize(iconSize)
 
       self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open", wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, size=iconSize))
-      self.appToolBar.AddSimpleTool(wx.ID_ABOUT, "About", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, size=iconSize))
+      self.appToolBar.AddSimpleTool(wx.ID_SAVE, "Save", wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, size=iconSize))
+      self.appToolBar.AddSimpleTool(wx.ID_SAVEAS, "Save As", wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, size=iconSize))
+      #self.appToolBar.AddSimpleTool(wx.ID_ABOUT, "About", wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, size=iconSize))
       self.appToolBar.SetToolDropDown(gID_TOOLBAR_OPEN, True)
       self.appToolBar.Realize()
 
@@ -2717,6 +2728,50 @@ class gcsMainWindow(wx.Frame):
 
       #self.gcText.SetReadOnly(True)
 
+   def OnFileSave(self, e):
+      if not self.stateData.fileIsOpen:
+         self.OnFileSaveAs(e)
+      else:
+         self.gcText.SaveFile(self.stateData.gcodeFileName)
+
+   def OnFileSaveUpdate(self, e):
+      e.Enable(self.gcText.GetModify())
+
+   def OnFileSaveAs(self, e):
+      # get current file data
+      currentPath = self.stateData.gcodeFileName
+      (currentDir, currentFile) = os.path.split(currentPath)
+
+      if len(currentDir) == 0:
+         currentDir = os.getcwd()
+
+      # init file dialog
+      dlgFile = wx.FileDialog(
+         self, message="Create a file",
+         defaultDir=currentDir,
+         defaultFile=currentFile,
+         wildcard=gWILDCARD,
+         style=wx.SAVE
+         )
+
+      if dlgFile.ShowModal() == wx.ID_OK:
+         # got file, open and present progress
+         self.stateData.gcodeFileName = dlgFile.GetPath()
+         self.lineNumber = 0
+
+         # save history
+         self.fileHistory.AddFileToHistory(self.stateData.gcodeFileName)
+         self.fileHistory.Save(self.configFile)
+         self.configFile.Flush()
+
+         self.gcText.SaveFile(self.stateData.gcodeFileName)
+
+         self.UpdateUI()
+
+   def OnFileSaveAsUpdate(self, e):
+      e.Enable(self.stateData.fileIsOpen or self.gcText.GetModify())
+
+
    #---------------------------------------------------------------------------
    # Edit Menu Handlers
    #---------------------------------------------------------------------------
@@ -2882,8 +2937,7 @@ class gcsMainWindow(wx.Frame):
 
    def OnRunUpdate(self, e=None):
       state = False
-      if self.stateData.fileIsOpen and \
-         self.stateData.serialPortIsOpen and \
+      if self.stateData.serialPortIsOpen and \
          (self.stateData.swState == gSTATE_IDLE or \
           self.stateData.swState == gSTATE_BREAK):
 
@@ -2908,8 +2962,7 @@ class gcsMainWindow(wx.Frame):
 
    def OnStepUpdate(self, e=None):
       state = False
-      if self.stateData.fileIsOpen and \
-         self.stateData.serialPortIsOpen and \
+      if self.stateData.serialPortIsOpen and \
          (self.stateData.swState == gSTATE_IDLE or \
           self.stateData.swState == gSTATE_BREAK):
 
@@ -2925,8 +2978,7 @@ class gcsMainWindow(wx.Frame):
 
    def OnStopUpdate(self, e=None):
       state = False
-      if self.stateData.fileIsOpen and \
-         self.stateData.serialPortIsOpen and \
+      if self.stateData.serialPortIsOpen and \
          self.stateData.swState != gSTATE_IDLE and \
          self.stateData.swState != gSTATE_BREAK:
 
@@ -2951,8 +3003,7 @@ class gcsMainWindow(wx.Frame):
 
    def OnBreakToggleUpdate(self, e=None):
       state = False
-      if self.stateData.fileIsOpen and \
-         (self.stateData.swState == gSTATE_IDLE or \
+      if (self.stateData.swState == gSTATE_IDLE or \
           self.stateData.swState == gSTATE_BREAK):
 
          state = True
@@ -2967,8 +3018,7 @@ class gcsMainWindow(wx.Frame):
       self.gcText.UpdateBreakPoint(-1, False)
 
    def OnBreakRemoveAllUpdate(self, e):
-      if self.stateData.fileIsOpen and \
-         (self.stateData.swState == gSTATE_IDLE or \
+      if (self.stateData.swState == gSTATE_IDLE or \
           self.stateData.swState == gSTATE_BREAK):
 
          e.Enable(True)
@@ -2980,8 +3030,7 @@ class gcsMainWindow(wx.Frame):
 
    def OnSetPCUpdate(self, e=None):
       state = False
-      if self.stateData.fileIsOpen and \
-         (self.stateData.swState == gSTATE_IDLE or \
+      if (self.stateData.swState == gSTATE_IDLE or \
           self.stateData.swState == gSTATE_BREAK):
 
          state = True
@@ -2995,9 +3044,7 @@ class gcsMainWindow(wx.Frame):
       self.gcText.GoToPC()
 
    def OnGoToPCUpdate(self, e=None):
-      state = False
-      if self.stateData.fileIsOpen:
-         state = True
+      state = True
 
       if e is not None:
          e.Enable(state)
