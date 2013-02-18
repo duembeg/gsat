@@ -281,14 +281,44 @@ class gcsConfigData():
          '/machine/AutoRefresh'              :(True , False),
          '/machine/AutoRefreshPeriod'        :(True , 1000),
 
+      # jogging keys
+         '/jogging/XYZReadOnly'              :(True , True),
+         '/jogging/Custom1Label'             :(False, "Goto CAM"),
+         '/jogging/Custom1XIsOffset'         :(True , True),
+         '/jogging/Custom1XValue'            :(True , 0),
+         '/jogging/Custom1YIsOffset'         :(True , True),
+         '/jogging/Custom1YValue'            :(True , 0),
+         '/jogging/Custom1ZIsOffset'         :(True , True),
+         '/jogging/Custom1ZValue'            :(True , 0),
+         '/jogging/Custom2Label'             :(False, "Goto Tool"),
+         '/jogging/Custom2XIsOffset'         :(True , True),
+         '/jogging/Custom2XValue'            :(True , 0),
+         '/jogging/Custom2YIsOffset'         :(True , True),
+         '/jogging/Custom2YValue'            :(True , 0),
+         '/jogging/Custom2ZIsOffset'         :(True , True),
+         '/jogging/Custom2ZValue'            :(True , 0),
+         '/jogging/Custom3Label'             :(False, "Custom 3"),
+         '/jogging/Custom3XIsOffset'         :(True , True),
+         '/jogging/Custom3XValue'            :(True , 0),
+         '/jogging/Custom3YIsOffset'         :(True , True),
+         '/jogging/Custom3YValue'            :(True , 0),
+         '/jogging/Custom3ZIsOffset'         :(True , True),
+         '/jogging/Custom3ZValue'            :(True , 0),
+         '/jogging/Custom4Label'             :(False, "Custom 4"),
+         '/jogging/Custom4XIsOffset'         :(True , True),
+         '/jogging/Custom4XValue'            :(True , 0),
+         '/jogging/Custom4YIsOffset'         :(True , True),
+         '/jogging/Custom4YValue'            :(True , 0),
+         '/jogging/Custom4ZIsOffset'         :(True , True),
+         '/jogging/Custom4ZValue'            :(True , 0),
+
+
       # CV2 keys
          '/cv2/Enable'                       :(True , False),
          '/cv2/CaptureDevice'                :(True , 0),
          '/cv2/CapturePeriod'                :(True , 100),
          '/cv2/CaptureWidth'                 :(True , 640),
          '/cv2/CaptureHeight'                :(True , 480),
-         '/cv2/X-Offset'                     :(True , 0),
-         '/cv2/Y-Offset'                     :(True , 0),
       }
 
    def Add(self, key, val, canEval=True):
@@ -611,7 +641,6 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       self.InitUI()
       self.SetAutoLayout(True)
       self.SetupScrolling()
-      #self.FitInside()
 
    def InitUI(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -641,11 +670,9 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(hBoxSizer, 0, wx.LEFT|wx.EXPAND|wx.ALIGN_LEFT, border=20)
 
       # General Controls
-      #line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
       text = wx.StaticText(self, label="General:")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
-      #vBoxSizer.Add(line, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, border=5)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
       gBoxSizer = wx.GridSizer(1,3)
@@ -672,19 +699,19 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
 
       vColorSizer = wx.BoxSizer(wx.VERTICAL)
-      foregroundColorSizer = wx.GridSizer(2,3)
-      backgroundColorSizer = wx.GridSizer(2,3)
+      foregroundColorSizer = wx.FlexGridSizer(2,3,0,0)
+      backgroundColorSizer = wx.FlexGridSizer(2,3,0,0)
 
       # Foreground
       text = wx.StaticText(self, label="Foreground:")
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
-      text = wx.StaticText(self, label="Window:")
-      foregroundColorSizer.Add(text, 0, flag=wx.LEFT|wx.RIGHT, border=20)
-      text = wx.StaticText(self, label="Line Numbers:")
-      foregroundColorSizer.Add(text, 0, flag=wx.LEFT|wx.RIGHT, border=20)
+      text = wx.StaticText(self, label="Window")
+      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      text = wx.StaticText(self, label="Line Numbers")
+      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
       text = wx.StaticText(self, label="Highlite Line")
-      foregroundColorSizer.Add(text, 0, flag=wx.LEFT|wx.RIGHT, border=20)
+      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
 
       self.windowForeground = wx.ColourPickerCtrl(self,
          col=self.configData.Get('/%s/WindowForeground' % self.key))
@@ -698,18 +725,20 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
          col=self.configData.Get('/%s/CaretLineForeground' % self.key))
       foregroundColorSizer.Add(self.caretLineForeground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
 
-      vColorSizer.Add(foregroundColorSizer, 0, flag=wx.ALL, border=10)
+      vColorSizer.Add(foregroundColorSizer, 0, flag=wx.LEFT, border=10)
 
       # Background
+      text = wx.StaticText(self, label="")
+      vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
       text = wx.StaticText(self, label="Background:")
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
-      text = wx.StaticText(self, label="Window:")
-      backgroundColorSizer.Add(text, 0, flag=wx.LEFT|wx.RIGHT, border=20)
-      text = wx.StaticText(self, label="Line Numbers:")
-      backgroundColorSizer.Add(text, 0, flag=wx.LEFT|wx.RIGHT, border=20)
+      text = wx.StaticText(self, label="Window")
+      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      text = wx.StaticText(self, label="Line Numbers")
+      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
       text = wx.StaticText(self, label="Highlite Line")
-      backgroundColorSizer.Add(text, 0, flag=wx.LEFT|wx.RIGHT, border=20)
+      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
 
 
       self.windowBackground = wx.ColourPickerCtrl(self,
@@ -724,9 +753,9 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
          col=self.configData.Get('/%s/CaretLineBackground' % self.key))
       backgroundColorSizer.Add(self.caretLineBackground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
 
-      vColorSizer.Add(backgroundColorSizer, 0, flag=wx.ALL, border=10)
+      vColorSizer.Add(backgroundColorSizer, 0, flag=wx.LEFT, border=10)
 
-      vBoxSizer.Add(vColorSizer, 0, wx.ALL|wx.ALIGN_LEFT, border=10)
+      vBoxSizer.Add(vColorSizer, 0, wx.LEFT|wx.ALIGN_LEFT, border=10)
 
       # finish up
       self.SetSizerAndFit(vBoxSizer)
@@ -901,6 +930,162 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
 
 """----------------------------------------------------------------------------
+   gcsJoggingSettingsPanel:
+   Machine settings.
+----------------------------------------------------------------------------"""
+class gcsJoggingSettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, configData, **args):
+      scrolled.ScrolledPanel.__init__(self, parent,
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = configData
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      text = wx.StaticText(self, label="General:")
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+
+      # Add cehck box
+      self.cb = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
+      self.cb.SetValue(self.configData.Get('/jogging/XYZReadOnly'))
+      self.cb.SetToolTip(
+         wx.ToolTip("If disable the XYZ fields in jogging status are editable"))
+      vBoxSizer.Add(self.cb, flag=wx.LEFT|wx.BOTTOM, border=20)
+
+      # Custom controls
+      text = wx.StaticText(self, label="Custom Controls:")
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+
+      box1, c1CtrlArray = self.CreateCustomControlSettings(1)
+      box2, c2CtrlArray = self.CreateCustomControlSettings(2)
+      box3, c3CtrlArray = self.CreateCustomControlSettings(3)
+      box4, c4CtrlArray = self.CreateCustomControlSettings(4)
+
+      self.customCtrlArray = [c1CtrlArray, c2CtrlArray, c3CtrlArray, c4CtrlArray]
+
+      vBoxSizer.Add(box1, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box2, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box3, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box4, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      self.SetSizer(vBoxSizer)
+
+   def CreateCustomControlSettings(self, cn):
+      # Custom controls
+      vCustomSizer = wx.BoxSizer(wx.VERTICAL)
+      text = wx.StaticText(self, label="Custom Control %d:" % cn)
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vCustomSizer.Add(text, 0, flag=wx.ALL, border=5)
+
+      # Label
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      text = wx.StaticText(self, label="Label:")
+      hBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL, border=5)
+      tcLabel = wx.TextCtrl(self, -1,
+         self.configData.Get('/jogging/Custom%dLabel' % cn), size=(125, -1))
+      hBoxSizer.Add(tcLabel, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+
+      vCustomSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      # other controls
+      gCustomSizer = wx.FlexGridSizer(3,3,0,0)
+
+      text = wx.StaticText(self, label="X Settings:")
+      gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
+      text = wx.StaticText(self, label="Y Settings:")
+      gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
+      text = wx.StaticText(self, label="Z Settings:")
+      gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
+
+      # check boxes
+      cbXIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
+      cbXIsOffset.SetValue(self.configData.Get('/jogging/Custom%dXIsOffset' % cn))
+      cbXIsOffset.SetToolTip(wx.ToolTip("If set the value is treated as an offset"))
+      gCustomSizer.Add(cbXIsOffset, flag=wx.ALL, border=5)
+
+      cbYIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
+      cbYIsOffset.SetValue(self.configData.Get('/jogging/Custom%dYIsOffset' % cn))
+      cbYIsOffset.SetToolTip(wx.ToolTip("If set the value is treated as an offset"))
+      gCustomSizer.Add(cbYIsOffset, flag=wx.ALL, border=5)
+
+      cbZIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
+      cbZIsOffset.SetValue(self.configData.Get('/jogging/Custom%dZIsOffset' % cn))
+      cbZIsOffset.SetToolTip(wx.ToolTip("If set the value is treated as an offset"))
+      gCustomSizer.Add(cbZIsOffset, flag=wx.ALL, border=5)
+
+      # spin controls
+      scXValue = FS.FloatSpin(self, -1,
+         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
+         agwStyle=FS.FS_LEFT)
+      scXValue.SetFormat("%f")
+      scXValue.SetDigits(4)
+      scXValue.SetValue(self.configData.Get('/jogging/Custom%dXValue' % cn))
+      gCustomSizer.Add(scXValue, flag=wx.ALL, border=5)
+
+      scYValue = FS.FloatSpin(self, -1,
+         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
+         agwStyle=FS.FS_LEFT)
+      scYValue.SetFormat("%f")
+      scYValue.SetDigits(4)
+      scYValue.SetValue(self.configData.Get('/jogging/Custom%dYValue' % cn))
+      gCustomSizer.Add(scYValue,
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      scZValue = FS.FloatSpin(self, -1,
+         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
+         agwStyle=FS.FS_LEFT)
+      scZValue.SetFormat("%f")
+      scZValue.SetDigits(4)
+      scZValue.SetValue(self.configData.Get('/jogging/Custom%dZValue' % cn))
+      gCustomSizer.Add(scZValue,
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+
+      #st = wx.StaticText(self, wx.ID_ANY, "X")
+      #hBoxSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+
+      vCustomSizer.Add(gCustomSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      return vCustomSizer, [
+         tcLabel,
+         cbXIsOffset, cbYIsOffset, cbZIsOffset,
+         scXValue   , scYValue   , scZValue
+      ]
+
+   def UpdatConfigData(self):
+      self.configData.Set('/jogging/XYZReadOnly', self.cb.GetValue())
+
+      for cn in range(4):
+         cnp1 = cn+1
+         self.configData.Set('/jogging/Custom%dLabel' % cnp1,
+            self.customCtrlArray[cn][0].GetValue())
+
+         self.configData.Set('/jogging/Custom%dXIsOffset' % cnp1,
+            self.customCtrlArray[cn][1].GetValue())
+         self.configData.Set('/jogging/Custom%dYIsOffset' % cnp1,
+            self.customCtrlArray[cn][2].GetValue())
+         self.configData.Set('/jogging/Custom%dZIsOffset' % cnp1,
+            self.customCtrlArray[cn][3].GetValue())
+
+         self.configData.Set('/jogging/Custom%dXValue' % cnp1,
+            self.customCtrlArray[cn][4].GetValue())
+         self.configData.Set('/jogging/Custom%dYValue' % cnp1,
+            self.customCtrlArray[cn][5].GetValue())
+         self.configData.Set('/jogging/Custom%dZValue' % cnp1,
+            self.customCtrlArray[cn][6].GetValue())
+
+"""----------------------------------------------------------------------------
    gcsSettingsDialog:
    Dialog to control program settings
 ----------------------------------------------------------------------------"""
@@ -993,9 +1178,8 @@ class gcsSettingsDialog(wx.Dialog):
       self.noteBook.SetPageImage(page, 4)
 
    def AddJoggingPage(self, page):
-      win = wx.Panel(self.noteBook, -1)
-      self.noteBook.AddPage(win, "Jogging")
-      st = wx.StaticText(win, -1, "Jogging panel stuff goes here")
+      self.machinePage = gcsJoggingSettingsPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.machinePage, "Jogging")
       self.noteBook.SetPageImage(page, 5)
 
    def AddCV2Panel(self, page):
@@ -1540,11 +1724,12 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
    refresh.
 ----------------------------------------------------------------------------"""
 class gcsMachineJoggingPanel(wx.ScrolledWindow):
-   def __init__(self, parent, **args):
+   def __init__(self, parent, config_data, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
       self.mainWindow = parent
 
+      self.configData = config_data
       self.stateData = gcsStateData()
 
       self.useMachineWorkPosition = False
@@ -1553,25 +1738,89 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.memoY = gZeroString
       self.memoZ = gZeroString
 
+      self.InitConfig()
       self.InitUI()
       width,height = self.GetSizeTuple()
       scroll_unit = 10
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
+
+      self.UpdateSettings(self.configData)
+
+   def InitConfig(self):
+      self.configXYZReadOnly      = self.configData.Get('/jogging/XYZReadOnly')
+
+      self.configCustom1Label     = self.configData.Get('/jogging/Custom1Label')
+      self.configCustom1XIsOffset = self.configData.Get('/jogging/Custom1XIsOffset')
+      self.configCustom1XValue    = self.configData.Get('/jogging/Custom1XValue')
+      self.configCustom1YIsOffset = self.configData.Get('/jogging/Custom1YIsOffset')
+      self.configCustom1YValue    = self.configData.Get('/jogging/Custom1YValue')
+      self.configCustom1ZIsOffset = self.configData.Get('/jogging/Custom1ZIsOffset')
+      self.configCustom1ZValue    = self.configData.Get('/jogging/Custom1ZValue')
+
+      self.configCustom2Label     = self.configData.Get('/jogging/Custom2Label')
+      self.configCustom2XIsOffset = self.configData.Get('/jogging/Custom2XIsOffset')
+      self.configCustom2XValue    = self.configData.Get('/jogging/Custom2XValue')
+      self.configCustom2YIsOffset = self.configData.Get('/jogging/Custom2YIsOffset')
+      self.configCustom2YValue    = self.configData.Get('/jogging/Custom2YValue')
+      self.configCustom2ZIsOffset = self.configData.Get('/jogging/Custom2ZIsOffset')
+      self.configCustom2ZValue    = self.configData.Get('/jogging/Custom2ZValue')
+
+      self.configCustom3Label     = self.configData.Get('/jogging/Custom3Label')
+      self.configCustom3XIsOffset = self.configData.Get('/jogging/Custom3XIsOffset')
+      self.configCustom3XValue    = self.configData.Get('/jogging/Custom3XValue')
+      self.configCustom3YIsOffset = self.configData.Get('/jogging/Custom3YIsOffset')
+      self.configCustom3YValue    = self.configData.Get('/jogging/Custom3YValue')
+      self.configCustom3ZIsOffset = self.configData.Get('/jogging/Custom3ZIsOffset')
+      self.configCustom3ZValue    = self.configData.Get('/jogging/Custom3ZValue')
+
+      self.configCustom4Label     = self.configData.Get('/jogging/Custom4Label')
+      self.configCustom4XIsOffset = self.configData.Get('/jogging/Custom4XIsOffset')
+      self.configCustom4XValue    = self.configData.Get('/jogging/Custom4XValue')
+      self.configCustom4YIsOffset = self.configData.Get('/jogging/Custom4YIsOffset')
+      self.configCustom4YValue    = self.configData.Get('/jogging/Custom4YValue')
+      self.configCustom4ZIsOffset = self.configData.Get('/jogging/Custom4ZIsOffset')
+      self.configCustom4ZValue    = self.configData.Get('/jogging/Custom4ZValue')
+
+   def UpdateSettings(self, config_data):
+      self.configData = config_data
+      self.InitConfig()
+
+      if self.configXYZReadOnly:
+         self.jX.SetEditable(False)
+         self.jX.SetBackgroundColour(gReadOnlyBkColor)
+         self.jY.SetEditable(False)
+         self.jY.SetBackgroundColour(gReadOnlyBkColor)
+         self.jZ.SetEditable(False)
+         self.jZ.SetBackgroundColour(gReadOnlyBkColor)
+      else:
+         self.jX.SetEditable(True)
+         self.jX.SetBackgroundColour(gEdityBkColor)
+         self.jY.SetEditable(True)
+         self.jY.SetBackgroundColour(gEdityBkColor)
+         self.jZ.SetEditable(True)
+         self.jZ.SetBackgroundColour(gEdityBkColor)
+
+      self.custom1Button.SetLabel(self.configCustom1Label)
+      self.custom2Button.SetLabel(self.configCustom2Label)
+      self.custom3Button.SetLabel(self.configCustom3Label)
+      self.custom4Button.SetLabel(self.configCustom4Label)
 
    def InitUI(self):
       vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
       hPanelBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       # Add Controls ----------------------------------------------------------
-      buttonBox = self.CreateJoggingButtons()
-      vPanelBoxSizer.Add(buttonBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
+      joggingControls = self.CreateJoggingControls()
+      vPanelBoxSizer.Add(joggingControls, 0, flag=wx.ALL|wx.EXPAND, border=5)
 
-      positionStatus = self.CreatePositionStatus()
-      hPanelBoxSizer.Add(positionStatus, 0, flag=wx.EXPAND)
+      positionStatusControls = self.CreatePositionStatusControls()
+      hPanelBoxSizer.Add(positionStatusControls, 0, flag=wx.EXPAND)
 
-      positionGotoButtons = self.CreateGotoButtons()
-      hPanelBoxSizer.Add(positionGotoButtons, 0, flag=wx.LEFT|wx.EXPAND, border=10)
+      gotoControls = self.CreateGotoControls()
+      hPanelBoxSizer.Add(gotoControls, 0, flag=wx.LEFT|wx.EXPAND, border=10)
 
+      utilControls = self.CreateUtilControls()
+      hPanelBoxSizer.Add(utilControls, 0, flag=wx.LEFT|wx.EXPAND, border=10)
 
       vPanelBoxSizer.Add(hPanelBoxSizer, 1, flag=wx.ALL|wx.EXPAND, border=5)
 
@@ -1608,6 +1857,10 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
          self.negativeZButton.Enable()
          self.spindleOnButton.Enable()
          self.spindleOffButton.Enable()
+         self.custom1Button.Enable()
+         self.custom2Button.Enable()
+         self.custom3Button.Enable()
+         self.custom4Button.Enable()
       else:
          self.resettoZeroPositionButton.Disable()
          self.resettoCurrentPositionButton.Disable()
@@ -1622,125 +1875,13 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
          self.negativeZButton.Disable()
          self.spindleOnButton.Disable()
          self.spindleOffButton.Disable()
+         self.custom1Button.Disable()
+         self.custom2Button.Disable()
+         self.custom3Button.Disable()
+         self.custom4Button.Disable()
 
 
-   def CreateStaticBox(self, label):
-      # Static box ------------------------------------------------------------
-      staticBox = wx.StaticBox(self, -1, label)
-      staticBoxSizer = wx.StaticBoxSizer(staticBox, wx.HORIZONTAL)
-
-      return staticBoxSizer
-
-   def CreatePositionStatus(self):
-      vBoxLeftSizer = wx.BoxSizer(wx.VERTICAL)
-
-      # add status controls
-      spinText = wx.StaticText(self, -1, "Step Size:  ")
-      vBoxLeftSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
-
-      self.spinCtrl = FS.FloatSpin(self, -1,
-         min_val=0, max_val=99999, increment=0.10, value=1.0,
-         agwStyle=FS.FS_LEFT)
-      self.spinCtrl.SetFormat("%f")
-      self.spinCtrl.SetDigits(4)
-
-      vBoxLeftSizer.Add(self.spinCtrl, 0,
-         flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
-
-      #positionBoxSizer = self.CreateStaticBox(label)
-      spinText = wx.StaticText(self, -1, "Jogging Status:  ")
-      vBoxLeftSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-
-      flexGridSizer = wx.FlexGridSizer(4,2)
-      vBoxLeftSizer.Add(flexGridSizer,0 , flag=wx.ALL|wx.EXPAND, border=5)
-
-      # Add X pos
-      xText = wx.StaticText(self, label="X:")
-      self.jX = wx.TextCtrl(self, value=gZeroString)
-      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.jX, 1, flag=wx.EXPAND)
-
-      # Add Y Pos
-      yText = wx.StaticText(self, label="Y:")
-      self.jY = wx.TextCtrl(self, value=gZeroString)
-      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.jY, 1, flag=wx.EXPAND)
-
-      # Add Z Pos
-      zText = wx.StaticText(self, label="Z:")
-      self.jZ = wx.TextCtrl(self, value=gZeroString)
-      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.jZ, 1, flag=wx.EXPAND)
-
-      # Add Spindle status
-      spindleText = wx.StaticText(self, label="SP:")
-      self.jSpindle = wx.TextCtrl(self, value=gOffString, style=wx.TE_READONLY)
-      self.jSpindle.SetBackgroundColour(gReadOnlyBkColor)
-      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
-
-      # Add Checkbox for sync with work position
-      self.useWorkPosCheckBox = wx.CheckBox (self, label="Use Work Pos")
-      self.useWorkPosCheckBox.SetToolTip(
-         wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
-      self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
-      vBoxLeftSizer.Add(self.useWorkPosCheckBox)
-
-      return vBoxLeftSizer
-
-   def CreateGotoButtons(self):
-      vBoxRightSizer = wx.BoxSizer(wx.VERTICAL)
-
-      spinText = wx.StaticText(self, -1, "")
-      vBoxRightSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
-
-      # add Buttons
-      self.resettoZeroPositionButton = wx.Button(self, label="Reset to Zero")
-      self.resettoZeroPositionButton.SetToolTip(
-         wx.ToolTip("Reset machine work position to X0, Y0, Z0"))
-      self.Bind(wx.EVT_BUTTON, self.OnResetToZeroPos, self.resettoZeroPositionButton)
-      vBoxRightSizer.Add(self.resettoZeroPositionButton, flag=wx.TOP|wx.EXPAND, border=5)
-
-      self.goZeroButton = wx.Button(self, label="Goto Zero")
-      self.goZeroButton.SetToolTip(
-         wx.ToolTip("Move to Machine Working position X0, Y0, Z0"))
-      self.Bind(wx.EVT_BUTTON, self.OnGoZero, self.goZeroButton)
-      vBoxRightSizer.Add(self.goZeroButton, flag=wx.EXPAND)
-
-      self.resettoCurrentPositionButton = wx.Button(self, label="Reset to Jog")
-      self.resettoCurrentPositionButton.SetToolTip(
-         wx.ToolTip("Reset machine work position to current jogging values"))
-      self.Bind(wx.EVT_BUTTON, self.OnResetToCurrentPos, self.resettoCurrentPositionButton)
-      vBoxRightSizer.Add(self.resettoCurrentPositionButton, flag=wx.EXPAND)
-
-      self.goToCurrentPositionButton = wx.Button(self, label="Goto Jog")
-      self.goToCurrentPositionButton.SetToolTip(
-         wx.ToolTip("Move to to current jogging values"))
-      self.Bind(wx.EVT_BUTTON, self.OnGoPos, self.goToCurrentPositionButton)
-      vBoxRightSizer.Add(self.goToCurrentPositionButton, flag=wx.EXPAND)
-
-      self.goHomeButton = wx.Button(self, label="Goto Home")
-      self.goHomeButton.SetToolTip(
-         wx.ToolTip("Execute Machine Homing Cycle"))
-      self.Bind(wx.EVT_BUTTON, self.OnGoHome, self.goHomeButton)
-      vBoxRightSizer.Add(self.goHomeButton, flag=wx.EXPAND)
-
-      self.saveJogButton = wx.Button(self, label="Save Jog")
-      self.saveJogButton.SetToolTip(
-         wx.ToolTip("Saves current jogging values to memory"))
-      self.Bind(wx.EVT_BUTTON, self.OnSaveJog, self.saveJogButton)
-      vBoxRightSizer.Add(self.saveJogButton, flag=wx.EXPAND)
-
-      self.loadJogButton = wx.Button(self, label="Load Jog")
-      self.loadJogButton.SetToolTip(
-         wx.ToolTip("Loads jogging from memory"))
-      self.Bind(wx.EVT_BUTTON, self.OnLoadJog, self.loadJogButton)
-      vBoxRightSizer.Add(self.loadJogButton, flag=wx.EXPAND)
-
-
-      return vBoxRightSizer
-
-   def CreateJoggingButtons(self):
+   def CreateJoggingControls(self):
       # Add Buttons -----------------------------------------------------------
       hButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
       vYButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -1806,6 +1947,148 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       hButtonBoxSizer.Add(vOtherButtonBoxSizer, flag=wx.ALIGN_BOTTOM)
 
       return hButtonBoxSizer
+
+   def CreatePositionStatusControls(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      # add status controls
+      spinText = wx.StaticText(self, -1, "Step Size:  ")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
+
+      self.spinCtrl = FS.FloatSpin(self, -1,
+         min_val=0, max_val=99999, increment=0.10, value=1.0,
+         agwStyle=FS.FS_LEFT)
+      self.spinCtrl.SetFormat("%f")
+      self.spinCtrl.SetDigits(4)
+
+      vBoxSizer.Add(self.spinCtrl, 0,
+         flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
+
+      spinText = wx.StaticText(self, -1, "Jogging Status:  ")
+      vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+
+      flexGridSizer = wx.FlexGridSizer(4,2)
+      vBoxSizer.Add(flexGridSizer,0 , flag=wx.ALL|wx.EXPAND, border=5)
+
+      # Add X pos
+      xText = wx.StaticText(self, label="X:")
+      self.jX = wx.TextCtrl(self, value=gZeroString)
+      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jX, 1, flag=wx.EXPAND)
+
+      # Add Y Pos
+      yText = wx.StaticText(self, label="Y:")
+      self.jY = wx.TextCtrl(self, value=gZeroString)
+      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jY, 1, flag=wx.EXPAND)
+
+      # Add Z Pos
+      zText = wx.StaticText(self, label="Z:")
+      self.jZ = wx.TextCtrl(self, value=gZeroString)
+      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jZ, 1, flag=wx.EXPAND)
+
+      # Add Spindle status
+      spindleText = wx.StaticText(self, label="SP:")
+      self.jSpindle = wx.TextCtrl(self, value=gOffString, style=wx.TE_READONLY)
+      self.jSpindle.SetBackgroundColour(gReadOnlyBkColor)
+      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
+
+      # Add Checkbox for sync with work position
+      self.useWorkPosCheckBox = wx.CheckBox (self, label="Use Work Pos")
+      self.useWorkPosCheckBox.SetToolTip(
+         wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
+      self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
+      vBoxSizer.Add(self.useWorkPosCheckBox)
+
+      return vBoxSizer
+
+   def CreateGotoControls(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      spinText = wx.StaticText(self, -1, "")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
+
+      # add Buttons
+      self.resettoZeroPositionButton = wx.Button(self, label="Reset to Zero")
+      self.resettoZeroPositionButton.SetToolTip(
+         wx.ToolTip("Reset machine work position to X0, Y0, Z0"))
+      self.Bind(wx.EVT_BUTTON, self.OnResetToZeroPos, self.resettoZeroPositionButton)
+      vBoxSizer.Add(self.resettoZeroPositionButton, flag=wx.TOP|wx.EXPAND, border=5)
+
+      self.goZeroButton = wx.Button(self, label="Goto Zero")
+      self.goZeroButton.SetToolTip(
+         wx.ToolTip("Move to Machine Working position X0, Y0, Z0"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoZero, self.goZeroButton)
+      vBoxSizer.Add(self.goZeroButton, flag=wx.EXPAND)
+
+      self.resettoCurrentPositionButton = wx.Button(self, label="Reset to Jog")
+      self.resettoCurrentPositionButton.SetToolTip(
+         wx.ToolTip("Reset machine work position to current jogging values"))
+      self.Bind(wx.EVT_BUTTON, self.OnResetToCurrentPos, self.resettoCurrentPositionButton)
+      vBoxSizer.Add(self.resettoCurrentPositionButton, flag=wx.EXPAND)
+
+      self.goToCurrentPositionButton = wx.Button(self, label="Goto Jog")
+      self.goToCurrentPositionButton.SetToolTip(
+         wx.ToolTip("Move to to current jogging values"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoPos, self.goToCurrentPositionButton)
+      vBoxSizer.Add(self.goToCurrentPositionButton, flag=wx.EXPAND)
+
+      self.goHomeButton = wx.Button(self, label="Goto Home")
+      self.goHomeButton.SetToolTip(
+         wx.ToolTip("Execute Machine Homing Cycle"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoHome, self.goHomeButton)
+      vBoxSizer.Add(self.goHomeButton, flag=wx.EXPAND)
+
+
+      return vBoxSizer
+
+   def CreateUtilControls(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      spinText = wx.StaticText(self, -1, "")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
+
+      # add position stack
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.pushStackButton = wx.Button(self, label=" + ", style=wx.BU_EXACTFIT)
+      self.pushStackButton.SetToolTip(
+         wx.ToolTip("Adds current jog position values to jog memory stack"))
+      self.Bind(wx.EVT_BUTTON, self.OnPushStack, self.pushStackButton)
+      hBoxSizer.Add(self.pushStackButton)
+
+      self.jogMemoryStackComboBox = wx.ComboBox(self, -1, value="", size=(20,20),
+         choices=[], style=wx.CB_READONLY|wx.CB_DROPDOWN)
+      self.jogMemoryStackComboBox.SetToolTip(wx.ToolTip("jog memory stack"))
+      self.Bind(wx.EVT_COMBOBOX, self.OnPopStack, self.jogMemoryStackComboBox)
+      hBoxSizer.Add(self.jogMemoryStackComboBox, 1, flag=wx.EXPAND)
+
+      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
+
+      # add custom buttons
+      self.custom1Button = wx.Button(self, label=self.configCustom1Label)
+      self.custom1Button.SetToolTip(wx.ToolTip("Move to pre-defined position (1)"))
+      #self.Bind(wx.EVT_BUTTON, self.OnCustom1Button, self.custom1Button)
+      vBoxSizer.Add(self.custom1Button, flag=wx.EXPAND)
+
+      self.custom2Button = wx.Button(self, label=self.configCustom2Label)
+      self.custom2Button.SetToolTip(wx.ToolTip("Move to pre-defined position (2)"))
+      #self.Bind(wx.EVT_BUTTON, self.OnCustom2Button, self.custom2Button)
+      vBoxSizer.Add(self.custom2Button, flag=wx.EXPAND)
+
+      self.custom3Button = wx.Button(self, label=self.configCustom3Label)
+      self.custom3Button.SetToolTip(wx.ToolTip("Move to pre-defined position (3)"))
+      #self.Bind(wx.EVT_BUTTON, self.OnCustom3Button, self.custom3Button)
+      vBoxSizer.Add(self.custom3Button, flag=wx.EXPAND)
+
+      self.custom4Button = wx.Button(self, label=self.configCustom4Label)
+      self.custom4Button.SetToolTip(wx.ToolTip("Move to pre-defined position (4)"))
+      #self.Bind(wx.EVT_BUTTON, self.OnCustom4Button, self.custom4Button)
+      vBoxSizer.Add(self.custom4Button, flag=wx.EXPAND)
+
+
+      return vBoxSizer
 
    def AxisJog(self, staticControl, cmdString, opAdd):
       fAxisPos = float(staticControl.GetValue())
@@ -1874,26 +2157,24 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
    def OnGoHome(self, e):
       self.mainWindow.SerialWrite(gGRBL_CMD_EXE_HOME_CYCLE)
 
-   def OnLoadJog(self, e):
-      self.jX.SetValue(self.memoX)
-      self.jY.SetValue(self.memoY)
-      self.jZ.SetValue(self.memoZ)
+   def OnPushStack(self, e):
+      xVal = self.jX.GetValue()
+      yVal = self.jY.GetValue()
+      zVal = self.jZ.GetValue()
 
-   def OnSaveJog(self, e):
-         self.stackData = True
-         self.memoX = self.jX.GetValue()
-         self.memoY = self.jY.GetValue()
-         self.memoZ = self.jZ.GetValue()
+      self.jogMemoryStackComboBox.Append("X:%s, Y:%s, Z:%s" % (xVal, yVal, zVal))
+
+   def OnPopStack(self, e):
+      strXYZ = self.jogMemoryStackComboBox.GetValue()
+      self.jX.SetValue(re.search("X:(\S+),", strXYZ).group(1))
+      self.jY.SetValue(re.search("Y:(\S+),", strXYZ).group(1))
+      self.jZ.SetValue(re.search("Z:(\S+)", strXYZ).group(1))
 
    def OnUseMachineWorkPosition(self, e):
       self.useMachineWorkPosition = e.IsChecked()
 
    def OnRefresh(self, e):
       pass
-
-   def UpdateSettings(self, config_data):
-      self.configData = config_data
-      #self.InitConfig()
 
 
 """----------------------------------------------------------------------------
@@ -1958,7 +2239,7 @@ class gcsMainWindow(wx.Frame):
       #self.connectionPanel = gcsConnectionPanel(self)
       self.machineStatusPanel = gcsMachineStatusPanel(self)
       self.CV2Panel = gcsCV2Panel(self, self.configData, self.cmdLineOptions)
-      self.machineJoggingPanel = gcsMachineJoggingPanel(self)
+      self.machineJoggingPanel = gcsMachineJoggingPanel(self, self.configData)
 
       # output Window
       self.outputText = gcsStcStyledTextCtrl(self, self.configData, style=wx.NO_BORDER)
@@ -1987,7 +2268,7 @@ class gcsMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(1).Caption("Machine Jogging")\
-            .BestSize(320,340)
+            .BestSize(360,340)
       )
 
       self.aui_mgr.AddPane(self.machineStatusPanel,
@@ -2301,7 +2582,7 @@ class gcsMainWindow(wx.Frame):
       self.statusToolBar.SetToolBitmapSize(iconSize)
 
       self.statusToolBar.AddSimpleTool(gID_TOOLBAR_LINK_STATUS, "123456789", imgLinkGray.GetBitmap(),
-         "Link Status")
+         "Link Status (link/unlink)")
       self.statusToolBar.SetToolDisabledBitmap(gID_MENU_RUN, imgLinkGray.GetBitmap())
 
       self.statusToolBar.AddSimpleTool(gID_TOOLBAR_PROGRAM_STATUS, "123456", imgProgramBlack.GetBitmap(),
@@ -2309,7 +2590,7 @@ class gcsMainWindow(wx.Frame):
       self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_PROGRAM_STATUS, imgProgramBlack.GetBitmap())
 
       self.statusToolBar.AddSimpleTool(gID_TOOLBAR_MACHINE_STATUS, "123456", imgMachineBlack.GetBitmap(),
-         "Machine Status")
+         "Machine Status (refresh)")
       self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_MACHINE_STATUS, imgMachineGray.GetBitmap())
 
       self.statusToolBar.Realize()
@@ -3490,33 +3771,6 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       st = wx.StaticText(self, wx.ID_ANY, "CV2 Capture Height")
       flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
 
-
-      # Add spin ctrl for offset x
-      self.scXoffset = FS.FloatSpin(self, -1,
-         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
-         agwStyle=FS.FS_LEFT)
-      self.scXoffset.SetFormat("%f")
-      self.scXoffset.SetDigits(4)
-      self.scXoffset.SetValue(self.configData.Get('/cv2/X-Offset'))
-      flexGridSizer.Add(self.scXoffset,
-         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
-
-      st = wx.StaticText(self, wx.ID_ANY, "CAM X Offset")
-      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-
-      # Add spin ctrl for offset y
-      self.scYoffset = FS.FloatSpin(self, -1,
-         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
-         agwStyle=FS.FS_LEFT)
-      self.scYoffset.SetFormat("%f")
-      self.scYoffset.SetDigits(4)
-      self.scYoffset.SetValue(self.configData.Get('/cv2/Y-Offset'))
-      flexGridSizer.Add(self.scYoffset,
-         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
-
-      st = wx.StaticText(self, wx.ID_ANY, "CAM Y Offset")
-      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
-
       vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL|wx.EXPAND, border=20)
       self.SetSizer(vBoxSizer)
 
@@ -3526,8 +3780,6 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/cv2/CapturePeriod', self.scPeriod.GetValue())
       self.configData.Set('/cv2/CaptureWidth', self.scWidth.GetValue())
       self.configData.Set('/cv2/CaptureHeight', self.scHeight.GetValue())
-      self.configData.Set('/cv2/X-Offset', self.scXoffset.GetValue())
-      self.configData.Set('/cv2/Y-Offset', self.scYoffset.GetValue())
 
 """----------------------------------------------------------------------------
    gcsCV2Panel:
@@ -3603,16 +3855,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
       vPanelBoxSizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT|wx.TOP, border=5)
 
       btnsizer = wx.StdDialogButtonSizer()
-
-      self.gotoToolButton = wx.Button(self, gID_CV2_GOTO_TOOL, label="Goto Tool")
-      self.gotoToolButton.SetToolTip(wx.ToolTip("Move Tool to target"))
-      #self.Bind(wx.EVT_BUTTON, self.gotoToolButton, self.OnGotoTool)
-      btnsizer.Add(self.gotoToolButton)
-
-      self.gotoCamButton = wx.Button(self, gID_CV2_GOTO_CAM, label="Goto CAM")
-      self.gotoCamButton.SetToolTip(wx.ToolTip("Move CAM corss-hair to target"))
-      #self.Bind(wx.EVT_BUTTON, self.gotoCamButton, self.onGotoCAM)
-      btnsizer.Add(self.gotoCamButton)
 
       self.centerScrollButton = wx.Button(self, label="Center")
       self.centerScrollButton.SetToolTip(wx.ToolTip("Center scroll bars"))
