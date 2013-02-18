@@ -1178,8 +1178,8 @@ class gcsSettingsDialog(wx.Dialog):
       self.noteBook.SetPageImage(page, 4)
 
    def AddJoggingPage(self, page):
-      self.machinePage = gcsJoggingSettingsPanel(self.noteBook, self.configData)
-      self.noteBook.AddPage(self.machinePage, "Jogging")
+      self.jogPage = gcsJoggingSettingsPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.jogPage, "Jogging")
       self.noteBook.SetPageImage(page, 5)
 
    def AddCV2Panel(self, page):
@@ -1193,6 +1193,7 @@ class gcsSettingsDialog(wx.Dialog):
       self.linkPage.UpdatConfigData()
       self.cliPage.UpdatConfigData()
       self.machinePage.UpdatConfigData()
+      self.jogPage.UpdatConfigData()
       self.CV2Page.UpdatConfigData()
 
 
@@ -1719,11 +1720,10 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
 
 
 """----------------------------------------------------------------------------
-   gcsMachineJoggingPanel:
-   Status information about machine, controls to enable auto and manual
-   refresh.
+   gcsJoggingPanel:
+   Jog controls for the machien as well as custom user controls.
 ----------------------------------------------------------------------------"""
-class gcsMachineJoggingPanel(wx.ScrolledWindow):
+class gcsJoggingPanel(wx.ScrolledWindow):
    def __init__(self, parent, config_data, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -2069,24 +2069,23 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       # add custom buttons
       self.custom1Button = wx.Button(self, label=self.configCustom1Label)
       self.custom1Button.SetToolTip(wx.ToolTip("Move to pre-defined position (1)"))
-      #self.Bind(wx.EVT_BUTTON, self.OnCustom1Button, self.custom1Button)
+      self.Bind(wx.EVT_BUTTON, self.OnCustom1Button, self.custom1Button)
       vBoxSizer.Add(self.custom1Button, flag=wx.EXPAND)
 
       self.custom2Button = wx.Button(self, label=self.configCustom2Label)
       self.custom2Button.SetToolTip(wx.ToolTip("Move to pre-defined position (2)"))
-      #self.Bind(wx.EVT_BUTTON, self.OnCustom2Button, self.custom2Button)
+      self.Bind(wx.EVT_BUTTON, self.OnCustom2Button, self.custom2Button)
       vBoxSizer.Add(self.custom2Button, flag=wx.EXPAND)
 
       self.custom3Button = wx.Button(self, label=self.configCustom3Label)
       self.custom3Button.SetToolTip(wx.ToolTip("Move to pre-defined position (3)"))
-      #self.Bind(wx.EVT_BUTTON, self.OnCustom3Button, self.custom3Button)
+      self.Bind(wx.EVT_BUTTON, self.OnCustom3Button, self.custom3Button)
       vBoxSizer.Add(self.custom3Button, flag=wx.EXPAND)
 
       self.custom4Button = wx.Button(self, label=self.configCustom4Label)
       self.custom4Button.SetToolTip(wx.ToolTip("Move to pre-defined position (4)"))
-      #self.Bind(wx.EVT_BUTTON, self.OnCustom4Button, self.custom4Button)
+      self.Bind(wx.EVT_BUTTON, self.OnCustom4Button, self.custom4Button)
       vBoxSizer.Add(self.custom4Button, flag=wx.EXPAND)
-
 
       return vBoxSizer
 
@@ -2127,6 +2126,9 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gOffString)
       self.mainWindow.SerialWrite(gGRBL_CMD_SPINDLE_OFF)
+
+   def OnUseMachineWorkPosition(self, e):
+      self.useMachineWorkPosition = e.IsChecked()
 
    def OnResetToZeroPos(self, e):
       self.jX.SetValue(gZeroString)
@@ -2170,8 +2172,64 @@ class gcsMachineJoggingPanel(wx.ScrolledWindow):
       self.jY.SetValue(re.search("Y:(\S+),", strXYZ).group(1))
       self.jZ.SetValue(re.search("Z:(\S+)", strXYZ).group(1))
 
-   def OnUseMachineWorkPosition(self, e):
-      self.useMachineWorkPosition = e.IsChecked()
+   def OnCustomButton(self, xo, xv, yo, yv, zo, zv):
+      fXPos = float(self.jX.GetValue())
+      fYPos = float(self.jY.GetValue())
+      fZPos = float(self.jZ.GetValue())
+      fXVal = float(xv)
+      fYVal = float(yv)
+      fZVal = float(zv)
+
+      fXnp = fXVal
+      if xo:
+         fXnp = fXPos + fXVal
+
+      fYnp = fYVal
+      if yo:
+         fYnp = fYPos + fYVal
+
+      fZnp = fZVal
+      if zo:
+         fZnp = fZPos + fZVal
+
+      self.jX.SetValue(str(fXnp))
+      self.jY.SetValue(str(fYnp))
+      self.jZ.SetValue(str(fZnp))
+
+      goPosCmd = gGRBL_CMD_GO_POS
+      goPosCmd = goPosCmd.replace("<XVAL>", str(fXnp))
+      goPosCmd = goPosCmd.replace("<YVAL>", str(fYnp))
+      goPosCmd = goPosCmd.replace("<ZVAL>", str(fZnp))
+      self.mainWindow.SerialWrite(goPosCmd)
+
+
+   def OnCustom1Button(self, e):
+      self.OnCustomButton(
+         self.configCustom1XIsOffset, self.configCustom1XValue,
+         self.configCustom1YIsOffset, self.configCustom1YValue,
+         self.configCustom1ZIsOffset, self.configCustom1ZValue
+      )
+
+   def OnCustom2Button(self, e):
+      self.OnCustomButton(
+         self.configCustom2XIsOffset, self.configCustom2XValue,
+         self.configCustom2YIsOffset, self.configCustom2YValue,
+         self.configCustom2ZIsOffset, self.configCustom2ZValue
+      )
+
+   def OnCustom3Button(self, e):
+      self.OnCustomButton(
+         self.configCustom3XIsOffset, self.configCustom3XValue,
+         self.configCustom3YIsOffset, self.configCustom3YValue,
+         self.configCustom3ZIsOffset, self.configCustom3ZValue
+      )
+
+   def OnCustom4Button(self, e):
+      self.OnCustomButton(
+         self.configCustom4XIsOffset, self.configCustom4XValue,
+         self.configCustom4YIsOffset, self.configCustom4YValue,
+         self.configCustom4ZIsOffset, self.configCustom4ZValue
+      )
 
    def OnRefresh(self, e):
       pass
@@ -2239,7 +2297,7 @@ class gcsMainWindow(wx.Frame):
       #self.connectionPanel = gcsConnectionPanel(self)
       self.machineStatusPanel = gcsMachineStatusPanel(self)
       self.CV2Panel = gcsCV2Panel(self, self.configData, self.cmdLineOptions)
-      self.machineJoggingPanel = gcsMachineJoggingPanel(self, self.configData)
+      self.machineJoggingPanel = gcsJoggingPanel(self, self.configData)
 
       # output Window
       self.outputText = gcsStcStyledTextCtrl(self, self.configData, style=wx.NO_BORDER)
@@ -2881,7 +2939,6 @@ class gcsMainWindow(wx.Frame):
       self.OnViewMenuUpdate(e, self.cliPanel)
 
    def OnMachineStatus(self, e):
-      print "got here"
       self.OnViewMenu(e, self.machineStatusPanel)
 
    def OnMachineStatusUpdate(self, e):
