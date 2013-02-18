@@ -2051,20 +2051,17 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       # add position stack
-      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.pushStackButton = wx.Button(self, label=" + ", style=wx.BU_EXACTFIT)
+      self.pushStackButton = wx.Button(self, label="Push Jog Pos")
       self.pushStackButton.SetToolTip(
          wx.ToolTip("Adds current jog position values to jog memory stack"))
       self.Bind(wx.EVT_BUTTON, self.OnPushStack, self.pushStackButton)
-      hBoxSizer.Add(self.pushStackButton)
+      vBoxSizer.Add(self.pushStackButton, flag=wx.TOP|wx.EXPAND, border=5)
 
-      self.jogMemoryStackComboBox = wx.ComboBox(self, -1, value="", size=(20,20),
+      self.jogMemoryStackComboBox = wx.ComboBox(self, -1, value="", size=(20,-1),
          choices=[], style=wx.CB_READONLY|wx.CB_DROPDOWN)
       self.jogMemoryStackComboBox.SetToolTip(wx.ToolTip("jog memory stack"))
       self.Bind(wx.EVT_COMBOBOX, self.OnPopStack, self.jogMemoryStackComboBox)
-      hBoxSizer.Add(self.jogMemoryStackComboBox, 1, flag=wx.EXPAND)
-
-      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
+      vBoxSizer.Add(self.jogMemoryStackComboBox, 0, flag=wx.EXPAND)
 
       # add custom buttons
       self.custom1Button = wx.Button(self, label=self.configCustom1Label)
@@ -2164,13 +2161,13 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       yVal = self.jY.GetValue()
       zVal = self.jZ.GetValue()
 
-      self.jogMemoryStackComboBox.Append("X:%s, Y:%s, Z:%s" % (xVal, yVal, zVal))
+      self.jogMemoryStackComboBox.Append("X%s,Y%s,Z%s" % (xVal, yVal, zVal))
 
    def OnPopStack(self, e):
       strXYZ = self.jogMemoryStackComboBox.GetValue()
-      self.jX.SetValue(re.search("X:(\S+),", strXYZ).group(1))
-      self.jY.SetValue(re.search("Y:(\S+),", strXYZ).group(1))
-      self.jZ.SetValue(re.search("Z:(\S+)", strXYZ).group(1))
+      self.jX.SetValue(re.search("X(\S+),Y", strXYZ).group(1))
+      self.jY.SetValue(re.search("Y(\S+),Z", strXYZ).group(1))
+      self.jZ.SetValue(re.search("Z(\S+)", strXYZ).group(1))
 
    def OnCustomButton(self, xo, xv, yo, yv, zo, zv):
       fXPos = float(self.jX.GetValue())
