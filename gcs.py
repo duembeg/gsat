@@ -7,7 +7,7 @@ __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
 "GCODE Step and Alignment Tool (gcs) is a cross-platform GCODE debug/step for "\
-"grbl like GCODE interpreters. With features similar to software debuggers. Features "\
+"Grbl like GCODE interpreters. With features similar to software debuggers. Features "\
 "Such as breakpoint, change current program counter, inspection and modification "\
 "of variables."
 
@@ -42,6 +42,7 @@ import serial
 import re
 import Queue
 import time
+import shutil
 import wx
 from optparse import OptionParser
 from wx.lib.mixins import listctrl as listmix
@@ -106,6 +107,9 @@ gID_MENU_BREAK_REMOVE_ALL        = wx.NewId()
 gID_MENU_SET_PC                  = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
 gID_MENU_ABORT                   = wx.NewId()
+gID_MENU_IN2MM                   = wx.NewId()
+gID_MENU_MM2IN                   = wx.NewId()
+gID_MENU_G812G01                 = wx.NewId()
 
 gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 
@@ -235,7 +239,10 @@ class gcsConfigData():
       self.config = {
       #  key                                 CanEval, Default Value
       # main app keys
+         '/mainApp/BackupFile'               :(True , True),
          '/mainApp/MaxFileHistory'           :(True , 8),
+         '/mainApp/RoundInch2mm'             :(True , 4),
+         '/mainApp/Roundmm2Inch'             :(True , 4),
          #'/mainApp/DefaultLayout/Dimensions' :(False, ""),
          #'/mainApp/DefaultLayout/Perspective':(False, ""),
          #'/mainApp/ResetLayout/Dimensions'   :(False, ""),
@@ -369,6 +376,26 @@ class gcsConfigData():
    http://creativecommons.org/licenses/by-sa/3.0/us/
 ----------------------------------------------------------------------------"""
 #------------------------------------------------------------------------------
+# imgGCS
+#------------------------------------------------------------------------------
+imgGCSBlack32x32 = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QITCQknIQE77QAAAS5JREFUWMPtVrsRwjAM"
+    "faalgJIxMkLYxBs6I6SDhgsrQENpjgVMEzjjKJY/yqXh3bmxfdLLk/UigIcrXAOAPQTg1ibh"
+    "1ibh1iYRBislXEyCIjC3hyWUkFKgmERMASSoU01CWoEfEioxoA817qnIWSquCvLIIYBN5Ex7"
+    "culEmavQBImGoF4+sUbQ2L7J7bhhARjiognuNDNBkeAXEwK6wF61tLPajOSWCQzCL0gC/iPs"
+    "g4sdgOO4uuCsJ4Iqb/ltyUIHD+5T7xCGMBI9U/NYW05KQElMvfI20nqOSZhUghoo5uvd0iWY"
+    "4Hx/7k43u83pAkOQaMdyGIYg5wOcN4i0YZUP1BrR5Osuj9chxwlrrVjECWt+RqlTUdaAowV8"
+    "n1VgiYEka2ApGclEscHK+BN4AzpihyilXivdAAAAAElFTkSuQmCC")
+
+imgGCSBlack16x16 = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QITCRMYJ0rsCwAAAJBJREFUOMu1U0kOgCAM"
+    "bI03D34F//8AvekPiH5Af1AvlBAoMB5sMilLOyEzhagMCaAPuSBAc5MACRl7Bcmakz0jTQKQ"
+    "ymAUcEPUIpTAhewDiIgW5LnaLBU4w1bL5ni4B5jP3q5nXs97yvXwSbOGkviK94LamAvLtQtl"
+    "PDJRuWFpnIueiNCgWTY6ZJTRgv9+4wtoPFcRAyE4iwAAAABJRU5ErkJggg==")
+
+#------------------------------------------------------------------------------
 # imgPlay
 #------------------------------------------------------------------------------
 imgPlayBlack = PyEmbeddedImage(
@@ -491,23 +518,10 @@ imgLinkGray = PyEmbeddedImage(
 #------------------------------------------------------------------------------
 imgProgramBlack = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
-    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFByQBrMrBtgAAAQ5JREFUOMulkztLA0EU"
-    "Rs9MVsRC1zS+CKaxEASbgJDKPyuKjSgoEcVHgkJEZqMIgkUMiJpAAq67pFiQvVbqsroPyQdT"
-    "DJw5zJ2PgZ9IymoB02RERpV8gWniVEkeQarkW7B/6diA2WuYstaFmwRJ6g1M88mdAaRgWZWE"
-    "NwFAJ82jtRoDuGj3PaBVM+0ioOKc9dfh3fpVda1kBztnzWX/bdABVoLhuw24cVbFRgBQTs8v"
-    "iYgbhigRscJQQhH5qJaLwyiX1YIAbB81FoDB1mF9KaOt3wKn59tAcP3iTQImt+D8/nExAt2Z"
-    "rjcX2We30H99ngA4vn1Y3aydrlfmp7obByezef/CvzgrAcgdzWgZ/wSAzJS7vHbo9AAAAABJ"
-    "RU5ErkJggg==")
-
-imgProgramGray = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
-    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QIFCDAHYFv06wAAASFJREFUOMtjZICCVWvW"
-    "/2cgAMJCAhnRxZgYSADYLGFEl0S3BZsmZDUkuQCboSzYFGw5eo7/2/OHH9jF5BR+vnqE1zCs"
-    "Lvj2/OEHOTNH8Z+vHj0g5BqcXmBiYmRlYGBgkDV1UGNgYGDgVdQTxBYLWL3AJirF/uDEvp8s"
-    "wpIan9+/uc/AwMDw8+tHfgYGhg9EGSCnriX2X02T998/Bsb////z8gk5Cvz///8P0V4wkuB9"
-    "cvfo3s+m0nyf71+7yPno1P4PD65fkiQpDBgYGBjOvfjMz/jp7VNFS2c+5i/vbhNtwIFr9+Sg"
-    "LvkICVAGbpJi4fWzJ5wMDAwMuy/e1PvDzS989+je5784+cSxqcUaiKEudjeRkzkaG78BxORK"
-    "snMjNgAAn3VnJ3rOqJsAAAAASUVORK5CYII=")
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QITCRE7txv/+wAAAHFJREFUOMtjYECA/1DM"
+    "QAKNAkjRjNcAYgBcLQshBQwMDIxIfEZiTP1PhKFwNhMBAwl6C58BjMQEBrIBz9H8/J8E7+GX"
+    "PPHoA//xh++5CalFj2d88U+9dMCEJ/Th+OzzTxLExArVXEASYCIzQzFQLTcCAAU/Rcign8x/"
+    "AAAAAElFTkSuQmCC")
 
 #------------------------------------------------------------------------------
 # imgMachine
@@ -596,6 +610,15 @@ imgEyeBlack = PyEmbeddedImage(
     "Y2JUhQnoJZJqPHriaDwQr5pENWYSPjncLtOxWaTxfyRXc1sDlAcXKw0wqSbnBHPFzSqHaCZv"
     "iQHovCW+csZXjFRbeTGsvNyx8udoD31xVkhwngFgAAAAAElFTkSuQmCC")
 
+#------------------------------------------------------------------------------
+# imgSettings
+#------------------------------------------------------------------------------
+imgSettingsBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAFhJREFUeNpiYGBgEADi91CMDIgSZ0ESxAaIFv8PxSSLMzFQ"
+    "CMgxANlF/6nigv84TMcFGJHZVHEBIw7TaRaIRBtAVNjQ1AVEhc2ApEQUAMuNH3DIExQHCDAA"
+    "8FMU5Zns2PEAAAAASUVORK5CYII=")
+
 
 """----------------------------------------------------------------------------
    EVENTS definitions to interact with multiple windows:
@@ -636,6 +659,88 @@ class gcsLog(wx.PyLog):
         #              ": " + message
         if self.tc:
             self.tc.AppendText(message + '\n')
+
+"""----------------------------------------------------------------------------
+   gcsGeneralSettingsPanel:
+   General settings panel.
+----------------------------------------------------------------------------"""
+class gcsGeneralSettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, configData, **args):
+      scrolled.ScrolledPanel.__init__(self, parent,
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = configData
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      # file settings
+      text = wx.StaticText(self, label="Files:")
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+
+      # Add file save backup check box
+      self.cbBackupFile = wx.CheckBox(self, wx.ID_ANY, "Create a backup copy of file before saving")
+      self.cbBackupFile.SetValue(self.configData.Get('/mainApp/BackupFile'))
+      vBoxSizer.Add(self.cbBackupFile, flag=wx.LEFT, border=25)
+
+      # Add file history spin ctrl
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+      self.scFileHistory = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.scFileHistory.SetRange(0,100)
+      self.scFileHistory.SetValue(self.configData.Get('/mainApp/MaxFileHistory'))
+      hBoxSizer.Add(self.scFileHistory, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      st = wx.StaticText(self, wx.ID_ANY, "Recent file history size")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      # tools settings
+      text = wx.StaticText(self, label="Tools:")
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+
+      # Add Inch to mm round digits spin ctrl
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.scIN2MMRound = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.scIN2MMRound.SetRange(0,100)
+      self.scIN2MMRound.SetValue(self.configData.Get('/mainApp/RoundInch2mm'))
+      hBoxSizer.Add(self.scIN2MMRound, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      st = wx.StaticText(self, wx.ID_ANY, "Inch to mm round digits")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      # Add mm to Inch round digits spin ctrl
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.scMM2INRound = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.scMM2INRound.SetRange(0,100)
+      self.scMM2INRound.SetValue(self.configData.Get('/mainApp/Roundmm2Inch'))
+      hBoxSizer.Add(self.scMM2INRound, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      st = wx.StaticText(self, wx.ID_ANY, "mm to Inch round digits")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+
+      self.SetSizer(vBoxSizer)
+
+   def UpdatConfigData(self):
+      self.configData.Set('/mainApp/BackupFile', self.cbBackupFile.GetValue())
+      self.configData.Set('/mainApp/MaxFileHistory', self.scFileHistory.GetValue())
+      self.configData.Set('/mainApp/RoundInch2mm', self.scIN2MMRound.GetValue())
+      self.configData.Set('/mainApp/Roundmm2Inch', self.scMM2INRound.GetValue())
 
 """----------------------------------------------------------------------------
    gcsStyledTextCtrlSettingsPanel:
@@ -696,7 +801,7 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       self.checkLineNumbers.SetValue(self.configData.Get('/%s/LineNumber' % self.key))
       gBoxSizer.Add(self.checkLineNumbers, 0, wx.ALIGN_CENTER)
 
-      self.checkCaretLine = wx.CheckBox (self, label="Highlite Caret Line")
+      self.checkCaretLine = wx.CheckBox (self, label="Highlight Caret Line")
       self.checkCaretLine.SetValue(self.configData.Get('/%s/CaretLine' % self.key))
       gBoxSizer.Add(self.checkCaretLine, 0, wx.ALIGN_CENTER)
 
@@ -721,7 +826,7 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
       text = wx.StaticText(self, label="Line Numbers")
       foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
-      text = wx.StaticText(self, label="Highlite Line")
+      text = wx.StaticText(self, label="Highlight Line")
       foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
 
       self.windowForeground = wx.ColourPickerCtrl(self,
@@ -748,7 +853,7 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
       text = wx.StaticText(self, label="Line Numbers")
       backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
-      text = wx.StaticText(self, label="Highlite Line")
+      text = wx.StaticText(self, label="Highlight Line")
       backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
 
 
@@ -913,7 +1018,7 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
    def InitUI(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      # Add cehck box
+      # Add check box
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
       self.cb = wx.CheckBox(self, wx.ID_ANY, "Auto Refresh")
       self.cb.SetValue(self.configData.Get('/machine/AutoRefresh'))
@@ -1115,8 +1220,9 @@ class gcsSettingsDialog(wx.Dialog):
 
       # init note book
       self.imageList = wx.ImageList(16, 16)
-      self.imageList.Add(imgProgramBlack.GetBitmap())
+      self.imageList.Add(imgSettingsBlack.GetBitmap())
       self.imageList.Add(imgLinkBlack.GetBitmap())
+      self.imageList.Add(imgProgramBlack.GetBitmap())
       self.imageList.Add(imgLogBlack.GetBitmap())
       self.imageList.Add(imgCliBlack.GetBitmap())
       self.imageList.Add(imgMachineBlack.GetBitmap())
@@ -1131,13 +1237,14 @@ class gcsSettingsDialog(wx.Dialog):
       self.noteBook.AssignImageList(self.imageList)
 
       # add pages
-      self.AddLinkPage(0)
-      self.AddProgramPage(1)
-      self.AddOutputPage(2)
-      self.AddCliPage(3)
-      self.AddMachinePage(4)
-      self.AddJoggingPage(5)
-      self.AddCV2Panel(6)
+      self.AddGeneralPage(0)
+      self.AddLinkPage(1)
+      self.AddProgramPage(2)
+      self.AddOutputPage(3)
+      self.AddCliPage(4)
+      self.AddMachinePage(5)
+      self.AddJoggingPage(6)
+      self.AddCV2Panel(7)
 
       #self.noteBook.Layout()
       sizer.Add(self.noteBook, 1, wx.ALL|wx.EXPAND, 5)
@@ -1161,47 +1268,53 @@ class gcsSettingsDialog(wx.Dialog):
       self.SetSizerAndFit(sizer)
       #self.SetAutoLayout(True)
 
-   def AddProgramPage(self, page):
-      self.programPage = gcsStyledTextCtrlSettingsPanel(
-         self.noteBook, self.configData, "code")
-      self.noteBook.AddPage(self.programPage, "Program")
-      self.noteBook.SetPageImage(page, 0)
+   def AddGeneralPage(self, page):
+      self.generalPage = gcsGeneralSettingsPanel(self.noteBook, self.configData)
+      self.noteBook.AddPage(self.generalPage, "General")
+      self.noteBook.SetPageImage(page, page)
 
    def AddLinkPage(self, page):
       self.linkPage = gcsLinkSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.linkPage, "Link")
-      self.noteBook.SetPageImage(page, 1)
+      self.noteBook.SetPageImage(page, page)
+
+   def AddProgramPage(self, page):
+      self.programPage = gcsStyledTextCtrlSettingsPanel(
+         self.noteBook, self.configData, "code")
+      self.noteBook.AddPage(self.programPage, "Program")
+      self.noteBook.SetPageImage(page, page)
 
    def AddOutputPage(self, page):
       self.outputPage = gcsStyledTextCtrlSettingsPanel(
          self.noteBook, self.configData, "output")
       self.noteBook.AddPage(self.outputPage, "Output")
-      self.noteBook.SetPageImage(page, 2)
+      self.noteBook.SetPageImage(page, page)
 
    def AddCliPage(self, page):
       self.cliPage = gcsCliSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.cliPage, "Cli")
-      self.noteBook.SetPageImage(page, 3)
+      self.noteBook.SetPageImage(page, page)
 
    def AddMachinePage(self, page):
       self.machinePage = gcsMachineSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.machinePage, "Machine")
-      self.noteBook.SetPageImage(page, 4)
+      self.noteBook.SetPageImage(page, page)
 
    def AddJoggingPage(self, page):
       self.jogPage = gcsJoggingSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.jogPage, "Jogging")
-      self.noteBook.SetPageImage(page, 5)
+      self.noteBook.SetPageImage(page, page)
 
    def AddCV2Panel(self, page):
       self.CV2Page = gcsCV2SettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.CV2Page, " OpenCV2")
-      self.noteBook.SetPageImage(page, 6)
+      self.noteBook.SetPageImage(page, page)
 
    def UpdatConfigData(self):
+      self.generalPage.UpdatConfigData()
+      self.linkPage.UpdatConfigData()
       self.programPage.UpdatConfigData()
       self.outputPage.UpdatConfigData()
-      self.linkPage.UpdatConfigData()
       self.cliPage.UpdatConfigData()
       self.machinePage.UpdatConfigData()
       self.jogPage.UpdatConfigData()
@@ -1732,7 +1845,7 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
 
 """----------------------------------------------------------------------------
    gcsJoggingPanel:
-   Jog controls for the machien as well as custom user controls.
+   Jog controls for the machine as well as custom user controls.
 ----------------------------------------------------------------------------"""
 class gcsJoggingPanel(wx.ScrolledWindow):
    def __init__(self, parent, config_data, **args):
@@ -2261,6 +2374,8 @@ class gcsMainWindow(wx.Frame):
       # init config file
       self.configFile = wx.FileConfig("gcs", style=wx.CONFIG_USE_LOCAL_FILE)
 
+      self.SetIcon(imgGCSBlack32x32.GetIcon())
+
       # register for thread events
       EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
 
@@ -2275,6 +2390,7 @@ class gcsMainWindow(wx.Frame):
       self.configData.Load(self.configFile)
       self.configData.Add('/link/PortList', self.GetSerialPortList())
       self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
+      self.InitConfig()
 
       # init some variables
       self.serialPortThread = None
@@ -2292,6 +2408,16 @@ class gcsMainWindow(wx.Frame):
       self.InitUI()
       self.Centre()
       self.Show()
+
+   def InitConfig(self):
+      self.saveBackupFile = self.configData.Get('/mainApp/BackupFile')
+      self.maxFileHistory = self.configData.Get('/mainApp/MaxFileHistory')
+      self.roundInch2mm = self.configData.Get('/mainApp/RoundInch2mm')
+      self.roundmm2Inch = self.configData.Get('/mainApp/Roundmm2Inch')
+      self.linkPort = self.configData.Get('/link/Port')
+      self.linkBaud = self.configData.Get('/link/Baud')
+      self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
+      self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
 
    def InitUI(self):
       """ Init main UI """
@@ -2386,8 +2512,7 @@ class gcsMainWindow(wx.Frame):
          recentMenu)
 
       # load history
-      maxFileHistory = self.configData.Get('/mainApp/MaxFileHistory')
-      self.fileHistory = wx.FileHistory(maxFileHistory)
+      self.fileHistory = wx.FileHistory(self.maxFileHistory)
       self.fileHistory.Load(self.configFile)
       self.fileHistory.UseMenu(recentMenu)
       self.fileHistory.AddFilesToMenu()
@@ -2406,7 +2531,7 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # View menu
       viewMenu = wx.Menu()
-      self.menuBar.Append(viewMenu,                   "&View")
+      self.menuBar.Append(viewMenu,                            "&View")
 
       viewMenu.AppendCheckItem(gID_MENU_MAIN_TOOLBAR,          "&Main Tool Bar")
       viewMenu.AppendCheckItem(gID_MENU_RUN_TOOLBAR,           "&Run Tool Bar")
@@ -2429,7 +2554,7 @@ class gcsMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Run menu
       runMenu = wx.Menu()
-      self.menuBar.Append(runMenu, "&Run")
+      self.menuBar.Append(runMenu,                    "&Run")
 
       runItem = wx.MenuItem(runMenu, gID_MENU_RUN,    "&Run\tF5")
       runItem.SetBitmap(imgPlayBlack.GetBitmap())
@@ -2463,9 +2588,19 @@ class gcsMainWindow(wx.Frame):
 
       runMenu.AppendSeparator()
 
-      abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT,  "&Abort")
+      abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT,"&Abort")
       abortItem.SetBitmap(imgXBlack.GetBitmap())
       runMenu.AppendItem(abortItem)
+
+      #------------------------------------------------------------------------
+      # Tool menu
+      toolMenu = wx.Menu()
+      self.menuBar.Append(toolMenu,                   "&Tools")
+
+      toolMenu.Append(gID_MENU_IN2MM,                 "&Inch to mm")
+      toolMenu.Append(gID_MENU_MM2IN,                 "&mm to Inch")
+      toolMenu.AppendSeparator()
+      toolMenu.Append(gID_MENU_G812G01,               "&G81 to G01")
 
       #------------------------------------------------------------------------
       # Help menu
@@ -2554,6 +2689,16 @@ class gcsMainWindow(wx.Frame):
       self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate,    id=gID_MENU_SET_PC)
       self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate,   id=gID_MENU_GOTO_PC)
       self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
+
+      #------------------------------------------------------------------------
+      # tools menu bind
+      self.Bind(wx.EVT_MENU, self.OnInch2mm,             id=gID_MENU_IN2MM)
+      self.Bind(wx.EVT_MENU, self.Onmm2Inch,             id=gID_MENU_MM2IN)
+      self.Bind(wx.EVT_MENU, self.OnG812G01,             id=gID_MENU_G812G01)
+
+      self.Bind(wx.EVT_UPDATE_UI, self.OnInch2mmUpdate,  id=gID_MENU_IN2MM)
+      self.Bind(wx.EVT_UPDATE_UI, self.Onmm2InchUpdate,  id=gID_MENU_MM2IN)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnG812G01Update,  id=gID_MENU_G812G01)
 
       #------------------------------------------------------------------------
       # Help menu bind
@@ -2812,6 +2957,9 @@ class gcsMainWindow(wx.Frame):
       if not self.stateData.fileIsOpen:
          self.OnFileSaveAs(e)
       else:
+         if self.saveBackupFile:
+            shutil.copyfile(self.stateData.gcodeFileName,self.stateData.gcodeFileName+"~")
+
          self.gcText.SaveFile(self.stateData.gcodeFileName)
 
    def OnFileSaveUpdate(self, e):
@@ -2871,16 +3019,17 @@ class gcsMainWindow(wx.Frame):
       if result == wx.ID_OK:
          dlg.UpdatConfigData()
 
+         self.InitConfig()
+
          # re open serial port if open
          if self.stateData.serialPortIsOpen and \
-            (self.stateData.serialPort != self.configData.Get('/link/Port') or \
-            self.stateData.serialBaud != self.configData.Get('/link/Baud')):
+            (self.stateData.serialPort != self.linkPort or self.stateData.serialBaud != self.linkBaud):
 
             self.SerialClose()
-            self.SerialOpen(self.configData.Get('/link/Port'), self.configData.Get('/link/Baud'))
+            self.SerialOpen(self.linkPort, self.linkBaud)
 
-         if self.stateData.machineStatusAutoRefresh != self.configData.Get('/machine/AutoRefresh') or \
-            self.stateData.machineStatusAutoRefreshPeriod != self.configData.Get('/machine/AutoRefreshPeriod'):
+         if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
+            self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
 
             self.AutoRefreshTimerStop()
             self.AutoRefreshTimerStart()
@@ -3152,6 +3301,69 @@ class gcsMainWindow(wx.Frame):
       self.gcodeToolBar.EnableTool(gID_MENU_ABORT, state)
 
    #---------------------------------------------------------------------------
+   # Tools Menu Handlers
+   #---------------------------------------------------------------------------
+   def OnToolUpdateIdle(self, e):
+      state = False
+      if (self.stateData.swState == gSTATE_IDLE or \
+          self.stateData.swState == gSTATE_BREAK):
+         state = True
+
+      e.Enable(state)
+
+   def OnInch2mm(self, e):
+      dlg = wx.MessageDialog(self,
+         "Your about to convert the current file from inches to metric.\n"\
+         "This is an experimental feature, do you want to continue?",
+         "",
+         wx.OK|wx.CANCEL|wx.ICON_WARNING)
+
+      if dlg.ShowModal() == wx.ID_OK:
+         rawText = self.gcText.GetText()
+         self.stateData.gcodeFileLines = rawText.splitlines(True)
+         lines = self.ConvertInchAndmm(
+            self.stateData.gcodeFileLines, in_to_mm=True, round_to=self.roundInch2mm)
+
+         readOnly = self.gcText.GetReadOnly()
+         self.gcText.SetReadOnly(False)
+         self.gcText.SetText("".join(lines))
+         self.gcText.SetReadOnly(readOnly)
+
+      dlg.Destroy()
+
+   def OnInch2mmUpdate(self, e):
+      self.OnToolUpdateIdle(e)
+
+   def Onmm2Inch(self, e):
+      dlg = wx.MessageDialog(self,
+         "Your about to convert the current file from metric to inches.\n"\
+         "This is an experimental feature, do you want to continue?",
+         "",
+         wx.OK|wx.CANCEL|wx.ICON_WARNING)
+
+      if dlg.ShowModal() == wx.ID_OK:
+         rawText = self.gcText.GetText()
+         self.stateData.gcodeFileLines = rawText.splitlines(True)
+         lines = self.ConvertInchAndmm(
+            self.stateData.gcodeFileLines, in_to_mm=False, round_to=self.roundmm2Inch)
+
+         readOnly = self.gcText.GetReadOnly()
+         self.gcText.SetReadOnly(False)
+         self.gcText.SetText("".join(lines))
+         self.gcText.SetReadOnly(readOnly)
+
+      dlg.Destroy()
+
+   def Onmm2InchUpdate(self, e):
+      self.OnToolUpdateIdle(e)
+
+   def OnG812G01(self, e):
+      pass
+
+   def OnG812G01Update(self, e):
+      self.OnToolUpdateIdle(e)
+
+   #---------------------------------------------------------------------------
    # Status Menu/ToolBar Handlers
    #---------------------------------------------------------------------------
    def OnStatusToolBarForceUpdate(self):
@@ -3239,8 +3451,8 @@ class gcsMainWindow(wx.Frame):
    gcsMainWindow: General Functions
    -------------------------------------------------------------------------"""
    def AutoRefreshTimerStart(self):
-      self.stateData.machineStatusAutoRefresh = self.configData.Get('/machine/AutoRefresh')
-      self.stateData.machineStatusAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
+      self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
+      self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
 
       if self.stateData.machineStatusAutoRefresh:
          if self.machineAutoRefreshTimer is not None:
@@ -3417,6 +3629,50 @@ class gcsMainWindow(wx.Frame):
       self.configFile.Write(key+"/Dimensions", dimensionsData)
       self.configFile.Write(key+"/Perspective", layoutData)
 
+   def ConvertInchAndmm(self, lines, in_to_mm=True, round_to=-1):
+      ret_lienes=[]
+
+      # itarate input lines
+      for line in lines:
+
+         # check for G20/G21 anc hange accordingly
+         if in_to_mm:
+            re_matches = re.findall(r"G20", line)
+            if len(re_matches) > 0:
+               line = line.replace("G20", "G21")
+               #line = line.replace("INCHES", "MILLIMETERS")
+         else:
+            re_matches = re.findall(r"G21", line)
+            if len(re_matches) > 0:
+               line = line.replace("G21", "G20")
+               #line = line.replace("MILLIMETERS", "INCHES")
+
+         # check for G with units to convert code
+         re_matches = re.findall(r"((X|Y|Z|R|F)([-+]?\d*\.\d*))", line)
+         #re_matches = re.findall(r"((Z|R|F)([-+]?\d*\.\d*))", line)
+         #import pdb;pdb.set_trace()
+         if len(re_matches) > 0:
+            # convert here
+            # re_match item: string to (replace, literal, value)
+            for match in re_matches:
+               current_val = float(match[2])
+               if in_to_mm:
+                  convert_val = 25.4 * current_val
+               else:
+                  convert_val = current_val / 25.4
+
+               if round_to > -1:
+                  convert_val = round(convert_val, round_to)
+
+               current_str = match[0]
+               convert_str = match[1] + str(convert_val)
+
+               line = line.replace(current_str, convert_str)
+
+         ret_lienes.append(line)
+
+      return ret_lienes
+
    """-------------------------------------------------------------------------
    gcsMainWindow: Serial Port Thread Event Handlers
    Handle events coming from serial port thread
@@ -3453,8 +3709,8 @@ class gcsMainWindow(wx.Frame):
                   # RUN state
                   self.Stop()
                   dlg = wx.MessageDialog(self,
-                     "Detected GRBL reset string while-in RUN.\n" \
-                     "Something went terribly wrong, S TOPING!!\n", "",
+                     "Detected Grbl reset string while-in RUN.\n" \
+                     "Something went terribly wrong, STOPPING!!\n", "",
                      wx.OK|wx.ICON_STOP)
                   result = dlg.ShowModal()
                   dlg.Destroy()
@@ -3863,7 +4119,7 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
       flexGridSizer = wx.FlexGridSizer(2,2)
 
-      # Add cehck box
+      # Add check box
       self.cb = wx.CheckBox(self, wx.ID_ANY, "Enable CV2") #, style=wx.ALIGN_RIGHT)
       self.cb.SetValue(self.configData.Get('/cv2/Enable'))
       flexGridSizer.Add(self.cb,
@@ -3889,7 +4145,7 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       self.scPeriod.SetValue(self.configData.Get('/cv2/CapturePeriod'))
       self.scPeriod.SetToolTip(
          wx.ToolTip("NOTE: UI may become unresponsive if this value is too short\n"\
-                    "Sugested value 100ms or grater"
+                    "Suggested value 100ms or grater"
       ))
       flexGridSizer.Add(self.scPeriod,
          flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
@@ -3943,10 +4199,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
       self.configData = config_data
       self.captureTimer = None
       self.cmdLineOptions = cmd_line_options
-
-      if self.cmdLineOptions.vverbose:
-         print "gcsCV2Panel ALIVE."
-
 
       # thread communication queues
       self.cvw2tQueue = Queue.Queue()

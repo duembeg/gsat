@@ -161,3 +161,35 @@ getimgEyeBlackImage = imgEyeBlack.GetImage
 getimgEyeBlackBitmap = imgEyeBlack.GetBitmap
 
 
+#----------------------------------------------------------------------
+imgGCSG0Black = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QITCRE7txv/+wAAAHFJREFUOMtjYECA/1DM"
+    "QAKNAkjRjNcAYgBcLQshBQwMDIxIfEZiTP1PhKFwNhMBAwl6C58BjMQEBrIBz9H8/J8E7+GX"
+    "PPHoA//xh++5CalFj2d88U+9dMCEJ/Th+OzzTxLExArVXEASYCIzQzFQLTcCAAU/Rcign8x/"
+    "AAAAAElFTkSuQmCC")
+getimgGCSBlackData = imgGCSBlack.GetData
+getimgGCSBlackImage = imgGCSBlack.GetImage
+getimgGCSBlackBitmap = imgGCSBlack.GetBitmap
+
+#----------------------------------------------------------------------
+imgGCSG0CogBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QITCRMYJ0rsCwAAAJBJREFUOMu1U0kOgCAM"
+    "bI03D34F//8AvekPiH5Af1AvlBAoMB5sMilLOyEzhagMCaAPuSBAc5MACRl7Bcmakz0jTQKQ"
+    "ymAUcEPUIpTAhewDiIgW5LnaLBU4w1bL5ni4B5jP3q5nXs97yvXwSbOGkviK94LamAvLtQtl"
+    "PDJRuWFpnIueiNCgWTY6ZJTRgv9+4wtoPFcRAyE4iwAAAABJRU5ErkJggg==")
+getimgGCSG0CogBlackData = imgGCSG0CogBlack.GetData
+getimgGCSG0CogBlackImage = imgGCSG0CogBlack.GetImage
+getimgGCSG0CogBlackBitmap = imgGCSG0CogBlack.GetBitmap
+
+#----------------------------------------------------------------------
+imgSettingsBlack = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAFhJREFUeNpiYGBgEADi91CMDIgSZ0ESxAaIFv8PxSSLMzFQ"
+    "CMgxANlF/6nigv84TMcFGJHZVHEBIw7TaRaIRBtAVNjQ1AVEhc2ApEQUAMuNH3DIExQHCDAA"
+    "8FMU5Zns2PEAAAAASUVORK5CYII=")
+getsettingsBlackData = settingsBlack.GetData
+getsettingsBlackImage = settingsBlack.GetImage
+getsettingsBlackBitmap = settingsBlack.GetBitmap
+
