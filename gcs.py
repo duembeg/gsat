@@ -105,6 +105,7 @@ gID_MENU_BREAK_TOGGLE            = wx.NewId()
 gID_MENU_BREAK_REMOVE_ALL        = wx.NewId()
 gID_MENU_SET_PC                  = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
+gID_MENU_ABORT                   = wx.NewId()
 
 gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 
@@ -545,6 +546,16 @@ imgXBlack = PyEmbeddedImage(
     "ZSBJbWFnZVJlYWR5ccllPAAAAHlJREFUeNpiYMAECUC8H4j/o+H9UDmcQAGIz2PRiI7PQ9Vi"
     "aH5PhGYYfo9uyHkSNCO7BO5ndNMbsGhowOJKcJjsx6IQ3WBY4DVgCViszktAMiQBh0thGKcf"
     "E9CiFqs6JgYqAIq9QHEgUhyNFCckqiRlijMT2dkZIMAAQSOoo+oDrMMAAAAASUVORK5CYII=")
+
+imgXGray = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAO5JREFUeNqkU9ENgjAQvTYO4AiOQDdwhSbGX2ACR1BGYALw"
+    "15iwAhvgCI7ABvpqrqScxdRwyaXk2nfcu3unSNjt3hU4cvheXPXw6/Fg2zCoAuAORwfP6Lc9"
+    "4BaJnlMCBg/wLaXZCDcuieZA9weY+K3DkGbOmcheRUAV33nLHFZzw0KrUdoFZxnESo7V4m2u"
+    "kOUV+ZsDtFwdBd+NfLhZ4NgAQH5kS+BPD2ilLVUQo0CxKjQrbNZtwdnRKZiOnE6vIvxG7vY5"
+    "MsaT0EvplTgkSPhL0qjK+CZaIZIUKdtpCrwYhheFEpbJzJZpzTq/BRgAmt9ihpQIX3IAAAAA"
+    "SUVORK5CYII=")
+
 
 #------------------------------------------------------------------------------
 # imgLog
@@ -2450,6 +2461,12 @@ class gcsMainWindow(wx.Frame):
       gotoPCItem.SetBitmap(imgGotoMapPinBlack.GetBitmap())
       runMenu.AppendItem(gotoPCItem)
 
+      runMenu.AppendSeparator()
+
+      abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT,  "&Abort")
+      abortItem.SetBitmap(imgXBlack.GetBitmap())
+      runMenu.AppendItem(abortItem)
+
       #------------------------------------------------------------------------
       # Help menu
       helpMenu = wx.Menu()
@@ -2517,6 +2534,7 @@ class gcsMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll,      id=gID_MENU_BREAK_REMOVE_ALL)
       self.Bind(wx.EVT_MENU, self.OnSetPC,               id=gID_MENU_SET_PC)
       self.Bind(wx.EVT_MENU, self.OnGoToPC,              id=gID_MENU_GOTO_PC)
+      self.Bind(wx.EVT_MENU, self.OnAbort,               id=gID_MENU_ABORT)
 
       self.Bind(wx.EVT_BUTTON, self.OnRun,               id=gID_MENU_RUN)
       self.Bind(wx.EVT_BUTTON, self.OnStep,              id=gID_MENU_STEP)
@@ -2524,6 +2542,7 @@ class gcsMainWindow(wx.Frame):
       self.Bind(wx.EVT_BUTTON, self.OnBreakToggle,       id=gID_MENU_BREAK_TOGGLE)
       self.Bind(wx.EVT_BUTTON, self.OnSetPC,             id=gID_MENU_SET_PC)
       self.Bind(wx.EVT_BUTTON, self.OnGoToPC,            id=gID_MENU_GOTO_PC)
+      self.Bind(wx.EVT_BUTTON, self.OnAbort,             id=gID_MENU_ABORT)
 
       self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate,      id=gID_MENU_RUN)
       self.Bind(wx.EVT_UPDATE_UI, self.OnStepUpdate,     id=gID_MENU_STEP)
@@ -2534,6 +2553,7 @@ class gcsMainWindow(wx.Frame):
                                                          id=gID_MENU_BREAK_REMOVE_ALL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate,    id=gID_MENU_SET_PC)
       self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate,   id=gID_MENU_GOTO_PC)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
 
       #------------------------------------------------------------------------
       # Help menu bind
@@ -2628,6 +2648,11 @@ class gcsMainWindow(wx.Frame):
       self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", imgGotoMapPinBlack.GetBitmap(),
          "Goto PC")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, imgGotoMapPinGray.GetBitmap())
+
+      self.gcodeToolBar.AddSeparator()
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_ABORT, "Abort", imgXBlack.GetBitmap(),
+         "Abort")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_ABORT, imgXGray.GetBitmap())
 
       self.gcodeToolBar.Realize()
 
@@ -3104,6 +3129,27 @@ class gcsMainWindow(wx.Frame):
          e.Enable(state)
 
       self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
+
+   def OnAbort(self, e):
+      self.serPort.write("!\n")
+      self.Stop()
+      self.outputText.AppendText("> !\n")
+      self.outputText.AppendText(
+         "*** ABORT!!! a feed-hold command (!) has been sent to Grbl, you can\n"\
+         "    use cycle-restart command (~) to continue.\n"\
+         "    \n"
+         "    Note: If this is not desirable please reset Grbl, by closing and opening\n"\
+         "    the serial link port.\n")
+
+   def OnAbortUpdate(self, e=None):
+      state = False
+      if self.stateData.serialPortIsOpen:
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_ABORT, state)
 
    #---------------------------------------------------------------------------
    # Status Menu/ToolBar Handlers
