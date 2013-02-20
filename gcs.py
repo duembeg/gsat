@@ -4262,6 +4262,8 @@ class gcsCV2Panel(wx.ScrolledWindow):
       self.configData = config_data
       self.captureTimer = None
       self.cmdLineOptions = cmd_line_options
+      self.settingsChanged = True
+      self.scrollUnit = 10
 
       # thread communication queues
       self.cvw2tQueue = Queue.Queue()
@@ -4275,8 +4277,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
       self.InitUI()
 
       # register for events
-      self.Bind(wx.EVT_PAINT, self.OnPaint)
-      self.Bind(wx.EVT_IDLE, self.OnIdle)
       self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, id=gID_CV2_CAPTURE_TIMER)
       self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
       self.Bind(wx.EVT_SHOW, self.OnShow)
@@ -4297,18 +4297,13 @@ class gcsCV2Panel(wx.ScrolledWindow):
       # capture panel
       scSizer = wx.BoxSizer(wx.VERTICAL)
       self.scrollPanel = scrolled.ScrolledPanel(self, -1)
-
-      self.capturePanel = wx.Panel(self.scrollPanel, -1,
-         size=wx.Size(self.cv2CaptureWidth, self.cv2CaptureHeight))
-
+      self.capturePanel = wx.BitmapButton(self.scrollPanel, -1, style = wx.NO_BORDER)
       scSizer.Add(self.capturePanel)
       self.scrollPanel.SetSizer(scSizer)
       self.scrollPanel.SetAutoLayout(True)
-      width,height = self.capturePanel.GetSize()
-      scu = 10
-      self.scrollPanel.SetScrollbars(scu, scu, width/scu, height/scu)
 
-      self.scrollPanel.Bind(wx.EVT_SCROLLWIN, self.OnScroll)
+      #self.capturePanel.Bind(wx.EVT_MOTION, self.OnCapturePanelMouse)
+      #self.capturePanel.Enable(False)
 
       vPanelBoxSizer.Add(self.scrollPanel, 1, wx.EXPAND)
 
@@ -4337,12 +4332,39 @@ class gcsCV2Panel(wx.ScrolledWindow):
       self.SetSizer(vPanelBoxSizer)
       self.SetAutoLayout(True)
       width,height = self.GetSize()
-      scu = 10
-      self.SetScrollbars(scu, scu, width/scu, height/scu)
+      self.SetScrollbars(self.scrollUnit, self.scrollUnit,
+         width/self.scrollUnit, height/self.scrollUnit)
 
+   def UpdateSettings(self, config_data):
+      self.configData = config_data
+      self.settingsChanged = True
+
+      self.InitConfig()
+
+      if self.capture and self.IsShown():
+         self.StopCapture()
+         self.StartCapture()
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
+
+   def UpdateCapturePanel(self):
+
+      if self.settingsChanged:
+         self.settingsChanged = False
+
+         self.scrollPanel.GetSizer().Layout()
+
+         width,height = self.capturePanel.GetSize()
+
+         self.scrollPanel.SetScrollbars(self.scrollUnit, self.scrollUnit,
+            width/self.scrollUnit, height/self.scrollUnit)
+
+         self.scrollPanel.GetSizer().Layout()
+
+         self.CenterScroll()
+         self.Refresh()
+
 
    def OnCapture(self, w):
       if self.capture:
@@ -4366,19 +4388,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
 
    def OnDestroy(self, e):
       self.StopCapture()
-      e.Skip()
-
-   def OnIdle(self, e):
-      self.Paint()
-      e.Skip()
-
-   def OnPaint(self, e):
-      self.Paint()
-      e.Skip()
-
-   def OnScroll(self, e):
-      if not self.capture:
-         wx.CallAfter(self.Paint)
       e.Skip()
 
    def OnShow(self, e):
@@ -4410,17 +4419,16 @@ class gcsCV2Panel(wx.ScrolledWindow):
 
             if image is not None:
                self.bmp = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
-               self.Paint()
+               self.capturePanel.SetBitmapLabel(self.bmp)
+               #self.capturePanel.SetBitmapDisabled(self.bmp)
+
+               if self.settingsChanged:
+                  wx.CallAfter(self.UpdateCapturePanel)
+
 
       # acknoledge thread
       if goitem:
          self.t2cvwQueue.task_done()
-
-   def Paint(self):
-      if self.bmp is not None:
-         offset=(0,0)
-         dc = wx.ClientDC(self.capturePanel)
-         dc.DrawBitmap(self.bmp, offset[0], offset[1], False)
 
    def StartCapture(self):
       self.capture = True
@@ -4431,8 +4439,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
 
       if self.captureTimer is not None and self.cv2Enable:
          self.captureTimer.Start(self.cv2CapturePeriod)
-
-      wx.CallAfter(self.UpdateScroll)
 
    def StopCapture(self):
       self.capture = False
@@ -4454,29 +4460,6 @@ class gcsCV2Panel(wx.ScrolledWindow):
 
          #self.cvw2tQueue.join()
          self.visionThread = None
-
-   def UpdateSettings(self, config_data):
-      self.configData = config_data
-
-      self.InitConfig()
-
-      if self.capture and self.IsShown():
-         self.StopCapture()
-         self.StartCapture()
-
-   def UpdateScroll(self):
-      #self.capturePanel.SetSize(wx.Size(
-      #   self.configData.dataCV2CaptureWidth, self.configData.dataCV2CaptureHeight))
-      #scSizer = wx.BoxSizer(wx.VERTICAL)
-      #scSizer.Add(self.capturePanel)
-      #self.scrollPanel.SetSizer(scSizer)
-      #self.scrollPanel.SetAutoLayout(True)
-      #print str(self.capturePanel.GetSize())
-      #width,height = self.capturePanel.GetSize()
-      #scu = 10
-      #self.scrollPanel.SetScrollbars(scu, scu, width/scu, height/scu)
-      self.CenterScroll()
-      self.Refresh()
 
 """----------------------------------------------------------------------------
    gcsComputerVisionThread:
