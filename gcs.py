@@ -2459,30 +2459,35 @@ class gcsMainWindow(wx.Frame):
 
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
-         aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("GCODE"))
+         aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("GCODE")\
+            .CloseButton(True).MaximizeButton(True))
 
-      self.aui_mgr.AddPane(self.CV2Panel,
-         aui.AuiPaneInfo().Name("CV2_PANEL").Right().Position(0).Caption("Computer Vision")\
-            .BestSize(640,530).Hide()
-      )
-
-      self.aui_mgr.AddPane(self.machineJoggingPanel,
-         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Position(1).Caption("Machine Jogging")\
-            .BestSize(360,340)
-      )
-
-      self.aui_mgr.AddPane(self.machineStatusPanel,
-         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Position(2).Caption("Machine Status")\
-            .BestSize(320,180)
-      )
 
       self.aui_mgr.AddPane(self.cliPanel,
-         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(2).Caption("Command").BestSize(600,30)
+         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(2).Caption("Command")\
+            .CloseButton(True).MaximizeButton(True).BestSize(600,30)
       )
 
       self.aui_mgr.AddPane(self.outputText,
-         aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(1).Caption("Output").BestSize(600,150)
+         aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Position(1).Caption("Output")\
+            .CloseButton(True).MaximizeButton(True)
       )
+
+      self.aui_mgr.AddPane(self.CV2Panel,
+         aui.AuiPaneInfo().Name("CV2_PANEL").Right().Row(1).Caption("Computer Vision")\
+            .CloseButton(True).MaximizeButton(True).BestSize(640,530).Hide().Layer(1)
+      )
+
+      self.aui_mgr.AddPane(self.machineJoggingPanel,
+         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
+            .CloseButton(True).MaximizeButton(True).BestSize(360,340).Layer(1)
+      )
+
+      self.aui_mgr.AddPane(self.machineStatusPanel,
+         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")\
+            .CloseButton(True).MaximizeButton(True).BestSize(320,180).Layer(1)
+      )
+
 
       self.CreateMenu()
       self.CreateToolBar()
