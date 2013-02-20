@@ -1497,7 +1497,10 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
          self.autoScroll = False
 
    def AppendText(self, string):
+      readOnly = self.GetReadOnly()
+      self.SetReadOnly(False)
       stc.StyledTextCtrl.AppendText(self, string)
+      self.SetReadOnly(readOnly)
 
       if self.autoScroll:
          wx.CallAfter(self.ScrollToEnd)
@@ -3701,9 +3704,9 @@ class gcsMainWindow(wx.Frame):
       R = 0
       Z = 0
       F = 0
-      
+
       for line in lines:
-         
+
          # check for empty lines
          if len(line.strip()) == 0:
             if state != 0:
@@ -3731,7 +3734,7 @@ class gcsMainWindow(wx.Frame):
 
          ret_lienes.append(line)
 
-      return ret_lienes      
+      return ret_lienes
 
    """-------------------------------------------------------------------------
    gcsMainWindow: Serial Port Thread Event Handlers
