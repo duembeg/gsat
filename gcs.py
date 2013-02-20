@@ -44,6 +44,7 @@ import Queue
 import time
 import shutil
 import wx
+import wx.combo
 from optparse import OptionParser
 from wx.lib.mixins import listctrl as listmix
 from wx.lib.agw import aui as aui
@@ -2175,17 +2176,21 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       # add position stack
-      self.pushStackButton = wx.Button(self, label="Push Jog Pos")
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+      self.pushStackButton = wx.Button(self, label="+", style=wx.BU_EXACTFIT)
       self.pushStackButton.SetToolTip(
          wx.ToolTip("Adds current jog position values to jog memory stack"))
       self.Bind(wx.EVT_BUTTON, self.OnPushStack, self.pushStackButton)
-      vBoxSizer.Add(self.pushStackButton, flag=wx.TOP|wx.EXPAND, border=5)
+      hBoxSizer.Add(self.pushStackButton, 1, flag=wx.EXPAND)
 
-      self.jogMemoryStackComboBox = wx.ComboBox(self, -1, value="", size=(20,-1),
+      self.jogMemoryStackComboBox = wx.combo.BitmapComboBox(self, -1, value="", size=(10,-1),
          choices=[], style=wx.CB_READONLY|wx.CB_DROPDOWN)
       self.jogMemoryStackComboBox.SetToolTip(wx.ToolTip("jog memory stack"))
       self.Bind(wx.EVT_COMBOBOX, self.OnPopStack, self.jogMemoryStackComboBox)
-      vBoxSizer.Add(self.jogMemoryStackComboBox, 0, flag=wx.EXPAND)
+      hBoxSizer.Add(self.jogMemoryStackComboBox, 1, flag=wx.EXPAND)
+
+      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
 
       # add custom buttons
       self.custom1Button = wx.Button(self, label=self.configCustom1Label)
@@ -3358,7 +3363,23 @@ class gcsMainWindow(wx.Frame):
       self.OnToolUpdateIdle(e)
 
    def OnG812G01(self, e):
-      pass
+      dlg = wx.MessageDialog(self,
+         "Your about to convert the current file from G81 to G01.\n"\
+         "This is an experimental feature, do you want to continue?",
+         "",
+         wx.OK|wx.CANCEL|wx.ICON_WARNING)
+
+      if dlg.ShowModal() == wx.ID_OK:
+         rawText = self.gcText.GetText()
+         self.stateData.gcodeFileLines = rawText.splitlines(True)
+         lines = self.ConvertG812G01(self.stateData.gcodeFileLines)
+
+         readOnly = self.gcText.GetReadOnly()
+         self.gcText.SetReadOnly(False)
+         self.gcText.SetText("".join(lines))
+         self.gcText.SetReadOnly(readOnly)
+
+      dlg.Destroy()
 
    def OnG812G01Update(self, e):
       self.OnToolUpdateIdle(e)
@@ -3411,10 +3432,11 @@ class gcsMainWindow(wx.Frame):
       aboutDialog.Name = __appname__
       aboutDialog.Version = __version__
       aboutDialog.Copyright = __copyright__
-      #aboutDialog.Description = __description__
-      #aboutDialog.Description = wordwrap(__description__, 400, wx.ClientDC(self))
-      aboutDialog.Description = __description__
-      aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "GCode Step home page")
+      if os.name == 'nt':
+         aboutDialog.Description = wordwrap(__description__, 520, wx.ClientDC(self))
+      else:
+         aboutDialog.Description = __description__
+      aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "gcs home page")
       #aboutDialog.Developers = __authors__
 
       aboutDialog.License = __license_str__
@@ -3672,6 +3694,44 @@ class gcsMainWindow(wx.Frame):
          ret_lienes.append(line)
 
       return ret_lienes
+
+   def ConvertG812G01(self, lines):
+      ret_lienes=[]
+      state = 0
+      R = 0
+      Z = 0
+      F = 0
+      
+      for line in lines:
+         
+         # check for empty lines
+         if len(line.strip()) == 0:
+            if state != 0:
+               state = 0
+
+         # check for G code
+         match = re.match(r"G81\s*R(\d*\.\d*)\s*Z([-+]?\d*\.\d*)\sF(\d*\.\d*)", line)
+         if match is not None:
+            state = 81
+            R = match.group(1)
+            Z = match.group(2)
+            F = match.group(3)
+
+         # in 81 state, convert G81 XY lines to G01
+         if state == 81:
+            match = re.match(r".*X([-+]?\d*\.\d*)\sY([-+]?\d*\.\d*)", line)
+            if match is not None:
+               X = match.group(1)
+               Y = match.group(2)
+
+               line = \
+                  "G00 X%s Y%s ( rapid move to drill zone. )\n" \
+                  "G01 Z%s F%s ( plunge. )\n" \
+                  "G00 Z%s ( retract )\n" % (X,Y,Z,F,R)
+
+         ret_lienes.append(line)
+
+      return ret_lienes      
 
    """-------------------------------------------------------------------------
    gcsMainWindow: Serial Port Thread Event Handlers
