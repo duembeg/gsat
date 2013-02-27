@@ -2522,12 +2522,15 @@ class gcsMainWindow(wx.Frame):
 
       self.appToolBar.SetToolBitmapSize(iconSize)
 
-      self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open", imgOpen.GetBitmap())
+      self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open", imgOpen.GetBitmap(),
+         "Open\tCtrl+O")
 
-      self.appToolBar.AddSimpleTool(wx.ID_SAVE, "Save", imgSave.GetBitmap())
+      self.appToolBar.AddSimpleTool(wx.ID_SAVE, "Save", imgSave.GetBitmap(),
+         "Save\tCtrl+S")
       self.appToolBar.SetToolDisabledBitmap(wx.ID_SAVE, imgSaveDisabled.GetBitmap())
 
-      self.appToolBar.AddSimpleTool(wx.ID_SAVEAS, "Save As", imgSave.GetBitmap())
+      self.appToolBar.AddSimpleTool(wx.ID_SAVEAS, "Save As", imgSave.GetBitmap(),
+         "Save As")
       self.appToolBar.SetToolDisabledBitmap(wx.ID_SAVEAS, imgSaveDisabled.GetBitmap())
 
       self.appToolBar.SetToolDropDown(gID_TOOLBAR_OPEN, True)
@@ -2536,11 +2539,13 @@ class gcsMainWindow(wx.Frame):
 
       self.appToolBarFind = wx.TextCtrl(self.appToolBar, size=(100,-1))
       self.appToolBar.AddControl(self.appToolBarFind)
+      self.appToolBarFind.SetToolTipString("Find Text")
       self.appToolBar.AddSimpleTool(wx.ID_FIND, "", imgFind.GetBitmap(),
          "Find Next\tF3")
 
       self.appToolBarGotoLine = wx.TextCtrl(self.appToolBar, size=(50,-1))
       self.appToolBar.AddControl(self.appToolBarGotoLine)
+      self.appToolBarGotoLine.SetToolTipString("Line Number")
       self.appToolBar.AddSimpleTool(wx.ID_FIND, "", imgGotoLine.GetBitmap(),
          "Goto Line")
 
