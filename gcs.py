@@ -2200,8 +2200,8 @@ class gcsMainWindow(wx.Frame):
 
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
-         aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("GCODE")\
-            .CloseButton(True).MaximizeButton(True))
+         aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("G-Code")\
+            .CloseButton(True).MaximizeButton(True).BestSize(600,600))
 
 
       self.aui_mgr.AddPane(self.cliPanel,
