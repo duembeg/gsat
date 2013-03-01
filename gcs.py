@@ -83,6 +83,7 @@ gID_TOOLBAR_LINK_STATUS          = wx.NewId()
 gID_TOOLBAR_PROGRAM_STATUS       = wx.NewId()
 gID_TOOLBAR_MACHINE_STATUS       = wx.NewId()
 gID_MENU_MAIN_TOOLBAR            = wx.NewId()
+gID_MENU_SEARCH_TOOLBAR          = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
 gID_MENU_STATUS_TOOLBAR          = wx.NewId()
 gID_MENU_OUTPUT_PANEL            = wx.NewId()
@@ -106,6 +107,9 @@ gID_MENU_ABORT                   = wx.NewId()
 gID_MENU_IN2MM                   = wx.NewId()
 gID_MENU_MM2IN                   = wx.NewId()
 gID_MENU_G812G01                 = wx.NewId()
+gID_MENU_FIND                    = wx.NewId()
+gID_MENU_GOTOLINE                = wx.NewId()
+
 
 gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 
@@ -249,7 +253,7 @@ class gcsConfigData():
          '/code/AutoScroll'                  :(True , 3),
          '/code/CaretLine'                   :(True , True),
          '/code/CaretLineForeground'         :(False, '#000000'),
-         '/code/CaretLineBackground'         :(False, '#C299A9'), #A9C299, 9D99C2
+         '/code/CaretLineBackground'         :(False, '#EFEFEF'), #C299A9 #A9C299, 9D99C2
          '/code/LineNumber'                  :(True , True),
          '/code/LineNumberForeground'        :(False, '#000000'),
          '/code/LineNumberBackground'        :(False, '#99A9C2'),
@@ -1246,13 +1250,24 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
       if self.autoScroll:
          wx.CallAfter(self.ScrollToEnd)
 
-   def ScrollToEnd(self):
-      line = self.GetLineCount() - 1
+   def GotoLine(self, line):
+      lines = self.GetLineCount()
+
+      if line > lines:
+         line = lines
+
+      if line < 0:
+         line = 0
+
       self.MarkerDeleteAll(self.markerCaretLine)
 
       if self.configCaretLine:
          self.MarkerAdd(line, self.markerCaretLine)
 
+      stc.StyledTextCtrl.GotoLine(self, line)
+
+   def ScrollToEnd(self):
+      line = self.GetLineCount() - 1
       self.GotoLine(line)
       #self.ScrollToLine(self.GetLineCount())
 
@@ -1260,6 +1275,7 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
       self.configData = config_data
       self.InitConfig()
       self.InitUI()
+      self.GotoLine(self.GetCurrentLine())
 
 """----------------------------------------------------------------------------
    gcsGcodeStcStyledTextCtrl:
@@ -1408,8 +1424,6 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
          self.handlePC = self.MarkerAdd(pc, self.markerPC)
 
          if self.autoScroll:
-            self.MarkerDeleteAll(self.markerCaretLine)
-            self.MarkerAdd(pc, self.markerCaretLine)
             self.GotoLine(pc)
 
    def GoToPC(self):
@@ -1418,10 +1432,7 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
       if self.configAutoScroll == 3:
          self.autoScroll = True
 
-      if pc > -1:
-         self.MarkerDeleteAll(self.markerCaretLine)
-         self.MarkerAdd(pc, self.markerCaretLine)
-         self.GotoLine(pc)
+      self.GotoLine(pc)
 
    def UpdateBreakPoint(self, pc, enable):
       if pc == -1 and enable == False:
@@ -1432,11 +1443,6 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
             self.MarkerDelete(pc, self.markerBreakpoint)
          else:
             self.MarkerAdd(pc, self.markerBreakpoint)
-
-   def UpdateSettings(self, config_data):
-      self.configData = config_data
-      self.InitConfig()
-      self.InitUI()
 
 """----------------------------------------------------------------------------
    gcsMachineStatusPanel:
@@ -2300,6 +2306,7 @@ class gcsMainWindow(wx.Frame):
       self.menuBar.Append(viewMenu,                            "&View")
 
       viewMenu.AppendCheckItem(gID_MENU_MAIN_TOOLBAR,          "&Main Tool Bar")
+      viewMenu.AppendCheckItem(gID_MENU_SEARCH_TOOLBAR,        "&Search Tool Bar")
       viewMenu.AppendCheckItem(gID_MENU_RUN_TOOLBAR,           "&Run Tool Bar")
       viewMenu.AppendCheckItem(gID_MENU_STATUS_TOOLBAR,        "Status &Tool Bar")
       viewMenu.AppendSeparator()
@@ -2407,12 +2414,14 @@ class gcsMainWindow(wx.Frame):
                                                          id=wx.ID_SAVEAS)
 
       #------------------------------------------------------------------------
-      # View menu bind
-      self.Bind(wx.EVT_MENU, self.OnSettings,            id=wx.ID_PREFERENCES)
+      # Search menu bind
+      self.Bind(wx.EVT_MENU, self.OnFind,                id=gID_MENU_FIND)
+      self.Bind(wx.EVT_MENU, self.OnGotoLine,            id=gID_MENU_GOTOLINE)
 
       #------------------------------------------------------------------------
       # View menu bind
       self.Bind(wx.EVT_MENU, self.OnMainToolBar,         id=gID_MENU_MAIN_TOOLBAR)
+      self.Bind(wx.EVT_MENU, self.OnSearchToolBar,       id=gID_MENU_SEARCH_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnRunToolBar,          id=gID_MENU_RUN_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnStatusToolBar,       id=gID_MENU_STATUS_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnOutput,              id=gID_MENU_OUTPUT_PANEL)
@@ -2426,6 +2435,8 @@ class gcsMainWindow(wx.Frame):
 
       self.Bind(wx.EVT_UPDATE_UI, self.OnMainToolBarUpdate,
                                                          id=gID_MENU_MAIN_TOOLBAR)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnSearchToolBarUpdate,
+                                                         id=gID_MENU_SEARCH_TOOLBAR)
       self.Bind(wx.EVT_UPDATE_UI, self.OnRunToolBarUpdate,
                                                          id=gID_MENU_RUN_TOOLBAR)
       self.Bind(wx.EVT_UPDATE_UI, self.OnStatusToolBarUpdate,
@@ -2438,6 +2449,8 @@ class gcsMainWindow(wx.Frame):
                                                          id=gID_MENU_MACHINE_JOGGING_PANEL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnComputerVisionUpdate,
                                                          id=gID_MENU_CV2_PANEL)
+
+      self.Bind(wx.EVT_MENU, self.OnSettings,            id=wx.ID_PREFERENCES)
 
       #------------------------------------------------------------------------
       # Run menu bind
@@ -2535,24 +2548,42 @@ class gcsMainWindow(wx.Frame):
 
       self.appToolBar.SetToolDropDown(gID_TOOLBAR_OPEN, True)
 
-      self.appToolBar.AddSeparator()
-
-      self.appToolBarFind = wx.TextCtrl(self.appToolBar, size=(100,-1))
-      self.appToolBar.AddControl(self.appToolBarFind)
-      self.appToolBarFind.SetToolTipString("Find Text")
-      self.appToolBar.AddSimpleTool(wx.ID_FIND, "", imgFind.GetBitmap(),
-         "Find Next\tF3")
-
-      self.appToolBarGotoLine = wx.TextCtrl(self.appToolBar, size=(50,-1))
-      self.appToolBar.AddControl(self.appToolBarGotoLine)
-      self.appToolBarGotoLine.SetToolTipString("Line Number")
-      self.appToolBar.AddSimpleTool(wx.ID_FIND, "", imgGotoLine.GetBitmap(),
-         "Goto Line")
-
       self.appToolBar.Realize()
 
       self.aui_mgr.AddPane(self.appToolBar,
-         aui.AuiPaneInfo().Name("MAIN_TOOLBAR").Caption("Main Tool Bar").ToolbarPane().Top().Position(1))
+         aui.AuiPaneInfo().Name("MAIN_TOOLBAR").Caption("Main Tool Bar").ToolbarPane().Top().Gripper())
+
+      #------------------------------------------------------------------------
+      # Search Tool Bar
+      self.searchToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
+         agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            aui.AUI_TB_TEXT |
+            aui.AUI_TB_HORZ_TEXT |
+            #aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_DEFAULT_STYLE
+         )
+
+      self.searchToolBarFind = wx.TextCtrl(self.searchToolBar, size=(100,-1),
+         style=wx.TE_PROCESS_ENTER)
+      self.searchToolBar.AddControl(self.searchToolBarFind)
+      self.searchToolBar.SetToolTipString("Find Text")
+      self.searchToolBar.AddSimpleTool(gID_MENU_FIND, "", imgFind.GetBitmap(),
+         "Find Next\tF3")
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnFind, self.searchToolBarFind)
+
+      self.searchToolBarGotoLine = wx.TextCtrl(self.searchToolBar, size=(50,-1),
+         style=wx.TE_PROCESS_ENTER)
+      self.searchToolBar.AddControl(self.searchToolBarGotoLine)
+      self.searchToolBar.SetToolTipString("Line Number")
+      self.searchToolBar.AddSimpleTool(gID_MENU_GOTOLINE, "", imgGotoLine.GetBitmap(),
+         "Goto Line")
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnGotoLine, self.searchToolBarGotoLine)
+
+      self.searchToolBar.Realize()
+
+      self.aui_mgr.AddPane(self.searchToolBar,
+         aui.AuiPaneInfo().Name("SEARCH_TOOLBAR").Caption("Search Tool Bar").ToolbarPane().Top().Gripper())
 
       #------------------------------------------------------------------------
       # GCODE Tool Bar
@@ -2601,7 +2632,7 @@ class gcsMainWindow(wx.Frame):
       self.gcodeToolBar.Realize()
 
       self.aui_mgr.AddPane(self.gcodeToolBar,
-         aui.AuiPaneInfo().Name("GCODE_TOOLBAR").Caption("Program Tool Bar").ToolbarPane().Top().Position(2).Gripper())
+         aui.AuiPaneInfo().Name("GCODE_TOOLBAR").Caption("Program Tool Bar").ToolbarPane().Top().Gripper())
 
       #------------------------------------------------------------------------
       # Status Tool Bar
@@ -2631,7 +2662,7 @@ class gcsMainWindow(wx.Frame):
       self.statusToolBar.Realize()
 
       self.aui_mgr.AddPane(self.statusToolBar,
-         aui.AuiPaneInfo().Name("STATUS_TOOLBAR").Caption("Status Tool Bar").ToolbarPane().Top().Position(2).Gripper())
+         aui.AuiPaneInfo().Name("STATUS_TOOLBAR").Caption("Status Tool Bar").ToolbarPane().Top().Gripper())
 
       # finish up
       self.appToolBar.Refresh()
@@ -2800,54 +2831,22 @@ class gcsMainWindow(wx.Frame):
 
 
    #---------------------------------------------------------------------------
-   # Edit Menu Handlers
+   # Search Menu Handlers
    #---------------------------------------------------------------------------
-   def OnSettings(self, e):
-      #wx.LogMessage("Link Port: %s" % self.configData.dataLinkPort)
-      #wx.LogMessage("Link Baud: %s" % self.configData.dataLinkBaud)
-      #wx.LogMessage("Cli Save: %s" % str(self.configData.dataCliSaveCmdHistory))
-      #wx.LogMessage("Cli Cmd: %s" % str(self.configData.dataCliCmdMaxHistory))
-      #wx.LogMessage("Machine Auto: %s" % str(self.configData.dataMachineAutoRefresh))
-      #wx.LogMessage("Machine Auto Period: %s" % str(self.configData.dataMachineAutoRefreshPeriod))
+   def OnFind(self, e):
+      searcText = self.searchToolBarFind.GetValue()
 
 
-      dlg = gcsSettingsDialog(self, self.configData)
+   def OnGotoLine(self, e):
+      gotoLine = self.searchToolBarGotoLine.GetValue()
+      if len(gotoLine) > 0:
+         gotoLine=int(gotoLine)-1
+      else:
+         gotoLine = 0
 
-      result = dlg.ShowModal()
+      self.gcText.SetFocus()
+      self.gcText.GotoLine(gotoLine)
 
-      if result == wx.ID_OK:
-         dlg.UpdatConfigData()
-
-         self.InitConfig()
-
-         # re open serial port if open
-         if self.stateData.serialPortIsOpen and \
-            (self.stateData.serialPort != self.linkPort or self.stateData.serialBaud != self.linkBaud):
-
-            self.SerialClose()
-            self.SerialOpen(self.linkPort, self.linkBaud)
-
-         if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
-            self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
-
-            self.AutoRefreshTimerStop()
-            self.AutoRefreshTimerStart()
-
-         self.gcText.UpdateSettings(self.configData)
-         self.outputText.UpdateSettings(self.configData)
-         self.cliPanel.UpdateSettings(self.configData)
-         self.machineStatusPanel.UpdateSettings(self.configData)
-         self.machineJoggingPanel.UpdateSettings(self.configData)
-         self.CV2Panel.UpdateSettings(self.configData)
-
-      dlg.Destroy()
-
-      #wx.LogMessage("Link Port: %s" % self.configData.dataLinkPort)
-      #wx.LogMessage("Link Baud: %s" % self.configData.dataLinkBaud)
-      #wx.LogMessage("Cli Save: %s" % str(self.configData.dataCliSaveCmdHistory))
-      #wx.LogMessage("Cli Cmd: %s" % str(self.configData.dataCliCmdMaxHistory))
-      #wx.LogMessage("Machine Auto: %s" % str(self.configData.dataMachineAutoRefresh))
-      #wx.LogMessage("Machine Auto Period: %s" % str(self.configData.dataMachineAutoRefreshPeriod))
 
    #---------------------------------------------------------------------------
    # View Menu Handlers
@@ -2883,6 +2882,12 @@ class gcsMainWindow(wx.Frame):
 
    def OnMainToolBarUpdate(self, e):
       self.OnViewMenuUpdate(e, self.appToolBar)
+
+   def OnSearchToolBar(self, e):
+      self.OnViewMenuToolBar(e, self.searchToolBar)
+
+   def OnSearchToolBarUpdate(self, e):
+      self.OnViewMenuUpdate(e, self.searchToolBar)
 
    def OnRunToolBar(self, e):
       self.OnViewMenuToolBar(e, self.gcodeToolBar)
@@ -2936,6 +2941,38 @@ class gcsMainWindow(wx.Frame):
    def OnResetDefaultLayout(self, e):
       self.configFile.DeleteGroup('/mainApp/DefaultLayout')
       self.LoadLayoutData('/mainApp/ResetLayout')
+
+   def OnSettings(self, e):
+      dlg = gcsSettingsDialog(self, self.configData)
+
+      result = dlg.ShowModal()
+
+      if result == wx.ID_OK:
+         dlg.UpdatConfigData()
+
+         self.InitConfig()
+
+         # re open serial port if open
+         if self.stateData.serialPortIsOpen and \
+            (self.stateData.serialPort != self.linkPort or self.stateData.serialBaud != self.linkBaud):
+
+            self.SerialClose()
+            self.SerialOpen(self.linkPort, self.linkBaud)
+
+         if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
+            self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
+
+            self.AutoRefreshTimerStop()
+            self.AutoRefreshTimerStart()
+
+         self.gcText.UpdateSettings(self.configData)
+         self.outputText.UpdateSettings(self.configData)
+         self.cliPanel.UpdateSettings(self.configData)
+         self.machineStatusPanel.UpdateSettings(self.configData)
+         self.machineJoggingPanel.UpdateSettings(self.configData)
+         self.CV2Panel.UpdateSettings(self.configData)
+
+      dlg.Destroy()
 
    #---------------------------------------------------------------------------
    # Run Menu/ToolBar Handlers

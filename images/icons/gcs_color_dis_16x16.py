@@ -134,11 +134,13 @@ getimgMoveBitmap = imgMove.GetBitmap
 #----------------------------------------------------------------------
 imgSave = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAAJcEhZ"
-    "cwAACxMAAAsTAQCanBgAAAAHdElNRQfdAhsMBDTTbu56AAAAwUlEQVQoz32RsQ3CMBBF39mO"
-    "oAkJC7AAYgcqekRBRc0MNCBmocoKTEFDxwwgFIoIJTFFTIA44aSTTv5fT993YvlfIiR7xuHR"
-    "l9IZ5+XOAJNoPlj4BsVdgaLq9lJgAGWBZhbBgiNoX3YvuiLoTsLbADmmYch/CY/2kB/Cs0Xt"
-    "1QYDMKxTCDc0BZViAFOFvAJxvRbB1oZAEEq0+0uJAAIQgLLYbXopM+9IgA0tkoyImbKRw9eS"
-    "Vm44sZYkoo/uuEVB9gKxpS8I36iG/wAAAABJRU5ErkJggg==")
+    "cwAACxMAAAsTAQCanBgAAAAHdElNRQfdAwEJHh0l/tBtAAABN0lEQVQoz3WPO05CURiEvwuH"
+    "x1WDyMMLqFcSGgnEBmLtBiw0sdLOwsINuAGivdHEwiXgSqQUiAkGGqOJCfhA4Jwfrg0FBUw3"
+    "M18mGZhRdb9RaWxUT2czNWtkb+jz/PK3GNg13qQiQR4XACY5WB6HTG/hgo6PSh66Nge4vbdK"
+    "IHh4CHdP4NUuzgH8cFwuHPhcVSznIxnDhHhmPdOR904mVbDqb9ZhIn12dT3khSY5foAlWmyR"
+    "IsDN5eeDT5I7eeGLNVI8EyZEnSghuhiyeUkqcdIugCZClDoQwUYTAGKuOMo4264w5JcuQWzG"
+    "KHrY2AiOaxylE5u5OKtoRmgM4+k9C5CcTigdDtPCoNFoDJMZIIYOK+0f0KSOIAhjvGkJJ3yj"
+    "/aofqLWL2eKchQ9e2/2AtXKkSiyU1P4BlmV4dLjh4mYAAAAASUVORK5CYII=")
 getimgSaveData = imgSave.GetData
 getimgSaveImage = imgSave.GetImage
 getimgSaveBitmap = imgSave.GetBitmap

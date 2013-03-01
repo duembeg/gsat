@@ -390,18 +390,24 @@ getimgOpenBitmap = imgOpen.GetBitmap
 
 #----------------------------------------------------------------------
 imgSave = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
-    "ZSBJbWFnZVJlYWR5ccllPAAAAVRJREFUeNqkkr9Og1AUxk+5kMBgdCQxId19CJx8AlfnLk3s"
-    "6oKxYesCK3FzNT6AL4GLm2lcmFmahlwo1/MhNKW0UONJPi45nPPj/LkjpRT9x0ZsOJ9YV7ee"
-    "935K0ut8fsPHJ+sRBOjN930FKwcEQyxykKvXUE1KSQW3s9lsev8uhCDEIgePLaAsS5KcnOd5"
-    "L8BgIXYfIPBnALIBgNK0pkrRAhRFQZLJQwDNMAixHQCo38slXY7HvQDEHK3gOQxP2r1lWYcr"
-    "iOOYjl2s+r5U5rpuB6CjAqwoCMLOJgzueza7J8dxKEmSZgZ6C4AKdF2n1Sqj6XRSOReLYFsy"
-    "vsFM02xm0AIYGq8HQeu1JNu2Kyfeq9Up0QLU98CotoKeWV4URV9pmmZSqioYUupXjW8XwDln"
-    "yMVkHNYF65r1wIEvh4bIfd/tuT5YEwDOAW6m+gfDILIfAQYAAm/QA0tCHVUAAAAASUVORK5C"
-    "YII=")
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3QMBCR0qtm4moQAAAkxJREFUOMudkc1LVGEU"
+    "xp/rvNfGcVKbjy6D0x1jKEYcZGjCNkZBIQQSWLmLNgatopb9A6Lb0I2LFhFBNSW0Cfra1SJx"
+    "iBaKUabI1FhK40h33jvnPfe+LRxdBIJ24IED55zf+QJ2sf6p0tmJJT06saQ7+6dKV3fLE7sF"
+    "FFHf5qZq0hoBRVTbN4Bct1dKpX0fo+S6zQCm9weQMl7ZrLWSUgdIyo19T1CXMvrd5bznG6hL"
+    "WdwTIHnr1ZRhGPkGAKtmKzx/yz9y+/UsAGiti6W7Aze2awwAGB4ePgkg/6W179SaaZ/rvX7F"
+    "XvwD/K4DvtYImwYONQPrD5+uxNXK22POzAcAxUKhMGsMDQ3FEonEyNjY2LjrupieKeH+ux+o"
+    "Dw7iY2WrSzoMRF48x+VcDOczMZhmEJOT43fW13/ea2LmeCaT6WZmVKtVnD7ajIs9LfCfPIYd"
+    "AjpbgNCzRxhIC+QtoFLZgFKMVCrdzcxxwcxWIpGwt3eq1Wo4cVhhrdPBy8IDaA2cSUpkOwQc"
+    "x0Qo1AYAiETiNjNbQillpVIpm5nhui6q1SrK5TKOt7vg6C/4vkb6YAirq2V0dDAMwwQzw7KS"
+    "tlLKEkQUSyaT6Wg0ivb2NnR1pZDL5UBEuKAUPM9v3LoJQKDxOAFmL01EMUFEwWAwiMXFr1BK"
+    "gYh2pBTD9/8FbEEikRiIKCiIKCClxMLCZ8zPz4GZd+R5PrRGo1jsqDK+jGvvb4KIAsJxHLNY"
+    "LC5ns9mubLZnTxPINwpz3z4tO45jGuFw+JIQIo//MGYu/gWaSzpM3qF0jQAAAABJRU5ErkJg"
+    "gg==")
 getimgSaveData = imgSave.GetData
 getimgSaveImage = imgSave.GetImage
 getimgSaveBitmap = imgSave.GetBitmap
+
 
 #----------------------------------------------------------------------
 imgExit = PyEmbeddedImage(
