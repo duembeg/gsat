@@ -930,7 +930,7 @@ class gcsMainWindow(wx.Frame):
          self, message="Choose a file",
          defaultDir=currentDir,
          defaultFile=currentFile,
-         wildcard=gWILDCARD,
+         wildcard=gc.gWILDCARD,
          style=wx.OPEN | wx.FD_FILE_MUST_EXIST
          )
 
@@ -1062,6 +1062,7 @@ class gcsMainWindow(wx.Frame):
    #---------------------------------------------------------------------------
    def OnFind(self, e):
       searcText = self.searchToolBarFind.GetValue()
+      self.gcText.FindNextText(searcText)
 
 
    def OnGotoLine(self, e):

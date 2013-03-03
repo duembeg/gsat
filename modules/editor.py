@@ -213,6 +213,12 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
       if (self.configAutoScroll == 1) or (self.configAutoScroll == 2):
          self.autoScroll = True
 
+   def UpdateSettings(self, config_data):
+      self.configData = config_data
+      self.InitConfig()
+      self.InitUI()
+      self.GotoLine(self.GetCurrentLine())
+
    def InitUI(self):
       # global default style
       if wx.Platform == '__WXMSW__':
@@ -279,6 +285,25 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
       if self.autoScroll:
          wx.CallAfter(self.ScrollToEnd)
 
+   def FindFirstText(self, text):
+      lastLine = self.GetLineCount()
+      endPos = self.GetLineEndPosition(lastLine)
+      pos = self.FindText(0, endPos, text)
+
+      if pos > 0:
+         self.GotoPos(pos+len(text))
+         self.SetSelection(pos,pos+len(text))
+
+   def FindNextText(self, text):
+      begPos = self.GetCurrentPos()
+      lastLine = self.GetLineCount()
+      endPos = self.GetLineEndPosition(lastLine)
+      pos = self.FindText(begPos, endPos, text)
+
+      if pos > 0:
+         self.GotoPos(pos+len(text))
+         self.SetSelection(pos,pos+len(text))
+
    def GotoLine(self, line):
       lines = self.GetLineCount()
 
@@ -299,12 +324,6 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
       line = self.GetLineCount() - 1
       self.GotoLine(line)
       #self.ScrollToLine(self.GetLineCount())
-
-   def UpdateSettings(self, config_data):
-      self.configData = config_data
-      self.InitConfig()
-      self.InitUI()
-      self.GotoLine(self.GetCurrentLine())
 
 """----------------------------------------------------------------------------
    gcsGcodeStcStyledTextCtrl:
