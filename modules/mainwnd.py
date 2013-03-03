@@ -1035,7 +1035,7 @@ class gcsMainWindow(wx.Frame):
          self, message="Create a file",
          defaultDir=currentDir,
          defaultFile=currentFile,
-         wildcard=gWILDCARD,
+         wildcard=gc.gWILDCARD,
          style=wx.SAVE
          )
 

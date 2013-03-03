@@ -291,7 +291,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
          self.jY.SetValue(statusData[5])
          self.jZ.SetValue(statusData[6])
 
-      if stateData.serialPortIsOpen:
+      if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
          self.resettoZeroPositionButton.Enable()
          self.resettoCurrentPositionButton.Enable()
          self.goZeroButton.Enable()
