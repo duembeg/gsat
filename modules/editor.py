@@ -3,6 +3,7 @@
 ----------------------------------------------------------------------------"""
 
 import os
+import re
 import wx
 from wx.lib import scrolledpanel as scrolled
 from wx import stc as stc
@@ -358,6 +359,7 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
          self.autoScroll = True
 
    def InitUI(self):
+
       # global default style
       if wx.Platform == '__WXMSW__':
          self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Courier New"\
@@ -404,16 +406,24 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
       self.SetMarginMask(2, pow(2,self.markerPC))
 
 
+      self.SetLexer(stc.STC_LEX_CONTAINER)
       #self.SetLexer(stc.STC_LEX_PYTHON)
-      #self.SetKeyWords(0, "G00 G01 G02 G03 G04 G05 G20 G21 G90 G92 G94 M2 M3 M5 M9 T6 S")
+      self.SetKeyWords(0, "G00 G01 G02 G03 G04 G05 G20 G21 G90 G92 G94 M2 M3 M5 M9 T6 S")
+
+      self.Bind(stc.EVT_STC_STYLENEEDED, self.onStyleNeeded)
 
       # comment-blocks
-      self.StyleSetSpec(stc.STC_P_COMMENTBLOCK, "fore:#7F7F7F")
+      self.StyleSetSpec(stc.STC_P_COMMENTLINE, "fore:#7F7F7F")
 
-      # end of line where string is not closed
-      #self.StyleSetSpec(stc.STC_P_STRINGEOL, "fore:#000000")
+      # key word (code)
+      self.StyleSetSpec(stc.STC_P_WORD, "fore:#00007F")
 
-      #self.StyleSetSpec(stc.STC_P_WORD, "fore:#00007F")
+      # number
+      self.StyleSetSpec(stc.STC_P_NUMBER, "fore:#007F7F")
+
+      # line number
+      self.StyleSetSpec(stc.STC_P_IDENTIFIER, "fore:#7F0000")
+
 
       '''
       self.StyleSetSpec(stc.STC_STYLE_CONTROLCHAR,
@@ -451,6 +461,46 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
          "fore:#000000,face:%(mono)s,back:#E0C0E0,eol,size:%(size)d"\
          % faces)
       '''
+   def onStyleNeeded(self, e):
+      start = self.GetEndStyled()    # this is the first character that needs styling
+      end = e.GetPosition()          # this is the last character that needs styling
+
+      data = self.GetTextRange(start, end)
+
+      # match gcodes
+      mArray = re.finditer(r'[GMTS]\d+', data, re.IGNORECASE)
+
+      for m in mArray:
+         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD)
+
+      # match line number
+      mArray = re.finditer(r'N\d+', data, re.IGNORECASE)
+
+      for m in mArray:
+         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_IDENTIFIER)
+
+      # match axis, feed, other
+      mArray = re.finditer(r'([XYZF])(\s*[-+]*\d+\.{0,1}\d*)', data, re.IGNORECASE)
+
+      for m in mArray:
+         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_NUMBER)
+
+      # match comments or skip code
+      # *** must be last to catch any keywords or numbers in commnets
+      mArray = re.finditer(r'\(.*\)', data)
+
+      for m in mArray:
+         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
+
+      mArray = re.finditer(r';.*', data)
+
+      for m in mArray:
+         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
 
    def UpdateUI(self, stateData):
       self.stateData = stateData
