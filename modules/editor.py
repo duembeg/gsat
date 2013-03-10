@@ -5,10 +5,17 @@
 import os
 import re
 import wx
-from wx.lib import scrolledpanel as scrolled
 from wx import stc as stc
+from wx.lib import scrolledpanel as scrolled
+from wx.lib import colourselect as  csel
 
 import modules.config as gc
+
+
+def hex_to_rgb(hex_color):
+   m = re.match(r'^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$',
+      hex_color, re.IGNORECASE)
+   return (int(m.group(1), 16), int(m.group(2), 16), int(m.group(3), 16))
 
 """----------------------------------------------------------------------------
    gcsStyledTextCtrlSettingsPanel:
@@ -83,33 +90,35 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
 
       vColorSizer = wx.BoxSizer(wx.VERTICAL)
-      foregroundColorSizer = wx.FlexGridSizer(2,3,0,0)
-      backgroundColorSizer = wx.FlexGridSizer(2,3,0,0)
+      foregroundColorSizer = wx.GridSizer(1,6,0,0)
+      backgroundColorSizer = wx.GridSizer(1,6,0,0)
+      syntaxColorSizer = wx.GridSizer(2,6,0,0)
 
       # Foreground
       text = wx.StaticText(self, label="Foreground:")
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
       text = wx.StaticText(self, label="Window")
-      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.windowForeground = csel.ColourSelect(self, -1, "",
+         hex_to_rgb(self.configData.Get('/%s/WindowForeground' % self.key)))
+      foregroundColorSizer.Add(self.windowForeground, 0,
+         flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
       text = wx.StaticText(self, label="Line Numbers")
-      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.lineNumbersForeground = csel.ColourSelect(self, -1, "",
+         hex_to_rgb(self.configData.Get('/%s/LineNumberForeground' % self.key)))
+      foregroundColorSizer.Add(self.lineNumbersForeground, 0,
+         flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
       text = wx.StaticText(self, label="Highlight Line")
-      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.caretLineForeground = csel.ColourSelect(self, -1, "",
+         hex_to_rgb(self.configData.Get('/%s/CaretLineForeground' % self.key)))
+      foregroundColorSizer.Add(self.caretLineForeground, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
-      self.windowForeground = wx.ColourPickerCtrl(self,
-         col=self.configData.Get('/%s/WindowForeground' % self.key))
-      foregroundColorSizer.Add(self.windowForeground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
-
-      self.lineNumbersForeground = wx.ColourPickerCtrl(self,
-         col=self.configData.Get('/%s/LineNumberForeground' % self.key))
-      foregroundColorSizer.Add(self.lineNumbersForeground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
-
-      self.caretLineForeground = wx.ColourPickerCtrl(self,
-         col=self.configData.Get('/%s/CaretLineForeground' % self.key))
-      foregroundColorSizer.Add(self.caretLineForeground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
-
-      vColorSizer.Add(foregroundColorSizer, 0, flag=wx.LEFT, border=10)
+      vColorSizer.Add(foregroundColorSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
 
       # Background
       text = wx.StaticText(self, label="")
@@ -118,26 +127,67 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
       text = wx.StaticText(self, label="Window")
-      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.windowBackground = csel.ColourSelect(self, -1, "",
+         hex_to_rgb(self.configData.Get('/%s/WindowBackground' % self.key)))
+      backgroundColorSizer.Add(self.windowBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
       text = wx.StaticText(self, label="Line Numbers")
-      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.lineNumbersBackground = csel.ColourSelect(self, -1, "",
+         hex_to_rgb(self.configData.Get('/%s/LineNumberBackground' % self.key)))
+      backgroundColorSizer.Add(self.lineNumbersBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
+
       text = wx.StaticText(self, label="Highlight Line")
-      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.caretLineBackground = csel.ColourSelect(self, -1, "",
+         hex_to_rgb(self.configData.Get('/%s/CaretLineBackground' % self.key)))
+      backgroundColorSizer.Add(self.caretLineBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
+      vColorSizer.Add(backgroundColorSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      if self.key == 'code':
+         # Syntax highlighting
+         text = wx.StaticText(self, label="")
+         vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
+         text = wx.StaticText(self, label="Syntax highlighting:")
+         vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
+
+         text = wx.StaticText(self, label="G Codes")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.gCodeHighlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/GCodeHighlight' % self.key)))
+         syntaxColorSizer.Add(self.gCodeHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
 
-      self.windowBackground = wx.ColourPickerCtrl(self,
-         col=self.configData.Get('/%s/WindowBackground' % self.key))
-      backgroundColorSizer.Add(self.windowBackground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
+         text = wx.StaticText(self, label="Axis Codes")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.axisHighlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/AxisHighlight' % self.key)))
+         syntaxColorSizer.Add(self.axisHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
-      self.lineNumbersBackground = wx.ColourPickerCtrl(self,
-         col=self.configData.Get('/%s/LineNumberBackground' % self.key))
-      backgroundColorSizer.Add(self.lineNumbersBackground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
 
-      self.caretLineBackground = wx.ColourPickerCtrl(self,
-         col=self.configData.Get('/%s/CaretLineBackground' % self.key))
-      backgroundColorSizer.Add(self.caretLineBackground, 0, flag=wx.LEFT|wx.RIGHT, border=20)
+         text = wx.StaticText(self, label="Parameters")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.parametersHighlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/ParametersHighlight' % self.key)))
+         syntaxColorSizer.Add(self.parametersHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
-      vColorSizer.Add(backgroundColorSizer, 0, flag=wx.LEFT, border=10)
+         text = wx.StaticText(self, label="Comments")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.commentsHighlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/CommentsHighlight' % self.key)))
+         syntaxColorSizer.Add(self.commentsHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
+         text = wx.StaticText(self, label="G-Code Line #")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.gCodeLineNumberHighlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/GCodeLineNumberHighlight' % self.key)))
+         syntaxColorSizer.Add(self.gCodeLineNumberHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
+         vColorSizer.Add(syntaxColorSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
 
       vBoxSizer.Add(vColorSizer, 0, wx.LEFT|wx.ALIGN_LEFT, border=10)
 
@@ -341,16 +391,21 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
       self.InitUI()
 
    def InitConfig(self):
-      self.configReadOnly = self.configData.Get('/code/ReadOnly')
-      self.configAutoScroll = self.configData.Get('/code/AutoScroll')
-      self.configWindowForeground = self.configData.Get('/code/WindowForeground')
-      self.configWindowBackground = self.configData.Get('/code/WindowBackground')
-      self.configLineNumber = self.configData.Get('/code/LineNumber')
-      self.configLineNumberForeground = self.configData.Get('/code/LineNumberForeground')
-      self.configLineNumberBackground = self.configData.Get('/code/LineNumberBackground')
-      self.configCaretLine = self.configData.Get('/code/CaretLine')
-      self.configCaretLineForeground = self.configData.Get('/code/CaretLineForeground')
-      self.configCaretLineBackground = self.configData.Get('/code/CaretLineBackground')
+      self.configReadOnly                 = self.configData.Get('/code/ReadOnly')
+      self.configAutoScroll               = self.configData.Get('/code/AutoScroll')
+      self.configWindowForeground         = self.configData.Get('/code/WindowForeground')
+      self.configWindowBackground         = self.configData.Get('/code/WindowBackground')
+      self.configLineNumber               = self.configData.Get('/code/LineNumber')
+      self.configLineNumberForeground     = self.configData.Get('/code/LineNumberForeground')
+      self.configLineNumberBackground     = self.configData.Get('/code/LineNumberBackground')
+      self.configCaretLine                = self.configData.Get('/code/CaretLine')
+      self.configCaretLineForeground      = self.configData.Get('/code/CaretLineForeground')
+      self.configCaretLineBackground      = self.configData.Get('/code/CaretLineBackground')
+      self.configGCodeHighlight           = self.configData.Get('/code/GCodeHighlight')
+      self.configAxisHighlight            = self.configData.Get('/code/AxisHighlight')
+      self.configParametersHighlight      = self.configData.Get('/code/ParametersHighlight')
+      self.configGCodeLineNumberHighlight = self.configData.Get('/code/GCodeLineNumberHighlight')
+      self.configCommentsHighlight        = self.configData.Get('/code/CommentsHighlight')
 
 
       self.SetReadOnly(self.configReadOnly)
@@ -407,60 +462,31 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
 
 
       self.SetLexer(stc.STC_LEX_CONTAINER)
-      #self.SetLexer(stc.STC_LEX_PYTHON)
-      self.SetKeyWords(0, "G00 G01 G02 G03 G04 G05 G20 G21 G90 G92 G94 M2 M3 M5 M9 T6 S")
 
       self.Bind(stc.EVT_STC_STYLENEEDED, self.onStyleNeeded)
 
-      # comment-blocks
-      self.StyleSetSpec(stc.STC_P_COMMENTLINE, "fore:#7F7F7F")
+      # g-code
+      self.StyleSetSpec(stc.STC_P_OPERATOR, "fore:%s" % self.configGCodeHighlight)
+      self.reGCode = re.compile(r'[GM]\d+\.{0,1}\d*', re.IGNORECASE)
 
-      # key word (code)
-      self.StyleSetSpec(stc.STC_P_WORD, "fore:#00007F")
+      # axis
+      self.StyleSetSpec(stc.STC_P_WORD, "fore:%s" % self.configAxisHighlight)
+      self.reAxis = re.compile(r'([ABCIJKUVWXYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
-      # number
-      self.StyleSetSpec(stc.STC_P_NUMBER, "fore:#007F7F")
+      # parameters
+      self.StyleSetSpec(stc.STC_P_WORD2, "fore:%s" % self.configParametersHighlight)
+      self.reParams = re.compile(r'([DEFHLOPQRST])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
-      # line number
-      self.StyleSetSpec(stc.STC_P_IDENTIFIER, "fore:#7F0000")
+      # g-code line number
+      self.StyleSetSpec(stc.STC_P_IDENTIFIER, "fore:%s" % self.configGCodeLineNumberHighlight)
+      self.reLineNumber = re.compile(r'N\d+', re.IGNORECASE)
 
-
-      '''
-      self.StyleSetSpec(stc.STC_STYLE_CONTROLCHAR,
-         "face:%(other)s" % faces)
-      self.StyleSetSpec(stc.STC_STYLE_BRACELIGHT,
-         "fore:#FFFFFF,back:#0000FF,bold")
-      self.StyleSetSpec(stc.STC_STYLE_BRACEBAD,
-         "fore:#000000,back:#FF0000,bold")
-
-      # make the Python styles ...
-      # default
-      self.StyleSetSpec(stc.STC_P_DEFAULT,
-         "fore:#000000,face:%(helv)s,size:%(size)d" % faces)
       # comments
-      self.StyleSetSpec(stc.STC_P_COMMENTLINE,
-         "fore:#007F00,face:%(other)s,size:%(size)d" % faces)
-      # number
-      self.StyleSetSpec(stc.STC_P_NUMBER,
-         "fore:#007F7F,size:%(size)d" % faces)
-      # string
-      self.StyleSetSpec(stc.STC_P_STRING,
-         "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
-      # single quoted string
-      self.StyleSetSpec(stc.STC_P_CHARACTER,
-         "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
-      # keyword
-      self.StyleSetSpec(stc.STC_P_WORD,
-         "fore:#00007F,bold,size:%(size)d" % faces)
+      self.StyleSetSpec(stc.STC_P_COMMENTLINE, "fore:%s" % self.configCommentsHighlight)
+      self.reComments = []
+      self.reComments.append(re.compile(r'\(.*\)'))
+      self.reComments.append(re.compile(r';.*'))
 
-      # comment-blocks
-      self.StyleSetSpec(stc.STC_P_COMMENTBLOCK,
-         "fore:#7F7F7F,size:%(size)d" % faces)
-      # end of line where string is not closed
-      self.StyleSetSpec(stc.STC_P_STRINGEOL,
-         "fore:#000000,face:%(mono)s,back:#E0C0E0,eol,size:%(size)d"\
-         % faces)
-      '''
    def onStyleNeeded(self, e):
       start = self.GetEndStyled()    # this is the first character that needs styling
       end = e.GetPosition()          # this is the last character that needs styling
@@ -468,39 +494,42 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
       data = self.GetTextRange(start, end)
 
       # match gcodes
-      mArray = re.finditer(r'[GMTS]\d+', data, re.IGNORECASE)
+      mArray = self.reGCode.finditer(data)
 
       for m in mArray:
          self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
-         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD)
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_OPERATOR)
 
       # match line number
-      mArray = re.finditer(r'N\d+', data, re.IGNORECASE)
+      mArray = self.reLineNumber.finditer(data)
 
       for m in mArray:
          self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(0)-m.start(0), stc.STC_P_IDENTIFIER)
 
-      # match axis, feed, other
-      mArray = re.finditer(r'([XYZF])(\s*[-+]*\d+\.{0,1}\d*)', data, re.IGNORECASE)
+      # match paramters
+      mArray = self.reParams.finditer(data)
 
       for m in mArray:
          self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
-         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_NUMBER)
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD2)
+
+      # match axis
+      mArray = self.reAxis.finditer(data)
+
+      for m in mArray:
+         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD)
 
       # match comments or skip code
       # *** must be last to catch any keywords or numbers in commnets
-      mArray = re.finditer(r'\(.*\)', data)
+      for regex in self.reComments:
+         mArray = regex.finditer(data)
 
-      for m in mArray:
-         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
-         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
+         for m in mArray:
+            self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+            self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
 
-      mArray = re.finditer(r';.*', data)
-
-      for m in mArray:
-         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
-         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
 
    def UpdateUI(self, stateData):
       self.stateData = stateData
