@@ -222,6 +222,22 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/%s/LineNumberBackground' % self.key,
          self.lineNumbersBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
+      if self.key == 'code':
+         self.configData.Set('/%s/GCodeHighlight' % self.key,
+            self.gCodeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
+         self.configData.Set('/%s/AxisHighlight' % self.key,
+            self.axisHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
+         self.configData.Set('/%s/ParametersHighlight' % self.key,
+            self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
+         self.configData.Set('/%s/CommentsHighlight' % self.key,
+            self.commentsHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
+         self.configData.Set('/%s/GCodeLineNumberHighlight' % self.key,
+            self.gCodeLineNumberHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
 """----------------------------------------------------------------------------
    gcsStcStyledTextCtrl:
    Text control to display data
@@ -488,46 +504,63 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
       self.reComments.append(re.compile(r';.*'))
 
    def onStyleNeeded(self, e):
-      start = self.GetEndStyled()    # this is the first character that needs styling
-      end = e.GetPosition()          # this is the last character that needs styling
+      stStart = self.GetEndStyled()    # this is the first character that needs styling
+      stEnd = e.GetPosition()          # this is the last character that needs styling
+      stData = self.GetTextRange(stStart, stEnd)
 
-      data = self.GetTextRange(start, end)
+      # need to do styling on line, make sure we don't get stock on a loop
+      # if the first char to style is a new line, getting line form pos will
+      # always return the same line. Nex styling car will always be the
+      # end of line char.
+      if stData[0] == "\n":
+         stStart = stStart + 1
+
+      stLine = self.LineFromPosition(stStart)
+      stStart = self.PositionFromLine(stLine)
+      stData = self.GetTextRange(stStart, stEnd)
+
+
+      #print stStart, stEnd, stLine
+
+      # start with default (revert to default, if text gets modify)
+      self.StartStyling(stStart, 31)   # in this example, only style the text style bits
+      self.SetStyling(len(stData), stc.STC_P_DEFAULT)
 
       # match gcodes
-      mArray = self.reGCode.finditer(data)
+      mArray = self.reGCode.finditer(stData)
 
       for m in mArray:
-         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(0)-m.start(0), stc.STC_P_OPERATOR)
 
       # match line number
-      mArray = self.reLineNumber.finditer(data)
+      mArray = self.reLineNumber.finditer(stData)
 
       for m in mArray:
-         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(0)-m.start(0), stc.STC_P_IDENTIFIER)
 
       # match paramters
-      mArray = self.reParams.finditer(data)
+      mArray = self.reParams.finditer(stData)
 
       for m in mArray:
-         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD2)
 
       # match axis
-      mArray = self.reAxis.finditer(data)
+      mArray = self.reAxis.finditer(stData)
 
       for m in mArray:
-         self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD)
 
       # match comments or skip code
       # *** must be last to catch any keywords or numbers in commnets
       for regex in self.reComments:
-         mArray = regex.finditer(data)
+         mArray = regex.finditer(stData)
 
          for m in mArray:
-            self.StartStyling(start+m.start(0), 31)   # in this example, only style the text style bits
+            self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
 
 
