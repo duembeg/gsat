@@ -433,19 +433,19 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
 
       # global default style
       if wx.Platform == '__WXMSW__':
-         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Courier New"\
+         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier New"\
          % (self.configWindowForeground, self.configWindowBackground))
       elif wx.Platform == '__WXMAC__':
-         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Monaco"\
+         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Monaco"\
             % (self.configWindowForeground, self.configWindowBackground))
       else:
          defsize = wx.SystemSettings.GetFont(wx.SYS_ANSI_FIXED_FONT).GetPointSize()
-         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Courier,size:%d"\
+         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier,size:%d"\
             % (self.configWindowForeground, self.configWindowBackground, defsize))
 
       self.StyleClearAll()
 
-      self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s"\
+      self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s,bold"\
          % (self.configLineNumberForeground, self.configLineNumberBackground))
 
       # margin 0 for line numbers
@@ -544,15 +544,15 @@ class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
       mArray = self.reParams.finditer(stData)
 
       for m in mArray:
-         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
-         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD2)
+         self.StartStyling(stStart+m.start(1), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD2)
 
       # match axis
       mArray = self.reAxis.finditer(stData)
 
       for m in mArray:
-         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
-         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_WORD)
+         self.StartStyling(stStart+m.start(1), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD)
 
       # match comments or skip code
       # *** must be last to catch any keywords or numbers in commnets

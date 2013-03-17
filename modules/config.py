@@ -144,10 +144,10 @@ class gcsConfigData():
          '/code/ReadOnly'                    :(True , True),
          '/code/WindowForeground'            :(False, '#000000'),
          '/code/WindowBackground'            :(False, '#FFFFFF'),
-         '/code/GCodeHighlight'              :(False, '#00007F'),
-         '/code/AxisHighlight'               :(False, '#007F7F'),
+         '/code/GCodeHighlight'              :(False, '#0000FF'),
+         '/code/AxisHighlight'               :(False, '#007F00'), #007F7F
          '/code/ParametersHighlight'         :(False, '#7F0000'),
-         '/code/GCodeLineNumberHighlight'    :(False, '#007F00'),
+         '/code/GCodeLineNumberHighlight'    :(False, '#BFBFBF'),
          '/code/CommentsHighlight'           :(False, '#FFC300'),
 
 
