@@ -1200,7 +1200,11 @@ class gcsMainWindow(wx.Frame):
          self.machineJoggingPanel.UpdateSettings(self.configData)
          self.CV2Panel.UpdateSettings(self.configData)
 
+         # save config data to file now...
+         self.configData.Save(self.configFile)
+
       dlg.Destroy()
+
 
    #---------------------------------------------------------------------------
    # Run Menu/ToolBar Handlers
