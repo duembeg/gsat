@@ -56,7 +56,6 @@ from wx.lib import scrolledpanel as scrolled
 import modules.config as gc
 import images.icons as ico
 import modules.editor as ed
-import modules.cli as cli
 import modules.link as link
 import modules.machine as mc
 import modules.jogging as jog
@@ -309,7 +308,7 @@ class gcsSettingsDialog(wx.Dialog):
       self.noteBook.SetPageImage(page, page)
 
    def AddCliPage(self, page):
-      self.cliPage = cli.gcsCliSettingsPanel(self.noteBook, self.configData)
+      self.cliPage = jog.gcsCliSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.cliPage, "Cli")
       self.noteBook.SetPageImage(page, page)
 
@@ -414,6 +413,7 @@ class gcsMainWindow(wx.Frame):
       self.machineStatusPanel = mc.gcsMachineStatusPanel(self, self.configData, self.stateData,)
       self.CV2Panel = compv.gcsCV2Panel(self, self.configData, self.stateData, self.cmdLineOptions)
       self.machineJoggingPanel = jog.gcsJoggingPanel(self, self.configData, self.stateData)
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.machineJoggingPanel.cliComboBox)
 
       # output Window
       self.outputText = ed.gcsStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
@@ -426,25 +426,15 @@ class gcsMainWindow(wx.Frame):
       # main gcode list control
       self.gcText = ed.gcsGcodeStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
 
-      # cli interface
-      self.cliPanel = cli.gcsCliPanel(self, self.configData, self.stateData)
-      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliPanel.comboBox)
-      self.cliPanel.Load(self.configFile)
-
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
          aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("G-Code")\
             .CloseButton(True).MaximizeButton(True).BestSize(600,600))
 
 
-      self.aui_mgr.AddPane(self.cliPanel,
-         aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(2).Caption("Command")\
-            .CloseButton(True).MaximizeButton(True).BestSize(600,30)
-      )
-
       self.aui_mgr.AddPane(self.outputText,
          aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Position(1).Caption("Output")\
-            .CloseButton(True).MaximizeButton(True)
+            .CloseButton(True).MaximizeButton(True).BestSize(600,200)
       )
 
       self.aui_mgr.AddPane(self.CV2Panel,
@@ -454,7 +444,7 @@ class gcsMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
-            .CloseButton(True).MaximizeButton(True).BestSize(360,340).Layer(1)
+            .CloseButton(True).MaximizeButton(True).BestSize(360,380).Layer(1)
       )
 
       self.aui_mgr.AddPane(self.machineStatusPanel,
@@ -652,7 +642,6 @@ class gcsMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnRunToolBar,          id=gID_MENU_RUN_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnStatusToolBar,       id=gID_MENU_STATUS_TOOLBAR)
       self.Bind(wx.EVT_MENU, self.OnOutput,              id=gID_MENU_OUTPUT_PANEL)
-      self.Bind(wx.EVT_MENU, self.OnCommand,             id=gID_MENU_COMAMND_PANEL)
       self.Bind(wx.EVT_MENU, self.OnMachineStatus,       id=gID_MENU_MACHINE_STATUS_PANEL)
       self.Bind(wx.EVT_MENU, self.OnMachineJogging,      id=gID_MENU_MACHINE_JOGGING_PANEL)
       self.Bind(wx.EVT_MENU, self.OnComputerVision,      id=gID_MENU_CV2_PANEL)
@@ -669,7 +658,6 @@ class gcsMainWindow(wx.Frame):
       self.Bind(wx.EVT_UPDATE_UI, self.OnStatusToolBarUpdate,
                                                          id=gID_MENU_STATUS_TOOLBAR)
       self.Bind(wx.EVT_UPDATE_UI, self.OnOutputUpdate,   id=gID_MENU_OUTPUT_PANEL)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnCommandUpdate,  id=gID_MENU_COMAMND_PANEL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineStatusUpdate,
                                                          id=gID_MENU_MACHINE_STATUS_PANEL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineJoggingUpdate,
@@ -897,7 +885,6 @@ class gcsMainWindow(wx.Frame):
       self.statusToolBar.Refresh()
 
    def UpdateUI(self):
-      self.cliPanel.UpdateUI(self.stateData)
       self.gcText.UpdateUI(self.stateData)
       self.machineStatusPanel.UpdateUI(self.stateData)
       self.machineJoggingPanel.UpdateUI(self.stateData)
@@ -1135,12 +1122,6 @@ class gcsMainWindow(wx.Frame):
    def OnOutputUpdate(self, e):
       self.OnViewMenuUpdate(e, self.outputText)
 
-   def OnCommand(self, e):
-      self.OnViewMenu(e, self.cliPanel)
-
-   def OnCommandUpdate(self, e):
-      self.OnViewMenuUpdate(e, self.cliPanel)
-
    def OnMachineStatus(self, e):
       self.OnViewMenu(e, self.machineStatusPanel)
 
@@ -1195,7 +1176,6 @@ class gcsMainWindow(wx.Frame):
 
          self.gcText.UpdateSettings(self.configData)
          self.outputText.UpdateSettings(self.configData)
-         self.cliPanel.UpdateSettings(self.configData)
          self.machineStatusPanel.UpdateSettings(self.configData)
          self.machineJoggingPanel.UpdateSettings(self.configData)
          self.CV2Panel.UpdateSettings(self.configData)
@@ -1512,7 +1492,7 @@ class gcsMainWindow(wx.Frame):
    # Other UI Handlers
    #---------------------------------------------------------------------------
    def OnCliEnter(self, e):
-      cliCommand = self.cliPanel.GetCommand()
+      cliCommand = self.machineJoggingPanel.GetCliCommand()
 
       if len(cliCommand) > 0:
          serialData = "%s\n" % (cliCommand)
@@ -1526,7 +1506,7 @@ class gcsMainWindow(wx.Frame):
          self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
          self.mw2tQueue.join()
 
-      self.cliPanel.Save(self.configFile)
+      self.machineJoggingPanel.SaveCli(self.configFile)
       self.configData.Save(self.configFile)
       self.aui_mgr.UnInit()
 

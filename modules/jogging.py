@@ -168,6 +168,49 @@ class gcsJoggingSettingsPanel(scrolled.ScrolledPanel):
             self.customCtrlArray[cn][6].GetValue())
 
 """----------------------------------------------------------------------------
+   gcsCliSettingsPanel:
+   CLI settings.
+----------------------------------------------------------------------------"""
+class gcsCliSettingsPanel(scrolled.ScrolledPanel):
+   def __init__(self, parent, config_data, **args):
+      scrolled.ScrolledPanel.__init__(self, parent,
+         style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
+
+      self.configData = config_data
+
+      self.InitUI()
+      self.SetAutoLayout(True)
+      self.SetupScrolling()
+      #self.FitInside()
+
+   def InitUI(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      # Add cehck box
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.cb = wx.CheckBox(self, wx.ID_ANY, "Save Command History")
+      self.cb.SetValue(self.configData.Get('/cli/SaveCmdHistory'))
+      hBoxSizer.Add(self.cb, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.LEFT, border=20)
+
+      # Add spin ctrl
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
+      self.sc.SetRange(1,1000)
+      self.sc.SetValue(self.configData.Get('/cli/CmdMaxHistory'))
+      hBoxSizer.Add(self.sc, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      st = wx.StaticText(self, wx.ID_ANY, "Max Command History")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      self.SetSizer(vBoxSizer)
+
+   def UpdatConfigData(self):
+      self.configData.Set('/cli/SaveCmdHistory', self.cb.GetValue())
+      self.configData.Set('/cli/CmdMaxHistory', self.sc.GetValue())
+
+"""----------------------------------------------------------------------------
    gcsJoggingPanel:
    Jog controls for the machine as well as custom user controls.
 ----------------------------------------------------------------------------"""
@@ -186,6 +229,8 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       self.memoY = gc.gZeroString
       self.memoZ = gc.gZeroString
 
+      self.cliCommand = ""
+
       self.InitConfig()
       self.InitUI()
       width,height = self.GetSizeTuple()
@@ -195,6 +240,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       self.UpdateSettings(self.configData)
 
    def InitConfig(self):
+      # jogging data
       self.configXYZReadOnly      = self.configData.Get('/jogging/XYZReadOnly')
 
       self.configCustom1Label     = self.configData.Get('/jogging/Custom1Label')
@@ -229,6 +275,12 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       self.configCustom4ZIsOffset = self.configData.Get('/jogging/Custom4ZIsOffset')
       self.configCustom4ZValue    = self.configData.Get('/jogging/Custom4ZValue')
 
+      # cli data
+      self.cliSaveCmdHistory      = self.configData.Get('/cli/SaveCmdHistory')
+      self.cliCmdMaxHistory       = self.configData.Get('/cli/CmdMaxHistory')
+      self.cliCmdHistory          = self.configData.Get('/cli/CmdHistory')
+
+
    def UpdateSettings(self, config_data):
       self.configData = config_data
       self.InitConfig()
@@ -256,6 +308,12 @@ class gcsJoggingPanel(wx.ScrolledWindow):
    def InitUI(self):
       vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
       hPanelBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+      # Add CLI
+      self.cliComboBox = wx.combo.BitmapComboBox(self, style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER)
+      self.cliComboBox.SetToolTip(wx.ToolTip("Command Line Interface (CLI)"))
+      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliComboBox)
+      vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND|wx.ALL, border=1)
 
       # Add Controls ----------------------------------------------------------
       joggingControls = self.CreateJoggingControls()
@@ -309,6 +367,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
          self.custom2Button.Enable()
          self.custom3Button.Enable()
          self.custom4Button.Enable()
+         self.cliComboBox.Enable()
       else:
          self.resettoZeroPositionButton.Disable()
          self.resettoCurrentPositionButton.Disable()
@@ -327,6 +386,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
          self.custom2Button.Disable()
          self.custom3Button.Disable()
          self.custom4Button.Disable()
+         self.cliComboBox.Disable()
 
 
    def CreateJoggingControls(self):
@@ -682,3 +742,39 @@ class gcsJoggingPanel(wx.ScrolledWindow):
 
    def OnRefresh(self, e):
       pass
+
+   def GetCliCommand(self):
+      return self.cliCommand
+
+   def OnCliEnter(self, e):
+      cliCommand = self.cliComboBox.GetValue()
+
+      if cliCommand != self.cliCommand:
+         if self.cliComboBox.GetCount() > self.cliCmdMaxHistory:
+            self.cliComboBox.Delete(0)
+
+         self.cliCommand = cliCommand
+         self.cliComboBox.Append(self.cliCommand)
+
+      self.cliComboBox.SetValue("")
+      e.Skip()
+
+   def LoadCli(self, configFile):
+      # read cmd hsitory
+      configData = self.cliCmdHistory
+      if len(configData) > 0:
+         cliCommandHistory = configData.split("|")
+         for cmd in cliCommandHistory:
+            cmd = cmd.strip()
+            if len(cmd) > 0:
+               self.cliComboBox.Append(cmd.strip())
+
+         self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
+
+   def SaveCli(self, configFile):
+      # write cmd history
+      if self.cliSaveCmdHistory:
+         cliCmdHistory = self.cliComboBox.GetItems()
+         if len(cliCmdHistory) > 0:
+            cliCmdHistory =  "|".join(cliCmdHistory)
+            self.configData.Set('/cli/CmdHistory', cliCmdHistory)

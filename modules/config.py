@@ -180,14 +180,14 @@ class gcsConfigData():
 
       # jogging keys
          '/jogging/XYZReadOnly'              :(True , True),
-         '/jogging/Custom1Label'             :(False, "Goto CAM"),
+         '/jogging/Custom1Label'             :(False, "Custom 1"),
          '/jogging/Custom1XIsOffset'         :(True , True),
          '/jogging/Custom1XValue'            :(True , 0),
          '/jogging/Custom1YIsOffset'         :(True , True),
          '/jogging/Custom1YValue'            :(True , 0),
          '/jogging/Custom1ZIsOffset'         :(True , True),
          '/jogging/Custom1ZValue'            :(True , 0),
-         '/jogging/Custom2Label'             :(False, "Goto Tool"),
+         '/jogging/Custom2Label'             :(False, "Custom 2"),
          '/jogging/Custom2XIsOffset'         :(True , True),
          '/jogging/Custom2XValue'            :(True , 0),
          '/jogging/Custom2YIsOffset'         :(True , True),
