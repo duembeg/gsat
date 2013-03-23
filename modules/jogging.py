@@ -230,6 +230,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       self.memoZ = gc.gZeroString
 
       self.cliCommand = ""
+      self.cliIndex = 0
 
       self.InitConfig()
       self.InitUI()
@@ -310,10 +311,15 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       hPanelBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       # Add CLI
-      self.cliComboBox = wx.combo.BitmapComboBox(self, style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER)
+      self.cliComboBox = wx.combo.BitmapComboBox(self, style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER|wx.WANTS_CHARS)
       self.cliComboBox.SetToolTip(wx.ToolTip("Command Line Interface (CLI)"))
-      self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.cliComboBox)
+      self.cliComboBox.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter)
+      #self.cliComboBox.Bind(wx.EVT_CHAR, self.OnCliChar)
+      self.cliComboBox.Bind(wx.EVT_KEY_DOWN, self.OnCliKeyDown)
+      #self.cliComboBox.Bind(wx.EVT_KEY_UP, self.OnCliKeyUp)
+      #self.cliComboBox.SetFocus()
       vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND|wx.ALL, border=1)
+
 
       # Add Controls ----------------------------------------------------------
       joggingControls = self.CreateJoggingControls()
@@ -757,7 +763,24 @@ class gcsJoggingPanel(wx.ScrolledWindow):
          self.cliComboBox.Append(self.cliCommand)
 
       self.cliComboBox.SetValue("")
+
+      self.cliIndex = self.cliComboBox.GetCount()
       e.Skip()
+
+   def OnCliKeyDown(self, e):
+      keyCode = e.GetKeyCode()
+      cliItems = self.cliComboBox.GetItems()
+
+      if wx.WXK_UP == keyCode or wx.WXK_NUMPAD_UP == keyCode:
+         if  self.cliIndex > 0:
+            self.cliIndex = self.cliIndex - 1
+            self.cliComboBox.SetValue(cliItems[self.cliIndex])
+      elif wx.WXK_DOWN == keyCode or wx.WXK_NUMPAD_DOWN == keyCode:
+         if  len(cliItems) > self.cliIndex + 1:
+            self.cliIndex = self.cliIndex + 1
+            self.cliComboBox.SetValue(cliItems[self.cliIndex])
+      else:
+         e.Skip()
 
    def LoadCli(self, configFile):
       # read cmd hsitory
