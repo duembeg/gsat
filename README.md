@@ -1,5 +1,5 @@
 gcs
-===
+====
 
 gcs is a cross-platform GCODE debug/step and alignment tool for Grbl like GCODE interpreter.
 with features similar to software debugger. For example usage of breakpoints, change program
@@ -43,5 +43,13 @@ Screen Shoots
 
 Changelog
 ---------
+1.1.0
+* UI updates
+   * Added Find and Goto Line controls to tool bar.
+   * Added G-Code syntax highlighting.
+   * Updated icons to more colorful versions.
+   * Removed CLI panel, moved CLI into Jogging panel.
+* Separated code into modules, for better maintainability and preparing for plug-in support.
+
 1.0.0
 * Initial Release
