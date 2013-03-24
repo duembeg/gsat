@@ -48,6 +48,7 @@ def get_cli_params():
       options.verbose = True
 
    if not wx.VERSION >= (2,7,0,0):
+      print "** Required wxPython 2.7 or grater."
       options.error()
       error(1)
 

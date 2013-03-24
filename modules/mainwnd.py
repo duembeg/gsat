@@ -26,7 +26,7 @@ __email__       = 'duembeg.github@gmail.com'
 # define version information
 __requires__        = ['pySerial', 'wxPython']
 __version_info__    = (1, 1, 0)
-__version__         = 'rc v%i.%02i.%02i' % __version_info__
+__version__         = 'v%i.%02i.%02i' % __version_info__
 __revision__        = __version__
 
 
@@ -1506,7 +1506,7 @@ class gcsMainWindow(wx.Frame):
          self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
          self.mw2tQueue.join()
 
-      self.machineJoggingPanel.SaveCli(self.configFile)
+      self.machineJoggingPanel.SaveCli()
       self.configData.Save(self.configFile)
       self.aui_mgr.UnInit()
 

@@ -239,6 +239,8 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
       self.UpdateSettings(self.configData)
+      #self.spinCtrl.SetFocus()
+      self.LoadCli()
 
    def InitConfig(self):
       # jogging data
@@ -317,7 +319,6 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       #self.cliComboBox.Bind(wx.EVT_CHAR, self.OnCliChar)
       self.cliComboBox.Bind(wx.EVT_KEY_DOWN, self.OnCliKeyDown)
       #self.cliComboBox.Bind(wx.EVT_KEY_UP, self.OnCliKeyUp)
-      #self.cliComboBox.SetFocus()
       vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND|wx.ALL, border=1)
 
 
@@ -782,7 +783,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       else:
          e.Skip()
 
-   def LoadCli(self, configFile):
+   def LoadCli(self):
       # read cmd hsitory
       configData = self.cliCmdHistory
       if len(configData) > 0:
@@ -794,7 +795,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
 
          self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
 
-   def SaveCli(self, configFile):
+   def SaveCli(self):
       # write cmd history
       if self.cliSaveCmdHistory:
          cliCmdHistory = self.cliComboBox.GetItems()
