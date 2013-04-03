@@ -794,6 +794,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
                self.cliComboBox.Append(cmd.strip())
 
          self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
+         self.cliIndex = self.cliComboBox.GetCount()
 
    def SaveCli(self):
       # write cmd history
