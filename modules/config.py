@@ -82,6 +82,7 @@ gEV_DATA_OUT         = 2030
 gEV_DATA_IN          = 2040
 gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
+gEV_HIT_MSG          = 2070
 
 """----------------------------------------------------------------------------
    gcsStateData:
