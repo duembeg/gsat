@@ -115,6 +115,7 @@ gReMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
 
 # comments example "( comment string )" or "; comment string"
 gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
+gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 
 
 """----------------------------------------------------------------------------
@@ -1037,6 +1038,9 @@ class gcsMainWindow(wx.Frame):
          self.configFile.Flush()
 
          self.gcText.SaveFile(self.stateData.gcodeFileName)
+         
+         # update title
+         self.SetTitle("%s - %s" % (os.path.basename(self.stateData.gcodeFileName), __appname__))
 
          self.UpdateUI()
 
@@ -1864,6 +1868,25 @@ class gcsMainWindow(wx.Frame):
                print "gcsMainWindow got event gc.gEV_HIT_BRK_PT."
             self.stateData.swState = gc.gSTATE_BREAK
             self.UpdateUI()
+            
+         elif te.event_id == gc.gEV_HIT_MSG:
+            if self.cmdLineOptions.vverbose:
+               print "gcsMainWindow got event gc.gEV_HIT_MSG."
+            self.stateData.swState = gc.gSTATE_BREAK
+            self.UpdateUI()
+            
+            self.outputText.AppendText("** MSG: %s" % te.data.strip())
+            
+            dlg = wx.MessageDialog(self, te.data.strip(), "GCODE MSG",
+               wx.OK|wx.ICON_INFORMATION)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            
+         else:
+            if self.cmdLineOptions.vverbose:
+               print "gcsMainWindow got UKNOWN event id[%d]" % te.event_id
+            self.stateData.swState = gc.gSTATE_IDLE
+            self.UpdateUI()
 
          # item acknowledgment
          self.t2mwQueue.task_done()
@@ -2062,12 +2085,25 @@ class gcsSserialPortThread(threading.Thread):
                (self.workingProgramCounter)
          return
 
+      # get gcode line
       gcode = self.gcodeDataLines[self.workingProgramCounter]
+      
+      # check for msg line
+      reMsgSearch = gReGcodeMsg.search(gcode)
+      if (reMsgSearch is not None) and \
+         (self.workingProgramCounter != self.initialProgramCounter):
+         self.swState = gc.gSTATE_BREAK
+         self.t2mwQueue.put(gc.threadEvent(gc.gEV_HIT_MSG, reMsgSearch.group(1)))
+         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+         if self.cmdLineOptions.vverbose:
+            print "** gcsSserialPortThread encounter MSG line PC[%s], swState->gc.gSTATE_BREAK, MSG[%s]" % \
+               (self.workingProgramCounter, reMsgSearch.group(1))
+         return
 
       # don't sent unecessary data save the bits for speed
       for reComments in self.reGcodeComments:
          gcode = reComments.sub("", gcode)
-
+         
       self.RunStepSendGcode(gcode)
 
       if self.machineAutoStatus:
