@@ -29,15 +29,17 @@ NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Pyth
 
 ### OSes:
 * [Ubuntu 12.04, 12.10, 13.04, 13.10 (32/64)] (http://www.ubuntu.com/)
- * Installing dependencies:
-```bash
-sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip
-sudo pip install pyserial
-```
- * Optional for OpenCV (video)
-```bash
-sudo apt-get install python-numpy python-opencv
-```
+ * Installing dependencies:  
+  ```
+  sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip  
+  ```  
+  ```
+  sudo pip install pyserial
+  ```  
+ * Optional for OpenCV  
+    ```
+    sudo apt-get install python-numpy python-opencv
+    ```
 * Windows 7 (32/64)
  * for installation instructions, follow the links above of each dependency; it's not as easy as **apt-get** 
 
@@ -55,7 +57,7 @@ Changelog
 ---------
 1.2.0
 * Added G-code message dialog
-* Added try/Catch block when trying to open serial port.
+* Added try/catch block for open serial port.
 * Fix Save-As bug, document title was not updated.
 * Fix make sure strings sent to pySerial are ascii and not Unicode.
 
