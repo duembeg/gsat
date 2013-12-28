@@ -1,18 +1,18 @@
-gcs
+gsat
 ====
 
-gcs is a cross-platform GCODE debug/step and alignment tool for Grbl like GCODE interpreter.
+gsat is a cross-platform GCODE debug/step and alignment tool for Grbl like GCODE interpreter.
 with features similar to software debugger. For example usage of breakpoints, change program
 counter (position), stop and inspection/modification of machine variables, step, run.
 
-use case: The GCODE file is a drill program for a PCB, gcs will make it possible to set-up a
+use case: The GCODE file is a drill program for a PCB, gsat will make it possible to set-up a
 break point right before the tool plunge. At this point with the jogging controls it is possible
 to lower the tool right before penetrating the surface to verify alignment is adequate. Once
 this is verify and or adjusted, the program can continue.
 
 Development Environment
 ---------------------
-### gcs's dependencies are:
+### gsat's dependencies are:
 * [python 2.7] (http://www.python.org)
 * [pySerial 2.5](http://pyserial.sourceforge.net/)
 * [wxPython 2.8](http://www.wxpython.org/)
@@ -49,12 +49,16 @@ NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Pyth
 
 Screen Shoots
 ------------
-![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gcs/v1.1.0/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
-![Settings Dialog](https://raw.github.com/duembeg/gcs/v1.1.0/images/screenshoot/settings_dialog.png "Settings Dialog")
-![About Dialog](https://raw.github.com/duembeg/gcs/v1.1.0/images/screenshoot/about_box.png "About Dialog")
+![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
+![Settings Dialog](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/settings_dialog.png "Settings Dialog")
+![About Dialog](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/about_box.png "About Dialog")
 
 Changelog
 ---------
+1.3.0
+* Program/repo name change gcs to gsat (g-code step and alignment tool)
+  to port your old config file just rename from .gcs to .gsat while program is not running.
+
 1.2.0
 * Added G-code message dialog (it is treated as break point, hit run after "ok" button)
 * Added try/catch block for open serial port.

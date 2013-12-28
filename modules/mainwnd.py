@@ -5,7 +5,7 @@
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
-"GCODE Step and Alignment Tool (gcs) is a cross-platform GCODE debug/step for "\
+"GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE debug/step for "\
 "Grbl like GCODE interpreters. With features similar to software debuggers. Features "\
 "Such as breakpoint, change current program counter, inspection and modification "\
 "of variables."
@@ -25,7 +25,7 @@ __email__       = 'duembeg.github@gmail.com'
 
 # define version information
 __requires__        = ['pySerial', 'wxPython']
-__version_info__    = (1, 2, 0)
+__version_info__    = (1, 3, 0)
 __version__         = 'v%i.%02i.%02i' % __version_info__
 __revision__        = __version__
 
@@ -354,7 +354,7 @@ class gcsMainWindow(wx.Frame):
       wx.Frame.__init__(self, parent, id, title, pos, size, style)
 
       # init config file
-      self.configFile = wx.FileConfig("gcs", style=wx.CONFIG_USE_LOCAL_FILE)
+      self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
 
@@ -609,7 +609,7 @@ class gcsMainWindow(wx.Frame):
       helpMenu = wx.Menu()
       self.menuBar.Append(helpMenu,                   "&Help")
 
-      aboutItem = wx.MenuItem(helpMenu, wx.ID_ABOUT,  "&About", "About GCS")
+      aboutItem = wx.MenuItem(helpMenu, wx.ID_ABOUT,  "&About", "About gsat")
       aboutItem.SetBitmap(ico.imgAbout.GetBitmap())
       helpMenu.AppendItem(aboutItem)
 
@@ -1484,7 +1484,7 @@ class gcsMainWindow(wx.Frame):
          aboutDialog.Description = wordwrap(__description__, 520, wx.ClientDC(self))
       else:
          aboutDialog.Description = __description__
-      aboutDialog.WebSite = ("https://github.com/duembeg/gcs", "gcs home page")
+      aboutDialog.WebSite = ("https://github.com/duembeg/gsat", "gsat home page")
       #aboutDialog.Developers = __authors__
 
       aboutDialog.License = __license_str__

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
-   gcs.py:
+   gsat.py:
 ----------------------------------------------------------------------------"""
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
-"GCODE Step and Alignment Tool (gcs) is a cross-platform GCODE debug/step for "\
+"GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE debug/step for "\
 "Grbl like GCODE interpreters. With features similar to software debuggers. Features "\
 "Such as breakpoint, change current program counter, inspection and modification "\
 "of variables."
