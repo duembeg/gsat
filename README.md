@@ -28,8 +28,18 @@ NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Pyth
 * [ShapeOko] (http://www.shapeoko.com/)
 
 ### OSes:
-* [Ubuntu 12.04 (32/64)] (http://www.ubuntu.com/)
+* [Ubuntu 12.04, 12.10, 13.04, 13.10 (32/64)] (http://www.ubuntu.com/)
+ * Installing dependencies:
+```bash
+sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip
+sudo pip install pyserial
+```
+ * Optional for OpenCV (video)
+```bash
+sudo apt-get install python-numpy python-opencv
+```
 * Windows 7 (32/64)
+ * for installation instructions, follow the links above of each dependency; it's not as easy as **apt-get** 
 
 ### Editors
 * [Geany] (http://www.geany.org/)
@@ -37,12 +47,19 @@ NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Pyth
 
 Screen Shoots
 ------------
-![Main window, stop on a breakpoint](https://github.com/duembeg/gcs/raw/master/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
-![Settings Dialog](https://github.com/duembeg/gcs/raw/master/images/screenshoot/settings_dialog.png "Settings Dialog")
-![About Dialog](https://github.com/duembeg/gcs/raw/master/images/screenshoot/about_box.png "About Dialog")
+![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gcs/v1.1.0/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
+![Settings Dialog](https://raw.github.com/duembeg/gcs/v1.1.0/images/screenshoot/settings_dialog.png "Settings Dialog")
+![About Dialog](https://raw.github.com/duembeg/gcs/v1.1.0/images/screenshoot/about_box.png "About Dialog")
 
 Changelog
 ---------
+1.2.0
+* Added G-code message dialog
+* Added try/Catch block when trying to open serial port.
+* Fix Save-As bug, document title was not updated.
+* Fix make sure strings sent to pySerial are ascii and not Unicode.
+
+
 1.1.0
 * UI updates
    * Added Find and Goto Line controls to tool bar.

@@ -115,6 +115,7 @@ gReMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
 
 # comments example "( comment string )" or "; comment string"
 gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
+gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 
 
 """----------------------------------------------------------------------------
@@ -1037,6 +1038,9 @@ class gcsMainWindow(wx.Frame):
          self.configFile.Flush()
 
          self.gcText.SaveFile(self.stateData.gcodeFileName)
+         
+         # update title
+         self.SetTitle("%s - %s" % (os.path.basename(self.stateData.gcodeFileName), __appname__))
 
          self.UpdateUI()
 
@@ -1575,7 +1579,15 @@ class gcsMainWindow(wx.Frame):
 
          self.serPort.port = portName
          self.serPort.timeout=1
-         self.serPort.open()
+         try:
+            self.serPort.open()
+         
+         except serial.SerialException, e:
+            dlg = wx.MessageDialog(self, e.message, 
+               "pySerial exception", wx.OK|wx.ICON_STOP)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            self.serPort.close()
 
          if self.serPort.isOpen():
             self.serialPortThread = gcsSserialPortThread(self, self.serPort, self.mw2tQueue,
@@ -1588,8 +1600,8 @@ class gcsMainWindow(wx.Frame):
       else:
          dlg = wx.MessageDialog(self,
             "There is no valid serial port detected.\n" \
-            "connect a valid serial device and press\n"
-            "the serial (Refresh) button.", "",
+            "connect a valid serial device and try again.",
+            "",
             wx.OK|wx.ICON_STOP)
          result = dlg.ShowModal()
          dlg.Destroy()
@@ -1619,7 +1631,7 @@ class gcsMainWindow(wx.Frame):
             txtOutputData = "> %s" %(serialData)
             wx.LogMessage("")
             self.outputText.AppendText(txtOutputData)
-            self.serPort.write(serialData)
+            self.serPort.write(serialData.encode('ascii'))
 
       elif self.cmdLineOptions.verbose:
          print "gcsMainWindow ERROR: attempt serial write with port closed!!"
@@ -1864,6 +1876,25 @@ class gcsMainWindow(wx.Frame):
                print "gcsMainWindow got event gc.gEV_HIT_BRK_PT."
             self.stateData.swState = gc.gSTATE_BREAK
             self.UpdateUI()
+            
+         elif te.event_id == gc.gEV_HIT_MSG:
+            if self.cmdLineOptions.vverbose:
+               print "gcsMainWindow got event gc.gEV_HIT_MSG."
+            self.stateData.swState = gc.gSTATE_BREAK
+            self.UpdateUI()
+            
+            self.outputText.AppendText("** MSG: %s" % te.data.strip())
+            
+            dlg = wx.MessageDialog(self, te.data.strip(), "GCODE MSG",
+               wx.OK|wx.ICON_INFORMATION)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            
+         else:
+            if self.cmdLineOptions.vverbose:
+               print "gcsMainWindow got UKNOWN event id[%d]" % te.event_id
+            self.stateData.swState = gc.gSTATE_IDLE
+            self.UpdateUI()
 
          # item acknowledgment
          self.t2mwQueue.task_done()
@@ -1967,7 +1998,7 @@ class gcsSserialPortThread(threading.Thread):
       wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
 
       # send command
-      self.serPort.write(serialData)
+      self.serPort.write(serialData.encode('ascii'))
 
       if self.cmdLineOptions.verbose:
          print serialData.strip()
@@ -2062,18 +2093,34 @@ class gcsSserialPortThread(threading.Thread):
                (self.workingProgramCounter)
          return
 
+      # get gcode line
       gcode = self.gcodeDataLines[self.workingProgramCounter]
+      
+      # check for msg line
+      reMsgSearch = gReGcodeMsg.search(gcode)
+      if (reMsgSearch is not None) and \
+         (self.workingProgramCounter != self.initialProgramCounter):
+         self.swState = gc.gSTATE_BREAK
+         self.t2mwQueue.put(gc.threadEvent(gc.gEV_HIT_MSG, reMsgSearch.group(1)))
+         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+         if self.cmdLineOptions.vverbose:
+            print "** gcsSserialPortThread encounter MSG line PC[%s], swState->gc.gSTATE_BREAK, MSG[%s]" % \
+               (self.workingProgramCounter, reMsgSearch.group(1))
+         return
 
       # don't sent unecessary data save the bits for speed
       for reComments in self.reGcodeComments:
          gcode = reComments.sub("", gcode)
+         
+      # only auto refresh machine status if next cmd is a Gxx cmd
+      # seems to be a bug in grbl it gets confused
+      #if self.machineAutoStatus and (gcode.startswith("G") or gcode.startswith("g")):
+      #   self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+      #   responseData = self.WaitForResponse()
+      # still didn't work, need more investigating
 
+      # send g-code command
       self.RunStepSendGcode(gcode)
-
-      if self.machineAutoStatus:
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
-         responseData = self.WaitForResponse()
-
 
    def ProcessStepSate(self):
       # send data to serial port ----------------------------------------------
