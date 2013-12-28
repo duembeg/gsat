@@ -56,8 +56,8 @@ Screen Shoots
 Changelog
 ---------
 1.3.0
-* Program/repo name change gcs to gsat (g-code step and alignment tool)
-  to port your old config file just rename from .gcs to .gsat while program is not running.
+* Program/repo name change gcs to gsat (g-code step and alignment tool)  
+  to port your old config file just rename from .gcs to .gsat while gsat is not running.
 
 1.2.0
 * Added G-code message dialog (it is treated as break point, hit run after "ok" button)
