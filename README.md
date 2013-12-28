@@ -56,7 +56,7 @@ Screen Shoots
 Changelog
 ---------
 1.2.0
-* Added G-code message dialog
+* Added G-code message dialog (it is treated as break point, hit run after "ok" button)
 * Added try/catch block for open serial port.
 * Fix Save-As bug, document title was not updated.
 * Fix make sure strings sent to pySerial are ascii and not Unicode.
