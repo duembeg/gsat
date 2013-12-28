@@ -1579,7 +1579,15 @@ class gcsMainWindow(wx.Frame):
 
          self.serPort.port = portName
          self.serPort.timeout=1
-         self.serPort.open()
+         try:
+            self.serPort.open()
+         
+         except serial.SerialException, e:
+            dlg = wx.MessageDialog(self, e.message, 
+               "pySerial exception", wx.OK|wx.ICON_STOP)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            self.serPort.close()
 
          if self.serPort.isOpen():
             self.serialPortThread = gcsSserialPortThread(self, self.serPort, self.mw2tQueue,
@@ -1592,8 +1600,8 @@ class gcsMainWindow(wx.Frame):
       else:
          dlg = wx.MessageDialog(self,
             "There is no valid serial port detected.\n" \
-            "connect a valid serial device and press\n"
-            "the serial (Refresh) button.", "",
+            "connect a valid serial device and try again.",
+            "",
             wx.OK|wx.ICON_STOP)
          result = dlg.ShowModal()
          dlg.Destroy()
@@ -1623,7 +1631,7 @@ class gcsMainWindow(wx.Frame):
             txtOutputData = "> %s" %(serialData)
             wx.LogMessage("")
             self.outputText.AppendText(txtOutputData)
-            self.serPort.write(serialData)
+            self.serPort.write(serialData.encode('ascii'))
 
       elif self.cmdLineOptions.verbose:
          print "gcsMainWindow ERROR: attempt serial write with port closed!!"
@@ -1990,7 +1998,7 @@ class gcsSserialPortThread(threading.Thread):
       wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
 
       # send command
-      self.serPort.write(serialData)
+      self.serPort.write(serialData.encode('ascii'))
 
       if self.cmdLineOptions.verbose:
          print serialData.strip()
@@ -2104,12 +2112,15 @@ class gcsSserialPortThread(threading.Thread):
       for reComments in self.reGcodeComments:
          gcode = reComments.sub("", gcode)
          
+      # only auto refresh machine status if next cmd is a Gxx cmd
+      # seems to be a bug in grbl it gets confused
+      #if self.machineAutoStatus and (gcode.startswith("G") or gcode.startswith("g")):
+      #   self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+      #   responseData = self.WaitForResponse()
+      # still didn't work, need more investigating
+
+      # send g-code command
       self.RunStepSendGcode(gcode)
-
-      if self.machineAutoStatus:
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
-         responseData = self.WaitForResponse()
-
 
    def ProcessStepSate(self):
       # send data to serial port ----------------------------------------------
