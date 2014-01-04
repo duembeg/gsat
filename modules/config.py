@@ -38,32 +38,42 @@ gGRBL_CMD_SPINDLE_ON          = "M3\n"
 gGRBL_CMD_SPINDLE_OFF         = "M5\n"
 
 # --------------------------------------------------------------------------
-# state machine states
+# state machine states and transition
 # --------------------------------------------------------------------------
 
 """ ------------------------------------------------------------------------
 
 STATE TABLE::
-state    | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  |
------------------------------------------------------------------------
-IDLE     | RUN     | IGNORE  | STEP    | IGNORE  | IGNORE  | IGNORE  |
------------------------------------------------------------------------
-RUN      | IGNORE  | IDLE    | IGNORE  | BREAK   | IDLE    | IDLE    |
------------------------------------------------------------------------
-STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    |
------------------------------------------------------------------------
-BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  |
-----------------------------------------------------------------------
-USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    |
------------------------------------------------------------------------
+state    | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  | ABORT   |
+--------------------------------------------------------------------------------
+ABORT    | IGNORED | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  |
+---------------------------------------------------------------------------------
+IDLE     | RUN     | IGNORE  | STEP    | IGNORE  | IGNORE  | IGNORE  | ABORT   |
+---------------------------------------------------------------------------------
+RUN      | IGNORE  | IDLE    | IGNORE  | BREAK   | IDLE    | IDLE    | ABORT   |
+---------------------------------------------------------------------------------
+STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
+---------------------------------------------------------------------------------
+BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  | ABORT   |
+---------------------------------------------------------------------------------
+USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
+---------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------ """
 
+gSTATE_ABORT  = 001
 gSTATE_IDLE  =  100
 gSTATE_RUN   =  200
 gSTATE_STEP  =  300
 gSTATE_BREAK =  400
 
+'''
+Notes:
+Abort state is a special state, where the serial thread is waiting to be 
+terminated, there will not be any state transition until serial port is 
+open again and will start in IDLE state.
+
+'''
 # --------------------------------------------------------------------------
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
