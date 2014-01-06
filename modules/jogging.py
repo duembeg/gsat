@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    jogging.py
+
+   Copyright (C) 2013, 2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import os
@@ -12,10 +33,10 @@ import modules.config as gc
 
 
 """----------------------------------------------------------------------------
-   gcsJoggingSettingsPanel:
+   gsatJoggingSettingsPanel:
    Machine settings.
 ----------------------------------------------------------------------------"""
-class gcsJoggingSettingsPanel(scrolled.ScrolledPanel):
+class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -168,10 +189,10 @@ class gcsJoggingSettingsPanel(scrolled.ScrolledPanel):
             self.customCtrlArray[cn][6].GetValue())
 
 """----------------------------------------------------------------------------
-   gcsCliSettingsPanel:
+   gsatCliSettingsPanel:
    CLI settings.
 ----------------------------------------------------------------------------"""
-class gcsCliSettingsPanel(scrolled.ScrolledPanel):
+class gsatCliSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -211,10 +232,10 @@ class gcsCliSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/cli/CmdMaxHistory', self.sc.GetValue())
 
 """----------------------------------------------------------------------------
-   gcsJoggingPanel:
+   gsatJoggingPanel:
    Jog controls for the machine as well as custom user controls.
 ----------------------------------------------------------------------------"""
-class gcsJoggingPanel(wx.ScrolledWindow):
+class gsatJoggingPanel(wx.ScrolledWindow):
    def __init__(self, parent, config_data, state_data, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 

@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    compv.py
+
+   Copyright (C) 2013, 2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import os
@@ -25,10 +46,10 @@ gID_CV2_CAPTURE_TIMER      = wx.NewId()
 
 
 """----------------------------------------------------------------------------
-   gcsCV2SettingsPanel:
+   gsatCV2SettingsPanel:
    CV2 settings.
 ----------------------------------------------------------------------------"""
-class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
+class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -110,11 +131,11 @@ class gcsCV2SettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/cv2/CaptureHeight', self.scHeight.GetValue())
 
 """----------------------------------------------------------------------------
-   gcsCV2Panel:
+   gsatCV2Panel:
    Status information about machine, controls to enable auto and manual
    refresh.
 ----------------------------------------------------------------------------"""
-class gcsCV2Panel(wx.ScrolledWindow):
+class gsatCV2Panel(wx.ScrolledWindow):
    def __init__(self, parent, config_data, state_data, cmd_line_options, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -276,7 +297,7 @@ class gcsCV2Panel(wx.ScrolledWindow):
 
          if te.event_id == gEV_CMD_CV_IMAGE:
             if self.cmdLineOptions.vverbose:
-               print "** gcsCV2Panel got event gEV_CMD_CV_IMAGE."
+               print "** gsatCV2Panel got event gEV_CMD_CV_IMAGE."
             image = te.data
 
             if image is not None:
@@ -296,7 +317,7 @@ class gcsCV2Panel(wx.ScrolledWindow):
       self.capture = True
 
       if self.visionThread is None and self.cv2Enable:
-         self.visionThread = gcsComputerVisionThread(self, self.cvw2tQueue, self.t2cvwQueue,
+         self.visionThread = gsatComputerVisionThread(self, self.cvw2tQueue, self.t2cvwQueue,
             self.configData, self.cmdLineOptions)
 
       if self.captureTimer is not None and self.cv2Enable:
@@ -324,10 +345,10 @@ class gcsCV2Panel(wx.ScrolledWindow):
          self.visionThread = None
 
 """----------------------------------------------------------------------------
-   gcsComputerVisionThread:
+   gsatComputerVisionThread:
    Threads that capture and processes vide frames.
 ----------------------------------------------------------------------------"""
-class gcsComputerVisionThread(threading.Thread):
+class gsatComputerVisionThread(threading.Thread):
    """Worker Thread Class."""
    def __init__(self, notify_window, in_queue, out_queue, config_data, cmd_line_options):
       """Init Worker Thread Class."""
@@ -341,7 +362,7 @@ class gcsComputerVisionThread(threading.Thread):
       self.configData = config_data
 
       if self.cmdLineOptions.vverbose:
-         print "gcsComputerVisionThread ALIVE."
+         print "gsatComputerVisionThread ALIVE."
 
       self.InitConfig()
 
@@ -357,7 +378,7 @@ class gcsComputerVisionThread(threading.Thread):
 
 
    """-------------------------------------------------------------------------
-   gcscomputerVisionThread: Main Window Event Handlers
+   gsatcomputerVisionThread: Main Window Event Handlers
    Handle events coming from main UI
    -------------------------------------------------------------------------"""
    def ProcessQueue(self):
@@ -368,20 +389,20 @@ class gcsComputerVisionThread(threading.Thread):
 
          if e.event_id == gEV_CMD_CV_EXIT:
             if self.cmdLineOptions.vverbose:
-               print "** gcscomputerVisionThread got event gEV_CMD_EXIT."
+               print "** gsatcomputerVisionThread got event gEV_CMD_EXIT."
             self.endThread = True
 
          # item qcknowledge
          self.cvw2tQueue.task_done()
 
    """-------------------------------------------------------------------------
-   gcscomputerVisionThread: General Functions
+   gsatcomputerVisionThread: General Functions
    -------------------------------------------------------------------------"""
    def CaptureFrame(self):
       frame = self.cv.QueryFrame(self.captureDevice)
 
       if self.cmdLineOptions.vverbose:
-         print "** gcscomputerVisionThread Capture Frame."
+         print "** gsatcomputerVisionThread Capture Frame."
 
       #cv.ShowImage("Window",frame)
       if frame is not None:
@@ -437,7 +458,7 @@ class gcsComputerVisionThread(threading.Thread):
       self.endThread = False
 
       if self.cmdLineOptions.vverbose:
-         print "** gcscomputerVisionThread start."
+         print "** gsatcomputerVisionThread start."
 
       while(self.endThread != True):
 
@@ -460,6 +481,6 @@ class gcsComputerVisionThread(threading.Thread):
             break
 
       if self.cmdLineOptions.vverbose:
-         print "** gcscomputerVisionThread exit."
+         print "** gsatcomputerVisionThread exit."
 
 

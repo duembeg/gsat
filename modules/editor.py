@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    editor.py
+
+   Copyright (C) 2013, 2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import os
@@ -18,10 +39,10 @@ def hex_to_rgb(hex_color):
    return (int(m.group(1), 16), int(m.group(2), 16), int(m.group(3), 16))
 
 """----------------------------------------------------------------------------
-   gcsStyledTextCtrlSettingsPanel:
+   gsatStyledTextCtrlSettingsPanel:
    Program settings.
 ----------------------------------------------------------------------------"""
-class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
+class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, key, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -239,10 +260,10 @@ class gcsStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             self.gCodeLineNumberHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
 """----------------------------------------------------------------------------
-   gcsStcStyledTextCtrl:
+   gsatStcStyledTextCtrl:
    Text control to display data
 ----------------------------------------------------------------------------"""
-class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
+class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition,
       size=wx.DefaultSize, style=0, name=stc.STCNameStr):
 
@@ -393,14 +414,14 @@ class gcsStcStyledTextCtrl(stc.StyledTextCtrl):
       #self.ScrollToLine(self.GetLineCount())
 
 """----------------------------------------------------------------------------
-   gcsGcodeStcStyledTextCtrl:
+   gsatGcodeStcStyledTextCtrl:
    Text control to display GCODE
 ----------------------------------------------------------------------------"""
-class gcsGcodeStcStyledTextCtrl(gcsStcStyledTextCtrl):
+class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition,
       size=wx.DefaultSize, style=0, name=stc.STCNameStr):
 
-      gcsStcStyledTextCtrl.__init__(self, parent, config_data, state_data, id, pos, size,
+      gsatStcStyledTextCtrl.__init__(self, parent, config_data, state_data, id, pos, size,
          style, name)
 
       self.InitConfig()

@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    config.py
+
+   Copyright (C) 2013, 2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import wx
@@ -69,8 +90,8 @@ gSTATE_BREAK =  400
 
 '''
 Notes:
-Abort state is a special state, where the serial thread is waiting to be 
-terminated, there will not be any state transition until serial port is 
+Abort state is a special state, where the serial thread is waiting to be
+terminated, there will not be any state transition until serial port is
 open again and will start in IDLE state.
 
 '''
@@ -93,12 +114,13 @@ gEV_DATA_IN          = 2040
 gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
+gEV_SER_RXDATA       = 2080
 
 """----------------------------------------------------------------------------
-   gcsStateData:
+   gsatStateData:
    provides various data information
 ----------------------------------------------------------------------------"""
-class gcsStateData():
+class gsatStateData():
    def __init__(self):
 
       # state status
@@ -123,10 +145,10 @@ class gcsStateData():
       self.gcodeFileLines = []
 
 """----------------------------------------------------------------------------
-   gcsStateData:
+   gsatStateData:
    provides various data information
 ----------------------------------------------------------------------------"""
-class gcsConfigData():
+class gsatConfigData():
    def __init__(self):
       # -----------------------------------------------------------------------
       # config keys
@@ -287,3 +309,5 @@ class threadEvent():
    def __init__(self, event_id, data):
       self.event_id = event_id
       self.data = data
+
+

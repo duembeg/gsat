@@ -1,7 +1,29 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
    gsat.py:
+
+   Copyright (C) 2013, 2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
+
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
@@ -62,5 +84,5 @@ if __name__ == '__main__':
    (cmd_line_options, cli_args) = get_cli_params()
 
    app = wx.App(0)
-   mw.gcsMainWindow(None, title=__appname__, cmd_line_options=cmd_line_options)
+   mw.gsatMainWindow(None, title=__appname__, cmd_line_options=cmd_line_options)
    app.MainLoop()
