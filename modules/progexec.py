@@ -53,7 +53,7 @@ gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 gReAcknowlege = [
    re.compile(r'^ok\s$'),     # grbl
    re.compile(r'\sok>\s$')    # tinyG
-]   
+]
 
 gReErrorAck = [
    re.compile(r'^error:.*\s$'),     # grbl
@@ -93,6 +93,7 @@ class gsatProgramExecuteThread(threading.Thread):
       self.reErrorAck = gReErrorAck
 
       self.swState = gc.gSTATE_IDLE
+      self.lastEventID = gc.gEV_CMD_NULL
 
       self.machineAutoStatus = False
 
@@ -110,6 +111,8 @@ class gsatProgramExecuteThread(threading.Thread):
       if not self.progExecInQueue.empty():
          # get item from queue
          e = self.progExecInQueue.get()
+
+         self.lastEventID = e.event_id
 
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
@@ -170,21 +173,21 @@ class gsatProgramExecuteThread(threading.Thread):
    def SerialWrite(self, serialData):
       exFlag = False
       exMsg = ""
-   
+
       # sent data to UI
       self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))
       wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-      
+
       try:
          # send command
          self.serPort.write(serialData.encode('ascii'))
 
          if self.cmdLineOptions.vverbose:
-            print "[%03d] -> ASCII:{%s} HEX:{%s}" % (len(serialData), 
+            print "[%03d] -> ASCII:{%s} HEX:{%s}" % (len(serialData),
                serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
          elif self.cmdLineOptions.verbose:
             print "[%03d] -> %s" % (len(serialData), serialData.strip())
-            
+
       except serial.SerialException, e:
          exMsg = "** PySerial exception: %s\n" % e.message
          exFlag = True
@@ -240,44 +243,47 @@ class gsatProgramExecuteThread(threading.Thread):
 
    def WaitForAcknowledge(self):
       waitForAcknowlege = True
-      
+
       while (waitForAcknowlege):
          rxData = self.WaitForResponse()
-         
+
          if self.swState == gc.gSTATE_ABORT:
             waitForAcknowlege = False
-            break
-            
+
+         if self.lastEventID == gc.gEV_CMD_STOP:
+            waitForAcknowlege = False
+
          if self.endThread:
             waitForAcknowlege = False
-            break
-      
+
          for reAcknowlege in self.reAcknowlege:
             ack = reAcknowlege.search(rxData)
-            
+
             if ack is not None:
                if self.cmdLineOptions.vverbose:
-                  print "** Found acknowledgement [%s]" % rxData.strip()
+                  print "** gsatProgramExecuteThread found acknowledgement"\
+                     " [%s]" % rxData.strip()
                waitForAcknowlege = False
                break
 
          for reErrorAck in self.reErrorAck:
             errAck = reErrorAck.search(rxData)
-            
+
             if errAck is not None:
                if self.cmdLineOptions.vverbose:
-                  print "** Found error acknowledgement [%s]" % rxData.strip()
+                  print "** gsatProgramExecuteThread found error acknowledgement"\
+                     " [%s]" % rxData.strip()
                waitForAcknowlege = False
                break
-               
-   
+
+
    def WaitForResponse(self):
       waitForResponse = True
       rxData = ""
 
       while (waitForResponse):
          rxData = self.SerialRead()
-         
+
          if self.swState == gc.gSTATE_ABORT:
             waitForResponse = False
 
@@ -288,9 +294,12 @@ class gsatProgramExecuteThread(threading.Thread):
 
          if self.endThread:
             waitForResponse = False
-            
+
+         if self.lastEventID == gc.gEV_CMD_STOP:
+            waitForResponse = False
+
          time.sleep(0.01)
-         
+
       return rxData
 
 
@@ -412,7 +421,7 @@ class gsatProgramExecuteThread(threading.Thread):
       # inti serial RX thread
       self.serialRxThread = gsatSerialPortThread(self, self.serPort, self.progExecSerialRxOutQueue,
       self.progExecSerialRxInQueue, self.cmdLineOptions)
-      
+
       # init communication with device (helps to force tinyG into txt mode
       self.SerialWrite("$\n")
 
@@ -459,7 +468,7 @@ class gsatProgramExecuteThread(threading.Thread):
             wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
             wx.LogMessage(message)
             break
-            
+
          time.sleep(0.01)
 
       if self.cmdLineOptions.vverbose:
@@ -539,7 +548,7 @@ class gsatSerialPortThread(threading.Thread):
                   #pdb.set_trace()
 
                   if self.cmdLineOptions.vverbose:
-                     print "[%03d] <- ASCII:{%s} HEX:{%s}" % (len(serialData), 
+                     print "[%03d] <- ASCII:{%s} HEX:{%s}" % (len(serialData),
                         serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
                   elif self.cmdLineOptions.verbose:
                      print "[%03d] <- %s" % (len(serialData), serialData.strip())
@@ -614,7 +623,7 @@ class gsatSerialPortThread(threading.Thread):
             self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, ""))
             wx.LogMessage(message)
             break
-            
+
          time.sleep(0.01)
 
       if self.cmdLineOptions.vverbose:

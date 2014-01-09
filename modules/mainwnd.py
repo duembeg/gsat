@@ -63,6 +63,7 @@ import threading
 import Queue
 import time
 import shutil
+import pdb
 from optparse import OptionParser
 import wx
 import wx.combo
@@ -134,6 +135,11 @@ gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
 # status, example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
 gReMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
+xxgReMachineStatus = [
+   re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>'),
+   re.compile(r'pos([xyz]):(-?[0-9]*\.?[0-9]*)[,\w]')
+]
+
 
 # comments example "( comment string )" or "; comment string"
 #gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
@@ -1229,7 +1235,7 @@ class gsatMainWindow(wx.Frame):
       self.OnAbortUpdate()
       self.gcodeToolBar.Refresh()
 
-   def OnRun(self, e):
+   def OnRun(self, e=None):
       if self.progExecThread is not None:
          rawText = self.gcText.GetText()
          self.stateData.gcodeFileLines = rawText.splitlines(True)
@@ -1910,15 +1916,24 @@ class gsatMainWindow(wx.Frame):
          elif te.event_id == gc.gEV_HIT_MSG:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_HIT_MSG."
+            lastSwState = self.stateData.swState
             self.stateData.swState = gc.gSTATE_BREAK
             self.UpdateUI()
 
             self.outputText.AppendText("** MSG: %s" % te.data.strip())
 
-            dlg = wx.MessageDialog(self, te.data.strip(), "GCODE MSG",
-               wx.OK|wx.ICON_INFORMATION)
+            if lastSwState == gc.gSTATE_RUN:
+               dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
+                  wx.YES_NO|wx.YES_DEFAULT|wx.ICON_INFORMATION)
+            else:
+               dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "GCODE MSG",
+                  wx.OK|wx.ICON_INFORMATION)
+
             result = dlg.ShowModal()
             dlg.Destroy()
+
+            if result == wx.ID_YES:
+               self.OnRun()
 
          else:
             if self.cmdLineOptions.vverbose:

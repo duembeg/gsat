@@ -99,6 +99,7 @@ open again and will start in IDLE state.
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
 # EVENT ID             EVENT CODE
+gEV_CMD_NULL         = 0100
 gEV_CMD_EXIT         = 1000
 gEV_CMD_RUN          = 1030
 gEV_CMD_STEP         = 1040
@@ -106,6 +107,7 @@ gEV_CMD_STOP         = 1050
 gEV_CMD_SEND         = 1060
 gEV_CMD_AUTO_STATUS  = 1070
 
+gEV_NULL             = 0100
 gEV_ABORT            = 2000
 gEV_RUN_END          = 2010
 gEV_STEP_END         = 2020
