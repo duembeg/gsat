@@ -1,9 +1,10 @@
 gsat
 ====
 
-gsat is a cross-platform GCODE debug/step and alignment tool for Grbl like GCODE interpreter.
-with features similar to software debugger. For example usage of breakpoints, change program
-counter (position), stop and inspection/modification of machine variables, step, run.
+gsat is a cross-platform GCODE debug/step and alignment tool for tinyG and Grbl like GCODE 
+interpreter. with features similar to software debugger. For example usage of breakpoints, 
+change program counter (position), stop and inspection/modification of machine variables, step, 
+run.
 
 use case: The GCODE file is a drill program for a PCB, gsat will make it possible to set-up a
 break point right before the tool plunge. At this point with the jogging controls it is possible
@@ -24,8 +25,9 @@ Development Environment
 NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Python 64bit, please use python 32bit.
 
 ### Devices
-* [Grbl 0.8c] (http://github.com/grbl/grbl/blob/master/README.md)
-* [ShapeOko] (http://www.shapeoko.com/)
+* [tinyG] (https://github.com/synthetos/TinyG/wiki) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
+* [Grbl 0.8c] (https://github.com/grbl/grbl/wiki) is a free, open source, high performance CNC milling controller that will run on a straight Arduino.
+* [ShapeOko] (http://www.shapeoko.com/) is a Open-Source desktop CNC machine. 
 
 ### OSes:
 * [Ubuntu 12.04, 12.10, 13.04, 13.10 (32/64)] (http://www.ubuntu.com/)
@@ -41,7 +43,7 @@ NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Pyth
     sudo apt-get install python-numpy python-opencv
     ```
 * Windows 7 (32/64)
- * for installation instructions, follow the links above of each dependency; it's not as easy as **apt-get** 
+ * for installation instructions, follow the links above of each dependency.
 
 ### Editors
 * [Geany] (http://www.geany.org/)
@@ -55,6 +57,12 @@ Screen Shoots
 
 Changelog
 ---------
+1.4.0
+* Added tinyG support.
+* Improved serial communication by using a dedicated RX thread.
+* Updated G-Code message dialog, now one can continue from dialog.
+* Added better ACK check for commands.
+
 1.3.0
 * Program/repo name change gcs to gsat (g-code step and alignment tool)  
   to port your old config file just rename from .gcs to .gsat while gsat is not running.
@@ -64,7 +72,6 @@ Changelog
 * Added try/catch block for open serial port.
 * Fix Save-As bug, document title was not updated.
 * Fix make sure strings sent to pySerial are ascii and not Unicode.
-
 
 1.1.0
 * UI updates
