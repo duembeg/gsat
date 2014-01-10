@@ -128,22 +128,48 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
-      # adata is expected to be an array of strings as follows
-      # statusData[0] : Machine state
-      # statusData[1] : Machine X
-      # statusData[2] : Machine Y
-      # statusData[3] : Machine Z
-      # statusData[4] : Work X
-      # statusData[5] : Work Y
-      # statusData[6] : Work Z
       if statusData is not None:
-         self.mX.SetLabel(statusData[1])
-         self.mY.SetLabel(statusData[2])
-         self.mZ.SetLabel(statusData[3])
-         self.wX.SetLabel(statusData[4])
-         self.wY.SetLabel(statusData[5])
-         self.wZ.SetLabel(statusData[6])
-         self.sState.SetLabel(statusData[0])
+         stat = statusData.get('stat')
+         if stat is not None:
+            self.sState.SetLabel(stat)
+
+         x = statusData.get('posx')
+         if x is not None:
+            self.mX.SetLabel(x)
+
+         y = statusData.get('posy')
+         if y is not None:
+            self.mY.SetLabel(y)
+
+         z = statusData.get('posz')
+         if z is not None:
+            self.mZ.SetLabel(z)
+
+         if 'tinyG' in statusData.get('device', 'grbl'):
+            x = statusData.get('posx')
+            if x is not None:
+               self.wX.SetLabel(x)
+
+            y = statusData.get('posy')
+            if y is not None:
+               self.wY.SetLabel(y)
+
+            z = statusData.get('posz')
+            if z is not None:
+               self.wZ.SetLabel(z)
+         else:
+            x = statusData.get('wposx')
+            if x is not None:
+               self.wX.SetLabel(x)
+
+            y = statusData.get('wposy')
+            if y is not None:
+               self.wY.SetLabel(y)
+
+            z = statusData.get('wposz')
+            if z is not None:
+               self.wZ.SetLabel(z)
+
          #self.sSpindle.SetLabel("?")
 
       if stateData.serialPortIsOpen:

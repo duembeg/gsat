@@ -364,18 +364,33 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
-      # adata is expected to be an array of strings as follows
-      # statusData[0] : Machine state
-      # statusData[1] : Machine X
-      # statusData[2] : Machine Y
-      # statusData[3] : Machine Z
-      # statusData[4] : Work X
-      # statusData[5] : Work Y
-      # statusData[6] : Work Z
+
       if statusData is not None and self.useMachineWorkPosition:
-         self.jX.SetValue(statusData[4])
-         self.jY.SetValue(statusData[5])
-         self.jZ.SetValue(statusData[6])
+         if 'tinyG' in statusData.get('device', 'grbl'):
+            x = statusData.get('posx')
+            if x is not None:
+               self.jX.SetValue(x)
+
+            y = statusData.get('posy')
+            if y is not None:
+               self.jY.SetValue(y)
+
+            z = statusData.get('posz')
+            if z is not None:
+               self.jZ.SetValue(z)
+         else:
+            x = statusData.get('wposx')
+            if x is not None:
+               self.jX.SetValue(x)
+
+            y = statusData.get('wposy')
+            if y is not None:
+               self.jY.SetValue(y)
+
+            z = statusData.get('wposz')
+            if z is not None:
+               self.jZ.SetValue(z)
+
 
       if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
          self.resettoZeroPositionButton.Enable()

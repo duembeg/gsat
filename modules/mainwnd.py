@@ -133,13 +133,12 @@ gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 # grbl version, example "Grbl 0.8c ['$' for help]"
 gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
-# status, example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
-xxgReMachineStatus = [
-   re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>'),
-   re.compile(r'pos([xyz]):(-?[0-9]*\.?[0-9]*)[,\w]')
-]
+# status,
+# GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
+gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
 
+# tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
+gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
 
 # comments example "( comment string )" or "; comment string"
 #gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
@@ -1872,16 +1871,78 @@ class gsatMainWindow(wx.Frame):
                      self.GetMachineStatus()
                self.UpdateUI()
 
-            # Grbl status data
-            rematch = gReMachineStatus.match(teData)
+            # GRBL status data
+            rematch = gReGRBLMachineStatus.match(teData)
+            # data is expected to be an array of strings as follows
+            # statusData[0] : Machine state
+            # statusData[1] : Machine X
+            # statusData[2] : Machine Y
+            # statusData[3] : Machine Z
+            # statusData[4] : Work X
+            # statusData[5] : Work Y
+            # statusData[6] : Work Z
+
             if rematch is not None:
                statusData = rematch.groups()
+               machineStatus = dict()
+               machineStatus['device'] = 'grbl'
+               machineStatus['stat'] = statusData[0]
+               machineStatus['posx'] = statusData[1]
+               machineStatus['posy'] = statusData[2]
+               machineStatus['posz'] = statusData[3]
+               machineStatus['wposx'] = statusData[4]
+               machineStatus['wposy'] = statusData[5]
+               machineStatus['wposz'] = statusData[6]
+
                if self.cmdLineOptions.vverbose:
-                  print "gsatMainWindow re.status.match %s" % str(statusData)
-               self.stateData.machineStatusString = statusData[0]
-               self.machineStatusPanel.UpdateUI(self.stateData, statusData)
-               self.machineJoggingPanel.UpdateUI(self.stateData, statusData)
+                  print "gsatMainWindow re GRBL status match %s" % str(statusData)
+                  print "gsatMainWindow str match from %s" % str(teData.strip())
+
+               self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+               self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+               self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
                self.UpdateUI()
+            
+            else:
+               # tinyG verbose/status
+               rematch = gReTinyGVerbose.findall(teData)
+               if len(rematch) > 0:
+
+                  if self.cmdLineOptions.vverbose:
+                     print "gsatMainWindow re tinyG verbose match %s" % str(rematch)
+                     print "gsatMainWindow str match from %s" % str(teData)
+
+                  machineStatus = dict(rematch)
+                  machineStatus['device'] = 'tinyG'
+
+                  status = machineStatus.get('stat')
+                  if status is not None:
+                     if '0' in status:
+                        machineStatus['stat'] = 'Init'
+                     elif '1' in status:
+                        machineStatus['stat'] = 'Ready'
+                     elif '2' in status:
+                        machineStatus['stat'] = 'Alarm'
+                     elif '3' in status:
+                        machineStatus['stat'] = 'Stop'
+                     elif '4' in status:
+                        machineStatus['stat'] = 'End'
+                     elif '5' in status:
+                        machineStatus['stat'] = 'Run'
+                     elif '6' in status:
+                        machineStatus['stat'] = 'Hold'
+                     elif '7' in status:
+                        machineStatus['stat'] = 'Probe'
+                     elif '8' in status:
+                        machineStatus['stat'] = 'Run'
+                     elif '9' in status:
+                        machineStatus['stat'] = 'Home'
+
+                     self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+                     self.UpdateUI()
+
+                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
 
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
