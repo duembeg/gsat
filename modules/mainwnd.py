@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    mainwnd.py
 
-   Copyright (C) 2013, 2014 Wilhelm Duembeg
+   Copyright (C) 2013-2014 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -140,9 +140,11 @@ gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*
 # tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
 gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
 
-# comments example "( comment string )" or "; comment string"
-#gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
-#gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
+# tinyG query response example:
+#X position:         30.408 mm
+#Y position:         20.701 mm
+#Z position:         10.000 mm
+gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
 
 """----------------------------------------------------------------------------
    gsatLog:
@@ -1841,108 +1843,10 @@ class gsatMainWindow(wx.Frame):
             self.SerialClose()
 
          elif te.event_id == gc.gEV_DATA_IN:
-            teData = te.data
 
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_IN."
-            self.outputText.AppendText("%s" % teData)
-
-
-            # -----------------------------------------------------------------
-            # lest try to see if we have any other good data
-            # -----------------------------------------------------------------
-
-            # Grbl version, also useful to detect grbl connect
-            rematch = gReGrblVersion.match(teData)
-            if rematch is not None:
-               if self.stateData.swState == gc.gSTATE_RUN:
-                  # something went really bad we shouldn't see this while-in
-                  # RUN state
-                  self.Stop()
-                  dlg = wx.MessageDialog(self,
-                     "Detected Grbl reset string while-in RUN.\n" \
-                     "Something went terribly wrong, STOPPING!!\n", "",
-                     wx.OK|wx.ICON_STOP)
-                  result = dlg.ShowModal()
-                  dlg.Destroy()
-               else:
-                  self.stateData.grblDetected = True
-                  if self.stateData.machineStatusAutoRefresh:
-                     self.GetMachineStatus()
-               self.UpdateUI()
-
-            # GRBL status data
-            rematch = gReGRBLMachineStatus.match(teData)
-            # data is expected to be an array of strings as follows
-            # statusData[0] : Machine state
-            # statusData[1] : Machine X
-            # statusData[2] : Machine Y
-            # statusData[3] : Machine Z
-            # statusData[4] : Work X
-            # statusData[5] : Work Y
-            # statusData[6] : Work Z
-
-            if rematch is not None:
-               statusData = rematch.groups()
-               machineStatus = dict()
-               machineStatus['device'] = 'grbl'
-               machineStatus['stat'] = statusData[0]
-               machineStatus['posx'] = statusData[1]
-               machineStatus['posy'] = statusData[2]
-               machineStatus['posz'] = statusData[3]
-               machineStatus['wposx'] = statusData[4]
-               machineStatus['wposy'] = statusData[5]
-               machineStatus['wposz'] = statusData[6]
-
-               if self.cmdLineOptions.vverbose:
-                  print "gsatMainWindow re GRBL status match %s" % str(statusData)
-                  print "gsatMainWindow str match from %s" % str(teData.strip())
-
-               self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-               self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-               self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-               self.UpdateUI()
-            
-            else:
-               # tinyG verbose/status
-               rematch = gReTinyGVerbose.findall(teData)
-               if len(rematch) > 0:
-
-                  if self.cmdLineOptions.vverbose:
-                     print "gsatMainWindow re tinyG verbose match %s" % str(rematch)
-                     print "gsatMainWindow str match from %s" % str(teData)
-
-                  machineStatus = dict(rematch)
-                  machineStatus['device'] = 'tinyG'
-
-                  status = machineStatus.get('stat')
-                  if status is not None:
-                     if '0' in status:
-                        machineStatus['stat'] = 'Init'
-                     elif '1' in status:
-                        machineStatus['stat'] = 'Ready'
-                     elif '2' in status:
-                        machineStatus['stat'] = 'Alarm'
-                     elif '3' in status:
-                        machineStatus['stat'] = 'Stop'
-                     elif '4' in status:
-                        machineStatus['stat'] = 'End'
-                     elif '5' in status:
-                        machineStatus['stat'] = 'Run'
-                     elif '6' in status:
-                        machineStatus['stat'] = 'Hold'
-                     elif '7' in status:
-                        machineStatus['stat'] = 'Probe'
-                     elif '8' in status:
-                        machineStatus['stat'] = 'Run'
-                     elif '9' in status:
-                        machineStatus['stat'] = 'Home'
-
-                     self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-                     self.UpdateUI()
-
-                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+            self.OnThreadSerialData(te.data)
 
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
@@ -2004,4 +1908,119 @@ class gsatMainWindow(wx.Frame):
 
          # item acknowledgment
          self.mainWndInQueue.task_done()
+
+   def OnThreadSerialData (self, teData):
+
+      self.outputText.AppendText("%s" % teData)
+
+      # -----------------------------------------------------------------
+      # lest try to see if we have any other good data
+      # -----------------------------------------------------------------
+
+      # Grbl version, also useful to detect grbl connect
+      rematch = gReGrblVersion.match(teData)
+      if rematch is not None:
+         if self.stateData.swState == gc.gSTATE_RUN:
+            # something went really bad we shouldn't see this while-in
+            # RUN state
+            self.Stop()
+            dlg = wx.MessageDialog(self,
+               "Detected Grbl reset string while-in RUN.\n" \
+               "Something went terribly wrong, STOPPING!!\n", "",
+               wx.OK|wx.ICON_STOP)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+         else:
+            self.stateData.grblDetected = True
+            if self.stateData.machineStatusAutoRefresh:
+               self.GetMachineStatus()
+         self.UpdateUI()
+
+      # GRBL status data
+      rematch = gReGRBLMachineStatus.match(teData)
+      # data is expected to be an array of strings as follows
+      # statusData[0] : Machine state
+      # statusData[1] : Machine X
+      # statusData[2] : Machine Y
+      # statusData[3] : Machine Z
+      # statusData[4] : Work X
+      # statusData[5] : Work Y
+      # statusData[6] : Work Z
+
+      if rematch is not None:
+         statusData = rematch.groups()
+         machineStatus = dict()
+         machineStatus['device'] = 'grbl'
+         machineStatus['stat'] = statusData[0]
+         machineStatus['posx'] = statusData[1]
+         machineStatus['posy'] = statusData[2]
+         machineStatus['posz'] = statusData[3]
+         machineStatus['wposx'] = statusData[4]
+         machineStatus['wposy'] = statusData[5]
+         machineStatus['wposz'] = statusData[6]
+
+         if self.cmdLineOptions.vverbose:
+            print "gsatMainWindow re GRBL status match %s" % str(statusData)
+            print "gsatMainWindow str match from %s" % str(teData.strip())
+
+         self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+         self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+         self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+         self.UpdateUI()
+
+      else:
+         # tinyG verbose/status
+         rematch = gReTinyGVerbose.findall(teData)
+         if len(rematch) > 0:
+
+            if self.cmdLineOptions.vverbose:
+               print "gsatMainWindow re tinyG verbose match %s" % str(rematch)
+               print "gsatMainWindow str match from %s" % str(teData)
+
+            machineStatus = dict(rematch)
+            machineStatus['device'] = 'tinyG'
+
+            status = machineStatus.get('stat')
+            if status is not None:
+               if '0' in status:
+                  machineStatus['stat'] = 'Init'
+               elif '1' in status:
+                  machineStatus['stat'] = 'Ready'
+               elif '2' in status:
+                  machineStatus['stat'] = 'Alarm'
+               elif '3' in status:
+                  machineStatus['stat'] = 'Stop'
+               elif '4' in status:
+                  machineStatus['stat'] = 'End'
+               elif '5' in status:
+                  machineStatus['stat'] = 'Run'
+               elif '6' in status:
+                  machineStatus['stat'] = 'Hold'
+               elif '7' in status:
+                  machineStatus['stat'] = 'Probe'
+               elif '8' in status:
+                  machineStatus['stat'] = 'Run'
+               elif '9' in status:
+                  machineStatus['stat'] = 'Home'
+
+               self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+               self.UpdateUI()
+
+            self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+            self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+         else:
+            rematch = gReTinyGPosStatus.findall(teData)
+            if len(rematch) > 0:
+               if self.cmdLineOptions.vverbose:
+                  print "gsatMainWindow re tinyG status match %s" % str(rematch)
+                  print "gsatMainWindow str match from %s" % str(teData)
+
+               machineStatus = dict()
+               machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
+               machineStatus['device'] = 'tinyG'
+
+               self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+               self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+
+
 

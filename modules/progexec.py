@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    progexec.py
 
-   Copyright (C) 2013, 2014 Wilhelm Duembeg
+   Copyright (C) 2013-2014 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -39,20 +39,16 @@ import modules.config as gc
 # regular expressions
 # -----------------------------------------------------------------------------
 
-# grbl version, example "Grbl 0.8c ['$' for help]"
-gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
-
-# status, example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
-
 # comments example "( comment string )" or "; comment string"
 gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
+
+# message example "(MSG, CHANGE TOOL BIT: to drill size 0.81300 mm)"
 gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 
 # acknowledge
 gReAcknowlege = [
-   re.compile(r'^ok\s$'),     # grbl
-   re.compile(r'\sok>\s$')    # tinyG
+   re.compile(r'^ok\s$'),     # grbl example  "ok"
+   re.compile(r'\sok>\s$')    # tinyG example "tinyg [xxx] ok>"
 ]
 
 gReErrorAck = [
@@ -87,10 +83,6 @@ class gsatProgramExecuteThread(threading.Thread):
       self.breakPointSet = set()
       self.initialProgramCounter = 0
       self.workingCounterWorking = 0
-
-      self.reGcodeComments = gReGcodeComments
-      self.reAcknowlege = gReAcknowlege
-      self.reErrorAck = gReErrorAck
 
       self.swState = gc.gSTATE_IDLE
       self.lastEventID = gc.gEV_CMD_NULL
@@ -256,7 +248,7 @@ class gsatProgramExecuteThread(threading.Thread):
          if self.endThread:
             waitForAcknowlege = False
 
-         for reAcknowlege in self.reAcknowlege:
+         for reAcknowlege in gReAcknowlege:
             ack = reAcknowlege.search(rxData)
 
             if ack is not None:
@@ -266,7 +258,7 @@ class gsatProgramExecuteThread(threading.Thread):
                waitForAcknowlege = False
                break
 
-         for reErrorAck in self.reErrorAck:
+         for reErrorAck in gReErrorAck:
             errAck = reErrorAck.search(rxData)
 
             if errAck is not None:
@@ -368,7 +360,7 @@ class gsatProgramExecuteThread(threading.Thread):
          return
 
       # don't sent unnecessary data save the bits for speed
-      for reComments in self.reGcodeComments:
+      for reComments in gReGcodeComments:
          gcode = reComments.sub("", gcode)
 
       # send g-code command
@@ -402,7 +394,7 @@ class gsatProgramExecuteThread(threading.Thread):
       gcode = self.gcodeDataLines[self.workingProgramCounter]
 
       # don't sent unnecessary data save the bits for speed
-      for reComments in self.reGcodeComments:
+      for reComments in gReGcodeComments:
          gcode = reComments.sub("", gcode)
 
       self.RunStepSendGcode(gcode)

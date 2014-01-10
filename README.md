@@ -1,7 +1,7 @@
 gsat
 ====
 
-gsat is a cross-platform GCODE debug/step and alignment tool for tinyG and Grbl like GCODE 
+gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl like GCODE 
 interpreter. with features similar to software debugger. For example usage of breakpoints, 
 change program counter (position), stop and inspection/modification of machine variables, step, 
 run.
@@ -25,7 +25,7 @@ Development Environment
 NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Python 64bit, please use python 32bit.
 
 ### Devices
-* [tinyG] (https://github.com/synthetos/TinyG/wiki) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
+* [TinyG] (https://github.com/synthetos/TinyG/wiki) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
 * [Grbl 0.8c] (https://github.com/grbl/grbl/wiki) is a free, open source, high performance CNC milling controller that will run on a straight Arduino.
 * [ShapeOko] (http://www.shapeoko.com/) is a Open-Source desktop CNC machine. 
 
@@ -58,7 +58,8 @@ Screen Shoots
 Changelog
 ---------
 1.4.0
-* Added tinyG support.
+* Added TinyG support (text mode),
+   * TODO: Create dedicated class/interfaces for TinyG and grbl, including settings dialog, status window, etc.
 * Improved serial communication by using a dedicated RX thread.
 * Updated G-Code message dialog, now one can continue from dialog.
 * Added better ACK check for commands.
