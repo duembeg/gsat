@@ -52,8 +52,8 @@ def get_cli_params():
       "usage: %prog [options]"
 
    parser = OptionParser(usage=usage)
-   #parser.add_option("-f", "--file", dest="filename",
-   #   help="write report to FILE", metavar="FILE")
+   parser.add_option("-c", "--config", dest="config",
+      help="Use alternate configuration file name, location will be in HOME folder regardless of file name.", metavar="FILE")
 
    parser.add_option("-v", "--verbose",
       dest="verbose", action="store_true", default=False,
@@ -69,7 +69,7 @@ def get_cli_params():
    if options.vverbose:
       options.verbose = True
 
-   if not wx.VERSION >= (2,7,0,0):
+   if not wx.VERSION >= (2,8,0,0):
       print "** Required wxPython 2.7 or grater."
       options.error()
       error(1)

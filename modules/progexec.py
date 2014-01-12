@@ -415,8 +415,8 @@ class gsatProgramExecuteThread(threading.Thread):
       self.progExecSerialRxInQueue, self.cmdLineOptions)
 
       # init communication with device (helps to force tinyG into txt mode
-      self.SerialWrite("$\n")
-
+      self.SerialWrite("?\n")
+      self.SerialWrite("?\n")
 
       while(self.endThread != True):
 

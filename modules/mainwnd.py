@@ -36,7 +36,7 @@ __description__ = \
 __authors__     = ['Wilhelm Duembeg']
 __author__      = ','.join(__authors__)
 __credits__     = []
-__copyright__   = 'Copyright (c) 2013, 2014'
+__copyright__   = 'Copyright (c) 2013-2014'
 __license__     = 'GPL v2'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
@@ -134,6 +134,9 @@ gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
 # status,
+# quick re check to avoid multiple checks, speeds things up
+gReMachineStatus = re.compile(r'pos', re.I)
+
 # GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
 gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
 
@@ -141,10 +144,13 @@ gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*
 gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
 
 # tinyG query response example:
-#X position:         30.408 mm
-#Y position:         20.701 mm
-#Z position:         10.000 mm
+#X position:          30.408 mm
+#Y position:          20.701 mm
+#Z position:          10.000 mm
+#Machine state:       Stop
 gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
+gReTinyGStateStatus = re.compile(r'(\w*)\s+state:\s+(\w*).*')
+
 
 """----------------------------------------------------------------------------
    gsatLog:
@@ -381,8 +387,15 @@ class gsatMainWindow(wx.Frame):
 
       wx.Frame.__init__(self, parent, id, title, pos, size, style)
 
+      # init cmd line options
+      self.cmdLineOptions = cmd_line_options
+
       # init config file
-      self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
+      if self.cmdLineOptions.config is not None:
+         self.configFile = wx.FileConfig("gsat", localFilename=self.cmdLineOptions.config,
+            style=wx.CONFIG_USE_LOCAL_FILE)
+      else:
+         self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
 
@@ -405,8 +418,7 @@ class gsatMainWindow(wx.Frame):
       # init some variables
       self.progExecThread = None
       self.machineAutoRefreshTimer = None
-
-      self.cmdLineOptions = cmd_line_options
+      self.runStartTime = 0
 
       # thread communication queues
       self.mainWndInQueue = Queue.Queue()
@@ -1236,7 +1248,7 @@ class gsatMainWindow(wx.Frame):
       self.OnAbortUpdate()
       self.gcodeToolBar.Refresh()
 
-   def OnRun(self, e=None):
+   def OnRun(self, e=None, resetTime=True):
       if self.progExecThread is not None:
          rawText = self.gcText.GetText()
          self.stateData.gcodeFileLines = rawText.splitlines(True)
@@ -1244,6 +1256,9 @@ class gsatMainWindow(wx.Frame):
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_RUN,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
          self.mainWndOutQueue.join()
+
+         if resetTime:
+            self.runStartTime = time.time()
 
          self.gcText.GoToPC()
          self.stateData.swState = gc.gSTATE_RUN
@@ -1620,12 +1635,18 @@ class gsatMainWindow(wx.Frame):
             self.serPort.open()
 
          except serial.SerialException, e:
+            if self.cmdLineOptions.verbose:
+               print "gsatMainWindow pySerial exception: %s" % e.message
+
             dlg = wx.MessageDialog(self, e.message,
                "pySerial exception", wx.OK|wx.ICON_STOP)
             result = dlg.ShowModal()
             dlg.Destroy()
             self.serPort.close()
          except OSError, e:
+            if self.cmdLineOptions.verbose:
+               print "gsatMainWindow OSError exception: %s" % str(e)
+
             dlg = wx.MessageDialog(self, str(e),
                "OSError exception", wx.OK|wx.ICON_STOP)
             result = dlg.ShowModal()
@@ -1854,14 +1875,31 @@ class gsatMainWindow(wx.Frame):
             self.outputText.AppendText("> %s" % te.data)
 
          elif te.event_id == gc.gEV_PC_UPDATE:
+            # calculate percentage if lines sent
+            prcnt = "%.2f%%" % (float(te.data)/float(len(self.stateData.gcodeFileLines)) * 100)
+
+            '''
+            # calculate elapse time
+            runTimeStr = "n/a"
+            if self.stateData.swState == gc.gSTATE_RUN:
+               runTime = time.time() - self.runStartTime
+               hours, reminder = divmod(runTime, 3600)
+               minutes, reminder = divmod(reminder, 60)
+               seconds, mseconds = divmod(reminder, 1)
+               runTimeStr = "%02d:%02d:%02d.%d" % (hours, minutes, seconds, mseconds*1000)
+            '''
+
             if self.cmdLineOptions.vverbose:
-               print "gsatMainWindow got event gc.gEV_PC_UPDATE [%s]." % str(te.data)
+               print "gsatMainWindow got event gc.gEV_PC_UPDATE [%s], %s sent." \
+                  % (str(te.data), prcnt)
             self.SetPC(te.data)
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':prcnt}))
 
          elif te.event_id == gc.gEV_RUN_END:
             if self.cmdLineOptions.vverbose:
-               print "gsatMainWindow got event gc.gEV_RUN_END."
+               print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
             self.stateData.swState = gc.gSTATE_IDLE
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':"100.00%"}))
             self.Refresh()
             self.UpdateUI()
             self.SetPC(0)
@@ -1898,7 +1936,7 @@ class gsatMainWindow(wx.Frame):
             dlg.Destroy()
 
             if result == wx.ID_YES:
-               self.OnRun()
+               self.OnRun(resetTime=False)
 
          else:
             if self.cmdLineOptions.vverbose:
@@ -1932,10 +1970,11 @@ class gsatMainWindow(wx.Frame):
             dlg.Destroy()
          else:
             self.stateData.grblDetected = True
-            if self.stateData.machineStatusAutoRefresh:
-               self.GetMachineStatus()
+            self.GetMachineStatus()
          self.UpdateUI()
 
+      # skip if there is no "pos" data
+      #if gReMachineStatus.search(teData):
       # GRBL status data
       rematch = gReGRBLMachineStatus.match(teData)
       # data is expected to be an array of strings as follows
@@ -2021,6 +2060,18 @@ class gsatMainWindow(wx.Frame):
 
                self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
                self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+            else:
+               rematch = gReTinyGStateStatus.findall(teData)
 
+               if len(rematch) > 0:
+                  if self.cmdLineOptions.vverbose:
+                     print "gsatMainWindow re tinyG status match %s" % str(teData)
 
+                  machineStatus = dict()
+                  machineStatus["stat"] = rematch[0][1]
+                  machineStatus['device'] = 'tinyG'
 
+                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+                  self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+                  self.UpdateUI()

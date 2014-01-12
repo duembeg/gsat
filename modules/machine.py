@@ -104,7 +104,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Static Boxes ------------------------------------------------------
       wBox, self.wX, self.wY, self.wZ = self.CreatePositionStaticBox("Work Position")
       mBox, self.mX, self.mY, self.mZ = self.CreatePositionStaticBox("Machine Position")
-      sBox, self.sConncted, self.sState = self.CreateStatusStaticBox("Status")
+      #sBox, self.sConncted, self.sState, self.sPrcntStatus, self.sRunTime = self.CreateStatusStaticBox("Status")
+      sBox, self.sConncted, self.sState, self.sPrcntStatus = self.CreateStatusStaticBox("Status")
 
       gridSizer.Add(wBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       gridSizer.Add(mBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
@@ -129,9 +130,20 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
       if statusData is not None:
+
          stat = statusData.get('stat')
          if stat is not None:
             self.sState.SetLabel(stat)
+
+         prcnt = statusData.get('prcnt')
+         if prcnt is not None:
+            self.sPrcntStatus.SetLabel(prcnt)
+
+         '''
+         rtime = statusData.get('rtime')
+         if rtime is not None:
+            self.sRunTime.SetLabel(rtime)
+         '''
 
          x = statusData.get('posx')
          if x is not None:
@@ -237,14 +249,22 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(runningText, 0, flag=wx.ALIGN_LEFT)
       flexGridSizer.Add(runningStatus, 0, flag=wx.ALIGN_LEFT)
 
-      # Add Spindle Status
-      #spindleText = wx.StaticText(self, label="Spindle:")
-      #spindleStatus = wx.StaticText(self, label=gOffString)
-      #spindleStatus.SetForegroundColour(self.machineDataColor)
-      #flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_LEFT)
-      #flexGridSizer.Add(spindleStatus, 0, flag=wx.ALIGN_LEFT)
+      # Add Percent sent status
+      prcntText = wx.StaticText(self, label="% sent:")
+      prcntStatus = wx.StaticText(self, label="0.00%")
+      prcntStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(prcntText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(prcntStatus, 0, flag=wx.ALIGN_LEFT)
 
-      return positionBoxSizer, connectedStatus, runningStatus#, spindleStatus
+      # Add run time
+      #runTimeText = wx.StaticText(self, label="Run time:")
+      #runTimeStatus = wx.StaticText(self, label="n/a")
+      #runTimeStatus.SetForegroundColour(self.machineDataColor)
+      #flexGridSizer.Add(runTimeText, 0, flag=wx.ALIGN_LEFT)
+      #flexGridSizer.Add(runTimeStatus, 0, flag=wx.ALIGN_LEFT)
+
+      return (positionBoxSizer, connectedStatus, runningStatus,
+         prcntStatus) #, runTimeStatus)
 
    def OnRefresh(self, e):
       self.mainWindow.GetMachineStatus()
