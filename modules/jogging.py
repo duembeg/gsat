@@ -651,7 +651,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
-      self.mainWindow.SerialWrite(cmdString.replace("<VAL>",fAxisStrPos))
+      self.mainWindow.SerialWriteWaitForAck(cmdString.replace("<VAL>",fAxisStrPos))
 
    def OnXPos(self, e):
       self.AxisJog(self.jX, gc.gGRBL_CMD_JOG_X, opAdd=True)
@@ -673,11 +673,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def OnSpindleOn(self, e):
       self.jSpindle.SetValue(gc.gOnString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_SPINDLE_ON)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_ON)
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_SPINDLE_OFF)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_OFF)
 
    def OnUseMachineWorkPosition(self, e):
       self.useMachineWorkPosition = e.IsChecked()
@@ -686,30 +686,30 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.jX.SetValue(gc.gZeroString)
       self.jY.SetValue(gc.gZeroString)
       self.jZ.SetValue(gc.gZeroString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_RESET_TO_ZERO_POS)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_RESET_TO_ZERO_POS)
 
    def OnResetToCurrentPos(self, e):
       rstCmd = gc.gGRBL_CMD_RESET_TO_VAL_POS
       rstCmd = rstCmd.replace("<XVAL>", self.jX.GetValue())
       rstCmd = rstCmd.replace("<YVAL>", self.jY.GetValue())
       rstCmd = rstCmd.replace("<ZVAL>", self.jZ.GetValue())
-      self.mainWindow.SerialWrite(rstCmd)
+      self.mainWindow.SerialWriteWaitForAck(rstCmd)
 
    def OnGoZero(self, e):
       self.jX.SetValue(gc.gZeroString)
       self.jY.SetValue(gc.gZeroString)
       self.jZ.SetValue(gc.gZeroString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_GO_ZERO)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GO_ZERO)
 
    def OnGoPos(self, e):
       goPosCmd = gc.gGRBL_CMD_GO_POS
       goPosCmd = goPosCmd.replace("<XVAL>", self.jX.GetValue())
       goPosCmd = goPosCmd.replace("<YVAL>", self.jY.GetValue())
       goPosCmd = goPosCmd.replace("<ZVAL>", self.jZ.GetValue())
-      self.mainWindow.SerialWrite(goPosCmd)
+      self.mainWindow.SerialWriteWaitForAck(goPosCmd)
 
    def OnGoHome(self, e):
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_EXE_HOME_CYCLE)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_EXE_HOME_CYCLE)
 
    def OnPushStack(self, e):
       xVal = self.jX.GetValue()
@@ -752,7 +752,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       goPosCmd = goPosCmd.replace("<XVAL>", str(fXnp))
       goPosCmd = goPosCmd.replace("<YVAL>", str(fYnp))
       goPosCmd = goPosCmd.replace("<ZVAL>", str(fZnp))
-      self.mainWindow.SerialWrite(goPosCmd)
+      self.mainWindow.SerialWriteWaitForAck(goPosCmd)
 
 
    def OnCustom1Button(self, e):

@@ -144,6 +144,11 @@ class gsatProgramExecuteThread(threading.Thread):
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_SEND."
             self.SerialWrite(e.data)
+
+         elif e.event_id == gc.gEV_CMD_SEND_W_ACK:
+            if self.cmdLineOptions.vverbose:
+               print "** gsatProgramExecuteThread got event gc.gEV_CMD_SEND_W_ACK."
+            self.SerialWrite(e.data)
             #responseData = self.WaitForResponse()
             self.WaitForAcknowledge()
 
@@ -267,7 +272,6 @@ class gsatProgramExecuteThread(threading.Thread):
                      " [%s]" % rxData.strip()
                waitForAcknowlege = False
                break
-
 
    def WaitForResponse(self):
       waitForResponse = True
