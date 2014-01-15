@@ -577,7 +577,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.allRadioButton = wx.RadioButton(self, -1, 'All')
       vRadioBoxSizer.Add(self.allRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
 
-      vBoxSizer.Add(vRadioBoxSizer)
+      vBoxSizer.Add(vRadioBoxSizer, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_CENTER)
 
       # Add Buttons
       spinText = wx.StaticText(self, -1, "Operation on (f):")

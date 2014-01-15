@@ -249,6 +249,7 @@ class gsatConfigData():
 
       # CV2 keys
          '/cv2/Enable'                       :(True , False),
+         '/cv2/Crosshair'                    :(True , True),
          '/cv2/CaptureDevice'                :(True , 0),
          '/cv2/CapturePeriod'                :(True , 100),
          '/cv2/CaptureWidth'                 :(True , 640),

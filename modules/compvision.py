@@ -63,17 +63,25 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
 
    def InitUI(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      flexGridSizer = wx.FlexGridSizer(2,2)
+      flexGridSizer = wx.FlexGridSizer(7,2)
 
-      # Add check box
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "Enable CV2") #, style=wx.ALIGN_RIGHT)
-      self.cb.SetValue(self.configData.Get('/cv2/Enable'))
-      flexGridSizer.Add(self.cb,
+      # Add enable check box
+      self.cbEnable = wx.CheckBox(self, wx.ID_ANY, "Enable CV2") #, style=wx.ALIGN_RIGHT)
+      self.cbEnable.SetValue(self.configData.Get('/cv2/Enable'))
+      flexGridSizer.Add(self.cbEnable,
          flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
 
       st = wx.StaticText(self, wx.ID_ANY, "")
       flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
 
+      # Add crosshair check box
+      self.cbCrosshair = wx.CheckBox(self, wx.ID_ANY, "Enable Crosshair") #, style=wx.ALIGN_RIGHT)
+      self.cbCrosshair.SetValue(self.configData.Get('/cv2/Crosshair'))
+      flexGridSizer.Add(self.cbCrosshair,
+         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      st = wx.StaticText(self, wx.ID_ANY, "")
+      flexGridSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
 
       # Add spin ctrl for capture device
       self.scDevice = wx.SpinCtrl(self, wx.ID_ANY, "")
@@ -124,7 +132,8 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
       self.SetSizer(vBoxSizer)
 
    def UpdatConfigData(self):
-      self.configData.Set('/cv2/Enable', self.cb.GetValue())
+      self.configData.Set('/cv2/Enable', self.cbEnable.GetValue())
+      self.configData.Set('/cv2/Crosshair', self.cbCrosshair.GetValue())
       self.configData.Set('/cv2/CaptureDevice', self.scDevice.GetValue())
       self.configData.Set('/cv2/CapturePeriod', self.scPeriod.GetValue())
       self.configData.Set('/cv2/CaptureWidth', self.scWidth.GetValue())
@@ -169,6 +178,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
    def InitConfig(self):
       self.cv2Enable = self.configData.Get('/cv2/Enable')
+      self.cv2Crosshair = self.configData.Get('/cv2/Crosshair')
       self.cv2CaptureDevice = self.configData.Get('/cv2/CaptureDevice')
       self.cv2CapturePeriod = self.configData.Get('/cv2/CapturePeriod')
       self.cv2CaptureWidth = self.configData.Get('/cv2/CaptureWidth')
@@ -371,6 +381,7 @@ class gsatComputerVisionThread(threading.Thread):
 
    def InitConfig(self):
       self.cv2Enable = self.configData.Get('/cv2/Enable')
+      self.cv2Crosshair = self.configData.Get('/cv2/Crosshair')
       self.cv2CaptureDevice = self.configData.Get('/cv2/CaptureDevice')
       self.cv2CapturePeriod = self.configData.Get('/cv2/CapturePeriod')
       self.cv2CaptureWidth = self.configData.Get('/cv2/CaptureWidth')
@@ -409,13 +420,14 @@ class gsatComputerVisionThread(threading.Thread):
          offset=(0,0)
          width = self.cv2CaptureWidth
          height = self.cv2CaptureHeight
-         widthHalf = width/2
-         heightHalf = height/2
 
-         self.cv.Line(frame, (widthHalf, 0),  (widthHalf,height) , 255)
-         self.cv.Line(frame, (0,heightHalf), (width,heightHalf) , 255)
-         self.cv.Circle(frame, (widthHalf,heightHalf), 66, 255)
-         self.cv.Circle(frame, (widthHalf,heightHalf), 22, 255)
+         if self.cv2Crosshair:
+            widthHalf = width/2
+            heightHalf = height/2
+            self.cv.Line(frame, (widthHalf, 0),  (widthHalf,height) , 255)
+            self.cv.Line(frame, (0,heightHalf), (width,heightHalf) , 255)
+            self.cv.Circle(frame, (widthHalf,heightHalf), 66, 255)
+            self.cv.Circle(frame, (widthHalf,heightHalf), 22, 255)
 
          offset=(0,0)
 

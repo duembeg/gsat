@@ -43,7 +43,7 @@ NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Pyth
     sudo apt-get install python-numpy python-opencv
     ```
 * Windows 7 (32/64)
- * for installation instructions, follow the links above of each dependency.
+ * for installation instructions, follow the links above to download and install each dependency.
 
 ### Editors
 * [Geany] (http://www.geany.org/)
@@ -60,9 +60,12 @@ Changelog
 1.4.0
 * Added TinyG support (text mode),
    * TODO: Create dedicated class/interfaces for TinyG and grbl, including settings dialog, status window, etc.
-* Improved serial communication by using a dedicated RX thread.
+* Improved serial communication by using a dedicated serial RX thread.
+* Improved serial exception handling.
 * Updated G-Code message dialog, now one can continue from dialog.
-* Added better ACK check for commands.
+* Added better acknowledge check for commands.
+* Added Jogging controls for finer control on each axis.
+* Added percent of lines sent status.
 
 1.3.0
 * Program/repo name change gcs to gsat (g-code step and alignment tool)  

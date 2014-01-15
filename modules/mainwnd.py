@@ -100,7 +100,6 @@ gID_MENU_SEARCH_TOOLBAR          = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
 gID_MENU_STATUS_TOOLBAR          = wx.NewId()
 gID_MENU_OUTPUT_PANEL            = wx.NewId()
-gID_MENU_COMAMND_PANEL           = wx.NewId()
 gID_MENU_MACHINE_STATUS_PANEL    = wx.NewId()
 gID_MENU_MACHINE_JOGGING_PANEL   = wx.NewId()
 gID_MENU_CV2_PANEL               = wx.NewId()
@@ -569,7 +568,6 @@ class gsatMainWindow(wx.Frame):
       viewMenu.AppendCheckItem(gID_MENU_STATUS_TOOLBAR,        "Status &Tool Bar")
       viewMenu.AppendSeparator()
       viewMenu.AppendCheckItem(gID_MENU_OUTPUT_PANEL,          "&Output")
-      viewMenu.AppendCheckItem(gID_MENU_COMAMND_PANEL,         "&Command (CLI)")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL,  "Machine &Status")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
       viewMenu.AppendCheckItem(gID_MENU_CV2_PANEL,             "Computer &Vision")
@@ -577,8 +575,6 @@ class gsatMainWindow(wx.Frame):
       viewMenu.Append(gID_MENU_LOAD_DEFAULT_LAYOUT,            "&Load Layout")
       viewMenu.Append(gID_MENU_SAVE_DEFAULT_LAYOUT,            "S&ave Layout")
       viewMenu.Append(gID_MENU_RESET_DEFAULT_LAYOUT,           "R&eset Layout")
-      #viewMenu.Append(gID_MENU_LOAD_LAYOUT,                    "Loa&d Layout...")
-      #viewMenu.Append(gID_MENU_SAVE_LAYOUT,                    "Sa&ve Layout...")
       viewMenu.AppendSeparator()
 
       settingsItem = wx.MenuItem(viewMenu, wx.ID_PREFERENCES,     "&Settings")
@@ -1938,7 +1934,7 @@ class gsatMainWindow(wx.Frame):
                dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
                   wx.YES_NO|wx.YES_DEFAULT|wx.ICON_INFORMATION)
             else:
-               dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "GCODE MSG",
+               dlg = wx.MessageDialog(self, te.data.strip(), "G-Code Message",
                   wx.OK|wx.ICON_INFORMATION)
 
             result = dlg.ShowModal()
