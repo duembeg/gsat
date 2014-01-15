@@ -22,8 +22,6 @@ Development Environment
 * [OpenCV 2.4.1] (http://opencv.org/)
 * [numpy 1.6.1] (http://pypi.python.org/pypi/numpy)
 
-NOTE: As of this writing in Windows OS OpenCV 2.4.1. doesn't work well with Python 64bit, please use python 32bit.
-
 ### Devices
 * [TinyG] (https://github.com/synthetos/TinyG/wiki) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
 * [Grbl 0.8c] (https://github.com/grbl/grbl/wiki) is a free, open source, high performance CNC milling controller that will run on a straight Arduino.
@@ -63,9 +61,9 @@ Changelog
 * Improved serial communication by using a dedicated serial RX thread.
 * Improved serial exception handling.
 * Updated G-Code message dialog, now one can continue from dialog.
-* Added better acknowledge check for commands.
+* Added better acknowledge check for g-code commands.
 * Added Jogging controls for finer control on each axis.
-* Added percent of lines sent status.
+* Added link port, link baud, and percent of lines sent to machine status panel.
 
 1.3.0
 * Program/repo name change gcs to gsat (g-code step and alignment tool)  

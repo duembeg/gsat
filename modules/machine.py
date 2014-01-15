@@ -104,8 +104,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Static Boxes ------------------------------------------------------
       wBox, self.wX, self.wY, self.wZ = self.CreatePositionStaticBox("Work Position")
       mBox, self.mX, self.mY, self.mZ = self.CreatePositionStaticBox("Machine Position")
-      #sBox, self.sConncted, self.sState, self.sPrcntStatus, self.sRunTime = self.CreateStatusStaticBox("Status")
-      sBox, self.sConncted, self.sState, self.sPrcntStatus = self.CreateStatusStaticBox("Status")
+      sBox, self.sComPort, self.sComBaud, self.sState, self.sPrcntStatus = \
+         self.CreateStatusStaticBox("Status")
 
       gridSizer.Add(wBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       gridSizer.Add(mBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
@@ -186,10 +186,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
       if stateData.serialPortIsOpen:
          self.refreshButton.Enable()
-         self.sConncted.SetLabel("Yes")
+         self.sComPort.SetLabel(stateData.serialPort)
+         self.sComBaud.SetLabel(stateData.serialPortBaud)
       else:
          self.refreshButton.Disable()
-         self.sConncted.SetLabel("No")
+         self.sComPort.SetLabel("None")
+         self.sComBaud.SetLabel("None")
 
       self.Update()
 
@@ -232,15 +234,21 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
    def CreateStatusStaticBox(self, label):
       # Position static box -------------------------------------------------
       positionBoxSizer = self.CreateStaticBox(label)
-      flexGridSizer = wx.FlexGridSizer(3,2)
+      flexGridSizer = wx.FlexGridSizer(4,2)
       positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
 
       # Add Connected Status
-      connectedText = wx.StaticText(self, label="Connected:")
-      connectedStatus = wx.StaticText(self, label="No")
-      connectedStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(connectedText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(connectedStatus, 0, flag=wx.ALIGN_LEFT)
+      linkPortText = wx.StaticText(self, label="Link port:")
+      linkPortStatus = wx.StaticText(self, label="None")
+      linkPortStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(linkPortText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(linkPortStatus, 0, flag=wx.ALIGN_LEFT)
+
+      linkBaudText = wx.StaticText(self, label="Link baud:")
+      linkBaudStatus = wx.StaticText(self, label="None")
+      linkBaudStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(linkBaudText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(linkBaudStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add Running Status
       runningText = wx.StaticText(self, label="State:")
@@ -263,7 +271,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       #flexGridSizer.Add(runTimeText, 0, flag=wx.ALIGN_LEFT)
       #flexGridSizer.Add(runTimeStatus, 0, flag=wx.ALIGN_LEFT)
 
-      return (positionBoxSizer, connectedStatus, runningStatus,
+      return (positionBoxSizer, linkPortStatus, linkBaudStatus, runningStatus,
          prcntStatus) #, runTimeStatus)
 
    def OnRefresh(self, e):

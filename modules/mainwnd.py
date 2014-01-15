@@ -1655,7 +1655,7 @@ class gsatMainWindow(wx.Frame):
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
-            self.stateData.serialBaud = baud
+            self.stateData.serialPortBaud = baud
             self.AutoRefreshTimerStart()
       else:
          dlg = wx.MessageDialog(self,
