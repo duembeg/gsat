@@ -49,21 +49,21 @@ Development Environment
 
 Screen Shoots
 ------------
-![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
+![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/a21778ddb4d0f7021cd4e60c6118173e7cea1d6c/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
 ![Settings Dialog](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/settings_dialog.png "Settings Dialog")
-![About Dialog](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/about_box.png "About Dialog")
+![About Dialog](https://raw.github.com/duembeg/gsat/a21778ddb4d0f7021cd4e60c6118173e7cea1d6c/images/screenshoot/about_box.png "About Dialog")
 
 Changelog
 ---------
 1.4.0
 * Added TinyG support (text mode),
    * TODO: Create dedicated class/interfaces for TinyG and grbl, including settings dialog, status window, etc.
-* Improved serial communication by using a dedicated serial RX thread.
+* Improved serial communication with dedicated serial RX thread.
 * Improved serial exception handling.
 * Updated G-Code message dialog, now one can continue from dialog.
 * Added better acknowledge check for g-code commands.
-* Added Jogging controls for finer control on each axis.
-* Added link port, link baud, and percent of lines sent to machine status panel.
+* Added finer Jogging controls for each axis.
+* Added link port, link baud, and percent of lines sent on status panel.
 
 1.3.0
 * Program/repo name change gcs to gsat (g-code step and alignment tool)  
