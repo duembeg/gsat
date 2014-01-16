@@ -1,9 +1,9 @@
 gsat
 ====
 
-gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl like GCODE 
-interpreter. with features similar to software debugger. For example usage of breakpoints, 
-change program counter (position), stop and inspection/modification of machine variables, step, 
+gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl like GCODE
+interpreter. with features similar to software debugger. For example usage of breakpoints,
+change program counter (position), stop and inspection/modification of machine variables, step,
 run.
 
 use case: The GCODE file is a drill program for a PCB, gsat will make it possible to set-up a
@@ -25,18 +25,18 @@ Development Environment
 ### Devices
 * [TinyG] (https://github.com/synthetos/TinyG/wiki) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
 * [Grbl 0.8c] (https://github.com/grbl/grbl/wiki) is a free, open source, high performance CNC milling controller that will run on a straight Arduino.
-* [ShapeOko] (http://www.shapeoko.com/) is a Open-Source desktop CNC machine. 
+* [ShapeOko] (http://www.shapeoko.com/) is a Open-Source desktop CNC machine.
 
 ### OSes:
 * [Ubuntu 12.04, 12.10, 13.04, 13.10 (32/64)] (http://www.ubuntu.com/)
- * Installing dependencies:  
+ * Installing dependencies:
   ```
-  sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip  
-  ```  
+  sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip
+  ```
   ```
   sudo pip install pyserial
-  ```  
- * Optional for OpenCV  
+  ```
+ * Optional for OpenCV
     ```
     sudo apt-get install python-numpy python-opencv
     ```
@@ -54,8 +54,8 @@ Development Environment
 
 Screen Shoots
 ------------
-![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/a21778ddb4d0f7021cd4e60c6118173e7cea1d6c/images/screenshoot/main_window.png "Main window, stop on a breakpoint")
-![Settings Dialog](https://raw.github.com/duembeg/gsat/v1.1.0/images/screenshoot/settings_dialog.png "Settings Dialog")
+![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
+![Settings Dialog](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/settings_dialog.png "Settings Dialog")
 ![About Dialog](https://raw.github.com/duembeg/gsat/a21778ddb4d0f7021cd4e60c6118173e7cea1d6c/images/screenshoot/about_box.png "About Dialog")
 
 Changelog
@@ -72,7 +72,7 @@ Changelog
 * Added link port, link baud, and percent of lines sent on status panel.
 
 1.3.0
-* Program/repo name change gcs to gsat (g-code step and alignment tool)  
+* Program/repo name change gcs to gsat (g-code step and alignment tool)
   to port your old config file just rename from .gcs to .gsat while gsat is not running.
 
 1.2.0
