@@ -40,6 +40,11 @@ Development Environment
     ```
     sudo apt-get install python-numpy python-opencv
     ```
+
+* OS X (32/64)
+ * for installation instructions, follow the links above to download and install each dependency.
+ * OpenCV has not been tested.
+
 * Windows 7 (32/64)
  * for installation instructions, follow the links above to download and install each dependency.
 
@@ -58,6 +63,7 @@ Changelog
 1.4.0
 * Added TinyG support (text mode),
    * TODO: Create dedicated class/interfaces for TinyG and grbl, including settings dialog, status window, etc.
+* Added support for OS X, tested with TinyG and grbl.
 * Improved serial communication with dedicated serial RX thread.
 * Improved serial exception handling.
 * Updated G-Code message dialog, now one can continue from dialog.

@@ -258,7 +258,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(runningStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add Percent sent status
-      prcntText = wx.StaticText(self, label="%Lines sent:")
+      prcntText = wx.StaticText(self, label="%Lines sent: ")
       prcntStatus = wx.StaticText(self, label="0.00%")
       prcntStatus.SetForegroundColour(self.machineDataColor)
       flexGridSizer.Add(prcntText, 0, flag=wx.ALIGN_LEFT)

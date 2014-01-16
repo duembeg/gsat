@@ -1604,7 +1604,7 @@ class gsatMainWindow(wx.Frame):
             except OSError, e:
                pass
       else:
-         spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
+         spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob('/dev/cu*')
 
       if len(spList) < 1:
          spList = ['None']
