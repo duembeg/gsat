@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    mainwnd.py
+
+   Copyright (C) 2013-2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 __appname__ = "Gcode Step and Alignment Tool"
@@ -15,7 +36,7 @@ __description__ = \
 __authors__     = ['Wilhelm Duembeg']
 __author__      = ','.join(__authors__)
 __credits__     = []
-__copyright__   = 'Copyright (c) 2013'
+__copyright__   = 'Copyright (c) 2013-2014'
 __license__     = 'GPL v2'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
@@ -25,8 +46,8 @@ __email__       = 'duembeg.github@gmail.com'
 
 # define version information
 __requires__        = ['pySerial', 'wxPython']
-__version_info__    = (1, 3, 0)
-__version__         = 'v%i.%02i.%02i' % __version_info__
+__version_info__    = (1, 4, 0)
+__version__         = 'v%i.%i.%02i' % __version_info__
 __revision__        = __version__
 
 
@@ -42,6 +63,7 @@ import threading
 import Queue
 import time
 import shutil
+import pdb
 from optparse import OptionParser
 import wx
 import wx.combo
@@ -60,6 +82,7 @@ import modules.link as link
 import modules.machine as mc
 import modules.jogging as jog
 import modules.compvision as compv
+import modules.progexec as progexec
 
 """----------------------------------------------------------------------------
    Globals:
@@ -77,7 +100,6 @@ gID_MENU_SEARCH_TOOLBAR          = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
 gID_MENU_STATUS_TOOLBAR          = wx.NewId()
 gID_MENU_OUTPUT_PANEL            = wx.NewId()
-gID_MENU_COMAMND_PANEL           = wx.NewId()
 gID_MENU_MACHINE_STATUS_PANEL    = wx.NewId()
 gID_MENU_MACHINE_JOGGING_PANEL   = wx.NewId()
 gID_MENU_CV2_PANEL               = wx.NewId()
@@ -110,19 +132,30 @@ gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 # grbl version, example "Grbl 0.8c ['$' for help]"
 gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
-# status, example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
+# status,
+# quick re check to avoid multiple checks, speeds things up
+gReMachineStatus = re.compile(r'pos', re.I)
 
-# comments example "( comment string )" or "; comment string"
-gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
-gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
+# GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
+gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
+
+# tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
+gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
+
+# tinyG query response example:
+#X position:          30.408 mm
+#Y position:          20.701 mm
+#Z position:          10.000 mm
+#Machine state:       Stop
+gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
+gReTinyGStateStatus = re.compile(r'(\w*)\s+state:\s+(\w*).*')
 
 
 """----------------------------------------------------------------------------
-   gcsLog:
+   gsatLog:
    custom wxLog
 ----------------------------------------------------------------------------"""
-class gcsLog(wx.PyLog):
+class gsatLog(wx.PyLog):
     def __init__(self, textCtrl, logTime=0):
         wx.PyLog.__init__(self)
         self.tc = textCtrl
@@ -137,10 +170,10 @@ class gcsLog(wx.PyLog):
             self.tc.AppendText(message + '\n')
 
 """----------------------------------------------------------------------------
-   gcsGeneralSettingsPanel:
+   gsatGeneralSettingsPanel:
    General settings panel.
 ----------------------------------------------------------------------------"""
-class gcsGeneralSettingsPanel(scrolled.ScrolledPanel):
+class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, configData, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -220,10 +253,10 @@ class gcsGeneralSettingsPanel(scrolled.ScrolledPanel):
 
 
 """----------------------------------------------------------------------------
-   gcsSettingsDialog:
+   gsatSettingsDialog:
    Dialog to control program settings
 ----------------------------------------------------------------------------"""
-class gcsSettingsDialog(wx.Dialog):
+class gsatSettingsDialog(wx.Dialog):
    def __init__(self, parent, configData, id=wx.ID_ANY, title="Settings",
       style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER):
 
@@ -287,44 +320,44 @@ class gcsSettingsDialog(wx.Dialog):
       #self.SetAutoLayout(True)
 
    def AddGeneralPage(self, page):
-      self.generalPage = gcsGeneralSettingsPanel(self.noteBook, self.configData)
+      self.generalPage = gsatGeneralSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.generalPage, "General")
       self.noteBook.SetPageImage(page, page)
 
    def AddLinkPage(self, page):
-      self.linkPage = link.gcsLinkSettingsPanel(self.noteBook, self.configData)
+      self.linkPage = link.gsatLinkSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.linkPage, "Link")
       self.noteBook.SetPageImage(page, page)
 
    def AddProgramPage(self, page):
-      self.programPage = ed.gcsStyledTextCtrlSettingsPanel(
+      self.programPage = ed.gsatStyledTextCtrlSettingsPanel(
          self.noteBook, self.configData, "code")
       self.noteBook.AddPage(self.programPage, "Program")
       self.noteBook.SetPageImage(page, page)
 
    def AddOutputPage(self, page):
-      self.outputPage = ed.gcsStyledTextCtrlSettingsPanel(
+      self.outputPage = ed.gsatStyledTextCtrlSettingsPanel(
          self.noteBook, self.configData, "output")
       self.noteBook.AddPage(self.outputPage, "Output")
       self.noteBook.SetPageImage(page, page)
 
    def AddCliPage(self, page):
-      self.cliPage = jog.gcsCliSettingsPanel(self.noteBook, self.configData)
+      self.cliPage = jog.gsatCliSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.cliPage, "Cli")
       self.noteBook.SetPageImage(page, page)
 
    def AddMachinePage(self, page):
-      self.machinePage = mc.gcsMachineSettingsPanel(self.noteBook, self.configData)
+      self.machinePage = mc.gsatMachineSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.machinePage, "Machine")
       self.noteBook.SetPageImage(page, page)
 
    def AddJoggingPage(self, page):
-      self.jogPage = jog.gcsJoggingSettingsPanel(self.noteBook, self.configData)
+      self.jogPage = jog.gsatJoggingSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.jogPage, "Jogging")
       self.noteBook.SetPageImage(page, page)
 
    def AddCV2Panel(self, page):
-      self.CV2Page = compv.gcsCV2SettingsPanel(self.noteBook, self.configData)
+      self.CV2Page = compv.gsatCV2SettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.CV2Page, " OpenCV2")
       self.noteBook.SetPageImage(page, page)
 
@@ -341,20 +374,27 @@ class gcsSettingsDialog(wx.Dialog):
 """----------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
-   gcsMainWindow:
+   gsatMainWindow:
    Main Window Inits the UI and other panels, it also controls the worker
    threads and resources such as serial port.
 -------------------------------------------------------------------------------
 ----------------------------------------------------------------------------"""
-class gcsMainWindow(wx.Frame):
+class gsatMainWindow(wx.Frame):
 
    def __init__(self, parent, id=wx.ID_ANY, title="", cmd_line_options=None,
       pos=wx.DefaultPosition, size=(800, 600), style=wx.DEFAULT_FRAME_STYLE):
 
       wx.Frame.__init__(self, parent, id, title, pos, size, style)
 
+      # init cmd line options
+      self.cmdLineOptions = cmd_line_options
+
       # init config file
-      self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
+      if self.cmdLineOptions.config is not None:
+         self.configFile = wx.FileConfig("gsat", localFilename=self.cmdLineOptions.config,
+            style=wx.CONFIG_USE_LOCAL_FILE)
+      else:
+         self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
 
@@ -365,24 +405,23 @@ class gcsMainWindow(wx.Frame):
       self.serPort = serial.Serial()
 
       # create app data obj
-      self.stateData = gc.gcsStateData()
+      self.stateData = gc.gsatStateData()
 
       # create app data obj
-      self.configData = gc.gcsConfigData()
+      self.configData = gc.gsatConfigData()
       self.configData.Load(self.configFile)
       self.configData.Add('/link/PortList', self.GetSerialPortList())
       self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
       self.InitConfig()
 
       # init some variables
-      self.serialPortThread = None
+      self.progExecThread = None
       self.machineAutoRefreshTimer = None
-
-      self.cmdLineOptions = cmd_line_options
+      self.runStartTime = 0
 
       # thread communication queues
-      self.mw2tQueue = Queue.Queue()
-      self.t2mwQueue = Queue.Queue()
+      self.mainWndInQueue = Queue.Queue()
+      self.mainWndOutQueue = Queue.Queue()
 
       # register for close events
       self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -410,22 +449,22 @@ class gcsMainWindow(wx.Frame):
       # notify AUI which frame to use
       self.aui_mgr.SetManagedWindow(self)
 
-      #self.connectionPanel = gcsConnectionPanel(self)
-      self.machineStatusPanel = mc.gcsMachineStatusPanel(self, self.configData, self.stateData,)
-      self.CV2Panel = compv.gcsCV2Panel(self, self.configData, self.stateData, self.cmdLineOptions)
-      self.machineJoggingPanel = jog.gcsJoggingPanel(self, self.configData, self.stateData)
+      #self.connectionPanel = gsatConnectionPanel(self)
+      self.machineStatusPanel = mc.gsatMachineStatusPanel(self, self.configData, self.stateData,)
+      self.CV2Panel = compv.gsatCV2Panel(self, self.configData, self.stateData, self.cmdLineOptions)
+      self.machineJoggingPanel = jog.gsatJoggingPanel(self, self.configData, self.stateData)
       self.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter, self.machineJoggingPanel.cliComboBox)
 
       # output Window
-      self.outputText = ed.gcsStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
-      wx.Log_SetActiveTarget(gcsLog(self.outputText))
+      self.outputText = ed.gsatStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
+      wx.Log_SetActiveTarget(gsatLog(self.outputText))
 
       # for serious debugging
       #wx.Log_SetActiveTarget(wx.LogStderr())
       #wx.Log_SetTraceMask(wx.TraceMessages)
 
       # main gcode list control
-      self.gcText = ed.gcsGcodeStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
+      self.gcText = ed.gsatGcodeStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
 
       # add the panes to the manager
       self.aui_mgr.AddPane(self.gcText,
@@ -529,7 +568,6 @@ class gcsMainWindow(wx.Frame):
       viewMenu.AppendCheckItem(gID_MENU_STATUS_TOOLBAR,        "Status &Tool Bar")
       viewMenu.AppendSeparator()
       viewMenu.AppendCheckItem(gID_MENU_OUTPUT_PANEL,          "&Output")
-      viewMenu.AppendCheckItem(gID_MENU_COMAMND_PANEL,         "&Command (CLI)")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL,  "Machine &Status")
       viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
       viewMenu.AppendCheckItem(gID_MENU_CV2_PANEL,             "Computer &Vision")
@@ -537,8 +575,6 @@ class gcsMainWindow(wx.Frame):
       viewMenu.Append(gID_MENU_LOAD_DEFAULT_LAYOUT,            "&Load Layout")
       viewMenu.Append(gID_MENU_SAVE_DEFAULT_LAYOUT,            "S&ave Layout")
       viewMenu.Append(gID_MENU_RESET_DEFAULT_LAYOUT,           "R&eset Layout")
-      #viewMenu.Append(gID_MENU_LOAD_LAYOUT,                    "Loa&d Layout...")
-      #viewMenu.Append(gID_MENU_SAVE_LAYOUT,                    "Sa&ve Layout...")
       viewMenu.AppendSeparator()
 
       settingsItem = wx.MenuItem(viewMenu, wx.ID_PREFERENCES,     "&Settings")
@@ -898,7 +934,7 @@ class gcsMainWindow(wx.Frame):
       self.aui_mgr.Update()
 
    """-------------------------------------------------------------------------
-   gcsMainWindow: UI Event Handlers
+   gsatMainWindow: UI Event Handlers
    -------------------------------------------------------------------------"""
 
    #---------------------------------------------------------------------------
@@ -1038,7 +1074,7 @@ class gcsMainWindow(wx.Frame):
          self.configFile.Flush()
 
          self.gcText.SaveFile(self.stateData.gcodeFileName)
-         
+
          # update title
          self.SetTitle("%s - %s" % (os.path.basename(self.stateData.gcodeFileName), __appname__))
 
@@ -1156,7 +1192,12 @@ class gcsMainWindow(wx.Frame):
       self.LoadLayoutData('/mainApp/ResetLayout')
 
    def OnSettings(self, e):
-      dlg = gcsSettingsDialog(self, self.configData)
+      # update serial port data
+      self.configData.Add('/link/PortList', self.GetSerialPortList())
+      self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
+
+      # do settings dialog
+      dlg = gsatSettingsDialog(self, self.configData)
 
       result = dlg.ShowModal()
 
@@ -1203,14 +1244,17 @@ class gcsMainWindow(wx.Frame):
       self.OnAbortUpdate()
       self.gcodeToolBar.Refresh()
 
-   def OnRun(self, e):
-      if self.serialPortThread is not None:
+   def OnRun(self, e=None, resetTime=True):
+      if self.progExecThread is not None:
          rawText = self.gcText.GetText()
          self.stateData.gcodeFileLines = rawText.splitlines(True)
 
-         self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_RUN,
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_RUN,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-         self.mw2tQueue.join()
+         self.mainWndOutQueue.join()
+
+         if resetTime:
+            self.runStartTime = time.time()
 
          self.gcText.GoToPC()
          self.stateData.swState = gc.gSTATE_RUN
@@ -1230,13 +1274,13 @@ class gcsMainWindow(wx.Frame):
       self.gcodeToolBar.EnableTool(gID_MENU_RUN, state)
 
    def OnStep(self, e):
-      if self.serialPortThread is not None:
+      if self.progExecThread is not None:
          rawText = self.gcText.GetText()
          self.stateData.gcodeFileLines = rawText.splitlines(True)
 
-         self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_STEP,
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STEP,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-         self.mw2tQueue.join()
+         self.mainWndOutQueue.join()
 
          self.stateData.swState = gc.gSTATE_STEP
          self.UpdateUI()
@@ -1506,9 +1550,9 @@ class gcsMainWindow(wx.Frame):
       if self.stateData.serialPortIsOpen:
          self.SerialClose()
 
-      if self.serialPortThread is not None:
-         self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         self.mw2tQueue.join()
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+         self.mainWndOutQueue.join()
 
       self.machineJoggingPanel.SaveCli()
       self.configData.Save(self.configFile)
@@ -1518,7 +1562,7 @@ class gcsMainWindow(wx.Frame):
       e.Skip()
 
    """-------------------------------------------------------------------------
-   gcsMainWindow: General Functions
+   gsatMainWindow: General Functions
    -------------------------------------------------------------------------"""
    def AutoRefreshTimerStart(self):
       self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
@@ -1555,10 +1599,12 @@ class gcsMainWindow(wx.Frame):
                s = serial.Serial(i)
                spList.append('COM'+str(i + 1))
                #s.close()
-            except:# serial.SerialException:
+            except serial.SerialException, e:
                 pass
+            except OSError, e:
+               pass
       else:
-         spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
+         spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob('/dev/cu*')
 
       if len(spList) < 1:
          spList = ['None']
@@ -1579,23 +1625,37 @@ class gcsMainWindow(wx.Frame):
 
          self.serPort.port = portName
          self.serPort.timeout=1
+
          try:
+            #import pdb;pdb.set_trace()
             self.serPort.open()
-         
+
          except serial.SerialException, e:
-            dlg = wx.MessageDialog(self, e.message, 
+            if self.cmdLineOptions.verbose:
+               print "gsatMainWindow pySerial exception: %s" % e.message
+
+            dlg = wx.MessageDialog(self, e.message,
                "pySerial exception", wx.OK|wx.ICON_STOP)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+            self.serPort.close()
+         except OSError, e:
+            if self.cmdLineOptions.verbose:
+               print "gsatMainWindow OSError exception: %s" % str(e)
+
+            dlg = wx.MessageDialog(self, str(e),
+               "OSError exception", wx.OK|wx.ICON_STOP)
             result = dlg.ShowModal()
             dlg.Destroy()
             self.serPort.close()
 
          if self.serPort.isOpen():
-            self.serialPortThread = gcsSserialPortThread(self, self.serPort, self.mw2tQueue,
-               self.t2mwQueue, self.cmdLineOptions)
+            self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
+               self.mainWndInQueue, self.cmdLineOptions)
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
-            self.stateData.serialBaud = baud
+            self.stateData.serialPortBaud = baud
             self.AutoRefreshTimerStart()
       else:
          dlg = wx.MessageDialog(self,
@@ -1609,10 +1669,10 @@ class gcsMainWindow(wx.Frame):
       self.UpdateUI()
 
    def SerialClose(self):
-      if self.serialPortThread is not None:
-         self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         self.mw2tQueue.join()
-      self.serialPortThread = None
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+         self.mainWndOutQueue.join()
+      self.progExecThread = None
       self.serPort.close()
 
       self.stateData.serialPortIsOpen = False
@@ -1622,24 +1682,27 @@ class gcsMainWindow(wx.Frame):
 
    def SerialWrite(self, serialData):
       if self.stateData.serialPortIsOpen:
-         if self.stateData.swState == gc.gSTATE_RUN:
-            # if we are in run state let thread do teh writing
-            if self.serialPortThread is not None:
-               self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_SEND, serialData))
-               self.mw2tQueue.join()
-         else:
-            txtOutputData = "> %s" %(serialData)
-            wx.LogMessage("")
-            self.outputText.AppendText(txtOutputData)
-            self.serPort.write(serialData.encode('ascii'))
+
+         if self.progExecThread is not None:
+            self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_SEND, serialData))
+            #self.mainWndOutQueue.join()
 
       elif self.cmdLineOptions.verbose:
-         print "gcsMainWindow ERROR: attempt serial write with port closed!!"
+         print "gsatMainWindow ERROR: attempt serial write with port closed!!"
+
+   def SerialWriteWaitForAck(self, serialData):
+      if self.stateData.serialPortIsOpen:
+
+         if self.progExecThread is not None:
+            self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_SEND_W_ACK, serialData))
+
+      elif self.cmdLineOptions.verbose:
+         print "gsatMainWindow ERROR: attempt serial write with port closed!!"
 
    def Stop(self):
-      if self.serialPortThread is not None:
-         self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_STOP, None))
-         self.mw2tQueue.join()
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STOP, None))
+         self.mainWndOutQueue.join()
 
          self.stateData.swState = gc.gSTATE_IDLE
          self.UpdateUI()
@@ -1654,9 +1717,9 @@ class gcsMainWindow(wx.Frame):
    def MachineStatusAutoRefresh(self, autoRefresh):
       self.stateData.machineStatusAutoRefresh = autoRefresh
 
-      if self.serialPortThread is not None:
-         self.mw2tQueue.put(gc.threadEvent(gc.gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
-         self.mw2tQueue.join()
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
+         self.mainWndOutQueue.join()
 
       if autoRefresh:
          self.GetMachineStatus()
@@ -1790,419 +1853,230 @@ class gcsMainWindow(wx.Frame):
       return ret_lienes
 
    """-------------------------------------------------------------------------
-   gcsMainWindow: Serial Port Thread Event Handlers
+   gsatMainWindow: Serial Port Thread Event Handlers
    Handle events coming from serial port thread
    -------------------------------------------------------------------------"""
    def OnThreadEvent(self, e):
-      while (not self.t2mwQueue.empty()):
+      while (not self.mainWndInQueue.empty()):
          # get dat from queue
-         te = self.t2mwQueue.get()
+         te = self.mainWndInQueue.get()
 
          if te.event_id == gc.gEV_ABORT:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_ABORT."
+               print "gsatMainWindow got event gc.gEV_ABORT."
             self.outputText.AppendText(te.data)
-            self.serialPortThread = None
+            self.progExecThread = None
             self.SerialClose()
 
          elif te.event_id == gc.gEV_DATA_IN:
-            teData = te.data
 
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_DATA_IN."
-            self.outputText.AppendText("%s" % teData)
-
-
-            # -----------------------------------------------------------------
-            # lest try to see if we have any other good data
-            # -----------------------------------------------------------------
-
-            # Grbl version, also useful to detect grbl connect
-            rematch = gReGrblVersion.match(teData)
-            if rematch is not None:
-               if self.stateData.swState == gc.gSTATE_RUN:
-                  # something went really bad we shouldn't see this while-in
-                  # RUN state
-                  self.Stop()
-                  dlg = wx.MessageDialog(self,
-                     "Detected Grbl reset string while-in RUN.\n" \
-                     "Something went terribly wrong, STOPPING!!\n", "",
-                     wx.OK|wx.ICON_STOP)
-                  result = dlg.ShowModal()
-                  dlg.Destroy()
-               else:
-                  self.stateData.grblDetected = True
-                  if self.stateData.machineStatusAutoRefresh:
-                     self.GetMachineStatus()
-               self.UpdateUI()
-
-            # Grbl status data
-            rematch = gReMachineStatus.match(teData)
-            if rematch is not None:
-               statusData = rematch.groups()
-               if self.cmdLineOptions.vverbose:
-                  print "gcsMainWindow re.status.match %s" % str(statusData)
-               self.stateData.machineStatusString = statusData[0]
-               self.machineStatusPanel.UpdateUI(self.stateData, statusData)
-               self.machineJoggingPanel.UpdateUI(self.stateData, statusData)
-               self.UpdateUI()
+               print "gsatMainWindow got event gc.gEV_DATA_IN."
+            self.OnThreadSerialData(te.data)
 
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_DATA_OUT."
+               print "gsatMainWindow got event gc.gEV_DATA_OUT."
             self.outputText.AppendText("> %s" % te.data)
 
          elif te.event_id == gc.gEV_PC_UPDATE:
+            # calculate percentage if lines sent
+            prcnt = "%.2f%%" % (float(te.data)/float(len(self.stateData.gcodeFileLines)) * 100)
+
+            '''
+            # calculate elapse time
+            runTimeStr = "n/a"
+            if self.stateData.swState == gc.gSTATE_RUN:
+               runTime = time.time() - self.runStartTime
+               hours, reminder = divmod(runTime, 3600)
+               minutes, reminder = divmod(reminder, 60)
+               seconds, mseconds = divmod(reminder, 1)
+               runTimeStr = "%02d:%02d:%02d.%d" % (hours, minutes, seconds, mseconds*1000)
+            '''
+
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_PC_UPDATE [%s]." % str(te.data)
+               print "gsatMainWindow got event gc.gEV_PC_UPDATE [%s], %s sent." \
+                  % (str(te.data), prcnt)
             self.SetPC(te.data)
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':prcnt}))
 
          elif te.event_id == gc.gEV_RUN_END:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_RUN_END."
+               print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
             self.stateData.swState = gc.gSTATE_IDLE
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':"100.00%"}))
             self.Refresh()
             self.UpdateUI()
             self.SetPC(0)
 
          elif te.event_id == gc.gEV_STEP_END:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_STEP_END."
+               print "gsatMainWindow got event gc.gEV_STEP_END."
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
          elif te.event_id == gc.gEV_HIT_BRK_PT:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_HIT_BRK_PT."
+               print "gsatMainWindow got event gc.gEV_HIT_BRK_PT."
             self.stateData.swState = gc.gSTATE_BREAK
             self.UpdateUI()
-            
+
          elif te.event_id == gc.gEV_HIT_MSG:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got event gc.gEV_HIT_MSG."
+               print "gsatMainWindow got event gc.gEV_HIT_MSG."
+            lastSwState = self.stateData.swState
             self.stateData.swState = gc.gSTATE_BREAK
             self.UpdateUI()
-            
+
             self.outputText.AppendText("** MSG: %s" % te.data.strip())
-            
-            dlg = wx.MessageDialog(self, te.data.strip(), "GCODE MSG",
-               wx.OK|wx.ICON_INFORMATION)
+
+            if lastSwState == gc.gSTATE_RUN:
+               dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
+                  wx.YES_NO|wx.YES_DEFAULT|wx.ICON_INFORMATION)
+            else:
+               dlg = wx.MessageDialog(self, te.data.strip(), "G-Code Message",
+                  wx.OK|wx.ICON_INFORMATION)
+
             result = dlg.ShowModal()
             dlg.Destroy()
-            
+
+            if result == wx.ID_YES:
+               self.OnRun(resetTime=False)
+
          else:
             if self.cmdLineOptions.vverbose:
-               print "gcsMainWindow got UKNOWN event id[%d]" % te.event_id
+               print "gsatMainWindow got UKNOWN event id[%d]" % te.event_id
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
          # item acknowledgment
-         self.t2mwQueue.task_done()
+         self.mainWndInQueue.task_done()
 
-"""----------------------------------------------------------------------------
-   gcsSserialPortThread:
-   Threads that monitor serial port for new data and sends events to
-   main window.
-----------------------------------------------------------------------------"""
-class gcsSserialPortThread(threading.Thread):
-   """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options):
-      """Init Worker Thread Class."""
-      threading.Thread.__init__(self)
+   def OnThreadSerialData (self, teData):
 
-      # init local variables
-      self.notifyWindow = notify_window
-      self.serPort = serial
-      self.mw2tQueue = in_queue
-      self.t2mwQueue = out_queue
-      self.cmdLineOptions = cmd_line_options
+      self.outputText.AppendText("%s" % teData)
 
-      self.gcodeDataLines = []
-      self.breakPointSet = set()
-      self.initialProgramCounter = 0
-      self.workingCounterWorking = 0
+      # -----------------------------------------------------------------
+      # lest try to see if we have any other good data
+      # -----------------------------------------------------------------
 
-      self.reGcodeComments = gReGcodeComments
-
-      self.swState = gc.gSTATE_IDLE
-
-      self.machineAutoStatus = False
-
-      # start thread
-      self.start()
-
-   """-------------------------------------------------------------------------
-   gcsSserialPortThread: Main Window Event Handlers
-   Handle events coming from main UI
-   -------------------------------------------------------------------------"""
-   def ProcessQueue(self):
-      # process events from queue ---------------------------------------------
-      if not self.mw2tQueue.empty():
-         # get item from queue
-         e = self.mw2tQueue.get()
-
-         if e.event_id == gc.gEV_CMD_EXIT:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got event gc.gEV_CMD_EXIT."
-            self.endThread = True
-            self.swState = gc.gSTATE_IDLE
-
-         elif e.event_id == gc.gEV_CMD_RUN:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got event gc.gEV_CMD_RUN, swState->gc.gSTATE_RUN"
-            self.gcodeDataLines = e.data[0]
-            self.initialProgramCounter = e.data[1]
-            self.workingProgramCounter = self.initialProgramCounter
-            self.breakPointSet =  e.data[2]
-            self.swState = gc.gSTATE_RUN
-
-         elif e.event_id == gc.gEV_CMD_STEP:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got event gc.gEV_CMD_STEP, swState->gc.gSTATE_STEP"
-            self.gcodeDataLines = e.data[0]
-            self.initialProgramCounter = e.data[1]
-            self.workingProgramCounter = self.initialProgramCounter
-            self.breakPointSet =  e.data[2]
-            self.swState = gc.gSTATE_STEP
-
-         elif e.event_id == gc.gEV_CMD_STOP:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got event gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE"
-
-            self.swState = gc.gSTATE_IDLE
-
-         elif e.event_id == gc.gEV_CMD_SEND:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got event gc.gEV_CMD_SEND."
-            self.SerialWrite(e.data)
-            responseData = self.WaitForResponse()
-
-         elif e.event_id == gc.gEV_CMD_AUTO_STATUS:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got event gc.gEV_CMD_AUTO_STATUS."
-            self.machineAutoStatus = e.data
-
+      # Grbl version, also useful to detect grbl connect
+      rematch = gReGrblVersion.match(teData)
+      if rematch is not None:
+         if self.stateData.swState == gc.gSTATE_RUN:
+            # something went really bad we shouldn't see this while-in
+            # RUN state
+            self.Stop()
+            dlg = wx.MessageDialog(self,
+               "Detected Grbl reset string while-in RUN.\n" \
+               "Something went terribly wrong, STOPPING!!\n", "",
+               wx.OK|wx.ICON_STOP)
+            result = dlg.ShowModal()
+            dlg.Destroy()
          else:
+            self.stateData.grblDetected = True
+            self.GetMachineStatus()
+         self.UpdateUI()
+
+      # skip if there is no "pos" data
+      #if gReMachineStatus.search(teData):
+      # GRBL status data
+      rematch = gReGRBLMachineStatus.match(teData)
+      # data is expected to be an array of strings as follows
+      # statusData[0] : Machine state
+      # statusData[1] : Machine X
+      # statusData[2] : Machine Y
+      # statusData[3] : Machine Z
+      # statusData[4] : Work X
+      # statusData[5] : Work Y
+      # statusData[6] : Work Z
+
+      if rematch is not None:
+         statusData = rematch.groups()
+         machineStatus = dict()
+         machineStatus['device'] = 'grbl'
+         machineStatus['stat'] = statusData[0]
+         machineStatus['posx'] = statusData[1]
+         machineStatus['posy'] = statusData[2]
+         machineStatus['posz'] = statusData[3]
+         machineStatus['wposx'] = statusData[4]
+         machineStatus['wposy'] = statusData[5]
+         machineStatus['wposz'] = statusData[6]
+
+         if self.cmdLineOptions.vverbose:
+            print "gsatMainWindow re GRBL status match %s" % str(statusData)
+            print "gsatMainWindow str match from %s" % str(teData.strip())
+
+         self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+         self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+         self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+         self.UpdateUI()
+
+      else:
+         # tinyG verbose/status
+         rematch = gReTinyGVerbose.findall(teData)
+         if len(rematch) > 0:
+
             if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread got unknown event!! [%s]." % str(e.event_id)
+               print "gsatMainWindow re tinyG verbose match %s" % str(rematch)
+               print "gsatMainWindow str match from %s" % str(teData)
 
-         # item qcknowledge
-         self.mw2tQueue.task_done()
+            machineStatus = dict(rematch)
+            machineStatus['device'] = 'tinyG'
 
-   """-------------------------------------------------------------------------
-   gcsSserialPortThread: General Functions
-   -------------------------------------------------------------------------"""
-   def SerialWrite(self, serialData):
-      # sent data to UI
-      self.t2mwQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))
-      wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+            status = machineStatus.get('stat')
+            if status is not None:
+               if '0' in status:
+                  machineStatus['stat'] = 'Init'
+               elif '1' in status:
+                  machineStatus['stat'] = 'Ready'
+               elif '2' in status:
+                  machineStatus['stat'] = 'Alarm'
+               elif '3' in status:
+                  machineStatus['stat'] = 'Stop'
+               elif '4' in status:
+                  machineStatus['stat'] = 'End'
+               elif '5' in status:
+                  machineStatus['stat'] = 'Run'
+               elif '6' in status:
+                  machineStatus['stat'] = 'Hold'
+               elif '7' in status:
+                  machineStatus['stat'] = 'Probe'
+               elif '8' in status:
+                  machineStatus['stat'] = 'Run'
+               elif '9' in status:
+                  machineStatus['stat'] = 'Home'
 
-      # send command
-      self.serPort.write(serialData.encode('ascii'))
+               self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+               self.UpdateUI()
 
-      if self.cmdLineOptions.verbose:
-         print serialData.strip()
+            self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+            self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+         else:
+            rematch = gReTinyGPosStatus.findall(teData)
+            if len(rematch) > 0:
+               if self.cmdLineOptions.vverbose:
+                  print "gsatMainWindow re tinyG status match %s" % str(rematch)
+                  print "gsatMainWindow str match from %s" % str(teData)
 
-   def SerialRead(self):
-      serialData = self.serPort.readline()
+               machineStatus = dict()
+               machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
+               machineStatus['device'] = 'tinyG'
 
-      if len(serialData) > 0:
-         # add data to queue and signal main window to consume
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_DATA_IN, serialData))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-
-      if self.cmdLineOptions.verbose:
-         if (len(serialData) > 0) or (self.swState != gc.gSTATE_IDLE and \
-            self.swState != gc.gSTATE_BREAK):
-            print "->%s<-" % serialData.strip()
-
-      return serialData
-
-   def WaitForResponse(self):
-      waitForResponse = True
-
-      while (waitForResponse):
-         response = self.SerialRead()
-
-         if len(response.lower().strip()) > 0:
-            waitForResponse = False
-
-         self.ProcessQueue()
-
-         if self.endThread:
-            waitForResponse = False
-            return
-
-      if self.machineAutoStatus:
-         #self.t2mwQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, gc.gGRBL_CMD_GET_STATUS))
-         #wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         #self.serPort.write(gc.gGRBL_CMD_GET_STATUS)
-         #self.ProcessIdleSate()
-         pass
-
-   def RunStepSendGcode(self, gcodeData):
-      gcode = gcodeData.strip()
-
-      if len(gcode) > 0:
-         gcode = "%s\n" % (gcode)
-
-         # write data
-         self.SerialWrite(gcode)
-
-
-         # wait for response
-         responseData = self.WaitForResponse()
-
-      else:
-         # remove hack to slow things down for debugiing
-         #response = self.serPort.readline()
-         pass
-
-      self.workingProgramCounter += 1
-
-      # if we stop early make sure to update PC to main UI
-      if self.swState == gc.gSTATE_IDLE:
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_PC_UPDATE, self.workingProgramCounter))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-
-
-   def ProcessRunSate(self):
-      # send data to serial port ----------------------------------------------
-
-      # check if we are done with gcode
-      if self.workingProgramCounter >= len(self.gcodeDataLines):
-         self.swState = gc.gSTATE_IDLE
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_RUN_END, None))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         if self.cmdLineOptions.vverbose:
-            print "** gcsSserialPortThread reach last PC, swState->gc.gSTATE_IDLE"
-         return
-
-      # update PC
-      self.t2mwQueue.put(gc.threadEvent(gc.gEV_PC_UPDATE, self.workingProgramCounter))
-      wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-
-      # check for break point hit
-      if (self.workingProgramCounter in self.breakPointSet) and \
-         (self.workingProgramCounter != self.initialProgramCounter):
-         self.swState = gc.gSTATE_BREAK
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_HIT_BRK_PT, None))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         if self.cmdLineOptions.vverbose:
-            print "** gcsSserialPortThread encounter breakpoint PC[%s], swState->gc.gSTATE_BREAK" % \
-               (self.workingProgramCounter)
-         return
-
-      # get gcode line
-      gcode = self.gcodeDataLines[self.workingProgramCounter]
-      
-      # check for msg line
-      reMsgSearch = gReGcodeMsg.search(gcode)
-      if (reMsgSearch is not None) and \
-         (self.workingProgramCounter != self.initialProgramCounter):
-         self.swState = gc.gSTATE_BREAK
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_HIT_MSG, reMsgSearch.group(1)))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         if self.cmdLineOptions.vverbose:
-            print "** gcsSserialPortThread encounter MSG line PC[%s], swState->gc.gSTATE_BREAK, MSG[%s]" % \
-               (self.workingProgramCounter, reMsgSearch.group(1))
-         return
-
-      # don't sent unecessary data save the bits for speed
-      for reComments in self.reGcodeComments:
-         gcode = reComments.sub("", gcode)
-         
-      # only auto refresh machine status if next cmd is a Gxx cmd
-      # seems to be a bug in grbl it gets confused
-      #if self.machineAutoStatus and (gcode.startswith("G") or gcode.startswith("g")):
-      #   self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
-      #   responseData = self.WaitForResponse()
-      # still didn't work, need more investigating
-
-      # send g-code command
-      self.RunStepSendGcode(gcode)
-
-   def ProcessStepSate(self):
-      # send data to serial port ----------------------------------------------
-
-      # check if we are done with gcode
-      if self.workingProgramCounter >= len(self.gcodeDataLines):
-         self.swState = gc.gSTATE_IDLE
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_STEP_END, None))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         if self.cmdLineOptions.vverbose:
-            print "** gcsSserialPortThread reach last PC, swState->gc.gSTATE_IDLE"
-         return
-
-      # update PC
-      self.t2mwQueue.put(gc.threadEvent(gc.gEV_PC_UPDATE, self.workingProgramCounter))
-      wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-
-      # end IDLE state
-      if self.workingProgramCounter > self.initialProgramCounter:
-         self.swState = gc.gSTATE_IDLE
-         self.t2mwQueue.put(gc.threadEvent(gc.gEV_STEP_END, None))
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         if self.cmdLineOptions.vverbose:
-            print "** gcsSserialPortThread finish STEP cmd, swState->gc.gSTATE_IDLE"
-         return
-
-      gcode = self.gcodeDataLines[self.workingProgramCounter]
-
-      # don't sent unecessary data save the bits for speed
-      for reComments in self.reGcodeComments:
-         gcode = reComments.sub("", gcode)
-
-      self.RunStepSendGcode(gcode)
-
-   def ProcessIdleSate(self):
-      if self.machineAutoStatus:
-         #self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
-         #responseData = self.WaitForResponse()
-         self.SerialRead()
-      else:
-         self.SerialRead()
-
-   def run(self):
-      """Run Worker Thread."""
-      # This is the code executing in the new thread.
-      self.endThread = False
-
-      if self.cmdLineOptions.vverbose:
-         print "** gcsSserialPortThread start."
-
-      while(self.endThread != True):
-
-         # process input queue for new commands or actions
-         self.ProcessQueue()
-
-         # check if we need to exit now
-         if self.endThread:
-            break
-
-         if self.serPort.isOpen():
-            if self.swState == gc.gSTATE_RUN:
-               self.ProcessRunSate()
-            elif self.swState == gc.gSTATE_STEP:
-               self.ProcessStepSate()
-            elif self.swState == gc.gSTATE_IDLE:
-               self.ProcessIdleSate()
-            elif self.swState == gc.gSTATE_BREAK:
-               self.ProcessIdleSate()
+               self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+               self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
             else:
-               print "** gcsSserialPortThread unexpected state [%d], moving back to IDLE." \
-                  ", swState->gc.gSTATE_IDLE " % (self.swState)
-               self.ProcessIdleSate()
-               self.swState = gc.gSTATE_IDLE
-         else:
-            if self.cmdLineOptions.vverbose:
-               print "** gcsSserialPortThread unexpected serial port closed, ABORT."
+               rematch = gReTinyGStateStatus.findall(teData)
 
-            # add data to queue and signal main window to consume
-            self.t2mwQueue.put(gc.threadEvent(gc.gEV_ABORT, "** Serial Port is close, thread terminating.\n"))
-            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-            break
+               if len(rematch) > 0:
+                  if self.cmdLineOptions.vverbose:
+                     print "gsatMainWindow re tinyG status match %s" % str(teData)
 
-      if self.cmdLineOptions.vverbose:
-         print "** gcsSserialPortThread exit."
+                  machineStatus = dict()
+                  machineStatus["stat"] = rematch[0][1]
+                  machineStatus['device'] = 'tinyG'
 
+                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+                  self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+                  self.UpdateUI()

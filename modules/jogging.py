@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    jogging.py
+
+   Copyright (C) 2013-2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import os
@@ -12,10 +33,10 @@ import modules.config as gc
 
 
 """----------------------------------------------------------------------------
-   gcsJoggingSettingsPanel:
+   gsatJoggingSettingsPanel:
    Machine settings.
 ----------------------------------------------------------------------------"""
-class gcsJoggingSettingsPanel(scrolled.ScrolledPanel):
+class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -168,10 +189,10 @@ class gcsJoggingSettingsPanel(scrolled.ScrolledPanel):
             self.customCtrlArray[cn][6].GetValue())
 
 """----------------------------------------------------------------------------
-   gcsCliSettingsPanel:
+   gsatCliSettingsPanel:
    CLI settings.
 ----------------------------------------------------------------------------"""
-class gcsCliSettingsPanel(scrolled.ScrolledPanel):
+class gsatCliSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -211,10 +232,10 @@ class gcsCliSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/cli/CmdMaxHistory', self.sc.GetValue())
 
 """----------------------------------------------------------------------------
-   gcsJoggingPanel:
+   gsatJoggingPanel:
    Jog controls for the machine as well as custom user controls.
 ----------------------------------------------------------------------------"""
-class gcsJoggingPanel(wx.ScrolledWindow):
+class gsatJoggingPanel(wx.ScrolledWindow):
    def __init__(self, parent, config_data, state_data, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -239,6 +260,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
       self.UpdateSettings(self.configData)
+      self.allRadioButton.SetValue(True)
       #self.spinCtrl.SetFocus()
       self.LoadCli()
 
@@ -329,13 +351,14 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       positionStatusControls = self.CreatePositionStatusControls()
       hPanelBoxSizer.Add(positionStatusControls, 0, flag=wx.EXPAND)
 
-      gotoControls = self.CreateGotoControls()
-      hPanelBoxSizer.Add(gotoControls, 0, flag=wx.LEFT|wx.EXPAND, border=10)
+      gotoResetControls = self.CreateGotoAndResetControls()
+      hPanelBoxSizer.Add(gotoResetControls, 0, flag=wx.LEFT|wx.EXPAND, border=10)
+
+      vPanelBoxSizer.Add(hPanelBoxSizer, 0, flag=wx.ALL|wx.EXPAND, border=5)
 
       utilControls = self.CreateUtilControls()
-      hPanelBoxSizer.Add(utilControls, 0, flag=wx.LEFT|wx.EXPAND, border=10)
+      vPanelBoxSizer.Add(utilControls, 0, flag=wx.ALL|wx.EXPAND, border=5)
 
-      vPanelBoxSizer.Add(hPanelBoxSizer, 1, flag=wx.ALL|wx.EXPAND, border=5)
 
       # Finish up init UI
       self.SetSizer(vPanelBoxSizer)
@@ -343,25 +366,40 @@ class gcsJoggingPanel(wx.ScrolledWindow):
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
-      # adata is expected to be an array of strings as follows
-      # statusData[0] : Machine state
-      # statusData[1] : Machine X
-      # statusData[2] : Machine Y
-      # statusData[3] : Machine Z
-      # statusData[4] : Work X
-      # statusData[5] : Work Y
-      # statusData[6] : Work Z
+
       if statusData is not None and self.useMachineWorkPosition:
-         self.jX.SetValue(statusData[4])
-         self.jY.SetValue(statusData[5])
-         self.jZ.SetValue(statusData[6])
+         if 'tinyG' in statusData.get('device', 'grbl'):
+            x = statusData.get('posx')
+            if x is not None:
+               self.jX.SetValue(x)
+
+            y = statusData.get('posy')
+            if y is not None:
+               self.jY.SetValue(y)
+
+            z = statusData.get('posz')
+            if z is not None:
+               self.jZ.SetValue(z)
+         else:
+            x = statusData.get('wposx')
+            if x is not None:
+               self.jX.SetValue(x)
+
+            y = statusData.get('wposy')
+            if y is not None:
+               self.jY.SetValue(y)
+
+            z = statusData.get('wposz')
+            if z is not None:
+               self.jZ.SetValue(z)
+
 
       if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
-         self.resettoZeroPositionButton.Enable()
-         self.resettoCurrentPositionButton.Enable()
-         self.goZeroButton.Enable()
-         self.goToCurrentPositionButton.Enable()
-         self.goHomeButton.Enable()
+         self.resetToZeroButton.Enable()
+         self.resetToJogButton.Enable()
+         self.gotoToZeroButton.Enable()
+         self.gotoToJogButton.Enable()
+         self.gotoToHomeButton.Enable()
          self.positiveXButton.Enable()
          self.negativeXButton.Enable()
          self.positiveYButton.Enable()
@@ -376,11 +414,11 @@ class gcsJoggingPanel(wx.ScrolledWindow):
          self.custom4Button.Enable()
          self.cliComboBox.Enable()
       else:
-         self.resettoZeroPositionButton.Disable()
-         self.resettoCurrentPositionButton.Disable()
-         self.goZeroButton.Disable()
-         self.goToCurrentPositionButton.Disable()
-         self.goHomeButton.Disable()
+         self.resetToZeroButton.Disable()
+         self.resetToJogButton.Disable()
+         self.gotoToZeroButton.Disable()
+         self.gotoToJogButton.Disable()
+         self.gotoToHomeButton.Disable()
          self.positiveXButton.Disable()
          self.negativeXButton.Disable()
          self.positiveYButton.Disable()
@@ -467,7 +505,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # add status controls
-      spinText = wx.StaticText(self, -1, "Step Size:  ")
+      spinText = wx.StaticText(self, -1, "Step size:  ")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       self.spinCtrl = fs.FloatSpin(self, -1,
@@ -479,7 +517,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(self.spinCtrl, 0,
          flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
 
-      spinText = wx.StaticText(self, -1, "Jogging Status:  ")
+      spinText = wx.StaticText(self, -1, "Jog status:  ")
       vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
       flexGridSizer = wx.FlexGridSizer(4,2)
@@ -511,7 +549,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
       # Add Checkbox for sync with work position
-      self.useWorkPosCheckBox = wx.CheckBox (self, label="Use Work Pos")
+      self.useWorkPosCheckBox = wx.CheckBox (self, label="Use work pos")
       self.useWorkPosCheckBox.SetToolTip(
          wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
@@ -519,53 +557,73 @@ class gcsJoggingPanel(wx.ScrolledWindow):
 
       return vBoxSizer
 
-   def CreateGotoControls(self):
+   def CreateGotoAndResetControls(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      spinText = wx.StaticText(self, -1, "")
+      # Add radio buttons
+      spinText = wx.StaticText(self, -1, "Select axis (f):")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
-      # add Buttons
-      self.resettoZeroPositionButton = wx.Button(self, label="Reset to Zero")
-      self.resettoZeroPositionButton.SetToolTip(
-         wx.ToolTip("Reset machine work position to X0, Y0, Z0"))
-      self.Bind(wx.EVT_BUTTON, self.OnResetToZeroPos, self.resettoZeroPositionButton)
-      vBoxSizer.Add(self.resettoZeroPositionButton, flag=wx.TOP|wx.EXPAND, border=5)
+      vRadioBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.xRadioButton = wx.RadioButton(self, -1, 'X', style=wx.RB_GROUP)
+      vRadioBoxSizer.Add(self.xRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
 
-      self.goZeroButton = wx.Button(self, label="Goto Zero")
-      self.goZeroButton.SetToolTip(
-         wx.ToolTip("Move to Machine Working position X0, Y0, Z0"))
-      self.Bind(wx.EVT_BUTTON, self.OnGoZero, self.goZeroButton)
-      vBoxSizer.Add(self.goZeroButton, flag=wx.EXPAND)
+      self.yRadioButton = wx.RadioButton(self, -1, 'Y')
+      vRadioBoxSizer.Add(self.yRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
 
-      self.resettoCurrentPositionButton = wx.Button(self, label="Reset to Jog")
-      self.resettoCurrentPositionButton.SetToolTip(
-         wx.ToolTip("Reset machine work position to current jogging values"))
-      self.Bind(wx.EVT_BUTTON, self.OnResetToCurrentPos, self.resettoCurrentPositionButton)
-      vBoxSizer.Add(self.resettoCurrentPositionButton, flag=wx.EXPAND)
+      self.zRadioButton = wx.RadioButton(self, -1, 'Z')
+      vRadioBoxSizer.Add(self.zRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
 
-      self.goToCurrentPositionButton = wx.Button(self, label="Goto Jog")
-      self.goToCurrentPositionButton.SetToolTip(
-         wx.ToolTip("Move to to current jogging values"))
-      self.Bind(wx.EVT_BUTTON, self.OnGoPos, self.goToCurrentPositionButton)
-      vBoxSizer.Add(self.goToCurrentPositionButton, flag=wx.EXPAND)
+      self.allRadioButton = wx.RadioButton(self, -1, 'All')
+      vRadioBoxSizer.Add(self.allRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
 
-      self.goHomeButton = wx.Button(self, label="Goto Home")
-      self.goHomeButton.SetToolTip(
-         wx.ToolTip("Execute Machine Homing Cycle"))
-      self.Bind(wx.EVT_BUTTON, self.OnGoHome, self.goHomeButton)
-      vBoxSizer.Add(self.goHomeButton, flag=wx.EXPAND)
+      vBoxSizer.Add(vRadioBoxSizer, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_CENTER)
+
+      # Add Buttons
+      spinText = wx.StaticText(self, -1, "Operation on (f):")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
+
+      # Add reset and move to zero(0) buttons
+      vButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+      self.resetToZeroButton = wx.Button(self, label="f = 0")
+      self.resetToZeroButton.SetToolTip(wx.ToolTip("Set f axis to zero(0)"))
+      self.Bind(wx.EVT_BUTTON, self.OnResetToZero, self.resetToZeroButton)
+      vButtonBoxSizer.Add(self.resetToZeroButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      self.gotoToZeroButton = wx.Button(self, label="f -> 0")
+      self.gotoToZeroButton.SetToolTip(wx.ToolTip("Move f axis to zero(0)"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoToZero, self.gotoToZeroButton)
+      vButtonBoxSizer.Add(self.gotoToZeroButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      vBoxSizer.Add(vButtonBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
+
+      # Add reset and move to jog buttons
+      vButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+      self.resetToJogButton = wx.Button(self, label="f = Jog(f)")
+      self.resetToJogButton.SetToolTip(wx.ToolTip("Set f axis to Jog(f) current value"))
+      self.Bind(wx.EVT_BUTTON, self.OnResetToJogVal, self.resetToJogButton)
+      vButtonBoxSizer.Add(self.resetToJogButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      self.gotoToJogButton = wx.Button(self, label="f -> Jog(f)")
+      self.gotoToJogButton.SetToolTip(wx.ToolTip("Move f axis to Jog(f) current value"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoToJogVal, self.gotoToJogButton)
+      vButtonBoxSizer.Add(self.gotoToJogButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      vBoxSizer.Add(vButtonBoxSizer, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      # Add move home buttons
+      self.gotoToHomeButton = wx.Button(self, label="f -> Home")
+      self.gotoToHomeButton.SetToolTip(wx.ToolTip("Move f axis HOME"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoHome, self.gotoToHomeButton)
+      vBoxSizer.Add(self.gotoToHomeButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
 
-      return vBoxSizer
+      spinText = wx.StaticText(self, -1, "Jog memory stack:")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
 
-   def CreateUtilControls(self):
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-
-      spinText = wx.StaticText(self, -1, "")
-      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
-
-      # add position stack
+      # add jog position memory stack
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       self.pushStackButton = wx.Button(self, label="+", style=wx.BU_EXACTFIT)
@@ -578,30 +636,42 @@ class gcsJoggingPanel(wx.ScrolledWindow):
          choices=[], style=wx.CB_READONLY|wx.CB_DROPDOWN)
       self.jogMemoryStackComboBox.SetToolTip(wx.ToolTip("jog memory stack"))
       self.Bind(wx.EVT_COMBOBOX, self.OnPopStack, self.jogMemoryStackComboBox)
-      hBoxSizer.Add(self.jogMemoryStackComboBox, 1, flag=wx.EXPAND)
+      hBoxSizer.Add(self.jogMemoryStackComboBox, 2, flag=wx.EXPAND)
 
       vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
 
+      return vBoxSizer
+
+   def CreateUtilControls(self):
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      spinText = wx.StaticText(self, -1, "Custom buttons:")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
+
       # add custom buttons
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
       self.custom1Button = wx.Button(self, label=self.configCustom1Label)
       self.custom1Button.SetToolTip(wx.ToolTip("Move to pre-defined position (1)"))
       self.Bind(wx.EVT_BUTTON, self.OnCustom1Button, self.custom1Button)
-      vBoxSizer.Add(self.custom1Button, flag=wx.EXPAND)
+      hBoxSizer.Add(self.custom1Button, flag=wx.TOP|wx.EXPAND, border=5)
 
       self.custom2Button = wx.Button(self, label=self.configCustom2Label)
       self.custom2Button.SetToolTip(wx.ToolTip("Move to pre-defined position (2)"))
       self.Bind(wx.EVT_BUTTON, self.OnCustom2Button, self.custom2Button)
-      vBoxSizer.Add(self.custom2Button, flag=wx.EXPAND)
+      hBoxSizer.Add(self.custom2Button, flag=wx.TOP|wx.EXPAND, border=5)
 
       self.custom3Button = wx.Button(self, label=self.configCustom3Label)
       self.custom3Button.SetToolTip(wx.ToolTip("Move to pre-defined position (3)"))
       self.Bind(wx.EVT_BUTTON, self.OnCustom3Button, self.custom3Button)
-      vBoxSizer.Add(self.custom3Button, flag=wx.EXPAND)
+      hBoxSizer.Add(self.custom3Button, flag=wx.TOP|wx.EXPAND, border=5)
 
       self.custom4Button = wx.Button(self, label=self.configCustom4Label)
       self.custom4Button.SetToolTip(wx.ToolTip("Move to pre-defined position (4)"))
       self.Bind(wx.EVT_BUTTON, self.OnCustom4Button, self.custom4Button)
-      vBoxSizer.Add(self.custom4Button, flag=wx.EXPAND)
+      hBoxSizer.Add(self.custom4Button, flag=wx.TOP|wx.EXPAND, border=5)
+
+      vBoxSizer.Add(hBoxSizer, flag=wx.EXPAND)
 
       return vBoxSizer
 
@@ -615,7 +685,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
-      self.mainWindow.SerialWrite(cmdString.replace("<VAL>",fAxisStrPos))
+      self.mainWindow.SerialWriteWaitForAck(cmdString.replace("<VAL>",fAxisStrPos))
 
    def OnXPos(self, e):
       self.AxisJog(self.jX, gc.gGRBL_CMD_JOG_X, opAdd=True)
@@ -637,43 +707,72 @@ class gcsJoggingPanel(wx.ScrolledWindow):
 
    def OnSpindleOn(self, e):
       self.jSpindle.SetValue(gc.gOnString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_SPINDLE_ON)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_ON)
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_SPINDLE_OFF)
+      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_OFF)
 
    def OnUseMachineWorkPosition(self, e):
       self.useMachineWorkPosition = e.IsChecked()
 
-   def OnResetToZeroPos(self, e):
-      self.jX.SetValue(gc.gZeroString)
-      self.jY.SetValue(gc.gZeroString)
-      self.jZ.SetValue(gc.gZeroString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_RESET_TO_ZERO_POS)
+   def OnJogCmd (self, xval, yval, zval, all_cmd, single_cmd):
+      cmd = "\n"
 
-   def OnResetToCurrentPos(self, e):
-      rstCmd = gc.gGRBL_CMD_RESET_TO_VAL_POS
-      rstCmd = rstCmd.replace("<XVAL>", self.jX.GetValue())
-      rstCmd = rstCmd.replace("<YVAL>", self.jY.GetValue())
-      rstCmd = rstCmd.replace("<ZVAL>", self.jZ.GetValue())
-      self.mainWindow.SerialWrite(rstCmd)
+      if self.allRadioButton.GetValue():
+         self.jX.SetValue(xval)
+         self.jY.SetValue(yval)
+         self.jZ.SetValue(zval)
 
-   def OnGoZero(self, e):
-      self.jX.SetValue(gc.gZeroString)
-      self.jY.SetValue(gc.gZeroString)
-      self.jZ.SetValue(gc.gZeroString)
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_GO_ZERO)
+         cmd = all_cmd
+         cmd = cmd.replace("<XVAL>", xval)
+         cmd = cmd.replace("<YVAL>", yval)
+         cmd = cmd.replace("<ZVAL>", zval)
 
-   def OnGoPos(self, e):
-      goPosCmd = gc.gGRBL_CMD_GO_POS
-      goPosCmd = goPosCmd.replace("<XVAL>", self.jX.GetValue())
-      goPosCmd = goPosCmd.replace("<YVAL>", self.jY.GetValue())
-      goPosCmd = goPosCmd.replace("<ZVAL>", self.jZ.GetValue())
-      self.mainWindow.SerialWrite(goPosCmd)
+      elif self.xRadioButton.GetValue():
+         self.jX.SetValue(xval)
+
+         cmd = single_cmd
+         cmd = cmd.replace("<AXIS>", "X")
+         cmd = cmd.replace("<VAL>", xval)
+
+      elif self.yRadioButton.GetValue() or self.allRadioButton.GetValue():
+         self.jY.SetValue(yval)
+
+         cmd = single_cmd
+         cmd = cmd.replace("<AXIS>", "Y")
+         cmd = cmd.replace("<VAL>", yval)
+
+      elif self.zRadioButton.GetValue() or self.allRadioButton.GetValue():
+         self.jZ.SetValue(zval)
+
+         cmd = single_cmd
+         cmd = cmd.replace("<AXIS>", "Z")
+         cmd = cmd.replace("<VAL>", zval)
+
+      self.mainWindow.SerialWriteWaitForAck(cmd)
+
+   def OnResetToZero(self, e):
+      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+         gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+
+   def OnGoToZero(self, e):
+      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+         gc.gGRBL_CMD_ALL_GO_TO_POS, gc.gGRBL_CMD_GO_TO_POS)
+
+   def OnResetToJogVal(self, e):
+      self.OnJogCmd(
+         self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+         gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+
+   def OnGoToJogVal(self, e):
+      self.OnJogCmd(
+         self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+         gc.gGRBL_CMD_ALL_GO_TO_POS, gc.gGRBL_CMD_GO_TO_POS)
 
    def OnGoHome(self, e):
-      self.mainWindow.SerialWrite(gc.gGRBL_CMD_EXE_HOME_CYCLE)
+      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+         gc.gGRBL_CMD_ALL_GO_HOME, gc.gGRBL_CMD_GO_HOME)
 
    def OnPushStack(self, e):
       xVal = self.jX.GetValue()
@@ -716,7 +815,7 @@ class gcsJoggingPanel(wx.ScrolledWindow):
       goPosCmd = goPosCmd.replace("<XVAL>", str(fXnp))
       goPosCmd = goPosCmd.replace("<YVAL>", str(fYnp))
       goPosCmd = goPosCmd.replace("<ZVAL>", str(fZnp))
-      self.mainWindow.SerialWrite(goPosCmd)
+      self.mainWindow.SerialWriteWaitForAck(goPosCmd)
 
 
    def OnCustom1Button(self, e):

@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    machine.py
+
+   Copyright (C) 2013-2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import os
@@ -11,10 +32,10 @@ from wx.lib.agw import floatspin as fs
 import modules.config as gc
 
 """----------------------------------------------------------------------------
-   gcsMachineSettingsPanel:
+   gsatMachineSettingsPanel:
    Machine settings.
 ----------------------------------------------------------------------------"""
-class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
+class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
    def __init__(self, parent, config_data, **args):
       scrolled.ScrolledPanel.__init__(self, parent,
          style=wx.TAB_TRAVERSAL|wx.NO_BORDER)
@@ -57,11 +78,11 @@ class gcsMachineSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
 
 """----------------------------------------------------------------------------
-   gcsMachineStatusPanel:
+   gsatMachineStatusPanel:
    Status information about machine, controls to enable auto and manual
    refresh.
 ----------------------------------------------------------------------------"""
-class gcsMachineStatusPanel(wx.ScrolledWindow):
+class gsatMachineStatusPanel(wx.ScrolledWindow):
    def __init__(self, parent, config_data, state_data, **args):
       wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -83,7 +104,8 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       # Add Static Boxes ------------------------------------------------------
       wBox, self.wX, self.wY, self.wZ = self.CreatePositionStaticBox("Work Position")
       mBox, self.mX, self.mY, self.mZ = self.CreatePositionStaticBox("Machine Position")
-      sBox, self.sConncted, self.sState = self.CreateStatusStaticBox("Status")
+      sBox, self.sComPort, self.sComBaud, self.sState, self.sPrcntStatus = \
+         self.CreateStatusStaticBox("Status")
 
       gridSizer.Add(wBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
       gridSizer.Add(mBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
@@ -107,30 +129,69 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
-      # adata is expected to be an array of strings as follows
-      # statusData[0] : Machine state
-      # statusData[1] : Machine X
-      # statusData[2] : Machine Y
-      # statusData[3] : Machine Z
-      # statusData[4] : Work X
-      # statusData[5] : Work Y
-      # statusData[6] : Work Z
       if statusData is not None:
-         self.mX.SetLabel(statusData[1])
-         self.mY.SetLabel(statusData[2])
-         self.mZ.SetLabel(statusData[3])
-         self.wX.SetLabel(statusData[4])
-         self.wY.SetLabel(statusData[5])
-         self.wZ.SetLabel(statusData[6])
-         self.sState.SetLabel(statusData[0])
+
+         stat = statusData.get('stat')
+         if stat is not None:
+            self.sState.SetLabel(stat)
+
+         prcnt = statusData.get('prcnt')
+         if prcnt is not None:
+            self.sPrcntStatus.SetLabel(prcnt)
+
+         '''
+         rtime = statusData.get('rtime')
+         if rtime is not None:
+            self.sRunTime.SetLabel(rtime)
+         '''
+
+         x = statusData.get('posx')
+         if x is not None:
+            self.mX.SetLabel(x)
+
+         y = statusData.get('posy')
+         if y is not None:
+            self.mY.SetLabel(y)
+
+         z = statusData.get('posz')
+         if z is not None:
+            self.mZ.SetLabel(z)
+
+         if 'tinyG' in statusData.get('device', 'grbl'):
+            x = statusData.get('posx')
+            if x is not None:
+               self.wX.SetLabel(x)
+
+            y = statusData.get('posy')
+            if y is not None:
+               self.wY.SetLabel(y)
+
+            z = statusData.get('posz')
+            if z is not None:
+               self.wZ.SetLabel(z)
+         else:
+            x = statusData.get('wposx')
+            if x is not None:
+               self.wX.SetLabel(x)
+
+            y = statusData.get('wposy')
+            if y is not None:
+               self.wY.SetLabel(y)
+
+            z = statusData.get('wposz')
+            if z is not None:
+               self.wZ.SetLabel(z)
+
          #self.sSpindle.SetLabel("?")
 
       if stateData.serialPortIsOpen:
          self.refreshButton.Enable()
-         self.sConncted.SetLabel("Yes")
+         self.sComPort.SetLabel(stateData.serialPort)
+         self.sComBaud.SetLabel(stateData.serialPortBaud)
       else:
          self.refreshButton.Disable()
-         self.sConncted.SetLabel("No")
+         self.sComPort.SetLabel("None")
+         self.sComBaud.SetLabel("None")
 
       self.Update()
 
@@ -173,15 +234,21 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
    def CreateStatusStaticBox(self, label):
       # Position static box -------------------------------------------------
       positionBoxSizer = self.CreateStaticBox(label)
-      flexGridSizer = wx.FlexGridSizer(3,2)
+      flexGridSizer = wx.FlexGridSizer(4,2)
       positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
 
       # Add Connected Status
-      connectedText = wx.StaticText(self, label="Connected:")
-      connectedStatus = wx.StaticText(self, label="No")
-      connectedStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(connectedText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(connectedStatus, 0, flag=wx.ALIGN_LEFT)
+      linkPortText = wx.StaticText(self, label="Link port:")
+      linkPortStatus = wx.StaticText(self, label="None")
+      linkPortStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(linkPortText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(linkPortStatus, 0, flag=wx.ALIGN_LEFT)
+
+      linkBaudText = wx.StaticText(self, label="Link baud:")
+      linkBaudStatus = wx.StaticText(self, label="None")
+      linkBaudStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(linkBaudText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(linkBaudStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add Running Status
       runningText = wx.StaticText(self, label="State:")
@@ -190,14 +257,23 @@ class gcsMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(runningText, 0, flag=wx.ALIGN_LEFT)
       flexGridSizer.Add(runningStatus, 0, flag=wx.ALIGN_LEFT)
 
-      # Add Spindle Status
-      #spindleText = wx.StaticText(self, label="Spindle:")
-      #spindleStatus = wx.StaticText(self, label=gOffString)
-      #spindleStatus.SetForegroundColour(self.machineDataColor)
-      #flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_LEFT)
-      #flexGridSizer.Add(spindleStatus, 0, flag=wx.ALIGN_LEFT)
+      # Add Percent sent status
+      prcntText = wx.StaticText(self, label="%Lines sent: ")
+      prcntStatus = wx.StaticText(self, label="0.00%")
+      prcntStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(prcntText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(prcntStatus, 0, flag=wx.ALIGN_LEFT)
 
-      return positionBoxSizer, connectedStatus, runningStatus#, spindleStatus
+      # Add run time
+      # TODO: make this work... missing controller done signal.
+      #runTimeText = wx.StaticText(self, label="Run time:")
+      #runTimeStatus = wx.StaticText(self, label="n/a")
+      #runTimeStatus.SetForegroundColour(self.machineDataColor)
+      #flexGridSizer.Add(runTimeText, 0, flag=wx.ALIGN_LEFT)
+      #flexGridSizer.Add(runTimeStatus, 0, flag=wx.ALIGN_LEFT)
+
+      return (positionBoxSizer, linkPortStatus, linkBaudStatus, runningStatus,
+         prcntStatus) #, runTimeStatus)
 
    def OnRefresh(self, e):
       self.mainWindow.GetMachineStatus()

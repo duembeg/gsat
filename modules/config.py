@@ -1,5 +1,26 @@
 """----------------------------------------------------------------------------
    config.py
+
+   Copyright (C) 2013-2014 Wilhelm Duembeg
+
+   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+   Grbl like GCODE interpreters. With features similar to software debuggers.
+   Features such as breakpoint, change current program counter, inspection
+   and modification of variables.
+
+   gsat is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 2 of the License, or
+   (at your option) any later version.
+
+   gsat is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+
 ----------------------------------------------------------------------------"""
 
 import wx
@@ -26,11 +47,12 @@ gOffString = "Off"
 # Grbl commands
 # --------------------------------------------------------------------------
 gGRBL_CMD_GET_STATUS          = "?\n"
-gGRBL_CMD_RESET_TO_ZERO_POS   = "G92 X0 Y0 Z0\n"
-gGRBL_CMD_RESET_TO_VAL_POS    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_GO_ZERO             = "G00 X0 Y0 Z0\n"
-gGRBL_CMD_GO_POS              = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_EXE_HOME_CYCLE      = "G28 X0 Y0 Z0\n"
+gGRBL_CMD_RESET_TO_VAL        = "G92 <AXIS><VAL>\n"
+gGRBL_CMD_ALL_RESET_TO_VAL    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gGRBL_CMD_GO_TO_POS           = "G00 <AXIS><VAL>\n"
+gGRBL_CMD_ALL_GO_TO_POS       = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gGRBL_CMD_GO_HOME             = "G28.2 <AXIS>0\n"
+gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
 gGRBL_CMD_JOG_X               = "G00 X<VAL>\n"
 gGRBL_CMD_JOG_Y               = "G00 Y<VAL>\n"
 gGRBL_CMD_JOG_Z               = "G00 Z<VAL>\n"
@@ -38,43 +60,56 @@ gGRBL_CMD_SPINDLE_ON          = "M3\n"
 gGRBL_CMD_SPINDLE_OFF         = "M5\n"
 
 # --------------------------------------------------------------------------
-# state machine states
+# state machine states and transition
 # --------------------------------------------------------------------------
 
 """ ------------------------------------------------------------------------
 
 STATE TABLE::
-state    | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  |
------------------------------------------------------------------------
-IDLE     | RUN     | IGNORE  | STEP    | IGNORE  | IGNORE  | IGNORE  |
------------------------------------------------------------------------
-RUN      | IGNORE  | IDLE    | IGNORE  | BREAK   | IDLE    | IDLE    |
------------------------------------------------------------------------
-STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    |
------------------------------------------------------------------------
-BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  |
-----------------------------------------------------------------------
-USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    |
------------------------------------------------------------------------
+state    | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  | ABORT   |
+--------------------------------------------------------------------------------
+ABORT    | IGNORED | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  |
+---------------------------------------------------------------------------------
+IDLE     | RUN     | IGNORE  | STEP    | IGNORE  | IGNORE  | IGNORE  | ABORT   |
+---------------------------------------------------------------------------------
+RUN      | IGNORE  | IDLE    | IGNORE  | BREAK   | IDLE    | IDLE    | ABORT   |
+---------------------------------------------------------------------------------
+STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
+---------------------------------------------------------------------------------
+BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  | ABORT   |
+---------------------------------------------------------------------------------
+USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
+---------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------ """
 
+gSTATE_ABORT  = 001
 gSTATE_IDLE  =  100
 gSTATE_RUN   =  200
 gSTATE_STEP  =  300
 gSTATE_BREAK =  400
 
+'''
+Notes:
+Abort state is a special state, where the serial thread is waiting to be
+terminated, there will not be any state transition until serial port is
+open again and will start in IDLE state.
+
+'''
 # --------------------------------------------------------------------------
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
 # EVENT ID             EVENT CODE
+gEV_CMD_NULL         = 0100
 gEV_CMD_EXIT         = 1000
 gEV_CMD_RUN          = 1030
 gEV_CMD_STEP         = 1040
 gEV_CMD_STOP         = 1050
 gEV_CMD_SEND         = 1060
+gEV_CMD_SEND_W_ACK   = 1062
 gEV_CMD_AUTO_STATUS  = 1070
 
+gEV_NULL             = 0100
 gEV_ABORT            = 2000
 gEV_RUN_END          = 2010
 gEV_STEP_END         = 2020
@@ -83,12 +118,13 @@ gEV_DATA_IN          = 2040
 gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
+gEV_SER_RXDATA       = 2080
 
 """----------------------------------------------------------------------------
-   gcsStateData:
+   gsatStateData:
    provides various data information
 ----------------------------------------------------------------------------"""
-class gcsStateData():
+class gsatStateData():
    def __init__(self):
 
       # state status
@@ -113,10 +149,10 @@ class gcsStateData():
       self.gcodeFileLines = []
 
 """----------------------------------------------------------------------------
-   gcsStateData:
+   gsatStateData:
    provides various data information
 ----------------------------------------------------------------------------"""
-class gcsConfigData():
+class gsatConfigData():
    def __init__(self):
       # -----------------------------------------------------------------------
       # config keys
@@ -213,6 +249,7 @@ class gcsConfigData():
 
       # CV2 keys
          '/cv2/Enable'                       :(True , False),
+         '/cv2/Crosshair'                    :(True , True),
          '/cv2/CaptureDevice'                :(True , 0),
          '/cv2/CapturePeriod'                :(True , 100),
          '/cv2/CaptureWidth'                 :(True , 640),
@@ -277,3 +314,5 @@ class threadEvent():
    def __init__(self, event_id, data):
       self.event_id = event_id
       self.data = data
+
+
