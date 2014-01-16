@@ -265,6 +265,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(prcntStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add run time
+      # TODO: make this work... missing controller done signal.
       #runTimeText = wx.StaticText(self, label="Run time:")
       #runTimeStatus = wx.StaticText(self, label="n/a")
       #runTimeStatus.SetForegroundColour(self.machineDataColor)

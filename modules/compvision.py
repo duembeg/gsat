@@ -296,7 +296,11 @@ class gsatCV2Panel(wx.ScrolledWindow):
       sx, sy = self.scrollPanel.GetSize()
       sux, suy = self.scrollPanel.GetScrollPixelsPerUnit()
 
-      self.scrollPanel.Scroll((x-sx)/2/sux, (y-sy)/2/suy)
+      try:
+         self.scrollPanel.Scroll((x-sx)/2/sux, (y-sy)/2/suy)
+
+      except:
+         pass
 
    def ProcessThreadQueue(self):
       goitem = False

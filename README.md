@@ -41,12 +41,12 @@ Development Environment
     sudo apt-get install python-numpy python-opencv
     ```
 
-* OS X (32/64)
- * for installation instructions, follow the links above to download and install each dependency.
+* [OS X (32/64)] (http://www.apple.com/osx/)
+ * For installation instructions, follow the links above to download and install each dependency.
  * OpenCV has not been tested.
 
-* Windows 7 (32/64)
- * for installation instructions, follow the links above to download and install each dependency.
+* [Windows 7 (32/64)] (http://windows.microsoft.com/)
+ * For installation instructions, follow the links above to download and install each dependency.
 
 ### Editors
 * [Geany] (http://www.geany.org/)

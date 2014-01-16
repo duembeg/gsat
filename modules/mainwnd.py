@@ -1698,7 +1698,7 @@ class gsatMainWindow(wx.Frame):
 
       elif self.cmdLineOptions.verbose:
          print "gsatMainWindow ERROR: attempt serial write with port closed!!"
-         
+
    def Stop(self):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STOP, None))
