@@ -18,7 +18,7 @@ Development Environment
 * [pySerial 2.5](http://pyserial.sourceforge.net/)
 * [wxPython 2.8](http://www.wxpython.org/)
 
-### Additional dependencies if enabling Computer Vision
+### Additional dependencies if enabling OpenCV
 * [OpenCV 2.4.1] (http://opencv.org/)
 * [numpy 1.6.1] (http://pypi.python.org/pypi/numpy)
 
@@ -41,7 +41,7 @@ Development Environment
     sudo apt-get install python-numpy python-opencv
     ```
 
-* [OS X (32/64)] (http://www.apple.com/osx/)
+* [Mac OS X (32/64)] (http://www.apple.com/osx/)
  * For installation instructions, follow the links above to download and install each dependency.
  * OpenCV has not been tested.
 
@@ -63,7 +63,7 @@ Changelog
 1.4.0
 * Added TinyG support (text mode),
    * TODO: Create dedicated class/interfaces for TinyG and grbl, including settings dialog, status window, etc.
-* Added support for OS X, tested with TinyG and grbl.
+* Added support for Mac OS X, tested with TinyG and grbl.
 * Improved serial communication with dedicated serial RX thread.
 * Improved serial exception handling.
 * Updated G-Code message dialog, now one can continue from dialog.
