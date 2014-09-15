@@ -66,7 +66,7 @@ gReErrorAck = [
 ----------------------------------------------------------------------------"""
 class gsatProgramExecuteThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options):
+   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, device_id):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
@@ -78,6 +78,7 @@ class gsatProgramExecuteThread(threading.Thread):
       self.progExecSerialRxInQueue = Queue.Queue()
       self.progExecSerialRxOutQueue = Queue.Queue()
       self.cmdLineOptions = cmd_line_options
+      self.deviceID = device_id
 
       self.gcodeDataLines = []
       self.breakPointSet = set()
@@ -419,8 +420,11 @@ class gsatProgramExecuteThread(threading.Thread):
       self.progExecSerialRxInQueue, self.cmdLineOptions)
 
       # init communication with device (helps to force tinyG into txt mode
-      self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
-      self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+      if self.deviceID == gc.gDEV_TINYG2 or self.deviceID == gc.gDEV_TINYG:
+         self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
+      elif self.deviceID == gc.gDEV_GRBL:
+         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
 
       while(self.endThread != True):
 

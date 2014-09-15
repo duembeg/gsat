@@ -31,6 +31,25 @@ from wx.lib.agw import floatspin as fs
 
 import modules.config as gc
 
+
+"""----------------------------------------------------------------------------
+   GetDeviceID:
+   translate string to ID.
+----------------------------------------------------------------------------"""
+def GetDeviceID(deviceStr):
+      deviceID = gc.gDEV_NONE
+
+      if "Grbl" in deviceStr:
+         deviceID = gc.gDEV_GRBL
+
+      if "TinyG" in deviceStr:
+         deviceID = gc.gDEV_TINYG
+
+      if "TinyG2" in deviceStr:
+         deviceID = gc.gDEV_TINYG2
+
+      return deviceID
+
 """----------------------------------------------------------------------------
    gsatMachineSettingsPanel:
    Machine settings.
@@ -48,7 +67,18 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       #self.FitInside()
 
    def InitUI(self):
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      vBoxSizerRoot = wx.BoxSizer(wx.VERTICAL)
+
+      # Add device type slect
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      st = wx.StaticText(self, label="Device:")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      self.deviceComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Device'),
+         choices=gc.gDEV_LIST, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
+      hBoxSizer.Add(self.deviceComboBox, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT, border=20)
 
       # Add check box
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -57,7 +87,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.cb.SetToolTip(
          wx.ToolTip("Send '?' Status request (experimental)"))
       hBoxSizer.Add(self.cb, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
-      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.LEFT, border=20)
+
+      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT, border=20)
 
       # Add spin ctrl
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -70,12 +101,27 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh Period (milliseconds)")
       hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
 
-      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
-      self.SetSizer(vBoxSizer)
+      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      # add edit control for init script
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+
+      st = wx.StaticText(self, wx.ID_ANY, "Init script:")
+      vBoxSizer.Add(st, 0, flag=wx.LEFT|wx.RIGHT|wx.TOP|wx.ALIGN_CENTER_VERTICAL, border=10)
+
+      self.tc = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
+      self.tc.SetValue(self.configData.Get('/machine/InitScript'))
+      vBoxSizer.Add(self.tc, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
+
+      vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      self.SetSizer(vBoxSizerRoot)
 
    def UpdatConfigData(self):
+      self.configData.Set('/machine/Device', self.deviceComboBox.GetValue())
       self.configData.Set('/machine/AutoRefresh', self.cb.GetValue())
       self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
+      self.configData.Set('/machine/InitScript', self.tc.GetValue())
 
 """----------------------------------------------------------------------------
    gsatMachineStatusPanel:
@@ -104,7 +150,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Static Boxes ------------------------------------------------------
       wBox, self.wX, self.wY, self.wZ = self.CreatePositionStaticBox("Work Position")
       mBox, self.mX, self.mY, self.mZ = self.CreatePositionStaticBox("Machine Position")
-      sBox, self.sComPort, self.sComBaud, self.sState, self.sPrcntStatus = \
+      sBox, self.sDev, self.sComPort, self.sComBaud, self.sState, self.sPrcntStatus = \
          self.CreateStatusStaticBox("Status")
 
       gridSizer.Add(wBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
@@ -157,7 +203,20 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          if z is not None:
             self.mZ.SetLabel(z)
 
-         if 'tinyG' in statusData.get('device', 'grbl'):
+         if self.stateData.deviceID == gc.gDEV_TINYG2:
+            x = statusData.get('mpox')
+            if x is not None:
+               self.wX.SetLabel(x)
+
+            y = statusData.get('mpoy')
+            if y is not None:
+               self.wY.SetLabel(y)
+
+            z = statusData.get('mpoz')
+            if z is not None:
+               self.wZ.SetLabel(z)
+
+         elif self.stateData.deviceID == gc.gDEV_TINYG :
             x = statusData.get('posx')
             if x is not None:
                self.wX.SetLabel(x)
@@ -169,6 +228,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             z = statusData.get('posz')
             if z is not None:
                self.wZ.SetLabel(z)
+
          else:
             x = statusData.get('wposx')
             if x is not None:
@@ -192,6 +252,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          self.refreshButton.Disable()
          self.sComPort.SetLabel("None")
          self.sComBaud.SetLabel("None")
+
+      self.sDev.SetLabel(self.configData.Get('/machine/Device'))
 
       self.Update()
 
@@ -237,6 +299,13 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer = wx.FlexGridSizer(4,2)
       positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
 
+      # Add Device Status
+      deviceText = wx.StaticText(self, label="Device:")
+      deviceStatus = wx.StaticText(self, label=self.configData.Get('/machine/Device'))
+      deviceStatus.SetForegroundColour(self.machineDataColor)
+      flexGridSizer.Add(deviceText, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(deviceStatus, 0, flag=wx.ALIGN_LEFT)
+
       # Add Connected Status
       linkPortText = wx.StaticText(self, label="Link port:")
       linkPortStatus = wx.StaticText(self, label="None")
@@ -258,7 +327,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(runningStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add Percent sent status
-      prcntText = wx.StaticText(self, label="%Lines sent: ")
+      prcntText = wx.StaticText(self, label="PC file pos: ")
       prcntStatus = wx.StaticText(self, label="0.00%")
       prcntStatus.SetForegroundColour(self.machineDataColor)
       flexGridSizer.Add(prcntText, 0, flag=wx.ALIGN_LEFT)
@@ -272,7 +341,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       #flexGridSizer.Add(runTimeText, 0, flag=wx.ALIGN_LEFT)
       #flexGridSizer.Add(runTimeStatus, 0, flag=wx.ALIGN_LEFT)
 
-      return (positionBoxSizer, linkPortStatus, linkBaudStatus, runningStatus,
+      return (positionBoxSizer, deviceStatus, linkPortStatus, linkBaudStatus, runningStatus,
          prcntStatus) #, runTimeStatus)
 
    def OnRefresh(self, e):
@@ -280,4 +349,5 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
    def UpdateSettings(self, config_data):
       self.configData = config_data
+      self.UpdateUI(self.stateData)
       #self.InitConfig()

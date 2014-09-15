@@ -368,7 +368,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.stateData = stateData
 
       if statusData is not None and self.useMachineWorkPosition:
-         if 'tinyG' in statusData.get('device', 'grbl'):
+         if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
             x = statusData.get('posx')
             if x is not None:
                self.jX.SetValue(x)
@@ -688,30 +688,30 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.mainWindow.SerialWriteWaitForAck(cmdString.replace("<VAL>",fAxisStrPos))
 
    def OnXPos(self, e):
-      self.AxisJog(self.jX, gc.gGRBL_CMD_JOG_X, opAdd=True)
+      self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=True)
 
    def OnXNeg(self, e):
-      self.AxisJog(self.jX, gc.gGRBL_CMD_JOG_X, opAdd=False)
+      self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=False)
 
    def OnYPos(self, e):
-      self.AxisJog(self.jY, gc.gGRBL_CMD_JOG_Y, opAdd=True)
+      self.AxisJog(self.jY, gc.gDEVICE_CMD_JOG_Y, opAdd=True)
 
    def OnYNeg(self, e):
-      self.AxisJog(self.jY, gc.gGRBL_CMD_JOG_Y, opAdd=False)
+      self.AxisJog(self.jY, gc.gDEVICE_CMD_JOG_Y, opAdd=False)
 
    def OnZPos(self, e):
-      self.AxisJog(self.jZ, gc.gGRBL_CMD_JOG_Z, opAdd=True)
+      self.AxisJog(self.jZ, gc.gDEVICE_CMD_JOG_Z, opAdd=True)
 
    def OnZNeg(self, e):
-      self.AxisJog(self.jZ, gc.gGRBL_CMD_JOG_Z, opAdd=False)
+      self.AxisJog(self.jZ, gc.gDEVICE_CMD_JOG_Z, opAdd=False)
 
    def OnSpindleOn(self, e):
       self.jSpindle.SetValue(gc.gOnString)
-      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_ON)
+      self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_ON)
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
-      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_OFF)
+      self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_OFF)
 
    def OnUseMachineWorkPosition(self, e):
       self.useMachineWorkPosition = e.IsChecked()
@@ -753,26 +753,39 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.mainWindow.SerialWriteWaitForAck(cmd)
 
    def OnResetToZero(self, e):
-      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
+      else:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
 
    def OnGoToZero(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gGRBL_CMD_ALL_GO_TO_POS, gc.gGRBL_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      self.OnJogCmd(
-         self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         self.OnJogCmd(
+            self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+            gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
+      else:
+         self.OnJogCmd(
+            self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+            gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
 
    def OnGoToJogVal(self, e):
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         gc.gGRBL_CMD_ALL_GO_TO_POS, gc.gGRBL_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnGoHome(self, e):
-      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gGRBL_CMD_ALL_GO_HOME, gc.gGRBL_CMD_GO_HOME)
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gTINYG_CMD_ALL_GO_HOME, gc.gTINYG_CMD_GO_HOME)
+      else:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gGRBL_CMD_ALL_GO_HOME, gc.gGRBL_CMD_GO_HOME)
 
    def OnPushStack(self, e):
       xVal = self.jX.GetValue()

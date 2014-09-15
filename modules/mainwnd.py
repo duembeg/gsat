@@ -37,17 +37,18 @@ __authors__     = ['Wilhelm Duembeg']
 __author__      = ','.join(__authors__)
 __credits__     = []
 __copyright__   = 'Copyright (c) 2013-2014'
-__license__     = 'GPL v2'
+__license__     = 'GPL v2, Copyright (c) 2013-2014'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
 # maintenance information
 __maintainer__  = 'Wilhelm Duembeg'
 __email__       = 'duembeg.github@gmail.com'
+__website__     = 'https://github.com/duembeg/gsat'
 
 # define version information
 __requires__        = ['pySerial', 'wxPython']
-__version_info__    = (1, 4, 0)
-__version__         = 'v%i.%i.%02i' % __version_info__
+__version_info__    = (1, 4, 1)
+__version__         = 'v%i.%i.%i' % __version_info__
 __revision__        = __version__
 
 
@@ -129,6 +130,8 @@ gID_TIMER_MACHINE_REFRESH        = wx.NewId()
 # regular expressions
 # -----------------------------------------------------------------------------
 
+# Grbl
+
 # grbl version, example "Grbl 0.8c ['$' for help]"
 gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
@@ -138,6 +141,10 @@ gReMachineStatus = re.compile(r'pos', re.I)
 
 # GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
 gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
+
+#TinyG/TinyG2
+# TinyG detect, example "tinyg [mm] ok>"
+gReTinyGDetect = re.compile(r'tinyg\s+(.*)\s+ok>')
 
 # tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
 gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
@@ -149,6 +156,13 @@ gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
 #Machine state:       Stop
 gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
 gReTinyGStateStatus = re.compile(r'(\w*)\s+state:\s+(\w*).*')
+
+# tinyG query response example:
+#X machine posn:      30.408 mm
+#Y machine posn:      20.701 mm
+#Z machine posn:      10.000 mm
+#Machine state:       Stop
+gReTinyG2PosStatus = re.compile(r'(\w*)\s+machine posn:\s+(-?\d+\.?\d*)\s+.*')
 
 
 """----------------------------------------------------------------------------
@@ -439,6 +453,21 @@ class gsatMainWindow(wx.Frame):
       self.linkBaud = self.configData.Get('/link/Baud')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
+      self.deviceName = self.configData.Get('/machine/Device')
+      self.stateData.deviceID = mc.GetDeviceID(self.configData.Get('/machine/Device'))
+
+      if self.cmdLineOptions.verbose:
+         print "Init config values..."
+         print "  saveBackupFile:           ", self.saveBackupFile
+         print "  maxFileHistory:           ", self.maxFileHistory
+         print "  roundInch2mm:             ", self.roundInch2mm
+         print "  roundmm2Inch:             ", self.roundmm2Inch
+         print "  linkPort:                 ", self.linkPort
+         print "  linkBaud:                 ", self.linkBaud
+         print "  machineAutoRefresh:       ", self.machineAutoRefresh
+         print "  machineAutoRefreshPeriod: ", self.machineAutoRefreshPeriod
+         print "  deviceName:               ", self.deviceName
+         print "  deviceID:                 ", self.stateData.deviceID
 
    def InitUI(self):
       """ Init main UI """
@@ -1208,7 +1237,7 @@ class gsatMainWindow(wx.Frame):
 
          # re open serial port if open
          if self.stateData.serialPortIsOpen and \
-            (self.stateData.serialPort != self.linkPort or self.stateData.serialBaud != self.linkBaud):
+            (self.stateData.serialPort != self.linkPort or self.stateData.serialPortBaud != self.linkBaud):
 
             self.SerialClose()
             self.SerialOpen(self.linkPort, self.linkBaud)
@@ -1523,15 +1552,15 @@ class gsatMainWindow(wx.Frame):
       aboutDialog = wx.AboutDialogInfo()
       aboutDialog.Name = __appname__
       aboutDialog.Version = __version__
-      aboutDialog.Copyright = __copyright__
+      #aboutDialog.Copyright = __copyright__
       if os.name == 'nt':
          aboutDialog.Description = wordwrap(__description__, 520, wx.ClientDC(self))
       else:
          aboutDialog.Description = __description__
-      aboutDialog.WebSite = ("https://github.com/duembeg/gsat", "gsat home page")
+      aboutDialog.WebSite = (__website__, "gsat home page")
       #aboutDialog.Developers = __authors__
 
-      aboutDialog.License = __license_str__
+      aboutDialog.SetLicense(__license_str__)
 
       # Then we call wx.AboutBox giving it that info object
       wx.AboutBox(aboutDialog)
@@ -1582,12 +1611,15 @@ class gsatMainWindow(wx.Frame):
          self.machineAutoRefreshTimer.Stop()
 
    def OnAutoRefreshTimerAction(self, e):
-      if self.stateData.grblDetected and (self.stateData.swState == gc.gSTATE_IDLE or \
+      if self.stateData.deviceDetected and (self.stateData.swState == gc.gSTATE_IDLE or \
          self.stateData.swState == gc.gSTATE_BREAK):
 
          # only do this if we are in IDLE or BREAK, it will cause probelms
-         # if status requets are sent randomly wile running program
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+         # if status request are sent randomly wile running program
+         if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
+            self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
+         elif self.stateData.deviceID == gc.gDEV_GRBL:
+            self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
 
    def GetSerialPortList(self):
       spList = []
@@ -1651,7 +1683,7 @@ class gsatMainWindow(wx.Frame):
 
          if self.serPort.isOpen():
             self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
-               self.mainWndInQueue, self.cmdLineOptions)
+               self.mainWndInQueue, self.cmdLineOptions, self.stateData.deviceID)
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
@@ -1676,7 +1708,7 @@ class gsatMainWindow(wx.Frame):
       self.serPort.close()
 
       self.stateData.serialPortIsOpen = False
-      self.stateData.grblDetected = False
+      self.stateData.deviceDetected = False
       self.AutoRefreshTimerStop()
       self.UpdateUI()
 
@@ -1726,7 +1758,10 @@ class gsatMainWindow(wx.Frame):
 
    def GetMachineStatus(self):
       if self.stateData.serialPortIsOpen:
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+         if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
+            self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
+         elif self.stateData.deviceID == gc.gDEV_GRBL:
+            self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
 
    def LoadLayoutData(self, key, update=True):
       dimesnionsData = layoutData = self.configFile.Read(key+"/Dimensions")
@@ -1960,59 +1995,67 @@ class gsatMainWindow(wx.Frame):
       # lest try to see if we have any other good data
       # -----------------------------------------------------------------
 
-      # Grbl version, also useful to detect grbl connect
-      rematch = gReGrblVersion.match(teData)
-      if rematch is not None:
-         if self.stateData.swState == gc.gSTATE_RUN:
-            # something went really bad we shouldn't see this while-in
-            # RUN state
-            self.Stop()
-            dlg = wx.MessageDialog(self,
-               "Detected Grbl reset string while-in RUN.\n" \
-               "Something went terribly wrong, STOPPING!!\n", "",
-               wx.OK|wx.ICON_STOP)
-            result = dlg.ShowModal()
-            dlg.Destroy()
-         else:
-            self.stateData.grblDetected = True
-            self.GetMachineStatus()
-         self.UpdateUI()
+      if self.stateData.deviceID == gc.gDEV_GRBL:
+         # Grbl version, also useful to detect grbl connect
+         rematch = gReGrblVersion.match(teData)
+         if rematch is not None:
+            if self.stateData.swState == gc.gSTATE_RUN:
+               # something went really bad we shouldn't see this while-in
+               # RUN state
+               self.Stop()
+               dlg = wx.MessageDialog(self,
+                  "Detected Grbl reset string while-in RUN.\n" \
+                  "Something went terribly wrong, STOPPING!!\n", "",
+                  wx.OK|wx.ICON_STOP)
+               result = dlg.ShowModal()
+               dlg.Destroy()
+            elif self.stateData.deviceDetected == False:
+               self.stateData.deviceDetected = True
+               self.GetMachineStatus()
+               self.RunDeviceInitScript()
+            self.UpdateUI()
 
-      # skip if there is no "pos" data
-      #if gReMachineStatus.search(teData):
-      # GRBL status data
-      rematch = gReGRBLMachineStatus.match(teData)
-      # data is expected to be an array of strings as follows
-      # statusData[0] : Machine state
-      # statusData[1] : Machine X
-      # statusData[2] : Machine Y
-      # statusData[3] : Machine Z
-      # statusData[4] : Work X
-      # statusData[5] : Work Y
-      # statusData[6] : Work Z
+         # skip if there is no "pos" data
+         #if gReMachineStatus.search(teData):
+         # GRBL status data
+         rematch = gReGRBLMachineStatus.match(teData)
+         # data is expected to be an array of strings as follows
+         # statusData[0] : Machine state
+         # statusData[1] : Machine X
+         # statusData[2] : Machine Y
+         # statusData[3] : Machine Z
+         # statusData[4] : Work X
+         # statusData[5] : Work Y
+         # statusData[6] : Work Z
 
-      if rematch is not None:
-         statusData = rematch.groups()
-         machineStatus = dict()
-         machineStatus['device'] = 'grbl'
-         machineStatus['stat'] = statusData[0]
-         machineStatus['posx'] = statusData[1]
-         machineStatus['posy'] = statusData[2]
-         machineStatus['posz'] = statusData[3]
-         machineStatus['wposx'] = statusData[4]
-         machineStatus['wposy'] = statusData[5]
-         machineStatus['wposz'] = statusData[6]
+         if rematch is not None:
+            statusData = rematch.groups()
+            machineStatus = dict()
+            machineStatus['stat'] = statusData[0]
+            machineStatus['posx'] = statusData[1]
+            machineStatus['posy'] = statusData[2]
+            machineStatus['posz'] = statusData[3]
+            machineStatus['wposx'] = statusData[4]
+            machineStatus['wposy'] = statusData[5]
+            machineStatus['wposz'] = statusData[6]
 
-         if self.cmdLineOptions.vverbose:
-            print "gsatMainWindow re GRBL status match %s" % str(statusData)
-            print "gsatMainWindow str match from %s" % str(teData.strip())
+            if self.cmdLineOptions.vverbose:
+               print "gsatMainWindow re GRBL status match %s" % str(statusData)
+               print "gsatMainWindow str match from %s" % str(teData.strip())
 
-         self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-         self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-         self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-         self.UpdateUI()
+            self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+            self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+            self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+            self.UpdateUI()
 
-      else:
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         if self.stateData.deviceDetected == False:
+            rematch = gReTinyGDetect.findall(teData)
+            if len(rematch) > 0:
+               self.stateData.deviceDetected = True
+               self.GetMachineStatus()
+               self.RunDeviceInitScript()
+            
          # tinyG verbose/status
          rematch = gReTinyGVerbose.findall(teData)
          if len(rematch) > 0:
@@ -2022,7 +2065,6 @@ class gsatMainWindow(wx.Frame):
                print "gsatMainWindow str match from %s" % str(teData)
 
             machineStatus = dict(rematch)
-            machineStatus['device'] = 'tinyG'
 
             status = machineStatus.get('stat')
             if status is not None:
@@ -2053,7 +2095,13 @@ class gsatMainWindow(wx.Frame):
             self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
             self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
          else:
-            rematch = gReTinyGPosStatus.findall(teData)
+            rematch = []
+
+            if self.stateData.deviceID == gc.gDEV_TINYG2:
+               rematch = gReTinyG2PosStatus.findall(teData)
+            elif self.stateData.deviceID == gc.gDEV_TINYG:
+               rematch = gReTinyGPosStatus.findall(teData)
+
             if len(rematch) > 0:
                if self.cmdLineOptions.vverbose:
                   print "gsatMainWindow re tinyG status match %s" % str(rematch)
@@ -2061,7 +2109,6 @@ class gsatMainWindow(wx.Frame):
 
                machineStatus = dict()
                machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
-               machineStatus['device'] = 'tinyG'
 
                self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
                self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
@@ -2074,9 +2121,22 @@ class gsatMainWindow(wx.Frame):
 
                   machineStatus = dict()
                   machineStatus["stat"] = rematch[0][1]
-                  machineStatus['device'] = 'tinyG'
 
                   self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
                   self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
                   self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
                   self.UpdateUI()
+
+   def RunDeviceInitScript (self):
+      # run init script
+      initScript = str(self.configData.Get('/machine/InitScript')).splitlines()
+
+      if len(initScript) > 0:
+         if self.cmdLineOptions.verbose:
+            print "gsatMainWindow queuing machine init script..."
+
+         self.outputText.AppendText("Queuing machine init script...\n")
+         for initLine in initScript:
+            initLine = "".join([initLine, "\n"])
+            self.SerialWrite(initLine)
+            self.outputText.AppendText(initLine)

@@ -44,20 +44,33 @@ gOnString = "On"
 gOffString = "Off"
 
 # --------------------------------------------------------------------------
+# device commands
+# --------------------------------------------------------------------------
+gDEVICE_CMD_GO_TO_POS         = "G00 <AXIS><VAL>\n"
+gDEVICE_CMD_ALL_GO_TO_POS     = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gDEVICE_CMD_JOG_X             = "G00 X<VAL>\n"
+gDEVICE_CMD_JOG_Y             = "G00 Y<VAL>\n"
+gDEVICE_CMD_JOG_Z             = "G00 Z<VAL>\n"
+gDEVICE_CMD_SPINDLE_ON        = "M3\n"
+gDEVICE_CMD_SPINDLE_OFF       = "M5\n"
+
+# --------------------------------------------------------------------------
+# TinyG/TinyG2 commands
+# --------------------------------------------------------------------------
+gTINYG_CMD_GET_STATUS         = "?\n"
+gTINYG_CMD_RESET_TO_VAL       = "G28.3 <AXIS><VAL>\n"
+gTINYG_CMD_ALL_RESET_TO_VAL   = "G28.3 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gTINYG_CMD_GO_HOME            = "G28.2 <AXIS>0\n"
+gTINYG_CMD_ALL_GO_HOME        = "G28.2 X0 Y0 Z0\n"
+
+# --------------------------------------------------------------------------
 # Grbl commands
 # --------------------------------------------------------------------------
 gGRBL_CMD_GET_STATUS          = "?\n"
 gGRBL_CMD_RESET_TO_VAL        = "G92 <AXIS><VAL>\n"
 gGRBL_CMD_ALL_RESET_TO_VAL    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_GO_TO_POS           = "G00 <AXIS><VAL>\n"
-gGRBL_CMD_ALL_GO_TO_POS       = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
 gGRBL_CMD_GO_HOME             = "G28.2 <AXIS>0\n"
 gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
-gGRBL_CMD_JOG_X               = "G00 X<VAL>\n"
-gGRBL_CMD_JOG_Y               = "G00 Y<VAL>\n"
-gGRBL_CMD_JOG_Z               = "G00 Z<VAL>\n"
-gGRBL_CMD_SPINDLE_ON          = "M3\n"
-gGRBL_CMD_SPINDLE_OFF         = "M5\n"
 
 # --------------------------------------------------------------------------
 # state machine states and transition
@@ -120,6 +133,16 @@ gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
 gEV_SER_RXDATA       = 2080
 
+# --------------------------------------------------------------------------
+# Device type
+# --------------------------------------------------------------------------
+gDEV_NONE            = 0000
+gDEV_GRBL            = 1000
+gDEV_TINYG           = 1100
+gDEV_TINYG2          = 1200
+
+gDEV_LIST = ["None", "Grbl", "TinyG", "TinyG2"]
+
 """----------------------------------------------------------------------------
    gsatStateData:
    provides various data information
@@ -135,6 +158,8 @@ class gsatStateData():
       self.serialPortIsOpen = False
       self.serialPort = ""
       self.serialPortBaud = "9600"
+      self.deviceID = 0
+      self.deviceDetected = False
 
       # machine status
       self.machineStatusAutoRefresh = False
@@ -212,8 +237,10 @@ class gsatConfigData():
          '/cli/CmdHistory'                   :(False, ""),
 
       # machine keys
+         '/machine/Device'                   :(False, "None"),
          '/machine/AutoRefresh'              :(True , False),
          '/machine/AutoRefreshPeriod'        :(True , 1000),
+         '/machine/InitScript'               :(False, ""),
 
       # jogging keys
          '/jogging/XYZReadOnly'              :(True , True),
