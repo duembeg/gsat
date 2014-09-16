@@ -145,32 +145,26 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
    def InitUI(self):
-      gridSizer = wx.GridSizer(2,2)
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # Add Static Boxes ------------------------------------------------------
-      wBox, self.wX, self.wY, self.wZ = self.CreatePositionStaticBox("Work Position")
-      mBox, self.mX, self.mY, self.mZ = self.CreatePositionStaticBox("Machine Position")
-      sBox, self.sDev, self.sComPort, self.sComBaud, self.sState, self.sPrcntStatus = \
-         self.CreateStatusStaticBox("Status")
+      droBox = self.CreateDroBox()
+      statusBox = self.CreateStatusStaticBox()
 
-      gridSizer.Add(wBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
-      gridSizer.Add(mBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
-      gridSizer.Add(sBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
+      vBoxSizer.Add(droBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
+      vBoxSizer.Add(statusBox, 0, flag=wx.ALL|wx.EXPAND, border=5)
 
       # Add Buttons -----------------------------------------------------------
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
       self.refreshButton = wx.Button(self, wx.ID_REFRESH)
       self.refreshButton.SetToolTip(
          wx.ToolTip("Refresh machine status"))
       self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
-      vBoxSizer.Add(self.refreshButton, 0, flag=wx.TOP, border=5)
       self.refreshButton.Disable()
 
-      gridSizer.Add(vBoxSizer, 0, flag=wx.EXPAND|wx.ALIGN_LEFT|wx.ALL, border=5)
-
+      vBoxSizer.Add(self.refreshButton, 0, flag=wx.TOP, border=10)
 
       # Finish up init UI
-      self.SetSizer(gridSizer)
+      self.SetSizer(vBoxSizer)
       self.Layout()
 
    def UpdateUI(self, stateData, statusData=None):
@@ -179,11 +173,11 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
          stat = statusData.get('stat')
          if stat is not None:
-            self.sState.SetLabel(stat)
+            self.runStatus.SetLabel(stat)
 
          prcnt = statusData.get('prcnt')
          if prcnt is not None:
-            self.sPrcntStatus.SetLabel(prcnt)
+            self.prcntStatus.SetLabel(prcnt)
 
          '''
          rtime = statusData.get('rtime')
@@ -191,147 +185,157 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             self.sRunTime.SetLabel(rtime)
          '''
 
-         x = statusData.get('posx')
-         if x is not None:
-            self.mX.SetLabel(x)
-
-         y = statusData.get('posy')
-         if y is not None:
-            self.mY.SetLabel(y)
-
-         z = statusData.get('posz')
-         if z is not None:
-            self.mZ.SetLabel(z)
-
          if self.stateData.deviceID == gc.gDEV_TINYG2:
             x = statusData.get('mpox')
             if x is not None:
-               self.wX.SetLabel(x)
+               self.xPos.SetValue(x)
 
             y = statusData.get('mpoy')
             if y is not None:
-               self.wY.SetLabel(y)
+               self.yPos.SetValue(y)
 
             z = statusData.get('mpoz')
             if z is not None:
-               self.wZ.SetLabel(z)
+               self.zPos.SetValue(z)
 
          elif self.stateData.deviceID == gc.gDEV_TINYG :
             x = statusData.get('posx')
             if x is not None:
-               self.wX.SetLabel(x)
+               self.xPos.SetValue(x)
 
             y = statusData.get('posy')
             if y is not None:
-               self.wY.SetLabel(y)
+               self.yPos.SetValue(y)
 
             z = statusData.get('posz')
             if z is not None:
-               self.wZ.SetLabel(z)
+               self.zPos.SetValue(z)
 
          else:
             x = statusData.get('wposx')
             if x is not None:
-               self.wX.SetLabel(x)
+               self.xPos.SetValue(x)
 
             y = statusData.get('wposy')
             if y is not None:
-               self.wY.SetLabel(y)
+               self.yPos.SetValue(y)
 
             z = statusData.get('wposz')
             if z is not None:
-               self.wZ.SetLabel(z)
+               self.zPos.SetValue(z)
 
          #self.sSpindle.SetLabel("?")
 
       if stateData.serialPortIsOpen:
          self.refreshButton.Enable()
-         self.sComPort.SetLabel(stateData.serialPort)
-         self.sComBaud.SetLabel(stateData.serialPortBaud)
+         self.linkPort.SetLabel(stateData.serialPort)
+         self.linkBaud.SetLabel(stateData.serialPortBaud)
       else:
          self.refreshButton.Disable()
-         self.sComPort.SetLabel("None")
-         self.sComBaud.SetLabel("None")
+         self.linkPort.SetLabel("None")
+         self.linkBaud.SetLabel("None")
 
-      self.sDev.SetLabel(self.configData.Get('/machine/Device'))
+      self.devStatus.SetLabel(self.configData.Get('/machine/Device'))
 
       self.Update()
 
    def CreateStaticBox(self, label):
-      # Static box -------------------------------------------------
       staticBox = wx.StaticBox(self, -1, label)
       staticBoxSizer = wx.StaticBoxSizer(staticBox, wx.VERTICAL)
 
       return staticBoxSizer
 
-   def CreatePositionStaticBox(self, label):
-      # Position static box -------------------------------------------------
-      positionBoxSizer = self.CreateStaticBox(label)
-      flexGridSizer = wx.FlexGridSizer(3,2)
+   def CreateDroBox(self):
+      positionBoxSizer = self.CreateStaticBox("DRO")
+      fGridSizer = wx.FlexGridSizer(3, 2)
+      positionBoxSizer.Add(fGridSizer, 0, flag=wx.EXPAND)
+
+      # set font properties
+      font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+
+      # X axis
+      st = wx.StaticText(self, label="X")
+      st.SetFont(font)
+      self.xPos = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
+      self.xPos.SetValue(gc.gZeroString)
+      self.xPos.SetFont(font)
+      fGridSizer.Add(st, 0, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      fGridSizer.Add(self.xPos, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
+
+      # Y axis
+      st = wx.StaticText(self, label="Y")
+      st.SetFont(font)
+      self.yPos = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
+      self.yPos.SetValue(gc.gZeroString)
+      self.yPos.SetFont(font)
+      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      fGridSizer.Add(self.yPos, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
+
+      #Z axis
+      st = wx.StaticText(self, label="Z")
+      st.SetFont(font)
+      self.zPos = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
+      self.zPos.SetValue(gc.gZeroString)
+      self.zPos.SetFont(font)
+      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      fGridSizer.Add(self.zPos, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
+
+      # finish init flex grid sizer
+      fGridSizer.AddGrowableCol(1, 1)
+
+      return positionBoxSizer
+
+   def CreateStatusStaticBox(self):
+      positionBoxSizer = self.CreateStaticBox("Status")
+      flexGridSizer = wx.FlexGridSizer(4,2,5,5)
       positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
 
-      # Add X pos
-      xText = wx.StaticText(self, label="X:")
-      xPosition = wx.StaticText(self, label=gc.gZeroString)
-      xPosition.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT)
-      flexGridSizer.Add(xPosition, 0, flag=wx.ALIGN_LEFT)
-
-      # Add Y Pos
-      yText = wx.StaticText(self, label="Y:")
-      yPosition = wx.StaticText(self, label=gc.gZeroString)
-      yPosition.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT)
-      flexGridSizer.Add(yPosition, 0, flag=wx.ALIGN_LEFT)
-
-      # Add Z Pos
-      zText = wx.StaticText(self, label="Z:")
-      zPosition = wx.StaticText(self, label=gc.gZeroString)
-      zPosition.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT)
-      flexGridSizer.Add(zPosition, 0, flag=wx.ALIGN_LEFT)
-
-      return positionBoxSizer, xPosition, yPosition, zPosition
-
-   def CreateStatusStaticBox(self, label):
-      # Position static box -------------------------------------------------
-      positionBoxSizer = self.CreateStaticBox(label)
-      flexGridSizer = wx.FlexGridSizer(4,2)
-      positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
+      # set font properties
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
 
       # Add Device Status
-      deviceText = wx.StaticText(self, label="Device:")
-      deviceStatus = wx.StaticText(self, label=self.configData.Get('/machine/Device'))
-      deviceStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(deviceText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(deviceStatus, 0, flag=wx.ALIGN_LEFT)
-
-      # Add Connected Status
-      linkPortText = wx.StaticText(self, label="Link port:")
-      linkPortStatus = wx.StaticText(self, label="None")
-      linkPortStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(linkPortText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(linkPortStatus, 0, flag=wx.ALIGN_LEFT)
-
-      linkBaudText = wx.StaticText(self, label="Link baud:")
-      linkBaudStatus = wx.StaticText(self, label="None")
-      linkBaudStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(linkBaudText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(linkBaudStatus, 0, flag=wx.ALIGN_LEFT)
+      st = wx.StaticText(self, label="Device name:")
+      st.SetFont(font)
+      self.devStatus = wx.StaticText(self, label=self.configData.Get('/machine/Device'))
+      self.devStatus.SetForegroundColour(self.machineDataColor)
+      self.devStatus.SetFont(font)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.devStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add Running Status
-      runningText = wx.StaticText(self, label="State:")
-      runningStatus = wx.StaticText(self, label="Idle")
-      runningStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(runningText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(runningStatus, 0, flag=wx.ALIGN_LEFT)
+      st = wx.StaticText(self, label="Device state:")
+      st.SetFont(font)
+      self.runStatus = wx.StaticText(self, label="Idle")
+      self.runStatus.SetForegroundColour(self.machineDataColor)
+      self.runStatus.SetFont(font)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.runStatus, 0, flag=wx.ALIGN_LEFT)
+
+      # Add Connected Status
+      st = wx.StaticText(self, label="Link port:")
+      st.SetFont(font)
+      self.linkPort = wx.StaticText(self, label="None")
+      self.linkPort.SetForegroundColour(self.machineDataColor)
+      self.linkPort.SetFont(font)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.linkPort, 0, flag=wx.ALIGN_LEFT)
+
+      st = wx.StaticText(self, label="Link baud:")
+      st.SetFont(font)
+      self.linkBaud = wx.StaticText(self, label="None")
+      self.linkBaud.SetForegroundColour(self.machineDataColor)
+      self.linkBaud.SetFont(font)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.linkBaud, 0, flag=wx.ALIGN_LEFT)
 
       # Add Percent sent status
-      prcntText = wx.StaticText(self, label="PC file pos: ")
-      prcntStatus = wx.StaticText(self, label="0.00%")
-      prcntStatus.SetForegroundColour(self.machineDataColor)
-      flexGridSizer.Add(prcntText, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(prcntStatus, 0, flag=wx.ALIGN_LEFT)
+      st = wx.StaticText(self, label="PC in file pos:")
+      st.SetFont(font)
+      self.prcntStatus = wx.StaticText(self, label="0.00%")
+      self.prcntStatus.SetForegroundColour(self.machineDataColor)
+      self.prcntStatus.SetFont(font)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.prcntStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add run time
       # TODO: make this work... missing controller done signal.
@@ -341,8 +345,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       #flexGridSizer.Add(runTimeText, 0, flag=wx.ALIGN_LEFT)
       #flexGridSizer.Add(runTimeStatus, 0, flag=wx.ALIGN_LEFT)
 
-      return (positionBoxSizer, deviceStatus, linkPortStatus, linkBaudStatus, runningStatus,
-         prcntStatus) #, runTimeStatus)
+      return positionBoxSizer
 
    def OnRefresh(self, e):
       self.mainWindow.GetMachineStatus()

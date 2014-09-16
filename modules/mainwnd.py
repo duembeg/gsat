@@ -2055,7 +2055,7 @@ class gsatMainWindow(wx.Frame):
                self.stateData.deviceDetected = True
                self.GetMachineStatus()
                self.RunDeviceInitScript()
-            
+
          # tinyG verbose/status
          rematch = gReTinyGVerbose.findall(teData)
          if len(rematch) > 0:
@@ -2108,7 +2108,11 @@ class gsatMainWindow(wx.Frame):
                   print "gsatMainWindow str match from %s" % str(teData)
 
                machineStatus = dict()
-               machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
+
+               if self.stateData.deviceID == gc.gDEV_TINYG2:
+                  machineStatus["mpo%s" % rematch[0][0].lower()] = rematch[0][1]
+               elif self.stateData.deviceID == gc.gDEV_TINYG:
+                  machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
 
                self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
                self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)

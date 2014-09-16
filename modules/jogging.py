@@ -56,12 +56,26 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
-      # Add cehck box
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
-      self.cb.SetValue(self.configData.Get('/jogging/XYZReadOnly'))
-      self.cb.SetToolTip(
+      # Add readonly check box
+      self.cbXYZReadOnly = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
+      self.cbXYZReadOnly.SetValue(self.configData.Get('/jogging/XYZReadOnly'))
+      self.cbXYZReadOnly.SetToolTip(
          wx.ToolTip("If disable the XYZ fields in jogging status are editable"))
-      vBoxSizer.Add(self.cb, flag=wx.LEFT|wx.BOTTOM, border=20)
+      vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
+
+      # Add update from machine pos check box
+      self.cbAutoMPOS = wx.CheckBox(self, wx.ID_ANY, "Auto update from machine position")
+      self.cbAutoMPOS.SetValue(self.configData.Get('/jogging/AutoMPOS'))
+      self.cbAutoMPOS.SetToolTip(
+         wx.ToolTip("If enable jogging values will auto update from machine pos"))
+      vBoxSizer.Add(self.cbAutoMPOS, flag=wx.LEFT, border=20)
+
+      # Add request status after jogging set operation check box
+      self.cbReqUpdateOnJogSetOp = wx.CheckBox(self, wx.ID_ANY, "Request update after JOG set operation")
+      self.cbReqUpdateOnJogSetOp.SetValue(self.configData.Get('/jogging/ReqUpdateOnJogSetOp'))
+      self.cbReqUpdateOnJogSetOp.SetToolTip(
+         wx.ToolTip("If enable after each JOG set operation (ie set to ZERO) a machine update request will be sent to device"))
+      vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT|wx.BOTTOM, border=20)
 
       # Custom controls
       text = wx.StaticText(self, label="Custom Controls:")
@@ -167,7 +181,9 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       ]
 
    def UpdatConfigData(self):
-      self.configData.Set('/jogging/XYZReadOnly', self.cb.GetValue())
+      self.configData.Set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
+      self.configData.Set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
+      self.configData.Set('/jogging/ReqUpdateOnJogSetOp', self.cbReqUpdateOnJogSetOp.GetValue())
 
       for cn in range(4):
          cnp1 = cn+1
@@ -244,8 +260,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.configData = config_data
       self.stateData = state_data
 
-      self.useMachineWorkPosition = False
-
       self.memoX = gc.gZeroString
       self.memoY = gc.gZeroString
       self.memoZ = gc.gZeroString
@@ -266,7 +280,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def InitConfig(self):
       # jogging data
-      self.configXYZReadOnly      = self.configData.Get('/jogging/XYZReadOnly')
+      self.configXYZReadOnly         = self.configData.Get('/jogging/XYZReadOnly')
+      self.configAutoMPOS            = self.configData.Get('/jogging/AutoMPOS')
+      self.configReqUpdateOnJogSetOp = self.configData.Get('/jogging/ReqUpdateOnJogSetOp')
 
       self.configCustom1Label     = self.configData.Get('/jogging/Custom1Label')
       self.configCustom1XIsOffset = self.configData.Get('/jogging/Custom1XIsOffset')
@@ -324,6 +340,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jY.SetBackgroundColour(gc.gEdityBkColor)
          self.jZ.SetEditable(True)
          self.jZ.SetBackgroundColour(gc.gEdityBkColor)
+         
+      self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
 
       self.custom1Button.SetLabel(self.configCustom1Label)
       self.custom2Button.SetLabel(self.configCustom2Label)
@@ -367,8 +385,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
 
-      if statusData is not None and self.useMachineWorkPosition:
-         if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+      if statusData is not None and self.configAutoMPOS:
+         if self.stateData.deviceID == gc.gDEV_TINYG2:
+            x = statusData.get('mpox')
+            if x is not None:
+               self.jX.SetValue(x)
+
+            y = statusData.get('mpoy')
+            if y is not None:
+               self.jY.SetValue(y)
+
+            z = statusData.get('mpoz')
+            if z is not None:
+               self.jZ.SetValue(z)
+
+         elif self.stateData.deviceID == gc.gDEV_TINYG:
             x = statusData.get('posx')
             if x is not None:
                self.jX.SetValue(x)
@@ -380,6 +411,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             z = statusData.get('posz')
             if z is not None:
                self.jZ.SetValue(z)
+
          else:
             x = statusData.get('wposx')
             if x is not None:
@@ -520,36 +552,37 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       spinText = wx.StaticText(self, -1, "Jog status:  ")
       vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      flexGridSizer = wx.FlexGridSizer(4,2)
+      flexGridSizer = wx.FlexGridSizer(4,2,1,3)
       vBoxSizer.Add(flexGridSizer,0 , flag=wx.ALL|wx.EXPAND, border=5)
 
       # Add X pos
-      xText = wx.StaticText(self, label="X:")
+      st = wx.StaticText(self, label="X")
       self.jX = wx.TextCtrl(self, value=gc.gZeroString)
-      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jX, 1, flag=wx.EXPAND)
 
       # Add Y Pos
-      yText = wx.StaticText(self, label="Y:")
+      st = wx.StaticText(self, label="Y")
       self.jY = wx.TextCtrl(self, value=gc.gZeroString)
-      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jY, 1, flag=wx.EXPAND)
 
       # Add Z Pos
-      zText = wx.StaticText(self, label="Z:")
+      st = wx.StaticText(self, label="Z")
       self.jZ = wx.TextCtrl(self, value=gc.gZeroString)
-      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jZ, 1, flag=wx.EXPAND)
 
       # Add Spindle status
-      spindleText = wx.StaticText(self, label="SP:")
+      st = wx.StaticText(self, label="SP")
       self.jSpindle = wx.TextCtrl(self, value=gc.gOffString, style=wx.TE_READONLY)
       self.jSpindle.SetBackgroundColour(gc.gReadOnlyBkColor)
-      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
       # Add Checkbox for sync with work position
       self.useWorkPosCheckBox = wx.CheckBox (self, label="Use work pos")
+      self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
       self.useWorkPosCheckBox.SetToolTip(
          wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
@@ -714,7 +747,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_OFF)
 
    def OnUseMachineWorkPosition(self, e):
-      self.useMachineWorkPosition = e.IsChecked()
+      self.configAutoMPOS = e.IsChecked()
 
    def OnJogCmd (self, xval, yval, zval, all_cmd, single_cmd):
       cmd = "\n"
@@ -756,9 +789,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
+            
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
       else:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+            
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
 
    def OnGoToZero(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
@@ -769,10 +808,16 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
             gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
+            
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
       else:
          self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
             gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
 
    def OnGoToJogVal(self, e):
       self.OnJogCmd(

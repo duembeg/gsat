@@ -38,8 +38,8 @@ gWILDCARD = \
    "gcode (*.gcode)|*.gcode|" \
    "All files (*.*)|*.*"
 
-gZeroString = "0.0000"
-gNumberFormatString = "%0.4f"
+gZeroString = "0.000"
+gNumberFormatString = "%0.3f"
 gOnString = "On"
 gOffString = "Off"
 
@@ -243,7 +243,9 @@ class gsatConfigData():
          '/machine/InitScript'               :(False, ""),
 
       # jogging keys
-         '/jogging/XYZReadOnly'              :(True , True),
+         '/jogging/XYZReadOnly'              :(True , False),
+         '/jogging/AutoMPOS'                 :(True , True),
+         '/jogging/ReqUpdateOnJogSetOp'      :(True , True),
          '/jogging/Custom1Label'             :(False, "Custom 1"),
          '/jogging/Custom1XIsOffset'         :(True , True),
          '/jogging/Custom1XValue'            :(True , 0),
