@@ -80,15 +80,25 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
       vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT, border=20)
 
-      # Add check box
+      # Add Grbl DRO hack check box
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "Auto Refresh")
-      self.cb.SetValue(self.configData.Get('/machine/AutoRefresh'))
-      self.cb.SetToolTip(
-         wx.ToolTip("Send '?' Status request (experimental)"))
-      hBoxSizer.Add(self.cb, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      self.cbGrblDroHack = wx.CheckBox(self, wx.ID_ANY, "Enable Grbl DRO hack.")
+      self.cbGrblDroHack.SetValue(self.configData.Get('/machine/GrblDroHack'))
+      self.cbGrblDroHack.SetToolTip(
+         wx.ToolTip("If Device is Grbl, it uses output GCODE to update Status and JOG panels"))
+      hBoxSizer.Add(self.cbGrblDroHack, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
 
       vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT, border=20)
+      
+      # Add auto refresh check box
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.cbAutoRefresh = wx.CheckBox(self, wx.ID_ANY, "Auto Refresh")
+      self.cbAutoRefresh.SetValue(self.configData.Get('/machine/AutoRefresh'))
+      self.cbAutoRefresh.SetToolTip(
+         wx.ToolTip("Send '?' Status request (experimental)"))
+      hBoxSizer.Add(self.cbAutoRefresh, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.LEFT, border=20)
 
       # Add spin ctrl
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -119,7 +129,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
    def UpdatConfigData(self):
       self.configData.Set('/machine/Device', self.deviceComboBox.GetValue())
-      self.configData.Set('/machine/AutoRefresh', self.cb.GetValue())
+      self.configData.Set('/machine/GrblDroHack', self.cbGrblDroHack.GetValue())      
+      self.configData.Set('/machine/AutoRefresh', self.cbAutoRefresh.GetValue())
       self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
       self.configData.Set('/machine/InitScript', self.tc.GetValue())
 
@@ -161,7 +172,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
       self.refreshButton.Disable()
 
-      vBoxSizer.Add(self.refreshButton, 0, flag=wx.TOP, border=10)
+      vBoxSizer.Add(self.refreshButton, 0, flag=wx.ALL, border=10)
 
       # Finish up init UI
       self.SetSizer(vBoxSizer)
@@ -179,11 +190,9 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          if prcnt is not None:
             self.prcntStatus.SetLabel(prcnt)
 
-         '''
          rtime = statusData.get('rtime')
          if rtime is not None:
-            self.sRunTime.SetLabel(rtime)
-         '''
+            self.runTimeStatus.SetLabel(rtime)
 
          if self.stateData.deviceID == gc.gDEV_TINYG2:
             x = statusData.get('mpox')
@@ -338,12 +347,13 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(self.prcntStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add run time
-      # TODO: make this work... missing controller done signal.
-      #runTimeText = wx.StaticText(self, label="Run time:")
-      #runTimeStatus = wx.StaticText(self, label="n/a")
-      #runTimeStatus.SetForegroundColour(self.machineDataColor)
-      #flexGridSizer.Add(runTimeText, 0, flag=wx.ALIGN_LEFT)
-      #flexGridSizer.Add(runTimeStatus, 0, flag=wx.ALIGN_LEFT)
+      st = wx.StaticText(self, label="Run time:")
+      st.SetFont(font)
+      self.runTimeStatus = wx.StaticText(self, label="00:00:00")
+      self.runTimeStatus.SetForegroundColour(self.machineDataColor)
+      self.runTimeStatus.SetFont(font)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.runTimeStatus, 0, flag=wx.ALIGN_LEFT)
 
       return positionBoxSizer
 

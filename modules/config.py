@@ -79,19 +79,21 @@ gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
 """ ------------------------------------------------------------------------
 
 STATE TABLE::
-state    | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  | ABORT   |
---------------------------------------------------------------------------------
-ABORT    | IGNORED | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  |
----------------------------------------------------------------------------------
-IDLE     | RUN     | IGNORE  | STEP    | IGNORE  | IGNORE  | IGNORE  | ABORT   |
----------------------------------------------------------------------------------
-RUN      | IGNORE  | IDLE    | IGNORE  | BREAK   | IDLE    | IDLE    | ABORT   |
----------------------------------------------------------------------------------
-STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
----------------------------------------------------------------------------------
-BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  | ABORT   |
----------------------------------------------------------------------------------
-USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
+state    | RUN UI  | PAUSE UI| STEP UI | STOP UI |  BREAK PT| ERROR   | ST END  | ABORT   |
+-------------------------------------------------------------------------------------------
+ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  | IGNORE  |
+-------------------------------------------------------------------------------------------
+IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   |
+-------------------------------------------------------------------------------------------
+RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | IDLE    | IDLE    | ABORT   |
+-------------------------------------------------------------------------------------------
+STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   |
+-------------------------------------------------------------------------------------------
+BREAK    | RUN     | PAUSE   | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
+-------------------------------------------------------------------------------------------
+PAUSE    | RUN     | IGNORE  | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
+-------------------------------------------------------------------------------------------
+USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    | ABORT   |
 ---------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------ """
@@ -101,6 +103,7 @@ gSTATE_IDLE  =  100
 gSTATE_RUN   =  200
 gSTATE_STEP  =  300
 gSTATE_BREAK =  400
+gSTATE_PAUSE =  500
 
 '''
 Notes:
@@ -241,6 +244,7 @@ class gsatConfigData():
          '/machine/AutoRefresh'              :(True , False),
          '/machine/AutoRefreshPeriod'        :(True , 1000),
          '/machine/InitScript'               :(False, ""),
+         '/machine/GrblDroHack'              :(True , False),
 
       # jogging keys
          '/jogging/XYZReadOnly'              :(True , False),

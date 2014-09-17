@@ -589,7 +589,8 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
       self.stateData = stateData
 
       if (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
 
          self.SetReadOnly(self.configReadOnly)
       else:
