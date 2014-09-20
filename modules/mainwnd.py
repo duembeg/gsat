@@ -1300,7 +1300,8 @@ class gsatMainWindow(wx.Frame):
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
          self.mainWndOutQueue.join()
 
-         if self.stateData.swState != gc.gSTATE_PAUSE:
+         if self.stateData.swState != gc.gSTATE_PAUSE and \
+            self.stateData.swState != gc.gSTATE_BREAK:
             self.runStartTime = time.time()
             
          self.RunTimerStart()
@@ -1656,7 +1657,8 @@ class gsatMainWindow(wx.Frame):
       # calculate elapse time
       runTimeStr = "00:00:00"
       if self.stateData.swState == gc.gSTATE_RUN or \
-         self.stateData.swState == gc.gSTATE_PAUSE:
+         self.stateData.swState == gc.gSTATE_PAUSE or \
+         self.stateData.swState == gc.gSTATE_BREAK:
             
          runTime = time.time() - self.runStartTime
          hours, reminder = divmod(runTime, 3600)

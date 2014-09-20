@@ -14,13 +14,13 @@ this is verify and or adjusted, the program can continue.
 Development Environment
 ---------------------
 ### gsat's dependencies are:
-* [python 2.7](http://www.python.org/)
-* [pySerial](http://pyserial.sourceforge.net/)
-* [wxPython 2.8 or later](http://www.wxpython.org/)
+* [python 2.7](http://www.python.org/) or later.
+* [pySerial](http://pyserial.sourceforge.net/).
+* [wxPython 2.8](http://www.wxpython.org/) or later.
 
 ### Additional dependencies if enabling OpenCV
-* [OpenCV 2.4.1](http://opencv.org/)
-* [numpy 1.6.1](http://pypi.python.org/pypi/numpy/)
+* [OpenCV](http://opencv.org/)
+* [numpy](http://pypi.python.org/pypi/numpy/)
 
 ### Devices
 * [TinyG](https://github.com/synthetos/TinyG/wiki/) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
@@ -83,7 +83,17 @@ Changelog
 ---------
 ### 1.5.0
 * Added support for [TinyG2](https://github.com/synthetos/g2/wiki).
-* Added support for [Mac OSX Mavericks](https://www.apple.com/osx/) with working OpenCV.
+* Added support for [Mac OS X Mavericks](https://www.apple.com/osx/) with working [OpenCV](http://opencv.org/).
+* Added pause state, tool bar button and menu item.
+* Added machine setting for [Grbl](https://github.com/grbl/grbl/wiki/), [TinyG](https://github.com/synthetos/TinyG/wiki/), or [TinyG2](https://github.com/synthetos/g2/wiki/).
+* Added machine setting for initialization script, useful to send setup commands after device connect detect.
+* Added machine runt time status.
+* Added jog settings to auto update from machine status.
+* Added jog settings to auto request update from machine after jog set operation that don't normally generate verbose information, like set to zero or set to job values.
+* Removed second set of XYZ coordinates and enlarge the reminding for ease of view at a distance.
+* Fixed bug with missing variable "serialBaud" not found when changing settings while serial port was open.
+* Fixed multiple UI issues with [Mac OS X](http://www.apple.com/osx/)
+
 
 ### 1.4.0
 * Added support for [TinyG](https://github.com/synthetos/TinyG/wiki).
