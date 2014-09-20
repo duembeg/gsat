@@ -303,6 +303,9 @@ class gsatCV2Panel(wx.ScrolledWindow):
          pass
 
    def ProcessThreadQueue(self):
+      if self.cmdLineOptions.vverbose:
+         print "** gsatCV2Panel ProcessThreadQueue."
+
       goitem = False
 
       while (not self.t2cvwQueue.empty()):
@@ -315,7 +318,8 @@ class gsatCV2Panel(wx.ScrolledWindow):
             image = te.data
 
             if image is not None:
-               self.bmp = wx.BitmapFromBuffer(image.width, image.height, image.tostring())
+               height, width, x = image.shape
+               self.bmp = wx.BitmapFromBuffer(width, height, image)
                self.capturePanel.SetBitmapLabel(self.bmp)
                #self.capturePanel.SetBitmapDisabled(self.bmp)
 
@@ -328,35 +332,46 @@ class gsatCV2Panel(wx.ScrolledWindow):
          self.t2cvwQueue.task_done()
 
    def StartCapture(self):
-      self.capture = True
+      if self.cmdLineOptions.vverbose:
+         print "** gsatCV2Panel StartCapture."
 
-      if self.visionThread is None and self.cv2Enable:
-         self.visionThread = gsatComputerVisionThread(self, self.cvw2tQueue, self.t2cvwQueue,
-            self.configData, self.cmdLineOptions)
+      if not self.capture:
 
-      if self.captureTimer is not None and self.cv2Enable:
-         self.captureTimer.Start(self.cv2CapturePeriod)
+         self.capture = True
+
+         if self.visionThread is None and self.cv2Enable:
+            self.visionThread = gsatComputerVisionThread(self, self.cvw2tQueue, self.t2cvwQueue,
+               self.configData, self.cmdLineOptions)
+
+         if self.captureTimer is not None and self.cv2Enable:
+            self.captureTimer.Start(self.cv2CapturePeriod)
+
 
    def StopCapture(self):
-      self.capture = False
+      if self.cmdLineOptions.vverbose:
+         print "** gsatCV2Panel StopCapture."
 
-      if self.captureTimer is not None:
-         self.captureTimer.Stop()
+      if self.capture:
 
-      if self.visionThread is not None:
-         self.cvw2tQueue.put(gc.threadEvent(gEV_CMD_CV_EXIT, None))
+         self.capture = False
 
-         goitem = False
-         while (not self.t2cvwQueue.empty()):
-            te = self.t2cvwQueue.get()
-            goitem = True
+         if self.captureTimer is not None:
+            self.captureTimer.Stop()
 
-         # make sure to unlock thread
-         if goitem:
-            self.t2cvwQueue.task_done()
+         if self.visionThread is not None:
+            self.cvw2tQueue.put(gc.threadEvent(gEV_CMD_CV_EXIT, None))
 
-         #self.cvw2tQueue.join()
-         self.visionThread = None
+            goitem = False
+            while (not self.t2cvwQueue.empty()):
+               te = self.t2cvwQueue.get()
+               goitem = True
+
+            # make sure to unlock thread
+            if goitem:
+               self.t2cvwQueue.task_done()
+
+            #self.cvw2tQueue.join()
+            self.visionThread = None
 
 """----------------------------------------------------------------------------
    gsatComputerVisionThread:
@@ -414,7 +429,7 @@ class gsatComputerVisionThread(threading.Thread):
    gsatcomputerVisionThread: General Functions
    -------------------------------------------------------------------------"""
    def CaptureFrame(self):
-      frame = self.cv.QueryFrame(self.captureDevice)
+      retval, frame = self.captureDevice.read()
 
       if self.cmdLineOptions.vverbose:
          print "** gsatcomputerVisionThread Capture Frame."
@@ -428,14 +443,15 @@ class gsatComputerVisionThread(threading.Thread):
          if self.cv2Crosshair:
             widthHalf = width/2
             heightHalf = height/2
-            self.cv.Line(frame, (widthHalf, 0),  (widthHalf,height) , 255)
-            self.cv.Line(frame, (0,heightHalf), (width,heightHalf) , 255)
-            self.cv.Circle(frame, (widthHalf,heightHalf), 66, 255)
-            self.cv.Circle(frame, (widthHalf,heightHalf), 22, 255)
+            self.cv2.line(frame, (widthHalf, 0),  (widthHalf,height) , 255)
+            self.cv2.line(frame, (0,heightHalf), (width,heightHalf) , 255)
+            self.cv2.circle(frame, (widthHalf,heightHalf), 66, 255)
+            self.cv2.circle(frame, (widthHalf,heightHalf), 22, 255)
 
          offset=(0,0)
 
-         self.cv.CvtColor(frame, frame, self.cv.CV_BGR2RGB)
+         # color...
+         frame = self.cv2.cvtColor(frame, self.cv2.COLOR_BGR2RGB)
 
          # important cannot call any wx. UI fucntions from this thread
          # bad things will happen
@@ -454,21 +470,19 @@ class gsatComputerVisionThread(threading.Thread):
       Worker Thread.
       This is the code executing in the new thread context.
       """
-      import cv2.cv as cv
-      self.cv=cv
+      import cv2 as cv2
+
+      self.cv2 = cv2
 
       #set up camera
-      self.captureDevice = self.cv.CaptureFromCAM(self.cv2CaptureDevice)
+      self.captureDevice = cv2.VideoCapture(self.cv2CaptureDevice)
 
       # let camera hardware settle
       time.sleep(1)
 
       # init sensor frame size
-      self.cv.SetCaptureProperty(self.captureDevice,
-         self.cv.CV_CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
-
-      self.cv.SetCaptureProperty(self.captureDevice,
-         self.cv.CV_CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
+      self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
+      self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
 
       # init before work loop
       self.endThread = False
@@ -496,6 +510,8 @@ class gsatComputerVisionThread(threading.Thread):
          if self.endThread:
             break
 
+      self.captureDevice.release()
+      
       if self.cmdLineOptions.vverbose:
          print "** gsatcomputerVisionThread exit."
 

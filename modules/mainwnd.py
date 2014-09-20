@@ -297,10 +297,11 @@ class gsatSettingsDialog(wx.Dialog):
       self.imageList.Add(ico.imgMove.GetBitmap())
       self.imageList.Add(ico.imgEye.GetBitmap())
 
-      if os.name == 'nt':
-         self.noteBook = wx.Notebook(self, size=(640,400))
+      # for Windows and OS X, tabbed on the left don't work as well
+      if sys.platform.startswith('linux'):
+         self.noteBook = wx.Notebook(self, size=(640,400), style=wx.BK_LEFT)         
       else:
-         self.noteBook = wx.Notebook(self, size=(640,400), style=wx.BK_LEFT)
+         self.noteBook = wx.Notebook(self, size=(640,400))
 
       self.noteBook.AssignImageList(self.imageList)
 
@@ -516,14 +517,14 @@ class gsatMainWindow(wx.Frame):
             .CloseButton(True).MaximizeButton(True).BestSize(640,530).Hide().Layer(1)
       )
 
+      self.aui_mgr.AddPane(self.machineStatusPanel,
+         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")\
+            .CloseButton(True).MaximizeButton(True).BestSize(360,400).Layer(1)
+      )
+      
       self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
             .CloseButton(True).MaximizeButton(True).BestSize(360,380).Layer(1)
-      )
-
-      self.aui_mgr.AddPane(self.machineStatusPanel,
-         aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")\
-            .CloseButton(True).MaximizeButton(True).BestSize(320,180).Layer(1)
       )
 
 

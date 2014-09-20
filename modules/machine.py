@@ -296,7 +296,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
    def CreateStatusStaticBox(self):
       positionBoxSizer = self.CreateStaticBox("Status")
-      flexGridSizer = wx.FlexGridSizer(4,2,5,5)
+      flexGridSizer = wx.FlexGridSizer(6,2,5,5)
       positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
 
       # set font properties
