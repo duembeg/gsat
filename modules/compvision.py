@@ -511,7 +511,7 @@ class gsatComputerVisionThread(threading.Thread):
             break
 
       self.captureDevice.release()
-      
+
       if self.cmdLineOptions.vverbose:
          print "** gsatcomputerVisionThread exit."
 

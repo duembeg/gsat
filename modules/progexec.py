@@ -66,7 +66,7 @@ gReErrorAck = [
 ----------------------------------------------------------------------------"""
 class gsatProgramExecuteThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, device_id):
+   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, device_id, machine_auto_status=False):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
@@ -88,7 +88,7 @@ class gsatProgramExecuteThread(threading.Thread):
       self.swState = gc.gSTATE_IDLE
       self.lastEventID = gc.gEV_CMD_NULL
 
-      self.machineAutoStatus = False
+      self.machineAutoStatus = machine_auto_status
 
       self.serialRxThread = None
 
@@ -304,7 +304,13 @@ class gsatProgramExecuteThread(threading.Thread):
       gcode = gcodeData.strip()
 
       if len(gcode) > 0:
-         gcode = "%s\n" % (gcode)
+         if self.machineAutoStatus:
+            if self.deviceID == gc.gDEV_TINYG2 or self.deviceID == gc.gDEV_TINYG:
+               gcode = "%s%s" % (gcode, gc.gTINYG_CMD_GET_STATUS)
+            elif self.deviceID == gc.gDEV_GRBL:
+               gcode = "%s%s" % (gcode, gc.gGRBL_CMD_GET_STATUS)
+         else:
+            gcode = "%s\n" % (gcode)
 
          # write data
          self.SerialWrite(gcode)

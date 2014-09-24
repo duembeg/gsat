@@ -58,14 +58,14 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # Scrolling section
-      text = wx.StaticText(self, label="Scrolling:")
+      text = wx.StaticText(self, label="Scrolling")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
-      spText = wx.StaticText(self, label="Auto Scroll:")
+      spText = wx.StaticText(self, label="Auto Scroll")
       hBoxSizer.Add(spText, 0,flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
 
       if self.key == 'code':
@@ -82,7 +82,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(hBoxSizer, 0, wx.LEFT|wx.EXPAND|wx.ALIGN_LEFT, border=20)
 
       # General Controls
-      text = wx.StaticText(self, label="General:")
+      text = wx.StaticText(self, label="General")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
@@ -104,7 +104,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(gBoxSizer, 0, wx.ALL|wx.EXPAND, border=5)
 
       # Colors
-      text = wx.StaticText(self, label="Colors:")
+      text = wx.StaticText(self, label="Colors")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
@@ -116,7 +116,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       syntaxColorSizer = wx.GridSizer(2,6,0,0)
 
       # Foreground
-      text = wx.StaticText(self, label="Foreground:")
+      text = wx.StaticText(self, label="Foreground")
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
       text = wx.StaticText(self, label="Window")
@@ -144,7 +144,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       # Background
       text = wx.StaticText(self, label="")
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
-      text = wx.StaticText(self, label="Background:")
+      text = wx.StaticText(self, label="Background")
       vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
       text = wx.StaticText(self, label="Window")
@@ -172,7 +172,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
          # Syntax highlighting
          text = wx.StaticText(self, label="")
          vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
-         text = wx.StaticText(self, label="Syntax highlighting:")
+         text = wx.StaticText(self, label="Syntax highlighting")
          vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
          text = wx.StaticText(self, label="G Codes")

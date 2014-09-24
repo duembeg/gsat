@@ -51,7 +51,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
    def InitUI(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      text = wx.StaticText(self, label="General:")
+      text = wx.StaticText(self, label="General")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
@@ -78,7 +78,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT|wx.BOTTOM, border=20)
 
       # Custom controls
-      text = wx.StaticText(self, label="Custom Controls:")
+      text = wx.StaticText(self, label="Custom Controls")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
@@ -100,14 +100,14 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
    def CreateCustomControlSettings(self, cn):
       # Custom controls
       vCustomSizer = wx.BoxSizer(wx.VERTICAL)
-      text = wx.StaticText(self, label="Custom Control %d:" % cn)
+      text = wx.StaticText(self, label="Custom Control %d" % cn)
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vCustomSizer.Add(text, 0, flag=wx.ALL, border=5)
 
       # Label
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      text = wx.StaticText(self, label="Label:")
+      text = wx.StaticText(self, label="Label")
       hBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL, border=5)
       tcLabel = wx.TextCtrl(self, -1,
          self.configData.Get('/jogging/Custom%dLabel' % cn), size=(125, -1))
@@ -118,11 +118,11 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       # other controls
       gCustomSizer = wx.FlexGridSizer(3,3,0,0)
 
-      text = wx.StaticText(self, label="X Settings:")
+      text = wx.StaticText(self, label="X Settings")
       gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
-      text = wx.StaticText(self, label="Y Settings:")
+      text = wx.StaticText(self, label="Y Settings")
       gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
-      text = wx.StaticText(self, label="Z Settings:")
+      text = wx.StaticText(self, label="Z Settings")
       gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
 
       # check boxes
@@ -340,7 +340,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jY.SetBackgroundColour(gc.gEdityBkColor)
          self.jZ.SetEditable(True)
          self.jZ.SetBackgroundColour(gc.gEdityBkColor)
-         
+
       self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
 
       self.custom1Button.SetLabel(self.configCustom1Label)
@@ -537,7 +537,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # add status controls
-      spinText = wx.StaticText(self, -1, "Step size:  ")
+      spinText = wx.StaticText(self, -1, "Step size  ")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       self.spinCtrl = fs.FloatSpin(self, -1,
@@ -549,7 +549,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(self.spinCtrl, 0,
          flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
 
-      spinText = wx.StaticText(self, -1, "Jog status:  ")
+      spinText = wx.StaticText(self, -1, "Jog status  ")
       vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
       flexGridSizer = wx.FlexGridSizer(4,2,1,3)
@@ -594,7 +594,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # Add radio buttons
-      spinText = wx.StaticText(self, -1, "Select axis (f):")
+      spinText = wx.StaticText(self, -1, "Select axis (f)")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       vRadioBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -613,7 +613,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(vRadioBoxSizer, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_CENTER)
 
       # Add Buttons
-      spinText = wx.StaticText(self, -1, "Operation on (f):")
+      spinText = wx.StaticText(self, -1, "Operation on (f)")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
 
       # Add reset and move to zero(0) buttons
@@ -653,7 +653,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(self.gotoToHomeButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
 
-      spinText = wx.StaticText(self, -1, "Jog memory stack:")
+      spinText = wx.StaticText(self, -1, "Jog memory stack")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
 
       # add jog position memory stack
@@ -678,7 +678,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def CreateUtilControls(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      spinText = wx.StaticText(self, -1, "Custom buttons:")
+      spinText = wx.StaticText(self, -1, "Custom buttons")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       # add custom buttons
@@ -789,13 +789,13 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
-            
+
          if self.configReqUpdateOnJogSetOp:
             self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
       else:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
-            
+
          if self.configReqUpdateOnJogSetOp:
             self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
 
@@ -808,7 +808,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
             gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
-            
+
          if self.configReqUpdateOnJogSetOp:
             self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
       else:

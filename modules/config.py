@@ -144,7 +144,7 @@ gDEV_GRBL            = 1000
 gDEV_TINYG           = 1100
 gDEV_TINYG2          = 1200
 
-gDEV_LIST = ["None", "Grbl", "TinyG", "TinyG2"]
+gDEV_LIST = ["Grbl", "TinyG", "TinyG2"]
 
 """----------------------------------------------------------------------------
    gsatStateData:
@@ -240,7 +240,10 @@ class gsatConfigData():
          '/cli/CmdHistory'                   :(False, ""),
 
       # machine keys
-         '/machine/Device'                   :(False, "None"),
+         '/machine/Device'                   :(False, "TinyG2"),
+         '/machine/Port'                     :(False, ""),
+         '/machine/Baud'                     :(False, "115200"),
+         '/machine/AutoStatus'               :(True , False),
          '/machine/AutoRefresh'              :(True , False),
          '/machine/AutoRefreshPeriod'        :(True , 1000),
          '/machine/InitScript'               :(False, ""),

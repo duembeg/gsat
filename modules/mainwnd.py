@@ -79,7 +79,7 @@ from wx.lib import scrolledpanel as scrolled
 import modules.config as gc
 import images.icons as ico
 import modules.editor as ed
-import modules.link as link
+#import modules.link as link
 import modules.machine as mc
 import modules.jogging as jog
 import modules.compvision as compv
@@ -289,7 +289,7 @@ class gsatSettingsDialog(wx.Dialog):
       # init note book
       self.imageList = wx.ImageList(16, 16)
       self.imageList.Add(ico.imgGeneralSettings.GetBitmap())
-      self.imageList.Add(ico.imgPlugConnect.GetBitmap())
+      #self.imageList.Add(ico.imgPlugConnect.GetBitmap())
       self.imageList.Add(ico.imgProgram.GetBitmap())
       self.imageList.Add(ico.imgLog.GetBitmap())
       self.imageList.Add(ico.imgCli.GetBitmap())
@@ -299,7 +299,7 @@ class gsatSettingsDialog(wx.Dialog):
 
       # for Windows and OS X, tabbed on the left don't work as well
       if sys.platform.startswith('linux'):
-         self.noteBook = wx.Notebook(self, size=(640,400), style=wx.BK_LEFT)         
+         self.noteBook = wx.Notebook(self, size=(640,400), style=wx.BK_LEFT)
       else:
          self.noteBook = wx.Notebook(self, size=(640,400))
 
@@ -307,13 +307,13 @@ class gsatSettingsDialog(wx.Dialog):
 
       # add pages
       self.AddGeneralPage(0)
-      self.AddLinkPage(1)
-      self.AddProgramPage(2)
-      self.AddOutputPage(3)
-      self.AddCliPage(4)
-      self.AddMachinePage(5)
-      self.AddJoggingPage(6)
-      self.AddCV2Panel(7)
+      #self.AddLinkPage(1)
+      self.AddProgramPage(1)
+      self.AddOutputPage(2)
+      self.AddCliPage(3)
+      self.AddMachinePage(4)
+      self.AddJoggingPage(5)
+      self.AddCV2Panel(6)
 
       #self.noteBook.Layout()
       sizer.Add(self.noteBook, 1, wx.ALL|wx.EXPAND, 5)
@@ -381,7 +381,7 @@ class gsatSettingsDialog(wx.Dialog):
 
    def UpdatConfigData(self):
       self.generalPage.UpdatConfigData()
-      self.linkPage.UpdatConfigData()
+      #self.linkPage.UpdatConfigData()
       self.programPage.UpdatConfigData()
       self.outputPage.UpdatConfigData()
       self.cliPage.UpdatConfigData()
@@ -428,8 +428,8 @@ class gsatMainWindow(wx.Frame):
       # create app data obj
       self.configData = gc.gsatConfigData()
       self.configData.Load(self.configFile)
-      self.configData.Add('/link/PortList', self.GetSerialPortList())
-      self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
+      self.configData.Add('/machine/PortList', self.GetSerialPortList())
+      self.configData.Add('/machine/BaudList', self.GetSerialBaudRateList())
       self.InitConfig()
 
       # init some variables
@@ -454,8 +454,9 @@ class gsatMainWindow(wx.Frame):
       self.maxFileHistory = self.configData.Get('/mainApp/MaxFileHistory')
       self.roundInch2mm = self.configData.Get('/mainApp/RoundInch2mm')
       self.roundmm2Inch = self.configData.Get('/mainApp/Roundmm2Inch')
-      self.linkPort = self.configData.Get('/link/Port')
-      self.linkBaud = self.configData.Get('/link/Baud')
+      self.machinePort = self.configData.Get('/machine/Port')
+      self.machineBaud = self.configData.Get('/machine/Baud')
+      self.machineAutoStatus = self.configData.Get('/machine/AutoStatus')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
       self.deviceName = self.configData.Get('/machine/Device')
@@ -468,8 +469,9 @@ class gsatMainWindow(wx.Frame):
          print "  maxFileHistory:           ", self.maxFileHistory
          print "  roundInch2mm:             ", self.roundInch2mm
          print "  roundmm2Inch:             ", self.roundmm2Inch
-         print "  linkPort:                 ", self.linkPort
-         print "  linkBaud:                 ", self.linkBaud
+         print "  machinePort:              ", self.machinePort
+         print "  machineBaud:              ", self.machineBaud
+         print "  machineAutostatus:        ", self.machineAutoStatus
          print "  machineAutoRefresh:       ", self.machineAutoRefresh
          print "  machineAutoRefreshPeriod: ", self.machineAutoRefreshPeriod
          print "  deviceName:               ", self.deviceName
@@ -521,7 +523,7 @@ class gsatMainWindow(wx.Frame):
          aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")\
             .CloseButton(True).MaximizeButton(True).BestSize(360,400).Layer(1)
       )
-      
+
       self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
             .CloseButton(True).MaximizeButton(True).BestSize(360,380).Layer(1)
@@ -896,7 +898,7 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, "Run", ico.imgPlay.GetBitmap(),
          "Run\tF5")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_RUN, ico.imgPlayDisabled.GetBitmap())
-      
+
       self.gcodeToolBar.AddSimpleTool(gID_MENU_PAUSE, "Pause", ico.imgPause.GetBitmap(),
          "Pause")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_PAUSE, ico.imgPauseDisabled.GetBitmap())
@@ -1240,8 +1242,8 @@ class gsatMainWindow(wx.Frame):
 
    def OnSettings(self, e):
       # update serial port data
-      self.configData.Add('/link/PortList', self.GetSerialPortList())
-      self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
+      self.configData.Add('/machine/PortList', self.GetSerialPortList())
+      self.configData.Add('/machine/BaudList', self.GetSerialBaudRateList())
 
       # do settings dialog
       dlg = gsatSettingsDialog(self, self.configData)
@@ -1255,10 +1257,10 @@ class gsatMainWindow(wx.Frame):
 
          # re open serial port if open
          if self.stateData.serialPortIsOpen and \
-            (self.stateData.serialPort != self.linkPort or self.stateData.serialPortBaud != self.linkBaud):
+            (self.stateData.serialPort != self.machinePort or self.stateData.serialPortBaud != self.machineBaud):
 
             self.SerialClose()
-            self.SerialOpen(self.linkPort, self.linkBaud)
+            self.SerialOpen(self.machinePort, self.machineBaud)
 
          if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
             self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
@@ -1303,7 +1305,7 @@ class gsatMainWindow(wx.Frame):
          if self.stateData.swState != gc.gSTATE_PAUSE and \
             self.stateData.swState != gc.gSTATE_BREAK:
             self.runStartTime = time.time()
-            
+
          self.RunTimerStart()
 
          self.gcText.GoToPC()
@@ -1323,7 +1325,7 @@ class gsatMainWindow(wx.Frame):
          e.Enable(state)
 
       self.gcodeToolBar.EnableTool(gID_MENU_RUN, state)
-      
+
    def OnPause(self, e):
       self.Stop(gc.gSTATE_PAUSE)
 
@@ -1586,7 +1588,7 @@ class gsatMainWindow(wx.Frame):
       if self.stateData.serialPortIsOpen:
          self.SerialClose()
       else:
-         self.SerialOpen(self.configData.Get('/link/Port'), self.configData.Get('/link/Baud'))
+         self.SerialOpen(self.configData.Get('/machine/Port'), self.configData.Get('/machine/Baud'))
 
    def OnGetMachineStatus(self, e):
       self.GetMachineStatus()
@@ -1648,28 +1650,28 @@ class gsatMainWindow(wx.Frame):
          self.Bind(wx.EVT_TIMER, self.OnRunTimerAction, t)
 
       self.runTimer.Start(1000)
-         
+
    def RunTimerStop(self):
       if self.runTimer is not None:
          self.runTimer.Stop()
-         
+
    def OnRunTimerAction(self, e):
       # calculate elapse time
       runTimeStr = "00:00:00"
       if self.stateData.swState == gc.gSTATE_RUN or \
          self.stateData.swState == gc.gSTATE_PAUSE or \
          self.stateData.swState == gc.gSTATE_BREAK:
-            
+
          runTime = time.time() - self.runStartTime
          hours, reminder = divmod(runTime, 3600)
          minutes, reminder = divmod(reminder, 60)
          seconds, mseconds = divmod(reminder, 1)
          runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
-         
-         self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))         
+
+         self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
       else:
          self.RunTimerStop()
-      
+
    def AutoRefreshTimerStart(self):
       self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
       self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
@@ -1688,13 +1690,11 @@ class gsatMainWindow(wx.Frame):
          self.machineAutoRefreshTimer.Stop()
 
    def OnAutoRefreshTimerAction(self, e):
-      if self.stateData.deviceDetected and \
-         (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK or \
-          self.stateData.swState == gc.gSTATE_PAUSE):
-
-         # only do this if we are in IDLE or BREAK, it will cause probelms
-         # if status request are sent randomly wile running program
+      if self.stateData.deviceDetected:
+         # this is know to cause problems with Grbl 0.8c (maybe fixed in 0.9),
+         # if too many request are sent Grbl behaves erratically, this is really
+         # not require needed with TinyG(2) as its purpose is to update status
+         # panel, and TinyG(2) already provides this information at run time.
          if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
             self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
          elif self.stateData.deviceID == gc.gDEV_GRBL:
@@ -1762,7 +1762,7 @@ class gsatMainWindow(wx.Frame):
 
          if self.serPort.isOpen():
             self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
-               self.mainWndInQueue, self.cmdLineOptions, self.stateData.deviceID)
+               self.mainWndInQueue, self.cmdLineOptions, self.stateData.deviceID, self.machineAutoStatus)
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
@@ -1992,14 +1992,15 @@ class gsatMainWindow(wx.Frame):
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_OUT."
             self.outputText.AppendText("> %s" % te.data)
-            
+
             # -----------------------------------------------------------------
             # Grbl DRO Hack
             if self.machineGrblDroHack and self.stateData.deviceID == gc.gDEV_GRBL:
                rematch = gReAxis.findall(te.data)
                if len(rematch) > 0:
                   machineStatus = dict()
-                  machineStatus["wpos%s" % rematch[0][0].lower()] = rematch[0][1]
+                  for match in rematch:
+                     machineStatus["wpos%s" % match[0].lower()] = match[1]
 
                   if self.cmdLineOptions.vverbose:
                      print "gsatMainWindow re GRBL GCODE match %s" % str(rematch)
@@ -2079,7 +2080,7 @@ class gsatMainWindow(wx.Frame):
       # -----------------------------------------------------------------
       # lest try to see if we have any other good data
       # -----------------------------------------------------------------
-      
+
       # -----------------------------------------------------------------
       # Grbl
       if self.stateData.deviceID == gc.gDEV_GRBL:
@@ -2114,7 +2115,7 @@ class gsatMainWindow(wx.Frame):
             self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
             self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
             self.UpdateUI()
-            
+
          else:
             # Grbl version, also useful to detect grbl connect
             # do this check attend since is less probable so lets not waste
