@@ -89,6 +89,7 @@ Changelog
 ### 1.5.0
 * Added support for [TinyG2](https://github.com/synthetos/g2/wiki).
 * Added support for [Mac OS X Mavericks](https://www.apple.com/osx/) with working [OpenCV](http://opencv.org/).
+* Added run time dialog at end of program run.
 * Added PAUSE state, tool-bar button and menu item, in pause state run time continues.
 * Added machine setting for [Grbl](https://github.com/grbl/grbl/wiki/), [TinyG](https://github.com/synthetos/TinyG/wiki/), or [TinyG2](https://github.com/synthetos/g2/wiki/).
 * Added machine setting for initialization script, useful to send setup commands after device connect detect.

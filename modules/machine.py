@@ -117,7 +117,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       # GRBL related helper/utility
 
       # Add auto status check box
-      self.cbAutoStatus = wx.CheckBox(self, wx.ID_ANY, "Auto Status")
+      self.cbAutoStatus = wx.CheckBox(self, wx.ID_ANY, "Auto Status Request")
       self.cbAutoStatus.SetValue(self.configData.Get('/machine/AutoStatus'))
       self.cbAutoStatus.SetToolTip(
          wx.ToolTip("Send \"STATUS\" request with every command sent (experimental)"))

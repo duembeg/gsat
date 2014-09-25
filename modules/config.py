@@ -188,6 +188,7 @@ class gsatConfigData():
       self.config = {
       #  key                                 CanEval, Default Value
       # main app keys
+         '/mainApp/DisplayRunTimeDialog'     :(True , True),
          '/mainApp/BackupFile'               :(True , True),
          '/mainApp/MaxFileHistory'           :(True , 8),
          '/mainApp/RoundInch2mm'             :(True , 4),

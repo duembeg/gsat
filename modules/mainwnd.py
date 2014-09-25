@@ -203,13 +203,23 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
       #self.FitInside()
 
    def InitUI(self):
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
+      # run time dialog settings
+      st = wx.StaticText(self, label="General")
+      st.SetFont(font)
+      vBoxSizer.Add(st, 0, wx.ALL, border=5)
+
+      # Add file save backup check box
+      self.cbDisplayRunTimeDialog = wx.CheckBox(self, wx.ID_ANY, "Display run time dialog at program end")
+      self.cbDisplayRunTimeDialog.SetValue(self.configData.Get('/mainApp/DisplayRunTimeDialog'))
+      vBoxSizer.Add(self.cbDisplayRunTimeDialog, flag=wx.LEFT, border=25)
+
       # file settings
-      text = wx.StaticText(self, label="Files:")
-      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-      text.SetFont(font)
-      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      st = wx.StaticText(self, label="Files")
+      st.SetFont(font)
+      vBoxSizer.Add(st, 0, wx.ALL, border=5)
 
       # Add file save backup check box
       self.cbBackupFile = wx.CheckBox(self, wx.ID_ANY, "Create a backup copy of file before saving")
@@ -230,10 +240,10 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
 
       # tools settings
-      text = wx.StaticText(self, label="Tools:")
+      st = wx.StaticText(self, label="Tools")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-      text.SetFont(font)
-      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      st.SetFont(font)
+      vBoxSizer.Add(st, 0, wx.ALL, border=5)
 
       # Add Inch to mm round digits spin ctrl
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -263,6 +273,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
       self.SetSizer(vBoxSizer)
 
    def UpdatConfigData(self):
+      self.configData.Set('/mainApp/DisplayRunTimeDialog', self.cbDisplayRunTimeDialog.GetValue())
       self.configData.Set('/mainApp/BackupFile', self.cbBackupFile.GetValue())
       self.configData.Set('/mainApp/MaxFileHistory', self.scFileHistory.GetValue())
       self.configData.Set('/mainApp/RoundInch2mm', self.scIN2MMRound.GetValue())
@@ -437,6 +448,7 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoRefreshTimer = None
       self.runTimer = None
       self.runStartTime = 0
+      self.runEndTime = 0
 
       # thread communication queues
       self.mainWndInQueue = Queue.Queue()
@@ -450,6 +462,7 @@ class gsatMainWindow(wx.Frame):
       self.Show()
 
    def InitConfig(self):
+      self.displayRuntimeDialog = self.configData.Get('/mainApp/DisplayRunTimeDialog')
       self.saveBackupFile = self.configData.Get('/mainApp/BackupFile')
       self.maxFileHistory = self.configData.Get('/mainApp/MaxFileHistory')
       self.roundInch2mm = self.configData.Get('/mainApp/RoundInch2mm')
@@ -465,6 +478,7 @@ class gsatMainWindow(wx.Frame):
 
       if self.cmdLineOptions.verbose:
          print "Init config values..."
+         print "  displayRuntimeDialog:     ", self.displayRuntimeDialog
          print "  saveBackupFile:           ", self.saveBackupFile
          print "  maxFileHistory:           ", self.maxFileHistory
          print "  roundInch2mm:             ", self.roundInch2mm
@@ -1304,7 +1318,8 @@ class gsatMainWindow(wx.Frame):
 
          if self.stateData.swState != gc.gSTATE_PAUSE and \
             self.stateData.swState != gc.gSTATE_BREAK:
-            self.runStartTime = time.time()
+            self.runStartTime = int(time.time())
+            self.runEndTime = 0
 
          self.RunTimerStart()
 
@@ -1656,21 +1671,23 @@ class gsatMainWindow(wx.Frame):
          self.runTimer.Stop()
 
    def OnRunTimerAction(self, e):
-      # calculate elapse time
+      # calculate run time
       runTimeStr = "00:00:00"
-      if self.stateData.swState == gc.gSTATE_RUN or \
-         self.stateData.swState == gc.gSTATE_PAUSE or \
-         self.stateData.swState == gc.gSTATE_BREAK:
 
-         runTime = time.time() - self.runStartTime
-         hours, reminder = divmod(runTime, 3600)
-         minutes, reminder = divmod(reminder, 60)
-         seconds, mseconds = divmod(reminder, 1)
-         runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
+      self.runEndTime = int(time.time())
+      runTime = self.runEndTime - self.runStartTime
+      hours, reminder = divmod(runTime, 3600)
+      minutes, reminder = divmod(reminder, 60)
+      seconds, mseconds = divmod(reminder, 1)
+      runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
 
-         self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
-      else:
+      if self.stateData.swState != gc.gSTATE_RUN and \
+         self.stateData.swState != gc.gSTATE_PAUSE and \
+         self.stateData.swState != gc.gSTATE_BREAK:
          self.RunTimerStop()
+
+      self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
+
 
    def AutoRefreshTimerStart(self):
       self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
@@ -2025,10 +2042,37 @@ class gsatMainWindow(wx.Frame):
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
             self.stateData.swState = gc.gSTATE_IDLE
+            self.RunTimerStop()
             self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':"100.00%"}))
             self.Refresh()
             self.UpdateUI()
             self.SetPC(0)
+
+
+            # calculate run time
+            if self.runEndTime == 0:
+               self.runEndTime = int(time.time())
+
+            runTime = self.runEndTime - self.runStartTime
+            hours, reminder = divmod(runTime, 3600)
+            minutes, reminder = divmod(reminder, 60)
+            seconds, mseconds = divmod(reminder, 1)
+            runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
+            runStartTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
+            runEndTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
+
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
+
+            # display run time dialog.
+            if self.displayRuntimeDialog:
+               dlg = wx.MessageDialog(self,
+                  "Started:	%s\n"\
+                  "Ended:	%s\n"\
+                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr), "G-Code Program",
+                  wx.OK|wx.ICON_INFORMATION)
+
+               result = dlg.ShowModal()
+               dlg.Destroy()
 
          elif te.event_id == gc.gEV_STEP_END:
             if self.cmdLineOptions.vverbose:
