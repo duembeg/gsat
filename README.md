@@ -101,7 +101,9 @@ Changelog
 * Removed second set of XYZ coordinates and enlarge the reminding for ease of view at a distance.
 * Updated G-Code message dialog, it is now treated as entering PAUSE state.
 * Fixed bug with missing variable "serialBaud" not found when changing settings while serial port was open.
+* Fixed bug with File->Open being enabled while RUN state was active.
 * Fixed multiple UI issues with [Mac OS X](http://www.apple.com/osx/)
+* Moved decode of status string processing to program exec thread, this will help UI from becoming temporarily unresponsive.
 
 
 ### 1.4.0

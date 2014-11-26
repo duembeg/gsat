@@ -135,6 +135,9 @@ gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
 gEV_SER_RXDATA       = 2080
+gEV_TIMER            = 2090
+gEV_DATA_STATUS      = 2100
+gEV_DEVICE_DETECTED  = 2110
 
 # --------------------------------------------------------------------------
 # Device type

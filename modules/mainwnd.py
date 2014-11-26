@@ -95,7 +95,6 @@ import modules.progexec as progexec
 gID_TOOLBAR_OPEN                 = wx.NewId()
 gID_TOOLBAR_LINK_STATUS          = wx.NewId()
 gID_TOOLBAR_PROGRAM_STATUS       = wx.NewId()
-gID_TOOLBAR_MACHINE_STATUS       = wx.NewId()
 gID_MENU_MAIN_TOOLBAR            = wx.NewId()
 gID_MENU_SEARCH_TOOLBAR          = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
@@ -132,40 +131,6 @@ gID_TIMER_RUN                    = wx.NewId()
 # regular expressions
 # -----------------------------------------------------------------------------
 gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
-
-# Grbl
-
-# grbl version, example "Grbl 0.8c ['$' for help]"
-gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
-
-# status,
-# quick re check to avoid multiple checks, speeds things up
-gReMachineStatus = re.compile(r'pos', re.I)
-
-# GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
-
-#TinyG/TinyG2
-# TinyG detect, example "tinyg [mm] ok>"
-gReTinyGDetect = re.compile(r'tinyg\s+(.*)\s+ok>')
-
-# tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
-gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
-
-# tinyG query response example:
-#X position:          30.408 mm
-#Y position:          20.701 mm
-#Z position:          10.000 mm
-#Machine state:       Stop
-gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
-gReTinyGStateStatus = re.compile(r'(\w*)\s+state:\s+(\w*).*')
-
-# tinyG query response example:
-#X machine posn:      30.408 mm
-#Y machine posn:      20.701 mm
-#Z machine posn:      10.000 mm
-#Machine state:       Stop
-gReTinyG2PosStatus = re.compile(r'(\w*)\s+machine posn:\s+(-?\d+\.?\d*)\s+.*')
 
 
 """----------------------------------------------------------------------------
@@ -719,6 +684,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN,
                            self.OnDropDownToolBarOpen,   id=gID_TOOLBAR_OPEN)
 
+      self.Bind(wx.EVT_UPDATE_UI, self.OnFileOpenUpdate, id=wx.ID_OPEN)
       self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveUpdate, id=wx.ID_SAVE)
       self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveAsUpdate,
                                                          id=wx.ID_SAVEAS)
@@ -811,8 +777,6 @@ class gsatMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Status tool bar
       self.Bind(wx.EVT_MENU, self.OnLinkStatus,          id=gID_TOOLBAR_LINK_STATUS)
-      self.Bind(wx.EVT_MENU, self.OnGetMachineStatus,    id=gID_TOOLBAR_MACHINE_STATUS)
-
 
       #------------------------------------------------------------------------
       # Create shortcut keys for menu
@@ -932,11 +896,11 @@ class gsatMainWindow(wx.Frame):
 
       self.gcodeToolBar.AddSeparator()
       self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", ico.imgMapPin.GetBitmap(),
-         "Set PC")
+         "Set Program Counter (PC) from current position")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, ico.imgMapPinDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", ico.imgGotoMapPin.GetBitmap(),
-         "Goto PC")
+         "Goto current Program Counter (PC)")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
@@ -970,9 +934,6 @@ class gsatMainWindow(wx.Frame):
          "Program Status")
       self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_PROGRAM_STATUS, ico.imgProgram.GetBitmap())
 
-      self.statusToolBar.AddSimpleTool(gID_TOOLBAR_MACHINE_STATUS, "123456", ico.imgMachine.GetBitmap(),
-         "Machine Status (refresh)")
-      self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_MACHINE_STATUS, ico.imgMachineDisabled.GetBitmap())
 
       self.statusToolBar.Realize()
 
@@ -991,6 +952,7 @@ class gsatMainWindow(wx.Frame):
       self.CV2Panel.UpdateUI(self.stateData)
 
       # Force update tool bar items
+      self.OnAppToolBarForceUpdate()
       self.OnStatusToolBarForceUpdate()
       self.OnRunToolBarForceUpdate()
 
@@ -1000,6 +962,17 @@ class gsatMainWindow(wx.Frame):
    gsatMainWindow: UI Event Handlers
    -------------------------------------------------------------------------"""
 
+   def OnAppToolBarForceUpdate(self):
+      state = True
+      if self.stateData.serialPortIsOpen and \
+         (self.stateData.swState == gc.gSTATE_RUN or \
+          self.stateData.swState == gc.gSTATE_STEP):
+
+         state = False
+      
+      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)     
+      self.appToolBar.Refresh() 
+      
    #---------------------------------------------------------------------------
    # File Menu Handlers
    #---------------------------------------------------------------------------
@@ -1033,6 +1006,17 @@ class gsatMainWindow(wx.Frame):
 
          self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
+   def OnFileOpenUpdate(self, e):
+      state = True
+      if self.stateData.serialPortIsOpen and \
+         (self.stateData.swState == gc.gSTATE_RUN or \
+          self.stateData.swState == gc.gSTATE_STEP):
+
+         state = False
+
+      e.Enable(state)
+      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)     
+      
    def OnDropDownToolBarOpen(self, e):
       if not e.IsDropDownClicked():
          self.OnFileOpen(e)
@@ -1314,7 +1298,6 @@ class gsatMainWindow(wx.Frame):
 
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_RUN,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-         self.mainWndOutQueue.join()
 
          if self.stateData.swState != gc.gSTATE_PAUSE and \
             self.stateData.swState != gc.gSTATE_BREAK:
@@ -1365,7 +1348,6 @@ class gsatMainWindow(wx.Frame):
 
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STEP,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-         self.mainWndOutQueue.join()
 
          self.stateData.swState = gc.gSTATE_STEP
          self.UpdateUI()
@@ -1593,10 +1575,6 @@ class gsatMainWindow(wx.Frame):
       elif self.stateData.swState == gc.gSTATE_ABORT:
          self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "ABORT")
 
-      #Machine status
-      self.statusToolBar.EnableTool(gID_TOOLBAR_MACHINE_STATUS, self.stateData.serialPortIsOpen)
-      self.statusToolBar.SetToolLabel(gID_TOOLBAR_MACHINE_STATUS, self.stateData.machineStatusString)
-
       self.statusToolBar.Refresh()
 
    def OnLinkStatus(self, e):
@@ -1604,9 +1582,6 @@ class gsatMainWindow(wx.Frame):
          self.SerialClose()
       else:
          self.SerialOpen(self.configData.Get('/machine/Port'), self.configData.Get('/machine/Baud'))
-
-   def OnGetMachineStatus(self, e):
-      self.GetMachineStatus()
 
    #---------------------------------------------------------------------------
    # Help Menu Handlers
@@ -1645,7 +1620,6 @@ class gsatMainWindow(wx.Frame):
 
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         self.mainWndOutQueue.join()
 
       self.machineJoggingPanel.SaveCli()
       self.configData.Save(self.configFile)
@@ -1799,7 +1773,6 @@ class gsatMainWindow(wx.Frame):
    def SerialClose(self):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         self.mainWndOutQueue.join()
       self.progExecThread = None
       self.serPort.close()
 
@@ -1830,7 +1803,6 @@ class gsatMainWindow(wx.Frame):
    def Stop(self, toState=gc.gSTATE_IDLE):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STOP, None))
-         self.mainWndOutQueue.join()
 
          self.stateData.swState = toState
          self.UpdateUI()
@@ -1847,7 +1819,6 @@ class gsatMainWindow(wx.Frame):
 
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
-         self.mainWndOutQueue.join()
 
       if autoRefresh:
          self.GetMachineStatus()
@@ -1999,11 +1970,16 @@ class gsatMainWindow(wx.Frame):
             self.progExecThread = None
             self.SerialClose()
 
-         elif te.event_id == gc.gEV_DATA_IN:
+         elif te.event_id == gc.gEV_DATA_STATUS:
+            self.stateData.machineStatusString = te.data.get('stat', 'Uknown')
+            self.machineStatusPanel.UpdateUI(self.stateData, te.data)
+            self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
 
+         elif te.event_id == gc.gEV_DATA_IN:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_IN."
-            self.OnThreadSerialData(te.data)
+
+            self.outputText.AppendText("%s" % te.data)               
 
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
@@ -2038,6 +2014,11 @@ class gsatMainWindow(wx.Frame):
             self.SetPC(te.data)
             self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':prcnt}))
 
+         elif te.event_id == gc.gEV_DEVICE_DETECTED:
+            self.stateData.deviceDetected = True
+            self.GetMachineStatus()
+            self.RunDeviceInitScript()
+            
          elif te.event_id == gc.gEV_RUN_END:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
@@ -2047,7 +2028,6 @@ class gsatMainWindow(wx.Frame):
             self.Refresh()
             self.UpdateUI()
             self.SetPC(0)
-
 
             # calculate run time
             if self.runEndTime == 0:
@@ -2114,158 +2094,6 @@ class gsatMainWindow(wx.Frame):
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
-         # item acknowledgment
-         self.mainWndInQueue.task_done()
-
-   def OnThreadSerialData (self, teData):
-
-      self.outputText.AppendText("%s" % teData)
-
-      # -----------------------------------------------------------------
-      # lest try to see if we have any other good data
-      # -----------------------------------------------------------------
-
-      # -----------------------------------------------------------------
-      # Grbl
-      if self.stateData.deviceID == gc.gDEV_GRBL:
-
-         # GRBL status data
-         rematch = gReGRBLMachineStatus.match(teData)
-         # data is expected to be an array of strings as follows
-         # statusData[0] : Machine state
-         # statusData[1] : Machine X
-         # statusData[2] : Machine Y
-         # statusData[3] : Machine Z
-         # statusData[4] : Work X
-         # statusData[5] : Work Y
-         # statusData[6] : Work Z
-
-         if rematch is not None:
-            statusData = rematch.groups()
-            machineStatus = dict()
-            machineStatus['stat'] = statusData[0]
-            machineStatus['posx'] = statusData[1]
-            machineStatus['posy'] = statusData[2]
-            machineStatus['posz'] = statusData[3]
-            machineStatus['wposx'] = statusData[4]
-            machineStatus['wposy'] = statusData[5]
-            machineStatus['wposz'] = statusData[6]
-
-            if self.cmdLineOptions.vverbose:
-               print "gsatMainWindow re GRBL status match %s" % str(statusData)
-               print "gsatMainWindow str match from %s" % str(teData.strip())
-
-            self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-            self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-            self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-            self.UpdateUI()
-
-         else:
-            # Grbl version, also useful to detect grbl connect
-            # do this check attend since is less probable so lets not waste
-            # cpu cycles on this every single time.
-            rematch = gReGrblVersion.match(teData)
-            if rematch is not None:
-               if self.stateData.swState == gc.gSTATE_RUN:
-                  # something went really bad we shouldn't see this while-in
-                  # RUN state
-                  self.Stop()
-                  dlg = wx.MessageDialog(self,
-                     "Detected Grbl reset string while-in RUN.\n" \
-                     "Something went terribly wrong, STOPPING!!\n", "",
-                     wx.OK|wx.ICON_STOP)
-                  result = dlg.ShowModal()
-                  dlg.Destroy()
-               elif self.stateData.deviceDetected == False:
-                  self.stateData.deviceDetected = True
-                  self.GetMachineStatus()
-                  self.RunDeviceInitScript()
-               self.UpdateUI()
-
-      # -----------------------------------------------------------------
-      # TinyG and TinyG2
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
-         if self.stateData.deviceDetected == False:
-            rematch = gReTinyGDetect.findall(teData)
-            if len(rematch) > 0:
-               self.stateData.deviceDetected = True
-               self.GetMachineStatus()
-               self.RunDeviceInitScript()
-
-         # tinyG verbose/status
-         rematch = gReTinyGVerbose.findall(teData)
-         if len(rematch) > 0:
-
-            if self.cmdLineOptions.vverbose:
-               print "gsatMainWindow re tinyG verbose match %s" % str(rematch)
-               print "gsatMainWindow str match from %s" % str(teData)
-
-            machineStatus = dict(rematch)
-
-            status = machineStatus.get('stat')
-            if status is not None:
-               if '0' in status:
-                  machineStatus['stat'] = 'Init'
-               elif '1' in status:
-                  machineStatus['stat'] = 'Ready'
-               elif '2' in status:
-                  machineStatus['stat'] = 'Alarm'
-               elif '3' in status:
-                  machineStatus['stat'] = 'Stop'
-               elif '4' in status:
-                  machineStatus['stat'] = 'End'
-               elif '5' in status:
-                  machineStatus['stat'] = 'Run'
-               elif '6' in status:
-                  machineStatus['stat'] = 'Hold'
-               elif '7' in status:
-                  machineStatus['stat'] = 'Probe'
-               elif '8' in status:
-                  machineStatus['stat'] = 'Run'
-               elif '9' in status:
-                  machineStatus['stat'] = 'Home'
-
-               self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-               self.UpdateUI()
-
-            self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-            self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-         else:
-            rematch = []
-
-            if self.stateData.deviceID == gc.gDEV_TINYG2:
-               rematch = gReTinyG2PosStatus.findall(teData)
-            elif self.stateData.deviceID == gc.gDEV_TINYG:
-               rematch = gReTinyGPosStatus.findall(teData)
-
-            if len(rematch) > 0:
-               if self.cmdLineOptions.vverbose:
-                  print "gsatMainWindow re tinyG status match %s" % str(rematch)
-                  print "gsatMainWindow str match from %s" % str(teData)
-
-               machineStatus = dict()
-
-               if self.stateData.deviceID == gc.gDEV_TINYG2:
-                  machineStatus["mpo%s" % rematch[0][0].lower()] = rematch[0][1]
-               elif self.stateData.deviceID == gc.gDEV_TINYG:
-                  machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
-
-               self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-               self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-            else:
-               rematch = gReTinyGStateStatus.findall(teData)
-
-               if len(rematch) > 0:
-                  if self.cmdLineOptions.vverbose:
-                     print "gsatMainWindow re tinyG status match %s" % str(teData)
-
-                  machineStatus = dict()
-                  machineStatus["stat"] = rematch[0][1]
-
-                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-                  self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-                  self.UpdateUI()
 
    def RunDeviceInitScript (self):
       # run init script
