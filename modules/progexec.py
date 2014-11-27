@@ -120,6 +120,7 @@ class gsatProgramExecuteThread(threading.Thread):
       self.cmdLineOptions = cmd_line_options
       self.deviceID = device_id
       self.deviceDetected = False
+      self.okToPostEvents = True
 
       self.gcodeDataLines = []
       self.breakPointSet = set()
@@ -143,7 +144,9 @@ class gsatProgramExecuteThread(threading.Thread):
    def ProcessQueue(self):
       # check output queue and notify UI if is not empty
       if not self.progExecOutQueue.empty():
-         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+         if self.okToPostEvents:
+            self.okToPostEvents = False
+            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
 
       # process events from queue ---------------------------------------------
       if not self.progExecInQueue.empty():
@@ -201,6 +204,11 @@ class gsatProgramExecuteThread(threading.Thread):
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_AUTO_STATUS."
             self.machineAutoStatus = e.data
+
+         elif e.event_id == gc.gEV_CMD_OK_TO_POST:
+            if self.cmdLineOptions.vverbose:
+               print "** gsatProgramExecuteThread got event gc.gEV_CMD_OK_TO_POST."
+            self.okToPostEvents = True
 
          else:
             if self.cmdLineOptions.vverbose:

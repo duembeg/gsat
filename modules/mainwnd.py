@@ -969,10 +969,10 @@ class gsatMainWindow(wx.Frame):
           self.stateData.swState == gc.gSTATE_STEP):
 
          state = False
-      
-      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)     
-      self.appToolBar.Refresh() 
-      
+
+      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)
+      self.appToolBar.Refresh()
+
    #---------------------------------------------------------------------------
    # File Menu Handlers
    #---------------------------------------------------------------------------
@@ -1015,8 +1015,8 @@ class gsatMainWindow(wx.Frame):
          state = False
 
       e.Enable(state)
-      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)     
-      
+      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)
+
    def OnDropDownToolBarOpen(self, e):
       if not e.IsDropDownClicked():
          self.OnFileOpen(e)
@@ -1979,7 +1979,7 @@ class gsatMainWindow(wx.Frame):
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_IN."
 
-            self.outputText.AppendText("%s" % te.data)               
+            self.outputText.AppendText("%s" % te.data)
 
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
@@ -2018,7 +2018,7 @@ class gsatMainWindow(wx.Frame):
             self.stateData.deviceDetected = True
             self.GetMachineStatus()
             self.RunDeviceInitScript()
-            
+
          elif te.event_id == gc.gEV_RUN_END:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
@@ -2094,6 +2094,8 @@ class gsatMainWindow(wx.Frame):
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
+      # tell program exec thread that our queue is empty, ok to post more event
+      self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
 
    def RunDeviceInitScript (self):
       # run init script

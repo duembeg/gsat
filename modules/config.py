@@ -124,6 +124,7 @@ gEV_CMD_STOP         = 1050
 gEV_CMD_SEND         = 1060
 gEV_CMD_SEND_W_ACK   = 1062
 gEV_CMD_AUTO_STATUS  = 1070
+gEV_CMD_OK_TO_POST   = 1080
 
 gEV_NULL             = 0100
 gEV_ABORT            = 2000
