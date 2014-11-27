@@ -274,7 +274,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
       self.UpdateSettings(self.configData)
-      self.allRadioButton.SetValue(True)
+      #self.allCheckBox.SetValue(True)
       #self.spinCtrl.SetFocus()
       self.LoadCli()
 
@@ -598,17 +598,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       vRadioBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.xRadioButton = wx.RadioButton(self, -1, 'X', style=wx.RB_GROUP)
-      vRadioBoxSizer.Add(self.xRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.xCheckBox = wx.CheckBox(self, label='X')
+      vRadioBoxSizer.Add(self.xCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnXCheckBox, self.xCheckBox)
 
-      self.yRadioButton = wx.RadioButton(self, -1, 'Y')
-      vRadioBoxSizer.Add(self.yRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.yCheckBox = wx.CheckBox(self, label='Y')
+      vRadioBoxSizer.Add(self.yCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnYCheckBox, self.yCheckBox)
 
-      self.zRadioButton = wx.RadioButton(self, -1, 'Z')
-      vRadioBoxSizer.Add(self.zRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.zCheckBox = wx.CheckBox(self, label='Z')
+      vRadioBoxSizer.Add(self.zCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnZCheckBox, self.zCheckBox)
 
-      self.allRadioButton = wx.RadioButton(self, -1, 'All')
-      vRadioBoxSizer.Add(self.allRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.allCheckBox = wx.CheckBox(self, label='All')
+      vRadioBoxSizer.Add(self.allCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnAllCheckBox, self.allCheckBox)
 
       vBoxSizer.Add(vRadioBoxSizer, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_CENTER)
 
@@ -720,6 +724,29 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       staticControl.SetValue(fAxisStrPos)
       self.mainWindow.SerialWriteWaitForAck(cmdString.replace("<VAL>",fAxisStrPos))
 
+   def OnAllCheckBox(self, evt):
+      self.xCheckBox.SetValue(evt.IsChecked())
+      self.yCheckBox.SetValue(evt.IsChecked())
+      self.zCheckBox.SetValue(evt.IsChecked())
+
+   def OnXCheckBox(self, evt):
+      if evt.IsChecked() and self.yCheckBox.IsChecked() and self.zCheckBox.IsChecked():
+         self.allCheckBox.SetValue(True)
+      else:
+         self.allCheckBox.SetValue(False)
+
+   def OnYCheckBox(self, evt):
+      if evt.IsChecked() and self.xCheckBox.IsChecked() and self.zCheckBox.IsChecked():
+         self.allCheckBox.SetValue(True)
+      else:
+         self.allCheckBox.SetValue(False)
+
+   def OnZCheckBox(self, evt):
+      if evt.IsChecked() and self.xCheckBox.IsChecked() and self.yCheckBox.IsChecked():
+         self.allCheckBox.SetValue(True)
+      else:
+         self.allCheckBox.SetValue(False)
+
    def OnXPos(self, e):
       self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=True)
 
@@ -750,38 +777,29 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.configAutoMPOS = e.IsChecked()
 
    def OnJogCmd (self, xval, yval, zval, all_cmd, single_cmd):
-      cmd = "\n"
+      cmd = ""
+      cmdx = ""
+      cmdy = ""
+      cmdz = ""
 
-      if self.allRadioButton.GetValue():
+      if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jX.SetValue(xval)
+         cmdx = "X%s" % xval
+
+      if self.yCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jY.SetValue(yval)
+         cmdy = "Y%s" % yval
+
+      if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jZ.SetValue(zval)
+         cmdz = "Z%s" % zval
 
-         cmd = all_cmd
-         cmd = cmd.replace("<XVAL>", xval)
-         cmd = cmd.replace("<YVAL>", yval)
-         cmd = cmd.replace("<ZVAL>", zval)
+      if (len(cmdx) > 0) or (len(cmdy) > 0) or (len(cmdz) > 0):
+         cmd = single_cmd.strip()
+         cmd = cmd.replace("<AXIS>", "")
+         cmd = cmd.replace("<VAL>", "")
 
-      elif self.xRadioButton.GetValue():
-         self.jX.SetValue(xval)
-
-         cmd = single_cmd
-         cmd = cmd.replace("<AXIS>", "X")
-         cmd = cmd.replace("<VAL>", xval)
-
-      elif self.yRadioButton.GetValue() or self.allRadioButton.GetValue():
-         self.jY.SetValue(yval)
-
-         cmd = single_cmd
-         cmd = cmd.replace("<AXIS>", "Y")
-         cmd = cmd.replace("<VAL>", yval)
-
-      elif self.zRadioButton.GetValue() or self.allRadioButton.GetValue():
-         self.jZ.SetValue(zval)
-
-         cmd = single_cmd
-         cmd = cmd.replace("<AXIS>", "Z")
-         cmd = cmd.replace("<VAL>", zval)
+      cmd = "".join([cmd, cmdx, cmdy, cmdz, "\n"])
 
       self.mainWindow.SerialWriteWaitForAck(cmd)
 

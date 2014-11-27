@@ -626,7 +626,7 @@ class gsatProgramExecuteThread(threading.Thread):
             wx.LogMessage(message)
             break
 
-         time.sleep(0.100)
+         time.sleep(0.02)
 
       if self.cmdLineOptions.vverbose:
          print "** gsatProgramExecuteThread exit."
