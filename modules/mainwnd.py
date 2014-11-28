@@ -498,16 +498,15 @@ class gsatMainWindow(wx.Frame):
             .CloseButton(True).MaximizeButton(True).BestSize(640,530).Hide().Layer(1)
       )
 
+      self.aui_mgr.AddPane(self.machineJoggingPanel,
+         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
+            .CloseButton(True).MaximizeButton(True).BestSize(360,400).Layer(1)
+      )
+
       self.aui_mgr.AddPane(self.machineStatusPanel,
          aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")\
             .CloseButton(True).MaximizeButton(True).BestSize(360,400).Layer(1)
       )
-
-      self.aui_mgr.AddPane(self.machineJoggingPanel,
-         aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
-            .CloseButton(True).MaximizeButton(True).BestSize(360,380).Layer(1)
-      )
-
 
       self.CreateMenu()
       self.CreateToolBar()

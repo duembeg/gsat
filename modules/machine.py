@@ -71,12 +71,13 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
       # Add device type slect
       flexGridSizer = wx.FlexGridSizer(3,2,5,5)
+      flexGridSizer.AddGrowableCol(1)
 
       st = wx.StaticText(self, label="Device")
       self.deviceComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Device'),
          choices=gc.gDEV_LIST, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
-      flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.deviceComboBox, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
       # get serial port list and baud rate speeds
       spList = self.configData.Get('/machine/PortList')
@@ -86,17 +87,17 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       st = wx.StaticText(self, label="Serial Port")
       self.spComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Port'),
          choices=spList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
-      flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.spComboBox, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
       # Add baud rate controls
       st = wx.StaticText(self, label="Baud Rate")
       self.sbrComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Baud'),
          choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
-      flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
-      flexGridSizer.Add(self.sbrComboBox, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
-      vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.TOP|wx.LEFT, border=20)
+      vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, border=20)
 
       # add edit control for init scriptStaticText
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -107,9 +108,9 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.tcInitScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
       self.tcInitScript.SetValue(self.configData.Get('/machine/InitScript'))
       self.tcInitScript.SetToolTip(wx.ToolTip("This script is sent to device upon connect detect"))
-      vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=10)
+      vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
 
-      vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.TOP|wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, border=20)
 
       self.SetSizer(vBoxSizerRoot)
 
@@ -126,7 +127,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
       # Add auto refresh check box
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.cbAutoRefresh = wx.CheckBox(self, wx.ID_ANY, "Auto Refresh")
+      self.cbAutoRefresh = wx.CheckBox(self, wx.ID_ANY, "Auto Refresh Period")
       self.cbAutoRefresh.SetValue(self.configData.Get('/machine/AutoRefresh'))
       self.cbAutoRefresh.SetToolTip(
          wx.ToolTip("Send \"STATUS\" request on a time base (experimental)"))
@@ -138,7 +139,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.sc.SetValue(self.configData.Get('/machine/AutoRefreshPeriod'))
       hBoxSizer.Add(self.sc, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=10)
 
-      st = wx.StaticText(self, wx.ID_ANY, "Auto Refresh Period (milliseconds)")
+      st = wx.StaticText(self, wx.ID_ANY, "(milliseconds)")
       hBoxSizer.Add(st, flag=wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
 
       vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT|wx.EXPAND, border=20)
@@ -148,7 +149,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.cbGrblDroHack = wx.CheckBox(self, wx.ID_ANY, "Enable Grbl DRO hack")
       self.cbGrblDroHack.SetValue(self.configData.Get('/machine/GrblDroHack'))
       self.cbGrblDroHack.SetToolTip(
-         wx.ToolTip("If Device is Grbl, it uses output GCODE to update Status and JOG panels"))
+         wx.ToolTip("If Device is Grbl, it uses output GCODE to update DRO status"))
       hBoxSizer.Add(self.cbGrblDroHack, flag=wx.ALIGN_CENTER_VERTICAL)
 
       vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT|wx.BOTTOM, border=20)

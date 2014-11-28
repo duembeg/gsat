@@ -63,7 +63,7 @@ Development Environment
    * install pip following instructions at [pip.pypa.io](https://pip.pypa.io/en/latest/installing.html)
       * After installing pip install pySerial
       ```
-      pip install pyserial
+      python -m pip install pyserial
       ```
    * Install wxPython following the instructions at [wxPython](http://www.wxpython.org/)
    * Optional dependencies for [OpenCV](http://opencv.org/)
@@ -75,14 +75,16 @@ Development Environment
 
 Screen Shoots
 ------------
-### Main window, stop on a breakpoint
+### Main window
+##Linux
+![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
+##Mac
+![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
+##Windows
 ![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
 
 ### Settings Dialog
 ![Settings Dialog](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/settings_dialog.png "Settings Dialog")
-
-### About Dialog
-![About Dialog](https://raw.github.com/duembeg/gsat/a21778ddb4d0f7021cd4e60c6118173e7cea1d6c/images/screenshoot/about_box.png "About Dialog")
 
 Changelog
 ---------
