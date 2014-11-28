@@ -77,14 +77,14 @@ Screen Shoots
 ------------
 ### Main window
 ##Linux
-![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
+![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_linux.png "Main Window, Linux")
 ##Mac
-![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
+![Main window, Mac](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_mac.png "Main Window, Mac")
 ##Windows
-![Main window, stop on a breakpoint](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/main_window.png "Main Window, stop on a MSG")
+![Main window, Windows](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_win.png "Main Window, Windows")
 
 ### Settings Dialog
-![Settings Dialog](https://raw.github.com/duembeg/gsat/e07a7dc340ce89724829ca0b7d68cef213c7719a/images/screenshoot/settings_dialog.png "Settings Dialog")
+![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/settings_dialog.png "Settings Dialog")
 
 Changelog
 ---------
