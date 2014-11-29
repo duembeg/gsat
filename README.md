@@ -76,11 +76,11 @@ Development Environment
 Screen Shoots
 ------------
 ### Main window
-##Linux
+####* Linux
 ![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_linux.png "Main Window, Linux")
-##Mac
+#### * Mac
 ![Main window, Mac](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_mac.png "Main Window, Mac")
-##Windows
+#### * Windows
 ![Main window, Windows](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_win.png "Main Window, Windows")
 
 ### Settings Dialog
