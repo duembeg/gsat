@@ -1825,7 +1825,7 @@ class gsatMainWindow(wx.Frame):
    def GetMachineStatus(self):
       if self.stateData.serialPortIsOpen:
          if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
-            self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
+            self.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
          elif self.stateData.deviceID == gc.gDEV_GRBL:
             self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
 
@@ -2107,5 +2107,6 @@ class gsatMainWindow(wx.Frame):
          self.outputText.AppendText("Queuing machine init script...\n")
          for initLine in initScript:
             initLine = "".join([initLine, "\n"])
-            self.SerialWrite(initLine)
+            #self.SerialWrite(initLine)
+            self.SerialWriteWaitForAck(initLine)
             self.outputText.AppendText(initLine)

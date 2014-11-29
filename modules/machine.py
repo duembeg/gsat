@@ -99,7 +99,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
       vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, border=20)
 
-      # add edit control for init scriptStaticText
+      # add edit control for init script
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       st = wx.StaticText(self, wx.ID_ANY, "Initialization script")

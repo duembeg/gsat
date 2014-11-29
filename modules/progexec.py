@@ -134,6 +134,8 @@ class gsatProgramExecuteThread(threading.Thread):
 
       self.serialRxThread = None
 
+      self.serialWriteQueue = []
+
       # start thread
       self.start()
 
@@ -191,14 +193,12 @@ class gsatProgramExecuteThread(threading.Thread):
          elif e.event_id == gc.gEV_CMD_SEND:
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_SEND."
-            self.SerialWrite(e.data)
+            self.serialWriteQueue.append((e.data, False))
 
          elif e.event_id == gc.gEV_CMD_SEND_W_ACK:
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_SEND_W_ACK."
-            self.SerialWrite(e.data)
-            #responseData = self.WaitForResponse()
-            self.WaitForAcknowledge()
+            self.serialWriteQueue.append((e.data, True))
 
          elif e.event_id == gc.gEV_CMD_AUTO_STATUS:
             if self.cmdLineOptions.vverbose:
@@ -572,6 +572,14 @@ class gsatProgramExecuteThread(threading.Thread):
    def ProcessIdleSate(self):
       self.SerialRead()
 
+   def ProcessSerialWriteQueue(self):
+      if len(self.serialWriteQueue) > 0:
+         data = self.serialWriteQueue.pop(0)
+         self.SerialWrite(data[0])
+
+         if data[1]:
+            self.WaitForAcknowledge()
+
    def run(self):
       """Run Worker Thread."""
       # This is the code executing in the new thread.
@@ -595,6 +603,9 @@ class gsatProgramExecuteThread(threading.Thread):
 
          # process input queue for new commands or actions
          self.ProcessQueue()
+
+         # process write queue from UI cmds
+         self.ProcessSerialWriteQueue()
 
          # check if we need to exit now
          if self.endThread:
