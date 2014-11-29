@@ -60,14 +60,17 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       self.cbXYZReadOnly = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
       self.cbXYZReadOnly.SetValue(self.configData.Get('/jogging/XYZReadOnly'))
       self.cbXYZReadOnly.SetToolTip(
-         wx.ToolTip("If disable the XYZ fields in jogging status are editable"))
+         wx.ToolTip("If enabled the XYZ fields in jogging status become read only"))
       vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
 
       # Add update from machine pos check box
       self.cbAutoMPOS = wx.CheckBox(self, wx.ID_ANY, "Auto update from machine position")
       self.cbAutoMPOS.SetValue(self.configData.Get('/jogging/AutoMPOS'))
       self.cbAutoMPOS.SetToolTip(
-         wx.ToolTip("If enable jogging values will auto update from machine pos"))
+         wx.ToolTip("Use Machine position to auto update Jogging position, "\
+            "jogging operation use these values to operate. The JOG current "
+            "position need to be in sync with machine position before "\
+            "starting any jog operation. Results maybe undesirable otherwise"))
       vBoxSizer.Add(self.cbAutoMPOS, flag=wx.LEFT, border=20)
 
       # Add request status after jogging set operation check box
@@ -581,10 +584,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
       # Add Checkbox for sync with work position
-      self.useWorkPosCheckBox = wx.CheckBox (self, label="Use work pos")
+      self.useWorkPosCheckBox = wx.CheckBox (self, label="Auto MPOS")
       self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
       self.useWorkPosCheckBox.SetToolTip(
-         wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
+         wx.ToolTip("Use Machine position to update Jogging position, "\
+            "jogging operation use these values to operate"))
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
       vBoxSizer.Add(self.useWorkPosCheckBox)
 
