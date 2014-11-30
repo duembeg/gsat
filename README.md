@@ -68,6 +68,7 @@ Development Environment
    * Install wxPython following the instructions at [wxPython](http://www.wxpython.org/)
    * Optional dependencies for [OpenCV](http://opencv.org/)
       * Install OpenCV follow instructions at [OpenCV windows install](http://docs.opencv.org/trunk/doc/py_tutorials/py_setup/py_setup_in_windows/py_setup_in_windows.html)
+      * Note if there are errors regarding "OpenCV 2.4.8: module compiled against API version 9", go [here](http://sourceforge.net/projects/numpy/files/NumPy) for latest NumPy build.
 
 ### Editors used for development.
 * [Geany] (http://www.geany.org/)
@@ -91,17 +92,18 @@ Changelog
 ### 1.5.0
 * Added support for [TinyG2](https://github.com/synthetos/g2/wiki).
 * Added support for [Mac OS X Mavericks](https://www.apple.com/osx/) with working [OpenCV](http://opencv.org/).
-* Added run time dialog at end of program run.
+* Added run time dialog at end of program run (configurable option).
 * Added PAUSE state, tool-bar button and menu item, in pause state run time continues.
 * Added machine setting for [Grbl](https://github.com/grbl/grbl/wiki/), [TinyG](https://github.com/synthetos/TinyG/wiki/), or [TinyG2](https://github.com/synthetos/g2/wiki/).
 * Added machine setting for initialization script, useful to send setup commands after device connect detect.
 * Added machine runt time status.
 * Added machine Auto Status request setting (mainly for Grbl not needed with TinyG(2)).
-* Consolidated Link and Machine setting panels, this means that port and baud will have to be re-set after first upgrade to this version.
+* Consolidated Link and Machine setting panels (require a one time reconfiguration of port and baud when upgrading from old version).
 * Added jog settings to auto update from machine status.
 * Added jog settings to auto request update from machine after jog set operation that don't normally generate verbose information, like set to zero or set to job values.
+* Added jog custom button support for scripts.
 * Removed second set of XYZ coordinates and enlarge the reminding for ease of view at a distance.
-* Updated G-Code message dialog, it is now treated as entering PAUSE state.
+* Updated G-Code message dialog, it is now treated as entering PAUSE state (run time continues).
 * Fixed bug with missing variable "serialBaud" not found when changing settings while serial port was open.
 * Fixed bug with File->Open being enabled while RUN state was active.
 * Fixed multiple UI issues with [Mac OS X](http://www.apple.com/osx/)
