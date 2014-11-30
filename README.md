@@ -78,14 +78,14 @@ Screen Shoots
 ------------
 ### Main window
 ####* Linux
-![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_linux.png "Main Window, Linux")
+![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/v1.5.0/images/screenshoot/main_window_linux.png "Main Window, Linux")
 #### * Mac
-![Main window, Mac](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_mac.png "Main Window, Mac")
+![Main window, Mac](https://raw.githubusercontent.com/duembeg/gsat/v1.5.0/images/screenshoot/main_window_mac.png "Main Window, Mac")
 #### * Windows
-![Main window, Windows](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/main_window_win.png "Main Window, Windows")
+![Main window, Windows](https://raw.githubusercontent.com/duembeg/gsat/v1.5.0/images/screenshoot/main_window_win.png "Main Window, Windows")
 
 ### Settings Dialog
-![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/tinyG_support/images/screenshoot/settings_dialog.png "Settings Dialog")
+![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/v1.5.0/images/screenshoot/settings_dialog.png "Settings Dialog")
 
 Changelog
 ---------
