@@ -96,7 +96,7 @@ Changelog
 * Added PAUSE state, tool-bar button and menu item, in pause state run time continues.
 * Added machine setting for [Grbl](https://github.com/grbl/grbl/wiki/), [TinyG](https://github.com/synthetos/TinyG/wiki/), or [TinyG2](https://github.com/synthetos/g2/wiki/).
 * Added machine setting for initialization script, useful to send setup commands after device connect detect.
-* Added machine runt time status.
+* Added machine run time status.
 * Added machine Auto Status request setting (mainly for Grbl not needed with TinyG(2)).
 * Consolidated Link and Machine setting panels (require a one time reconfiguration of port and baud when upgrading from old version).
 * Added jog settings to auto update from machine status.
