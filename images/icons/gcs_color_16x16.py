@@ -14,9 +14,23 @@ imgPlay = PyEmbeddedImage(
     "6P8lP59cIpwSQTEAFmRnYbg+cwnE2e9uL/lyaS3D7+dXgDIlGAYwIucFVu0ABiYNvzMg9v83"
     "Nyf8u7F5yd9X1+Hy2PINigv+XNvIwSSgco3hx4dL/87NBVmpAcQ/oPg9EP/E6wKgk0EGCkEN"
     "/gcyEwn/AKr9g9cAcgBAgAEACsnYjGRDfAUAAAAASUVORK5CYII=")
-getimgPlayColorData = imgPlayColor.GetData
-getimgPlayColorImage = imgPlayColor.GetImage
-getimgPlayColorBitmap = imgPlayColor.GetBitmap
+getimgPlayData = imgPlay.GetData
+getimgPlayImage = imgPlay.GetImage
+getimgPlayBitmap = imgPlay.GetBitmap
+
+#----------------------------------------------------------------------
+imgPause = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9i"
+    "ZSBJbWFnZVJlYWR5ccllPAAAAU1JREFUeNrEk79OwzAQxs/ELQkRUiUGhu5dGDMysMErwAoD"
+    "DwCPAQ/AAG/AMyAGRhYWpM6obcjfpjRpnETmnDRWraRl6MAnnc73i/PpcrEJ5xy20Q5sKVov"
+    "Tp5sIIQ84NJaonfs7rqNvV4eNg2KPBfJujjrW4xxeH4Z1Y+s89O+lWUKaxpkaVrm+TyHIMhl"
+    "LTSb5RBFKmsYsMWizHEsNjNZC7nuFMbjH4U1DNIkqYyY6CCUtZDnTcFxAmQbhpjGcZknfggj"
+    "P5C1UFL0INMosujvDjzeAd/Yx9qWm3zNQEYUtrYDm+6BY3YgX+lg0jXBNXWFre3AQQNf57C7"
+    "MoNvakKog8IaJ1H8IhGFpoFpUFmLYPj9Wrdi6deHYkDqu4AnjmrHN49wMDiqhjEcFm/3t8ju"
+    "kA2W7BPZFb7DWg0w9TC6G45+gRG0GvzbbfwVYACMcsm3y4uD/AAAAABJRU5ErkJggg==")
+getimgPauseData = imgPause.GetData
+getimgPauseImage = imgPause.GetImage
+getimgPauseBitmap = imgPause.GetBitmap
 
 #----------------------------------------------------------------------
 imgStep = PyEmbeddedImage(

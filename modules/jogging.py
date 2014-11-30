@@ -51,20 +51,37 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
    def InitUI(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      text = wx.StaticText(self, label="General:")
+      text = wx.StaticText(self, label="General")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
-      # Add cehck box
-      self.cb = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
-      self.cb.SetValue(self.configData.Get('/jogging/XYZReadOnly'))
-      self.cb.SetToolTip(
-         wx.ToolTip("If disable the XYZ fields in jogging status are editable"))
-      vBoxSizer.Add(self.cb, flag=wx.LEFT|wx.BOTTOM, border=20)
+      # Add readonly check box
+      self.cbXYZReadOnly = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
+      self.cbXYZReadOnly.SetValue(self.configData.Get('/jogging/XYZReadOnly'))
+      self.cbXYZReadOnly.SetToolTip(
+         wx.ToolTip("If enabled the XYZ fields in jogging status become read only"))
+      vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
+
+      # Add update from machine pos check box
+      self.cbAutoMPOS = wx.CheckBox(self, wx.ID_ANY, "Auto update from machine position")
+      self.cbAutoMPOS.SetValue(self.configData.Get('/jogging/AutoMPOS'))
+      self.cbAutoMPOS.SetToolTip(
+         wx.ToolTip("Use Machine position to auto update Jogging position, "\
+            "jogging operation use these values to operate. The JOG current "
+            "position need to be in sync with machine position before "\
+            "starting any jog operation. Results maybe undesirable otherwise"))
+      vBoxSizer.Add(self.cbAutoMPOS, flag=wx.LEFT, border=20)
+
+      # Add request status after jogging set operation check box
+      self.cbReqUpdateOnJogSetOp = wx.CheckBox(self, wx.ID_ANY, "Request update after JOG set operation")
+      self.cbReqUpdateOnJogSetOp.SetValue(self.configData.Get('/jogging/ReqUpdateOnJogSetOp'))
+      self.cbReqUpdateOnJogSetOp.SetToolTip(
+         wx.ToolTip("If enable after each JOG set operation (ie set to ZERO) a machine update request will be sent to device"))
+      vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT|wx.BOTTOM, border=20)
 
       # Custom controls
-      text = wx.StaticText(self, label="Custom Controls:")
+      text = wx.StaticText(self, label="Custom Controls")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
       vBoxSizer.Add(text, 0, wx.ALL, border=5)
@@ -85,31 +102,44 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
    def CreateCustomControlSettings(self, cn):
       # Custom controls
-      vCustomSizer = wx.BoxSizer(wx.VERTICAL)
-      text = wx.StaticText(self, label="Custom Control %d:" % cn)
+      vBoxSizerRoot = wx.BoxSizer(wx.VERTICAL)
+      text = wx.StaticText(self, label="Custom Control %d" % cn)
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
-      vCustomSizer.Add(text, 0, flag=wx.ALL, border=5)
+      vBoxSizerRoot.Add(text, 0, flag=wx.ALL, border=5)
 
       # Label
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      text = wx.StaticText(self, label="Label:")
-      hBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL, border=5)
+      text = wx.StaticText(self, label="Label")
+      hBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.RIGHT|wx.BOTTOM, border=5)
       tcLabel = wx.TextCtrl(self, -1,
          self.configData.Get('/jogging/Custom%dLabel' % cn), size=(125, -1))
       hBoxSizer.Add(tcLabel, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      vCustomSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      # radio buttons (position/script)
+      positionRadioButton = wx.RadioButton(self, -1, 'Position', style=wx.RB_GROUP)
+      positionRadioButton.SetValue(self.configData.Get('/jogging/Custom%dOptPosition' % cn))
+      hBoxSizer.Add(positionRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
 
-      # other controls
+      scriptRadioButton = wx.RadioButton(self, -1, 'Script')
+      scriptRadioButton.SetValue(self.configData.Get('/jogging/Custom%dOptScript' % cn))
+      hBoxSizer.Add(scriptRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+
+      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      # position controls
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      text = wx.StaticText(self, label="Position")
+      vBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP, border=5)
+
       gCustomSizer = wx.FlexGridSizer(3,3,0,0)
 
-      text = wx.StaticText(self, label="X Settings:")
-      gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
-      text = wx.StaticText(self, label="Y Settings:")
-      gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
-      text = wx.StaticText(self, label="Z Settings:")
-      gCustomSizer.Add(text, flag=wx.LEFT|wx.TOP|wx.ALIGN_BOTTOM, border=5)
+      text = wx.StaticText(self, label="X Settings")
+      gCustomSizer.Add(text, flag=wx.LEFT|wx.ALIGN_BOTTOM, border=5)
+      text = wx.StaticText(self, label="Y Settings")
+      gCustomSizer.Add(text, flag=wx.LEFT|wx.ALIGN_BOTTOM, border=5)
+      text = wx.StaticText(self, label="Z Settings")
+      gCustomSizer.Add(text, flag=wx.LEFT|wx.ALIGN_BOTTOM, border=5)
 
       # check boxes
       cbXIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
@@ -124,7 +154,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
       cbZIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
       cbZIsOffset.SetValue(self.configData.Get('/jogging/Custom%dZIsOffset' % cn))
-      cbZIsOffset.SetToolTip(wx.ToolTip("If set the value is treated as an offset"))
+      cbZIsOffset.SetToolTip(wx.ToolTip("When set the value is treated as an offset"))
       gCustomSizer.Add(cbZIsOffset, flag=wx.ALL, border=5)
 
       # spin controls
@@ -154,39 +184,59 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       gCustomSizer.Add(scZValue,
          flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
 
+      vBoxSizer.Add(gCustomSizer, 0, flag=wx.LEFT|wx.EXPAND, border=5)
+      vBoxSizerRoot.Add(vBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
 
-      #st = wx.StaticText(self, wx.ID_ANY, "X")
-      #hBoxSizer.Add(st, flag=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+      # add edit control for script
+      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      vCustomSizer.Add(gCustomSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      text = wx.StaticText(self, wx.ID_ANY, "Script")
+      vBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      return vCustomSizer, [
-         tcLabel,
+      tcScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
+      tcScript.SetValue(self.configData.Get('/jogging/Custom%dScript' % cn))
+      #tcScript.SetToolTip(wx.ToolTip("This script is sent to device upon connect detect"))
+      vBoxSizer.Add(tcScript, 1, flag=wx.ALIGN_CENTER_VERTICAL|wx.EXPAND|wx.LEFT, border=10)
+
+      vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.EXPAND|wx.BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+
+      return vBoxSizerRoot, [
+         tcLabel, positionRadioButton, scriptRadioButton,
          cbXIsOffset, cbYIsOffset, cbZIsOffset,
-         scXValue   , scYValue   , scZValue
+         scXValue   , scYValue   , scZValue,
+         tcScript
       ]
 
    def UpdatConfigData(self):
-      self.configData.Set('/jogging/XYZReadOnly', self.cb.GetValue())
+      self.configData.Set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
+      self.configData.Set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
+      self.configData.Set('/jogging/ReqUpdateOnJogSetOp', self.cbReqUpdateOnJogSetOp.GetValue())
 
       for cn in range(4):
          cnp1 = cn+1
          self.configData.Set('/jogging/Custom%dLabel' % cnp1,
             self.customCtrlArray[cn][0].GetValue())
 
-         self.configData.Set('/jogging/Custom%dXIsOffset' % cnp1,
+         self.configData.Set('/jogging/Custom%dOptPosition' % cnp1,
             self.customCtrlArray[cn][1].GetValue())
-         self.configData.Set('/jogging/Custom%dYIsOffset' % cnp1,
+         self.configData.Set('/jogging/Custom%dOptScript' % cnp1,
             self.customCtrlArray[cn][2].GetValue())
-         self.configData.Set('/jogging/Custom%dZIsOffset' % cnp1,
+
+         self.configData.Set('/jogging/Custom%dXIsOffset' % cnp1,
             self.customCtrlArray[cn][3].GetValue())
+         self.configData.Set('/jogging/Custom%dYIsOffset' % cnp1,
+            self.customCtrlArray[cn][4].GetValue())
+         self.configData.Set('/jogging/Custom%dZIsOffset' % cnp1,
+            self.customCtrlArray[cn][5].GetValue())
 
          self.configData.Set('/jogging/Custom%dXValue' % cnp1,
-            self.customCtrlArray[cn][4].GetValue())
-         self.configData.Set('/jogging/Custom%dYValue' % cnp1,
-            self.customCtrlArray[cn][5].GetValue())
-         self.configData.Set('/jogging/Custom%dZValue' % cnp1,
             self.customCtrlArray[cn][6].GetValue())
+         self.configData.Set('/jogging/Custom%dYValue' % cnp1,
+            self.customCtrlArray[cn][7].GetValue())
+         self.configData.Set('/jogging/Custom%dZValue' % cnp1,
+            self.customCtrlArray[cn][8].GetValue())
+         self.configData.Set('/jogging/Custom%dScript' % cnp1,
+            self.customCtrlArray[cn][9].GetValue())
 
 """----------------------------------------------------------------------------
    gsatCliSettingsPanel:
@@ -244,8 +294,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.configData = config_data
       self.stateData = state_data
 
-      self.useMachineWorkPosition = False
-
       self.memoX = gc.gZeroString
       self.memoY = gc.gZeroString
       self.memoZ = gc.gZeroString
@@ -260,45 +308,59 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.SetScrollbars(scroll_unit,scroll_unit, width/scroll_unit, height/scroll_unit)
 
       self.UpdateSettings(self.configData)
-      self.allRadioButton.SetValue(True)
+      #self.allCheckBox.SetValue(True)
       #self.spinCtrl.SetFocus()
       self.LoadCli()
 
    def InitConfig(self):
       # jogging data
-      self.configXYZReadOnly      = self.configData.Get('/jogging/XYZReadOnly')
+      self.configXYZReadOnly         = self.configData.Get('/jogging/XYZReadOnly')
+      self.configAutoMPOS            = self.configData.Get('/jogging/AutoMPOS')
+      self.configReqUpdateOnJogSetOp = self.configData.Get('/jogging/ReqUpdateOnJogSetOp')
 
-      self.configCustom1Label     = self.configData.Get('/jogging/Custom1Label')
-      self.configCustom1XIsOffset = self.configData.Get('/jogging/Custom1XIsOffset')
-      self.configCustom1XValue    = self.configData.Get('/jogging/Custom1XValue')
-      self.configCustom1YIsOffset = self.configData.Get('/jogging/Custom1YIsOffset')
-      self.configCustom1YValue    = self.configData.Get('/jogging/Custom1YValue')
-      self.configCustom1ZIsOffset = self.configData.Get('/jogging/Custom1ZIsOffset')
-      self.configCustom1ZValue    = self.configData.Get('/jogging/Custom1ZValue')
+      self.configCustom1Label       = self.configData.Get('/jogging/Custom1Label')
+      self.configCustom1OptPosition = self.configData.Get('/jogging/Custom1OptPosition')
+      self.configCustom1OptScript   = self.configData.Get('/jogging/Custom1OptScript')
+      self.configCustom1XIsOffset   = self.configData.Get('/jogging/Custom1XIsOffset')
+      self.configCustom1XValue      = self.configData.Get('/jogging/Custom1XValue')
+      self.configCustom1YIsOffset   = self.configData.Get('/jogging/Custom1YIsOffset')
+      self.configCustom1YValue      = self.configData.Get('/jogging/Custom1YValue')
+      self.configCustom1ZIsOffset   = self.configData.Get('/jogging/Custom1ZIsOffset')
+      self.configCustom1ZValue      = self.configData.Get('/jogging/Custom1ZValue')
+      self.configCustom1Script      = self.configData.Get('/jogging/Custom1Script')
 
-      self.configCustom2Label     = self.configData.Get('/jogging/Custom2Label')
-      self.configCustom2XIsOffset = self.configData.Get('/jogging/Custom2XIsOffset')
-      self.configCustom2XValue    = self.configData.Get('/jogging/Custom2XValue')
-      self.configCustom2YIsOffset = self.configData.Get('/jogging/Custom2YIsOffset')
-      self.configCustom2YValue    = self.configData.Get('/jogging/Custom2YValue')
-      self.configCustom2ZIsOffset = self.configData.Get('/jogging/Custom2ZIsOffset')
-      self.configCustom2ZValue    = self.configData.Get('/jogging/Custom2ZValue')
+      self.configCustom2Label       = self.configData.Get('/jogging/Custom2Label')
+      self.configCustom2OptPosition = self.configData.Get('/jogging/Custom2OptPosition')
+      self.configCustom2OptScript   = self.configData.Get('/jogging/Custom2OptScript')
+      self.configCustom2XIsOffset   = self.configData.Get('/jogging/Custom2XIsOffset')
+      self.configCustom2XValue      = self.configData.Get('/jogging/Custom2XValue')
+      self.configCustom2YIsOffset   = self.configData.Get('/jogging/Custom2YIsOffset')
+      self.configCustom2YValue      = self.configData.Get('/jogging/Custom2YValue')
+      self.configCustom2ZIsOffset   = self.configData.Get('/jogging/Custom2ZIsOffset')
+      self.configCustom2ZValue      = self.configData.Get('/jogging/Custom2ZValue')
+      self.configCustom2Script      = self.configData.Get('/jogging/Custom2Script')
 
-      self.configCustom3Label     = self.configData.Get('/jogging/Custom3Label')
-      self.configCustom3XIsOffset = self.configData.Get('/jogging/Custom3XIsOffset')
-      self.configCustom3XValue    = self.configData.Get('/jogging/Custom3XValue')
-      self.configCustom3YIsOffset = self.configData.Get('/jogging/Custom3YIsOffset')
-      self.configCustom3YValue    = self.configData.Get('/jogging/Custom3YValue')
-      self.configCustom3ZIsOffset = self.configData.Get('/jogging/Custom3ZIsOffset')
-      self.configCustom3ZValue    = self.configData.Get('/jogging/Custom3ZValue')
+      self.configCustom3Label       = self.configData.Get('/jogging/Custom3Label')
+      self.configCustom3OptPosition = self.configData.Get('/jogging/Custom3OptPosition')
+      self.configCustom3OptScript   = self.configData.Get('/jogging/Custom3OptScript')
+      self.configCustom3XIsOffset   = self.configData.Get('/jogging/Custom3XIsOffset')
+      self.configCustom3XValue      = self.configData.Get('/jogging/Custom3XValue')
+      self.configCustom3YIsOffset   = self.configData.Get('/jogging/Custom3YIsOffset')
+      self.configCustom3YValue      = self.configData.Get('/jogging/Custom3YValue')
+      self.configCustom3ZIsOffset   = self.configData.Get('/jogging/Custom3ZIsOffset')
+      self.configCustom3ZValue      = self.configData.Get('/jogging/Custom3ZValue')
+      self.configCustom3Script      = self.configData.Get('/jogging/Custom3Script')
 
-      self.configCustom4Label     = self.configData.Get('/jogging/Custom4Label')
-      self.configCustom4XIsOffset = self.configData.Get('/jogging/Custom4XIsOffset')
-      self.configCustom4XValue    = self.configData.Get('/jogging/Custom4XValue')
-      self.configCustom4YIsOffset = self.configData.Get('/jogging/Custom4YIsOffset')
-      self.configCustom4YValue    = self.configData.Get('/jogging/Custom4YValue')
-      self.configCustom4ZIsOffset = self.configData.Get('/jogging/Custom4ZIsOffset')
-      self.configCustom4ZValue    = self.configData.Get('/jogging/Custom4ZValue')
+      self.configCustom4Label       = self.configData.Get('/jogging/Custom4Label')
+      self.configCustom4OptPosition = self.configData.Get('/jogging/Custom4OptPosition')
+      self.configCustom4OptScript   = self.configData.Get('/jogging/Custom4OptScript')
+      self.configCustom4XIsOffset   = self.configData.Get('/jogging/Custom4XIsOffset')
+      self.configCustom4XValue      = self.configData.Get('/jogging/Custom4XValue')
+      self.configCustom4YIsOffset   = self.configData.Get('/jogging/Custom4YIsOffset')
+      self.configCustom4YValue      = self.configData.Get('/jogging/Custom4YValue')
+      self.configCustom4ZIsOffset   = self.configData.Get('/jogging/Custom4ZIsOffset')
+      self.configCustom4ZValue      = self.configData.Get('/jogging/Custom4ZValue')
+      self.configCustom4Script      = self.configData.Get('/jogging/Custom4Script')
 
       # cli data
       self.cliSaveCmdHistory      = self.configData.Get('/cli/SaveCmdHistory')
@@ -324,6 +386,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jY.SetBackgroundColour(gc.gEdityBkColor)
          self.jZ.SetEditable(True)
          self.jZ.SetBackgroundColour(gc.gEdityBkColor)
+
+      self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
 
       self.custom1Button.SetLabel(self.configCustom1Label)
       self.custom2Button.SetLabel(self.configCustom2Label)
@@ -367,8 +431,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
 
-      if statusData is not None and self.useMachineWorkPosition:
-         if 'tinyG' in statusData.get('device', 'grbl'):
+      if statusData is not None and self.configAutoMPOS:
+         if self.stateData.deviceID == gc.gDEV_TINYG2:
+            x = statusData.get('mpox')
+            if x is not None:
+               self.jX.SetValue(x)
+
+            y = statusData.get('mpoy')
+            if y is not None:
+               self.jY.SetValue(y)
+
+            z = statusData.get('mpoz')
+            if z is not None:
+               self.jZ.SetValue(z)
+
+         elif self.stateData.deviceID == gc.gDEV_TINYG:
             x = statusData.get('posx')
             if x is not None:
                self.jX.SetValue(x)
@@ -380,6 +457,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             z = statusData.get('posz')
             if z is not None:
                self.jZ.SetValue(z)
+
          else:
             x = statusData.get('wposx')
             if x is not None:
@@ -505,7 +583,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # add status controls
-      spinText = wx.StaticText(self, -1, "Step size:  ")
+      spinText = wx.StaticText(self, -1, "Step size  ")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       self.spinCtrl = fs.FloatSpin(self, -1,
@@ -517,41 +595,43 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(self.spinCtrl, 0,
          flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
 
-      spinText = wx.StaticText(self, -1, "Jog status:  ")
+      spinText = wx.StaticText(self, -1, "Jog status  ")
       vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      flexGridSizer = wx.FlexGridSizer(4,2)
+      flexGridSizer = wx.FlexGridSizer(4,2,1,3)
       vBoxSizer.Add(flexGridSizer,0 , flag=wx.ALL|wx.EXPAND, border=5)
 
       # Add X pos
-      xText = wx.StaticText(self, label="X:")
+      st = wx.StaticText(self, label="X")
       self.jX = wx.TextCtrl(self, value=gc.gZeroString)
-      flexGridSizer.Add(xText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jX, 1, flag=wx.EXPAND)
 
       # Add Y Pos
-      yText = wx.StaticText(self, label="Y:")
+      st = wx.StaticText(self, label="Y")
       self.jY = wx.TextCtrl(self, value=gc.gZeroString)
-      flexGridSizer.Add(yText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jY, 1, flag=wx.EXPAND)
 
       # Add Z Pos
-      zText = wx.StaticText(self, label="Z:")
+      st = wx.StaticText(self, label="Z")
       self.jZ = wx.TextCtrl(self, value=gc.gZeroString)
-      flexGridSizer.Add(zText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jZ, 1, flag=wx.EXPAND)
 
       # Add Spindle status
-      spindleText = wx.StaticText(self, label="SP:")
+      st = wx.StaticText(self, label="SP")
       self.jSpindle = wx.TextCtrl(self, value=gc.gOffString, style=wx.TE_READONLY)
       self.jSpindle.SetBackgroundColour(gc.gReadOnlyBkColor)
-      flexGridSizer.Add(spindleText, 0, flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
       # Add Checkbox for sync with work position
-      self.useWorkPosCheckBox = wx.CheckBox (self, label="Use work pos")
+      self.useWorkPosCheckBox = wx.CheckBox (self, label="Auto MPOS")
+      self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
       self.useWorkPosCheckBox.SetToolTip(
-         wx.ToolTip("Use Machine status to update Jogging position (experimental)"))
+         wx.ToolTip("Use Machine position to update Jogging position, "\
+            "jogging operation use these values to operate"))
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
       vBoxSizer.Add(self.useWorkPosCheckBox)
 
@@ -561,26 +641,30 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # Add radio buttons
-      spinText = wx.StaticText(self, -1, "Select axis (f):")
+      spinText = wx.StaticText(self, -1, "Select axis (f)")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       vRadioBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.xRadioButton = wx.RadioButton(self, -1, 'X', style=wx.RB_GROUP)
-      vRadioBoxSizer.Add(self.xRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.xCheckBox = wx.CheckBox(self, label='X')
+      vRadioBoxSizer.Add(self.xCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnXCheckBox, self.xCheckBox)
 
-      self.yRadioButton = wx.RadioButton(self, -1, 'Y')
-      vRadioBoxSizer.Add(self.yRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.yCheckBox = wx.CheckBox(self, label='Y')
+      vRadioBoxSizer.Add(self.yCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnYCheckBox, self.yCheckBox)
 
-      self.zRadioButton = wx.RadioButton(self, -1, 'Z')
-      vRadioBoxSizer.Add(self.zRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.zCheckBox = wx.CheckBox(self, label='Z')
+      vRadioBoxSizer.Add(self.zCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnZCheckBox, self.zCheckBox)
 
-      self.allRadioButton = wx.RadioButton(self, -1, 'All')
-      vRadioBoxSizer.Add(self.allRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.allCheckBox = wx.CheckBox(self, label='All')
+      vRadioBoxSizer.Add(self.allCheckBox, flag=wx.LEFT|wx.EXPAND, border=5)
+      self.Bind(wx.EVT_CHECKBOX, self.OnAllCheckBox, self.allCheckBox)
 
       vBoxSizer.Add(vRadioBoxSizer, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_CENTER)
 
       # Add Buttons
-      spinText = wx.StaticText(self, -1, "Operation on (f):")
+      spinText = wx.StaticText(self, -1, "Operation on (f)")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
 
       # Add reset and move to zero(0) buttons
@@ -620,7 +704,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(self.gotoToHomeButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
 
-      spinText = wx.StaticText(self, -1, "Jog memory stack:")
+      spinText = wx.StaticText(self, -1, "Jog memory stack")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
 
       # add jog position memory stack
@@ -645,7 +729,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def CreateUtilControls(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      spinText = wx.StaticText(self, -1, "Custom buttons:")
+      spinText = wx.StaticText(self, -1, "Custom buttons")
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
 
       # add custom buttons
@@ -687,92 +771,131 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       staticControl.SetValue(fAxisStrPos)
       self.mainWindow.SerialWriteWaitForAck(cmdString.replace("<VAL>",fAxisStrPos))
 
+   def OnAllCheckBox(self, evt):
+      self.xCheckBox.SetValue(evt.IsChecked())
+      self.yCheckBox.SetValue(evt.IsChecked())
+      self.zCheckBox.SetValue(evt.IsChecked())
+
+   def OnXCheckBox(self, evt):
+      if evt.IsChecked() and self.yCheckBox.IsChecked() and self.zCheckBox.IsChecked():
+         self.allCheckBox.SetValue(True)
+      else:
+         self.allCheckBox.SetValue(False)
+
+   def OnYCheckBox(self, evt):
+      if evt.IsChecked() and self.xCheckBox.IsChecked() and self.zCheckBox.IsChecked():
+         self.allCheckBox.SetValue(True)
+      else:
+         self.allCheckBox.SetValue(False)
+
+   def OnZCheckBox(self, evt):
+      if evt.IsChecked() and self.xCheckBox.IsChecked() and self.yCheckBox.IsChecked():
+         self.allCheckBox.SetValue(True)
+      else:
+         self.allCheckBox.SetValue(False)
+
    def OnXPos(self, e):
-      self.AxisJog(self.jX, gc.gGRBL_CMD_JOG_X, opAdd=True)
+      self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=True)
 
    def OnXNeg(self, e):
-      self.AxisJog(self.jX, gc.gGRBL_CMD_JOG_X, opAdd=False)
+      self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=False)
 
    def OnYPos(self, e):
-      self.AxisJog(self.jY, gc.gGRBL_CMD_JOG_Y, opAdd=True)
+      self.AxisJog(self.jY, gc.gDEVICE_CMD_JOG_Y, opAdd=True)
 
    def OnYNeg(self, e):
-      self.AxisJog(self.jY, gc.gGRBL_CMD_JOG_Y, opAdd=False)
+      self.AxisJog(self.jY, gc.gDEVICE_CMD_JOG_Y, opAdd=False)
 
    def OnZPos(self, e):
-      self.AxisJog(self.jZ, gc.gGRBL_CMD_JOG_Z, opAdd=True)
+      self.AxisJog(self.jZ, gc.gDEVICE_CMD_JOG_Z, opAdd=True)
 
    def OnZNeg(self, e):
-      self.AxisJog(self.jZ, gc.gGRBL_CMD_JOG_Z, opAdd=False)
+      self.AxisJog(self.jZ, gc.gDEVICE_CMD_JOG_Z, opAdd=False)
 
    def OnSpindleOn(self, e):
       self.jSpindle.SetValue(gc.gOnString)
-      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_ON)
+      self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_ON)
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
-      self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_SPINDLE_OFF)
+      self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_OFF)
 
    def OnUseMachineWorkPosition(self, e):
-      self.useMachineWorkPosition = e.IsChecked()
+      self.configAutoMPOS = e.IsChecked()
 
    def OnJogCmd (self, xval, yval, zval, all_cmd, single_cmd):
-      cmd = "\n"
+      cmd = ""
+      cmdx = ""
+      cmdy = ""
+      cmdz = ""
 
-      if self.allRadioButton.GetValue():
+      if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jX.SetValue(xval)
+         cmdx = "X%s" % xval
+
+      if self.yCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jY.SetValue(yval)
+         cmdy = "Y%s" % yval
+
+      if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jZ.SetValue(zval)
+         cmdz = "Z%s" % zval
 
-         cmd = all_cmd
-         cmd = cmd.replace("<XVAL>", xval)
-         cmd = cmd.replace("<YVAL>", yval)
-         cmd = cmd.replace("<ZVAL>", zval)
+      if (len(cmdx) > 0) or (len(cmdy) > 0) or (len(cmdz) > 0):
+         cmd = single_cmd.strip()
+         cmd = cmd.replace("<AXIS>", "")
+         cmd = cmd.replace("<VAL>", "")
 
-      elif self.xRadioButton.GetValue():
-         self.jX.SetValue(xval)
-
-         cmd = single_cmd
-         cmd = cmd.replace("<AXIS>", "X")
-         cmd = cmd.replace("<VAL>", xval)
-
-      elif self.yRadioButton.GetValue() or self.allRadioButton.GetValue():
-         self.jY.SetValue(yval)
-
-         cmd = single_cmd
-         cmd = cmd.replace("<AXIS>", "Y")
-         cmd = cmd.replace("<VAL>", yval)
-
-      elif self.zRadioButton.GetValue() or self.allRadioButton.GetValue():
-         self.jZ.SetValue(zval)
-
-         cmd = single_cmd
-         cmd = cmd.replace("<AXIS>", "Z")
-         cmd = cmd.replace("<VAL>", zval)
+      cmd = "".join([cmd, cmdx, cmdy, cmdz, "\n"])
 
       self.mainWindow.SerialWriteWaitForAck(cmd)
 
    def OnResetToZero(self, e):
-      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
+
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
+      else:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
 
    def OnGoToZero(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gGRBL_CMD_ALL_GO_TO_POS, gc.gGRBL_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      self.OnJogCmd(
-         self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         self.OnJogCmd(
+            self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+            gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
+
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
+      else:
+         self.OnJogCmd(
+            self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+            gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+
+         if self.configReqUpdateOnJogSetOp:
+            self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
 
    def OnGoToJogVal(self, e):
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         gc.gGRBL_CMD_ALL_GO_TO_POS, gc.gGRBL_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnGoHome(self, e):
-      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gGRBL_CMD_ALL_GO_HOME, gc.gGRBL_CMD_GO_HOME)
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gTINYG_CMD_ALL_GO_HOME, gc.gTINYG_CMD_GO_HOME)
+      else:
+         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            gc.gGRBL_CMD_ALL_GO_HOME, gc.gGRBL_CMD_GO_HOME)
 
    def OnPushStack(self, e):
       xVal = self.jX.GetValue()
@@ -787,63 +910,80 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.jY.SetValue(re.search("Y(\S+),Z", strXYZ).group(1))
       self.jZ.SetValue(re.search("Z(\S+)", strXYZ).group(1))
 
-   def OnCustomButton(self, xo, xv, yo, yv, zo, zv):
-      fXPos = float(self.jX.GetValue())
-      fYPos = float(self.jY.GetValue())
-      fZPos = float(self.jZ.GetValue())
-      fXVal = float(xv)
-      fYVal = float(yv)
-      fZVal = float(zv)
+   def OnCustomButton(self, optPos, optScr, xo, xv, yo, yv, zo, zv, script):
 
-      fXnp = fXVal
-      if xo:
-         fXnp = fXPos + fXVal
+      if optPos:
+         fXPos = float(self.jX.GetValue())
+         fYPos = float(self.jY.GetValue())
+         fZPos = float(self.jZ.GetValue())
+         fXVal = float(xv)
+         fYVal = float(yv)
+         fZVal = float(zv)
 
-      fYnp = fYVal
-      if yo:
-         fYnp = fYPos + fYVal
+         fXnp = fXVal
+         if xo:
+            fXnp = fXPos + fXVal
 
-      fZnp = fZVal
-      if zo:
-         fZnp = fZPos + fZVal
+         fYnp = fYVal
+         if yo:
+            fYnp = fYPos + fYVal
 
-      self.jX.SetValue(str(fXnp))
-      self.jY.SetValue(str(fYnp))
-      self.jZ.SetValue(str(fZnp))
+         fZnp = fZVal
+         if zo:
+            fZnp = fZPos + fZVal
 
-      goPosCmd = gc.gGRBL_CMD_GO_POS
-      goPosCmd = goPosCmd.replace("<XVAL>", str(fXnp))
-      goPosCmd = goPosCmd.replace("<YVAL>", str(fYnp))
-      goPosCmd = goPosCmd.replace("<ZVAL>", str(fZnp))
-      self.mainWindow.SerialWriteWaitForAck(goPosCmd)
+         self.jX.SetValue(str(fXnp))
+         self.jY.SetValue(str(fYnp))
+         self.jZ.SetValue(str(fZnp))
 
+         goPosCmd = gc.gDEVICE_CMD_ALL_GO_TO_POS
+         goPosCmd = goPosCmd.replace("<XVAL>", str(fXnp))
+         goPosCmd = goPosCmd.replace("<YVAL>", str(fYnp))
+         goPosCmd = goPosCmd.replace("<ZVAL>", str(fZnp))
+         self.mainWindow.SerialWriteWaitForAck(goPosCmd)
+
+      if optScr:
+         scriptLines = script.splitlines()
+
+         if len(scriptLines) > 0:
+            for scriptLine in scriptLines:
+               scriptLine = "".join([scriptLine, "\n"])
+               self.mainWindow.SerialWriteWaitForAck(scriptLine)
 
    def OnCustom1Button(self, e):
       self.OnCustomButton(
+         self.configCustom1OptPosition, self.configCustom1OptScript,
          self.configCustom1XIsOffset, self.configCustom1XValue,
          self.configCustom1YIsOffset, self.configCustom1YValue,
-         self.configCustom1ZIsOffset, self.configCustom1ZValue
+         self.configCustom1ZIsOffset, self.configCustom1ZValue,
+         self.configCustom1Script
       )
 
    def OnCustom2Button(self, e):
       self.OnCustomButton(
+         self.configCustom2OptPosition, self.configCustom2OptScript,
          self.configCustom2XIsOffset, self.configCustom2XValue,
          self.configCustom2YIsOffset, self.configCustom2YValue,
-         self.configCustom2ZIsOffset, self.configCustom2ZValue
+         self.configCustom2ZIsOffset, self.configCustom2ZValue,
+         self.configCustom2Script
       )
 
    def OnCustom3Button(self, e):
       self.OnCustomButton(
+         self.configCustom3OptPosition, self.configCustom3OptScript,
          self.configCustom3XIsOffset, self.configCustom3XValue,
          self.configCustom3YIsOffset, self.configCustom3YValue,
-         self.configCustom3ZIsOffset, self.configCustom3ZValue
+         self.configCustom3ZIsOffset, self.configCustom3ZValue,
+         self.configCustom3Script
       )
 
    def OnCustom4Button(self, e):
       self.OnCustomButton(
+         self.configCustom4OptPosition, self.configCustom4OptScript,
          self.configCustom4XIsOffset, self.configCustom4XValue,
          self.configCustom4YIsOffset, self.configCustom4YValue,
-         self.configCustom4ZIsOffset, self.configCustom4ZValue
+         self.configCustom4ZIsOffset, self.configCustom4ZValue,
+         self.configCustom4Script
       )
 
    def OnRefresh(self, e):

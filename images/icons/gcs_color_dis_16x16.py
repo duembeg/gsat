@@ -12,9 +12,21 @@ imgPlay = PyEmbeddedImage(
     "IFDyTsmMayt5a80AVHSASyaFcXtBJKPHY2HciW+BLQDnPBTGHfmP9iUFOGZcGLfxL3w2gKl/"
     "ccXFM6zdm/8CIKYNr6fdlcyXC/oEAmskaTAZZ2TsUBQlRE3A4fkFDI1aCaBdI4gAAAAASUVO"
     "RK5CYII=")
-getimgPlayColorData = imgPlayColor.GetData
-getimgPlayColorImage = imgPlayColor.GetImage
-getimgPlayColorBitmap = imgPlayColor.GetBitmap
+getimgPlayData = imgPlay.GetData
+getimgPlayImage = imgPlay.GetImage
+getimgPlayBitmap = imgPlay.GetBitmap
+
+#----------------------------------------------------------------------
+imgPause = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAAJcEhZ"
+    "cwAACxMAAAsTAQCanBgAAAAHdElNRQfeCREGORAW62QYAAAAsklEQVQoz6WRMQ6CQBBFHwgk"
+    "dtZeYw+hN7H2JNbWdh6CG1gaE05gUAJBs9ldUCx2RV0SG6aZn8zLS2YGxlZg22aLAA7r1SfZ"
+    "SWRbI5bCkAKNWIiGtDc4wCCpMIDhzg3jAwpJjQIUV86oHgjfgKF0QMFlCEgKCiQgaQmRQ0PL"
+    "xBk6lzzDk9gZcMkzdP8NmpApGtAExGhvzSg/7oAqY55ne6A6kdhjBA6bkfy84EH5da1R9QKq"
+    "KkucPaZRYAAAAABJRU5ErkJggg==")
+getimgPauseData = imgPause.GetData
+getimgPauseImage = imgPause.GetImage
+getimgPauseBitmap = imgPause.GetBitmap
 
 #----------------------------------------------------------------------
 imgStep = PyEmbeddedImage(

@@ -37,17 +37,18 @@ __authors__     = ['Wilhelm Duembeg']
 __author__      = ','.join(__authors__)
 __credits__     = []
 __copyright__   = 'Copyright (c) 2013-2014'
-__license__     = 'GPL v2'
+__license__     = 'GPL v2, Copyright (c) 2013-2014'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
 # maintenance information
 __maintainer__  = 'Wilhelm Duembeg'
 __email__       = 'duembeg.github@gmail.com'
+__website__     = 'https://github.com/duembeg/gsat'
 
 # define version information
 __requires__        = ['pySerial', 'wxPython']
-__version_info__    = (1, 4, 0)
-__version__         = 'v%i.%i.%02i' % __version_info__
+__version_info__    = (1, 5, 0)
+__version__         = 'v%i.%i.%i' % __version_info__
 __revision__        = __version__
 
 
@@ -78,7 +79,7 @@ from wx.lib import scrolledpanel as scrolled
 import modules.config as gc
 import images.icons as ico
 import modules.editor as ed
-import modules.link as link
+#import modules.link as link
 import modules.machine as mc
 import modules.jogging as jog
 import modules.compvision as compv
@@ -94,7 +95,6 @@ import modules.progexec as progexec
 gID_TOOLBAR_OPEN                 = wx.NewId()
 gID_TOOLBAR_LINK_STATUS          = wx.NewId()
 gID_TOOLBAR_PROGRAM_STATUS       = wx.NewId()
-gID_TOOLBAR_MACHINE_STATUS       = wx.NewId()
 gID_MENU_MAIN_TOOLBAR            = wx.NewId()
 gID_MENU_SEARCH_TOOLBAR          = wx.NewId()
 gID_MENU_RUN_TOOLBAR             = wx.NewId()
@@ -109,6 +109,7 @@ gID_MENU_RESET_DEFAULT_LAYOUT    = wx.NewId()
 gID_MENU_LOAD_LAYOUT             = wx.NewId()
 gID_MENU_SAVE_LAYOUT             = wx.NewId()
 gID_MENU_RUN                     = wx.NewId()
+gID_MENU_PAUSE                   = wx.NewId()
 gID_MENU_STEP                    = wx.NewId()
 gID_MENU_STOP                    = wx.NewId()
 gID_MENU_BREAK_TOGGLE            = wx.NewId()
@@ -124,31 +125,12 @@ gID_MENU_GOTOLINE                = wx.NewId()
 
 
 gID_TIMER_MACHINE_REFRESH        = wx.NewId()
+gID_TIMER_RUN                    = wx.NewId()
 
 # -----------------------------------------------------------------------------
 # regular expressions
 # -----------------------------------------------------------------------------
-
-# grbl version, example "Grbl 0.8c ['$' for help]"
-gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
-
-# status,
-# quick re check to avoid multiple checks, speeds things up
-gReMachineStatus = re.compile(r'pos', re.I)
-
-# GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
-
-# tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
-gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
-
-# tinyG query response example:
-#X position:          30.408 mm
-#Y position:          20.701 mm
-#Z position:          10.000 mm
-#Machine state:       Stop
-gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
-gReTinyGStateStatus = re.compile(r'(\w*)\s+state:\s+(\w*).*')
+gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
 
 """----------------------------------------------------------------------------
@@ -186,13 +168,23 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
       #self.FitInside()
 
    def InitUI(self):
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
+      # run time dialog settings
+      st = wx.StaticText(self, label="General")
+      st.SetFont(font)
+      vBoxSizer.Add(st, 0, wx.ALL, border=5)
+
+      # Add file save backup check box
+      self.cbDisplayRunTimeDialog = wx.CheckBox(self, wx.ID_ANY, "Display run time dialog at program end")
+      self.cbDisplayRunTimeDialog.SetValue(self.configData.Get('/mainApp/DisplayRunTimeDialog'))
+      vBoxSizer.Add(self.cbDisplayRunTimeDialog, flag=wx.LEFT, border=25)
+
       # file settings
-      text = wx.StaticText(self, label="Files:")
-      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-      text.SetFont(font)
-      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      st = wx.StaticText(self, label="Files")
+      st.SetFont(font)
+      vBoxSizer.Add(st, 0, wx.ALL, border=5)
 
       # Add file save backup check box
       self.cbBackupFile = wx.CheckBox(self, wx.ID_ANY, "Create a backup copy of file before saving")
@@ -213,10 +205,10 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
 
       # tools settings
-      text = wx.StaticText(self, label="Tools:")
+      st = wx.StaticText(self, label="Tools")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-      text.SetFont(font)
-      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      st.SetFont(font)
+      vBoxSizer.Add(st, 0, wx.ALL, border=5)
 
       # Add Inch to mm round digits spin ctrl
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -246,6 +238,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
       self.SetSizer(vBoxSizer)
 
    def UpdatConfigData(self):
+      self.configData.Set('/mainApp/DisplayRunTimeDialog', self.cbDisplayRunTimeDialog.GetValue())
       self.configData.Set('/mainApp/BackupFile', self.cbBackupFile.GetValue())
       self.configData.Set('/mainApp/MaxFileHistory', self.scFileHistory.GetValue())
       self.configData.Set('/mainApp/RoundInch2mm', self.scIN2MMRound.GetValue())
@@ -272,7 +265,7 @@ class gsatSettingsDialog(wx.Dialog):
       # init note book
       self.imageList = wx.ImageList(16, 16)
       self.imageList.Add(ico.imgGeneralSettings.GetBitmap())
-      self.imageList.Add(ico.imgPlugConnect.GetBitmap())
+      #self.imageList.Add(ico.imgPlugConnect.GetBitmap())
       self.imageList.Add(ico.imgProgram.GetBitmap())
       self.imageList.Add(ico.imgLog.GetBitmap())
       self.imageList.Add(ico.imgCli.GetBitmap())
@@ -280,22 +273,23 @@ class gsatSettingsDialog(wx.Dialog):
       self.imageList.Add(ico.imgMove.GetBitmap())
       self.imageList.Add(ico.imgEye.GetBitmap())
 
-      if os.name == 'nt':
-         self.noteBook = wx.Notebook(self, size=(640,400))
-      else:
+      # for Windows and OS X, tabbed on the left don't work as well
+      if sys.platform.startswith('linux'):
          self.noteBook = wx.Notebook(self, size=(640,400), style=wx.BK_LEFT)
+      else:
+         self.noteBook = wx.Notebook(self, size=(640,400))
 
       self.noteBook.AssignImageList(self.imageList)
 
       # add pages
       self.AddGeneralPage(0)
-      self.AddLinkPage(1)
-      self.AddProgramPage(2)
-      self.AddOutputPage(3)
-      self.AddCliPage(4)
-      self.AddMachinePage(5)
-      self.AddJoggingPage(6)
-      self.AddCV2Panel(7)
+      #self.AddLinkPage(1)
+      self.AddProgramPage(1)
+      self.AddOutputPage(2)
+      self.AddCliPage(3)
+      self.AddMachinePage(4)
+      self.AddJoggingPage(5)
+      self.AddCV2Panel(6)
 
       #self.noteBook.Layout()
       sizer.Add(self.noteBook, 1, wx.ALL|wx.EXPAND, 5)
@@ -363,7 +357,7 @@ class gsatSettingsDialog(wx.Dialog):
 
    def UpdatConfigData(self):
       self.generalPage.UpdatConfigData()
-      self.linkPage.UpdatConfigData()
+      #self.linkPage.UpdatConfigData()
       self.programPage.UpdatConfigData()
       self.outputPage.UpdatConfigData()
       self.cliPage.UpdatConfigData()
@@ -410,14 +404,16 @@ class gsatMainWindow(wx.Frame):
       # create app data obj
       self.configData = gc.gsatConfigData()
       self.configData.Load(self.configFile)
-      self.configData.Add('/link/PortList', self.GetSerialPortList())
-      self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
+      self.configData.Add('/machine/PortList', self.GetSerialPortList())
+      self.configData.Add('/machine/BaudList', self.GetSerialBaudRateList())
       self.InitConfig()
 
       # init some variables
       self.progExecThread = None
       self.machineAutoRefreshTimer = None
+      self.runTimer = None
       self.runStartTime = 0
+      self.runEndTime = 0
 
       # thread communication queues
       self.mainWndInQueue = Queue.Queue()
@@ -431,14 +427,34 @@ class gsatMainWindow(wx.Frame):
       self.Show()
 
    def InitConfig(self):
+      self.displayRuntimeDialog = self.configData.Get('/mainApp/DisplayRunTimeDialog')
       self.saveBackupFile = self.configData.Get('/mainApp/BackupFile')
       self.maxFileHistory = self.configData.Get('/mainApp/MaxFileHistory')
       self.roundInch2mm = self.configData.Get('/mainApp/RoundInch2mm')
       self.roundmm2Inch = self.configData.Get('/mainApp/Roundmm2Inch')
-      self.linkPort = self.configData.Get('/link/Port')
-      self.linkBaud = self.configData.Get('/link/Baud')
+      self.machinePort = self.configData.Get('/machine/Port')
+      self.machineBaud = self.configData.Get('/machine/Baud')
+      self.machineAutoStatus = self.configData.Get('/machine/AutoStatus')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
+      self.deviceName = self.configData.Get('/machine/Device')
+      self.stateData.deviceID = mc.GetDeviceID(self.configData.Get('/machine/Device'))
+      self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
+
+      if self.cmdLineOptions.verbose:
+         print "Init config values..."
+         print "  displayRuntimeDialog:     ", self.displayRuntimeDialog
+         print "  saveBackupFile:           ", self.saveBackupFile
+         print "  maxFileHistory:           ", self.maxFileHistory
+         print "  roundInch2mm:             ", self.roundInch2mm
+         print "  roundmm2Inch:             ", self.roundmm2Inch
+         print "  machinePort:              ", self.machinePort
+         print "  machineBaud:              ", self.machineBaud
+         print "  machineAutostatus:        ", self.machineAutoStatus
+         print "  machineAutoRefresh:       ", self.machineAutoRefresh
+         print "  machineAutoRefreshPeriod: ", self.machineAutoRefreshPeriod
+         print "  deviceName:               ", self.deviceName
+         print "  deviceID:                 ", self.stateData.deviceID
 
    def InitUI(self):
       """ Init main UI """
@@ -484,14 +500,13 @@ class gsatMainWindow(wx.Frame):
 
       self.aui_mgr.AddPane(self.machineJoggingPanel,
          aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")\
-            .CloseButton(True).MaximizeButton(True).BestSize(360,380).Layer(1)
+            .CloseButton(True).MaximizeButton(True).BestSize(360,400).Layer(1)
       )
 
       self.aui_mgr.AddPane(self.machineStatusPanel,
          aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")\
-            .CloseButton(True).MaximizeButton(True).BestSize(320,180).Layer(1)
+            .CloseButton(True).MaximizeButton(True).BestSize(360,400).Layer(1)
       )
-
 
       self.CreateMenu()
       self.CreateToolBar()
@@ -592,6 +607,11 @@ class gsatMainWindow(wx.Frame):
          runItem.SetBitmap(ico.imgPlay.GetBitmap())
       runMenu.AppendItem(runItem)
 
+      pauseItem = wx.MenuItem(runMenu, gID_MENU_PAUSE,    "Pa&use")
+      if os.name != 'nt':
+         pauseItem.SetBitmap(ico.imgPause.GetBitmap())
+      runMenu.AppendItem(pauseItem)
+
       stepItem = wx.MenuItem(runMenu, gID_MENU_STEP,  "S&tep")
       if os.name != 'nt':
          stepItem.SetBitmap(ico.imgStep.GetBitmap())
@@ -663,6 +683,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN,
                            self.OnDropDownToolBarOpen,   id=gID_TOOLBAR_OPEN)
 
+      self.Bind(wx.EVT_UPDATE_UI, self.OnFileOpenUpdate, id=wx.ID_OPEN)
       self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveUpdate, id=wx.ID_SAVE)
       self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveAsUpdate,
                                                          id=wx.ID_SAVEAS)
@@ -707,6 +728,7 @@ class gsatMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Run menu bind
       self.Bind(wx.EVT_MENU, self.OnRun,                 id=gID_MENU_RUN)
+      self.Bind(wx.EVT_MENU, self.OnPause,               id=gID_MENU_PAUSE)
       self.Bind(wx.EVT_MENU, self.OnStep,                id=gID_MENU_STEP)
       self.Bind(wx.EVT_MENU, self.OnStop,                id=gID_MENU_STOP)
       self.Bind(wx.EVT_MENU, self.OnBreakToggle,         id=gID_MENU_BREAK_TOGGLE)
@@ -716,6 +738,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnAbort,               id=gID_MENU_ABORT)
 
       self.Bind(wx.EVT_BUTTON, self.OnRun,               id=gID_MENU_RUN)
+      self.Bind(wx.EVT_BUTTON, self.OnPause,             id=gID_MENU_PAUSE)
       self.Bind(wx.EVT_BUTTON, self.OnStep,              id=gID_MENU_STEP)
       self.Bind(wx.EVT_BUTTON, self.OnStop,              id=gID_MENU_STOP)
       self.Bind(wx.EVT_BUTTON, self.OnBreakToggle,       id=gID_MENU_BREAK_TOGGLE)
@@ -724,6 +747,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_BUTTON, self.OnAbort,             id=gID_MENU_ABORT)
 
       self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate,      id=gID_MENU_RUN)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnPauseUpdate,    id=gID_MENU_PAUSE)
       self.Bind(wx.EVT_UPDATE_UI, self.OnStepUpdate,     id=gID_MENU_STEP)
       self.Bind(wx.EVT_UPDATE_UI, self.OnStopUpdate,     id=gID_MENU_STOP)
       self.Bind(wx.EVT_UPDATE_UI, self.OnBreakToggleUpdate,
@@ -752,8 +776,6 @@ class gsatMainWindow(wx.Frame):
       #------------------------------------------------------------------------
       # Status tool bar
       self.Bind(wx.EVT_MENU, self.OnLinkStatus,          id=gID_TOOLBAR_LINK_STATUS)
-      self.Bind(wx.EVT_MENU, self.OnGetMachineStatus,    id=gID_TOOLBAR_MACHINE_STATUS)
-
 
       #------------------------------------------------------------------------
       # Create shortcut keys for menu
@@ -854,6 +876,10 @@ class gsatMainWindow(wx.Frame):
          "Run\tF5")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_RUN, ico.imgPlayDisabled.GetBitmap())
 
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_PAUSE, "Pause", ico.imgPause.GetBitmap(),
+         "Pause")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_PAUSE, ico.imgPauseDisabled.GetBitmap())
+
       self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", ico.imgStep.GetBitmap(),
          "Step")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STEP, ico.imgStepDisabled.GetBitmap())
@@ -869,11 +895,11 @@ class gsatMainWindow(wx.Frame):
 
       self.gcodeToolBar.AddSeparator()
       self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", ico.imgMapPin.GetBitmap(),
-         "Set PC")
+         "Set Program Counter (PC) from current position")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, ico.imgMapPinDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", ico.imgGotoMapPin.GetBitmap(),
-         "Goto PC")
+         "Goto current Program Counter (PC)")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
@@ -907,9 +933,6 @@ class gsatMainWindow(wx.Frame):
          "Program Status")
       self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_PROGRAM_STATUS, ico.imgProgram.GetBitmap())
 
-      self.statusToolBar.AddSimpleTool(gID_TOOLBAR_MACHINE_STATUS, "123456", ico.imgMachine.GetBitmap(),
-         "Machine Status (refresh)")
-      self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_MACHINE_STATUS, ico.imgMachineDisabled.GetBitmap())
 
       self.statusToolBar.Realize()
 
@@ -928,6 +951,7 @@ class gsatMainWindow(wx.Frame):
       self.CV2Panel.UpdateUI(self.stateData)
 
       # Force update tool bar items
+      self.OnAppToolBarForceUpdate()
       self.OnStatusToolBarForceUpdate()
       self.OnRunToolBarForceUpdate()
 
@@ -936,6 +960,17 @@ class gsatMainWindow(wx.Frame):
    """-------------------------------------------------------------------------
    gsatMainWindow: UI Event Handlers
    -------------------------------------------------------------------------"""
+
+   def OnAppToolBarForceUpdate(self):
+      state = True
+      if self.stateData.serialPortIsOpen and \
+         (self.stateData.swState == gc.gSTATE_RUN or \
+          self.stateData.swState == gc.gSTATE_STEP):
+
+         state = False
+
+      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)
+      self.appToolBar.Refresh()
 
    #---------------------------------------------------------------------------
    # File Menu Handlers
@@ -969,6 +1004,17 @@ class gsatMainWindow(wx.Frame):
          self.configFile.Flush()
 
          self.OnDoFileOpen(e, self.stateData.gcodeFileName)
+
+   def OnFileOpenUpdate(self, e):
+      state = True
+      if self.stateData.serialPortIsOpen and \
+         (self.stateData.swState == gc.gSTATE_RUN or \
+          self.stateData.swState == gc.gSTATE_STEP):
+
+         state = False
+
+      e.Enable(state)
+      self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)
 
    def OnDropDownToolBarOpen(self, e):
       if not e.IsDropDownClicked():
@@ -1193,8 +1239,8 @@ class gsatMainWindow(wx.Frame):
 
    def OnSettings(self, e):
       # update serial port data
-      self.configData.Add('/link/PortList', self.GetSerialPortList())
-      self.configData.Add('/link/BaudList', self.GetSerialBaudRateList())
+      self.configData.Add('/machine/PortList', self.GetSerialPortList())
+      self.configData.Add('/machine/BaudList', self.GetSerialBaudRateList())
 
       # do settings dialog
       dlg = gsatSettingsDialog(self, self.configData)
@@ -1208,10 +1254,10 @@ class gsatMainWindow(wx.Frame):
 
          # re open serial port if open
          if self.stateData.serialPortIsOpen and \
-            (self.stateData.serialPort != self.linkPort or self.stateData.serialBaud != self.linkBaud):
+            (self.stateData.serialPort != self.machinePort or self.stateData.serialPortBaud != self.machineBaud):
 
             self.SerialClose()
-            self.SerialOpen(self.linkPort, self.linkBaud)
+            self.SerialOpen(self.machinePort, self.machineBaud)
 
          if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
             self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
@@ -1244,17 +1290,20 @@ class gsatMainWindow(wx.Frame):
       self.OnAbortUpdate()
       self.gcodeToolBar.Refresh()
 
-   def OnRun(self, e=None, resetTime=True):
+   def OnRun(self, e=None):
       if self.progExecThread is not None:
          rawText = self.gcText.GetText()
          self.stateData.gcodeFileLines = rawText.splitlines(True)
 
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_RUN,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-         self.mainWndOutQueue.join()
 
-         if resetTime:
-            self.runStartTime = time.time()
+         if self.stateData.swState != gc.gSTATE_PAUSE and \
+            self.stateData.swState != gc.gSTATE_BREAK:
+            self.runStartTime = int(time.time())
+            self.runEndTime = 0
+
+         self.RunTimerStart()
 
          self.gcText.GoToPC()
          self.stateData.swState = gc.gSTATE_RUN
@@ -1264,7 +1313,8 @@ class gsatMainWindow(wx.Frame):
       state = False
       if self.stateData.serialPortIsOpen and \
          (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
 
          state = True
 
@@ -1273,6 +1323,23 @@ class gsatMainWindow(wx.Frame):
 
       self.gcodeToolBar.EnableTool(gID_MENU_RUN, state)
 
+   def OnPause(self, e):
+      self.Stop(gc.gSTATE_PAUSE)
+
+   def OnPauseUpdate(self, e=None):
+      state = False
+      if self.stateData.serialPortIsOpen and \
+         self.stateData.swState != gc.gSTATE_IDLE and \
+         self.stateData.swState != gc.gSTATE_PAUSE and \
+         self.stateData.swState != gc.gSTATE_ABORT:
+
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_STOP, state)
+
    def OnStep(self, e):
       if self.progExecThread is not None:
          rawText = self.gcText.GetText()
@@ -1280,7 +1347,6 @@ class gsatMainWindow(wx.Frame):
 
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STEP,
             [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-         self.mainWndOutQueue.join()
 
          self.stateData.swState = gc.gSTATE_STEP
          self.UpdateUI()
@@ -1289,7 +1355,8 @@ class gsatMainWindow(wx.Frame):
       state = False
       if self.stateData.serialPortIsOpen and \
          (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
 
          state = True
 
@@ -1304,8 +1371,7 @@ class gsatMainWindow(wx.Frame):
    def OnStopUpdate(self, e=None):
       state = False
       if self.stateData.serialPortIsOpen and \
-         self.stateData.swState != gc.gSTATE_IDLE and \
-         self.stateData.swState != gc.gSTATE_BREAK:
+         self.stateData.swState != gc.gSTATE_IDLE:
 
          state = True
 
@@ -1329,7 +1395,8 @@ class gsatMainWindow(wx.Frame):
    def OnBreakToggleUpdate(self, e=None):
       state = False
       if (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
 
          state = True
 
@@ -1344,7 +1411,8 @@ class gsatMainWindow(wx.Frame):
 
    def OnBreakRemoveAllUpdate(self, e):
       if (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
 
          e.Enable(True)
       else:
@@ -1356,7 +1424,8 @@ class gsatMainWindow(wx.Frame):
    def OnSetPCUpdate(self, e=None):
       state = False
       if (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
 
          state = True
 
@@ -1378,14 +1447,14 @@ class gsatMainWindow(wx.Frame):
 
    def OnAbort(self, e):
       self.serPort.write("!\n")
-      self.Stop()
+      self.Stop(gc.gSTATE_ABORT)
       self.outputText.AppendText("> !\n")
       self.outputText.AppendText(
-         "*** ABORT!!! a feed-hold command (!) has been sent to Grbl, you can\n"\
+         "*** ABORT!!! a feed-hold command (!) has been sent to %s, you can\n"\
          "    use cycle-restart command (~) to continue.\n"\
          "    \n"
-         "    Note: If this is not desirable please reset Grbl, by closing and opening\n"\
-         "    the serial link port.\n")
+         "    Note: If this is not desirable please reset %s, by closing and opening\n"\
+         "    the serial link port.\n" % (self.deviceName, self.deviceName))
 
    def OnAbortUpdate(self, e=None):
       state = False
@@ -1403,7 +1472,8 @@ class gsatMainWindow(wx.Frame):
    def OnToolUpdateIdle(self, e):
       state = False
       if (self.stateData.swState == gc.gSTATE_IDLE or \
-          self.stateData.swState == gc.gSTATE_BREAK):
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
          state = True
 
       e.Enable(state)
@@ -1495,14 +1565,14 @@ class gsatMainWindow(wx.Frame):
          self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Idle")
       elif self.stateData.swState == gc.gSTATE_RUN:
          self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Run")
+      elif self.stateData.swState == gc.gSTATE_PAUSE:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Pause")
       elif self.stateData.swState == gc.gSTATE_STEP:
          self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Step")
       elif self.stateData.swState == gc.gSTATE_BREAK:
          self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Break")
-
-      #Machine status
-      self.statusToolBar.EnableTool(gID_TOOLBAR_MACHINE_STATUS, self.stateData.serialPortIsOpen)
-      self.statusToolBar.SetToolLabel(gID_TOOLBAR_MACHINE_STATUS, self.stateData.machineStatusString)
+      elif self.stateData.swState == gc.gSTATE_ABORT:
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "ABORT")
 
       self.statusToolBar.Refresh()
 
@@ -1510,10 +1580,7 @@ class gsatMainWindow(wx.Frame):
       if self.stateData.serialPortIsOpen:
          self.SerialClose()
       else:
-         self.SerialOpen(self.configData.Get('/link/Port'), self.configData.Get('/link/Baud'))
-
-   def OnGetMachineStatus(self, e):
-      self.GetMachineStatus()
+         self.SerialOpen(self.configData.Get('/machine/Port'), self.configData.Get('/machine/Baud'))
 
    #---------------------------------------------------------------------------
    # Help Menu Handlers
@@ -1523,15 +1590,15 @@ class gsatMainWindow(wx.Frame):
       aboutDialog = wx.AboutDialogInfo()
       aboutDialog.Name = __appname__
       aboutDialog.Version = __version__
-      aboutDialog.Copyright = __copyright__
+      #aboutDialog.Copyright = __copyright__
       if os.name == 'nt':
          aboutDialog.Description = wordwrap(__description__, 520, wx.ClientDC(self))
       else:
          aboutDialog.Description = __description__
-      aboutDialog.WebSite = ("https://github.com/duembeg/gsat", "gsat home page")
+      aboutDialog.WebSite = (__website__, "gsat home page")
       #aboutDialog.Developers = __authors__
 
-      aboutDialog.License = __license_str__
+      aboutDialog.SetLicense(__license_str__)
 
       # Then we call wx.AboutBox giving it that info object
       wx.AboutBox(aboutDialog)
@@ -1552,7 +1619,6 @@ class gsatMainWindow(wx.Frame):
 
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         self.mainWndOutQueue.join()
 
       self.machineJoggingPanel.SaveCli()
       self.configData.Save(self.configFile)
@@ -1564,6 +1630,38 @@ class gsatMainWindow(wx.Frame):
    """-------------------------------------------------------------------------
    gsatMainWindow: General Functions
    -------------------------------------------------------------------------"""
+   def RunTimerStart(self):
+      if self.runTimer is not None:
+         self.runTimer.Stop()
+      else:
+         t = self.runTimer = wx.Timer(self, gID_TIMER_RUN)
+         self.Bind(wx.EVT_TIMER, self.OnRunTimerAction, t)
+
+      self.runTimer.Start(1000)
+
+   def RunTimerStop(self):
+      if self.runTimer is not None:
+         self.runTimer.Stop()
+
+   def OnRunTimerAction(self, e):
+      # calculate run time
+      runTimeStr = "00:00:00"
+
+      self.runEndTime = int(time.time())
+      runTime = self.runEndTime - self.runStartTime
+      hours, reminder = divmod(runTime, 3600)
+      minutes, reminder = divmod(reminder, 60)
+      seconds, mseconds = divmod(reminder, 1)
+      runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
+
+      if self.stateData.swState != gc.gSTATE_RUN and \
+         self.stateData.swState != gc.gSTATE_PAUSE and \
+         self.stateData.swState != gc.gSTATE_BREAK:
+         self.RunTimerStop()
+
+      self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
+
+
    def AutoRefreshTimerStart(self):
       self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
       self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
@@ -1582,12 +1680,15 @@ class gsatMainWindow(wx.Frame):
          self.machineAutoRefreshTimer.Stop()
 
    def OnAutoRefreshTimerAction(self, e):
-      if self.stateData.grblDetected and (self.stateData.swState == gc.gSTATE_IDLE or \
-         self.stateData.swState == gc.gSTATE_BREAK):
-
-         # only do this if we are in IDLE or BREAK, it will cause probelms
-         # if status requets are sent randomly wile running program
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+      if self.stateData.deviceDetected:
+         # this is know to cause problems with Grbl 0.8c (maybe fixed in 0.9),
+         # if too many request are sent Grbl behaves erratically, this is really
+         # not require needed with TinyG(2) as its purpose is to update status
+         # panel, and TinyG(2) already provides this information at run time.
+         if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
+            self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
+         elif self.stateData.deviceID == gc.gDEV_GRBL:
+            self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
 
    def GetSerialPortList(self):
       spList = []
@@ -1651,7 +1752,7 @@ class gsatMainWindow(wx.Frame):
 
          if self.serPort.isOpen():
             self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
-               self.mainWndInQueue, self.cmdLineOptions)
+               self.mainWndInQueue, self.cmdLineOptions, self.stateData.deviceID, self.machineAutoStatus)
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
@@ -1671,12 +1772,11 @@ class gsatMainWindow(wx.Frame):
    def SerialClose(self):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         self.mainWndOutQueue.join()
       self.progExecThread = None
       self.serPort.close()
 
       self.stateData.serialPortIsOpen = False
-      self.stateData.grblDetected = False
+      self.stateData.deviceDetected = False
       self.AutoRefreshTimerStop()
       self.UpdateUI()
 
@@ -1699,12 +1799,11 @@ class gsatMainWindow(wx.Frame):
       elif self.cmdLineOptions.verbose:
          print "gsatMainWindow ERROR: attempt serial write with port closed!!"
 
-   def Stop(self):
+   def Stop(self, toState=gc.gSTATE_IDLE):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_STOP, None))
-         self.mainWndOutQueue.join()
 
-         self.stateData.swState = gc.gSTATE_IDLE
+         self.stateData.swState = toState
          self.UpdateUI()
 
    def SetPC(self, pc=None):
@@ -1719,14 +1818,16 @@ class gsatMainWindow(wx.Frame):
 
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
-         self.mainWndOutQueue.join()
 
       if autoRefresh:
          self.GetMachineStatus()
 
    def GetMachineStatus(self):
       if self.stateData.serialPortIsOpen:
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+         if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
+            self.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
+         elif self.stateData.deviceID == gc.gDEV_GRBL:
+            self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
 
    def LoadLayoutData(self, key, update=True):
       dimesnionsData = layoutData = self.configFile.Read(key+"/Dimensions")
@@ -1868,31 +1969,43 @@ class gsatMainWindow(wx.Frame):
             self.progExecThread = None
             self.SerialClose()
 
-         elif te.event_id == gc.gEV_DATA_IN:
+         elif te.event_id == gc.gEV_DATA_STATUS:
+            self.stateData.machineStatusString = te.data.get('stat', 'Uknown')
+            self.machineStatusPanel.UpdateUI(self.stateData, te.data)
+            self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
 
+         elif te.event_id == gc.gEV_DATA_IN:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_IN."
-            self.OnThreadSerialData(te.data)
+
+            self.outputText.AppendText("%s" % te.data)
 
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_OUT."
             self.outputText.AppendText("> %s" % te.data)
 
+            # -----------------------------------------------------------------
+            # Grbl DRO Hack
+            if self.machineGrblDroHack and self.stateData.deviceID == gc.gDEV_GRBL:
+               rematch = gReAxis.findall(te.data)
+               if len(rematch) > 0:
+                  machineStatus = dict()
+                  for match in rematch:
+                     machineStatus["wpos%s" % match[0].lower()] = match[1]
+
+                  if self.cmdLineOptions.vverbose:
+                     print "gsatMainWindow re GRBL GCODE match %s" % str(rematch)
+                     print "gsatMainWindow str match from %s" % str(te.data.strip())
+
+                  self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
+                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
+                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
+                  #self.UpdateUI()
+
          elif te.event_id == gc.gEV_PC_UPDATE:
             # calculate percentage if lines sent
             prcnt = "%.2f%%" % (float(te.data)/float(len(self.stateData.gcodeFileLines)) * 100)
-
-            '''
-            # calculate elapse time
-            runTimeStr = "n/a"
-            if self.stateData.swState == gc.gSTATE_RUN:
-               runTime = time.time() - self.runStartTime
-               hours, reminder = divmod(runTime, 3600)
-               minutes, reminder = divmod(reminder, 60)
-               seconds, mseconds = divmod(reminder, 1)
-               runTimeStr = "%02d:%02d:%02d.%d" % (hours, minutes, seconds, mseconds*1000)
-            '''
 
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_PC_UPDATE [%s], %s sent." \
@@ -1900,14 +2013,45 @@ class gsatMainWindow(wx.Frame):
             self.SetPC(te.data)
             self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':prcnt}))
 
+         elif te.event_id == gc.gEV_DEVICE_DETECTED:
+            self.stateData.deviceDetected = True
+            self.GetMachineStatus()
+            self.RunDeviceInitScript()
+
          elif te.event_id == gc.gEV_RUN_END:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
             self.stateData.swState = gc.gSTATE_IDLE
+            self.RunTimerStop()
             self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':"100.00%"}))
             self.Refresh()
             self.UpdateUI()
             self.SetPC(0)
+
+            # calculate run time
+            if self.runEndTime == 0:
+               self.runEndTime = int(time.time())
+
+            runTime = self.runEndTime - self.runStartTime
+            hours, reminder = divmod(runTime, 3600)
+            minutes, reminder = divmod(reminder, 60)
+            seconds, mseconds = divmod(reminder, 1)
+            runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
+            runStartTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
+            runEndTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
+
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
+
+            # display run time dialog.
+            if self.displayRuntimeDialog:
+               dlg = wx.MessageDialog(self,
+                  "Started:	%s\n"\
+                  "Ended:	%s\n"\
+                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr), "G-Code Program",
+                  wx.OK|wx.ICON_INFORMATION)
+
+               result = dlg.ShowModal()
+               dlg.Destroy()
 
          elif te.event_id == gc.gEV_STEP_END:
             if self.cmdLineOptions.vverbose:
@@ -1925,7 +2069,7 @@ class gsatMainWindow(wx.Frame):
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_HIT_MSG."
             lastSwState = self.stateData.swState
-            self.stateData.swState = gc.gSTATE_BREAK
+            self.stateData.swState = gc.gSTATE_PAUSE
             self.UpdateUI()
 
             self.outputText.AppendText("** MSG: %s" % te.data.strip())
@@ -1941,7 +2085,7 @@ class gsatMainWindow(wx.Frame):
             dlg.Destroy()
 
             if result == wx.ID_YES:
-               self.OnRun(resetTime=False)
+               self.OnRun()
 
          else:
             if self.cmdLineOptions.vverbose:
@@ -1949,134 +2093,20 @@ class gsatMainWindow(wx.Frame):
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
-         # item acknowledgment
-         self.mainWndInQueue.task_done()
+      # tell program exec thread that our queue is empty, ok to post more event
+      self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
 
-   def OnThreadSerialData (self, teData):
+   def RunDeviceInitScript (self):
+      # run init script
+      initScript = str(self.configData.Get('/machine/InitScript')).splitlines()
 
-      self.outputText.AppendText("%s" % teData)
+      if len(initScript) > 0:
+         if self.cmdLineOptions.verbose:
+            print "gsatMainWindow queuing machine init script..."
 
-      # -----------------------------------------------------------------
-      # lest try to see if we have any other good data
-      # -----------------------------------------------------------------
-
-      # Grbl version, also useful to detect grbl connect
-      rematch = gReGrblVersion.match(teData)
-      if rematch is not None:
-         if self.stateData.swState == gc.gSTATE_RUN:
-            # something went really bad we shouldn't see this while-in
-            # RUN state
-            self.Stop()
-            dlg = wx.MessageDialog(self,
-               "Detected Grbl reset string while-in RUN.\n" \
-               "Something went terribly wrong, STOPPING!!\n", "",
-               wx.OK|wx.ICON_STOP)
-            result = dlg.ShowModal()
-            dlg.Destroy()
-         else:
-            self.stateData.grblDetected = True
-            self.GetMachineStatus()
-         self.UpdateUI()
-
-      # skip if there is no "pos" data
-      #if gReMachineStatus.search(teData):
-      # GRBL status data
-      rematch = gReGRBLMachineStatus.match(teData)
-      # data is expected to be an array of strings as follows
-      # statusData[0] : Machine state
-      # statusData[1] : Machine X
-      # statusData[2] : Machine Y
-      # statusData[3] : Machine Z
-      # statusData[4] : Work X
-      # statusData[5] : Work Y
-      # statusData[6] : Work Z
-
-      if rematch is not None:
-         statusData = rematch.groups()
-         machineStatus = dict()
-         machineStatus['device'] = 'grbl'
-         machineStatus['stat'] = statusData[0]
-         machineStatus['posx'] = statusData[1]
-         machineStatus['posy'] = statusData[2]
-         machineStatus['posz'] = statusData[3]
-         machineStatus['wposx'] = statusData[4]
-         machineStatus['wposy'] = statusData[5]
-         machineStatus['wposz'] = statusData[6]
-
-         if self.cmdLineOptions.vverbose:
-            print "gsatMainWindow re GRBL status match %s" % str(statusData)
-            print "gsatMainWindow str match from %s" % str(teData.strip())
-
-         self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-         self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-         self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-         self.UpdateUI()
-
-      else:
-         # tinyG verbose/status
-         rematch = gReTinyGVerbose.findall(teData)
-         if len(rematch) > 0:
-
-            if self.cmdLineOptions.vverbose:
-               print "gsatMainWindow re tinyG verbose match %s" % str(rematch)
-               print "gsatMainWindow str match from %s" % str(teData)
-
-            machineStatus = dict(rematch)
-            machineStatus['device'] = 'tinyG'
-
-            status = machineStatus.get('stat')
-            if status is not None:
-               if '0' in status:
-                  machineStatus['stat'] = 'Init'
-               elif '1' in status:
-                  machineStatus['stat'] = 'Ready'
-               elif '2' in status:
-                  machineStatus['stat'] = 'Alarm'
-               elif '3' in status:
-                  machineStatus['stat'] = 'Stop'
-               elif '4' in status:
-                  machineStatus['stat'] = 'End'
-               elif '5' in status:
-                  machineStatus['stat'] = 'Run'
-               elif '6' in status:
-                  machineStatus['stat'] = 'Hold'
-               elif '7' in status:
-                  machineStatus['stat'] = 'Probe'
-               elif '8' in status:
-                  machineStatus['stat'] = 'Run'
-               elif '9' in status:
-                  machineStatus['stat'] = 'Home'
-
-               self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-               self.UpdateUI()
-
-            self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-            self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-         else:
-            rematch = gReTinyGPosStatus.findall(teData)
-            if len(rematch) > 0:
-               if self.cmdLineOptions.vverbose:
-                  print "gsatMainWindow re tinyG status match %s" % str(rematch)
-                  print "gsatMainWindow str match from %s" % str(teData)
-
-               machineStatus = dict()
-               machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
-               machineStatus['device'] = 'tinyG'
-
-               self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-               self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-            else:
-               rematch = gReTinyGStateStatus.findall(teData)
-
-               if len(rematch) > 0:
-                  if self.cmdLineOptions.vverbose:
-                     print "gsatMainWindow re tinyG status match %s" % str(teData)
-
-                  machineStatus = dict()
-                  machineStatus["stat"] = rematch[0][1]
-                  machineStatus['device'] = 'tinyG'
-
-                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-                  self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-                  self.UpdateUI()
+         self.outputText.AppendText("Queuing machine init script...\n")
+         for initLine in initScript:
+            initLine = "".join([initLine, "\n"])
+            #self.SerialWrite(initLine)
+            self.SerialWriteWaitForAck(initLine)
+            self.outputText.AppendText(initLine)

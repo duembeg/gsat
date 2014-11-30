@@ -38,10 +38,30 @@ gWILDCARD = \
    "gcode (*.gcode)|*.gcode|" \
    "All files (*.*)|*.*"
 
-gZeroString = "0.0000"
-gNumberFormatString = "%0.4f"
+gZeroString = "0.000"
+gNumberFormatString = "%0.3f"
 gOnString = "On"
 gOffString = "Off"
+
+# --------------------------------------------------------------------------
+# device commands
+# --------------------------------------------------------------------------
+gDEVICE_CMD_GO_TO_POS         = "G00 <AXIS><VAL>\n"
+gDEVICE_CMD_ALL_GO_TO_POS     = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gDEVICE_CMD_JOG_X             = "G00 X<VAL>\n"
+gDEVICE_CMD_JOG_Y             = "G00 Y<VAL>\n"
+gDEVICE_CMD_JOG_Z             = "G00 Z<VAL>\n"
+gDEVICE_CMD_SPINDLE_ON        = "M3\n"
+gDEVICE_CMD_SPINDLE_OFF       = "M5\n"
+
+# --------------------------------------------------------------------------
+# TinyG/TinyG2 commands
+# --------------------------------------------------------------------------
+gTINYG_CMD_GET_STATUS         = "?\n"
+gTINYG_CMD_RESET_TO_VAL       = "G28.3 <AXIS><VAL>\n"
+gTINYG_CMD_ALL_RESET_TO_VAL   = "G28.3 X<XVAL> Y<YVAL> Z<ZVAL>\n"
+gTINYG_CMD_GO_HOME            = "G28.2 <AXIS>0\n"
+gTINYG_CMD_ALL_GO_HOME        = "G28.2 X0 Y0 Z0\n"
 
 # --------------------------------------------------------------------------
 # Grbl commands
@@ -49,15 +69,8 @@ gOffString = "Off"
 gGRBL_CMD_GET_STATUS          = "?\n"
 gGRBL_CMD_RESET_TO_VAL        = "G92 <AXIS><VAL>\n"
 gGRBL_CMD_ALL_RESET_TO_VAL    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_GO_TO_POS           = "G00 <AXIS><VAL>\n"
-gGRBL_CMD_ALL_GO_TO_POS       = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
 gGRBL_CMD_GO_HOME             = "G28.2 <AXIS>0\n"
 gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
-gGRBL_CMD_JOG_X               = "G00 X<VAL>\n"
-gGRBL_CMD_JOG_Y               = "G00 Y<VAL>\n"
-gGRBL_CMD_JOG_Z               = "G00 Z<VAL>\n"
-gGRBL_CMD_SPINDLE_ON          = "M3\n"
-gGRBL_CMD_SPINDLE_OFF         = "M5\n"
 
 # --------------------------------------------------------------------------
 # state machine states and transition
@@ -66,19 +79,21 @@ gGRBL_CMD_SPINDLE_OFF         = "M5\n"
 """ ------------------------------------------------------------------------
 
 STATE TABLE::
-state    | RUN UI  | STOP UI | STEP UI | BREAK PT| ERROR   | ST END  | ABORT   |
---------------------------------------------------------------------------------
-ABORT    | IGNORED | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IGNORE  |
----------------------------------------------------------------------------------
-IDLE     | RUN     | IGNORE  | STEP    | IGNORE  | IGNORE  | IGNORE  | ABORT   |
----------------------------------------------------------------------------------
-RUN      | IGNORE  | IDLE    | IGNORE  | BREAK   | IDLE    | IDLE    | ABORT   |
----------------------------------------------------------------------------------
-STEP     | IGNORE  | IDLE    | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
----------------------------------------------------------------------------------
-BREAK    | RUN     | IDLE    | STEP    | IGNORE  | IDLE    | IGNORE  | ABORT   |
----------------------------------------------------------------------------------
-USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE    | IDLE    | ABORT   |
+state    | RUN UI  | PAUSE UI| STEP UI | STOP UI |  BREAK PT| ERROR   | ST END  | ABORT   |
+-------------------------------------------------------------------------------------------
+ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  | IGNORE  |
+-------------------------------------------------------------------------------------------
+IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   |
+-------------------------------------------------------------------------------------------
+RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | IDLE    | IDLE    | ABORT   |
+-------------------------------------------------------------------------------------------
+STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   |
+-------------------------------------------------------------------------------------------
+BREAK    | RUN     | PAUSE   | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
+-------------------------------------------------------------------------------------------
+PAUSE    | RUN     | IGNORE  | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
+-------------------------------------------------------------------------------------------
+USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    | ABORT   |
 ---------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------ """
@@ -88,6 +103,7 @@ gSTATE_IDLE  =  100
 gSTATE_RUN   =  200
 gSTATE_STEP  =  300
 gSTATE_BREAK =  400
+gSTATE_PAUSE =  500
 
 '''
 Notes:
@@ -108,6 +124,7 @@ gEV_CMD_STOP         = 1050
 gEV_CMD_SEND         = 1060
 gEV_CMD_SEND_W_ACK   = 1062
 gEV_CMD_AUTO_STATUS  = 1070
+gEV_CMD_OK_TO_POST   = 1080
 
 gEV_NULL             = 0100
 gEV_ABORT            = 2000
@@ -119,6 +136,19 @@ gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
 gEV_SER_RXDATA       = 2080
+gEV_TIMER            = 2090
+gEV_DATA_STATUS      = 2100
+gEV_DEVICE_DETECTED  = 2110
+
+# --------------------------------------------------------------------------
+# Device type
+# --------------------------------------------------------------------------
+gDEV_NONE            = 0000
+gDEV_GRBL            = 1000
+gDEV_TINYG           = 1100
+gDEV_TINYG2          = 1200
+
+gDEV_LIST = ["Grbl", "TinyG", "TinyG2"]
 
 """----------------------------------------------------------------------------
    gsatStateData:
@@ -135,6 +165,8 @@ class gsatStateData():
       self.serialPortIsOpen = False
       self.serialPort = ""
       self.serialPortBaud = "9600"
+      self.deviceID = 0
+      self.deviceDetected = False
 
       # machine status
       self.machineStatusAutoRefresh = False
@@ -160,6 +192,7 @@ class gsatConfigData():
       self.config = {
       #  key                                 CanEval, Default Value
       # main app keys
+         '/mainApp/DisplayRunTimeDialog'     :(True , True),
          '/mainApp/BackupFile'               :(True , True),
          '/mainApp/MaxFileHistory'           :(True , 8),
          '/mainApp/RoundInch2mm'             :(True , 4),
@@ -212,39 +245,59 @@ class gsatConfigData():
          '/cli/CmdHistory'                   :(False, ""),
 
       # machine keys
+         '/machine/Device'                   :(False, "TinyG2"),
+         '/machine/Port'                     :(False, ""),
+         '/machine/Baud'                     :(False, "115200"),
+         '/machine/AutoStatus'               :(True , False),
          '/machine/AutoRefresh'              :(True , False),
          '/machine/AutoRefreshPeriod'        :(True , 1000),
+         '/machine/InitScript'               :(False, ""),
+         '/machine/GrblDroHack'              :(True , False),
 
       # jogging keys
-         '/jogging/XYZReadOnly'              :(True , True),
+         '/jogging/XYZReadOnly'              :(True , False),
+         '/jogging/AutoMPOS'                 :(True , True),
+         '/jogging/ReqUpdateOnJogSetOp'      :(True , True),
          '/jogging/Custom1Label'             :(False, "Custom 1"),
+         '/jogging/Custom1OptPosition'       :(True , True),
+         '/jogging/Custom1OptScript'         :(True , False),
          '/jogging/Custom1XIsOffset'         :(True , True),
          '/jogging/Custom1XValue'            :(True , 0),
          '/jogging/Custom1YIsOffset'         :(True , True),
          '/jogging/Custom1YValue'            :(True , 0),
          '/jogging/Custom1ZIsOffset'         :(True , True),
          '/jogging/Custom1ZValue'            :(True , 0),
+         '/jogging/Custom1Script'            :(False , ""),
          '/jogging/Custom2Label'             :(False, "Custom 2"),
+         '/jogging/Custom2OptPosition'       :(True , True),
+         '/jogging/Custom2OptScript'         :(True , False),
          '/jogging/Custom2XIsOffset'         :(True , True),
          '/jogging/Custom2XValue'            :(True , 0),
          '/jogging/Custom2YIsOffset'         :(True , True),
          '/jogging/Custom2YValue'            :(True , 0),
          '/jogging/Custom2ZIsOffset'         :(True , True),
          '/jogging/Custom2ZValue'            :(True , 0),
+         '/jogging/Custom2Script'            :(False , ""),
          '/jogging/Custom3Label'             :(False, "Custom 3"),
+         '/jogging/Custom3OptPosition'       :(True , True),
+         '/jogging/Custom3OptScript'         :(True , False),
          '/jogging/Custom3XIsOffset'         :(True , True),
          '/jogging/Custom3XValue'            :(True , 0),
          '/jogging/Custom3YIsOffset'         :(True , True),
          '/jogging/Custom3YValue'            :(True , 0),
          '/jogging/Custom3ZIsOffset'         :(True , True),
          '/jogging/Custom3ZValue'            :(True , 0),
+         '/jogging/Custom3Script'            :(False , ""),
          '/jogging/Custom4Label'             :(False, "Custom 4"),
+         '/jogging/Custom4OptPosition'       :(True , True),
+         '/jogging/Custom4OptScript'         :(True , False),
          '/jogging/Custom4XIsOffset'         :(True , True),
          '/jogging/Custom4XValue'            :(True , 0),
          '/jogging/Custom4YIsOffset'         :(True , True),
          '/jogging/Custom4YValue'            :(True , 0),
          '/jogging/Custom4ZIsOffset'         :(True , True),
          '/jogging/Custom4ZValue'            :(True , 0),
+         '/jogging/Custom4Script'            :(False , ""),
 
 
       # CV2 keys
