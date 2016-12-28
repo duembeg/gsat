@@ -226,20 +226,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          if rtime is not None:
             self.runTimeStatus.SetLabel(rtime)
 
-         if self.stateData.deviceID == gc.gDEV_TINYG2:
-            x = statusData.get('mpox')
-            if x is not None:
-               self.xPos.SetValue(x)
 
-            y = statusData.get('mpoy')
-            if y is not None:
-               self.yPos.SetValue(y)
-
-            z = statusData.get('mpoz')
-            if z is not None:
-               self.zPos.SetValue(z)
-
-         elif self.stateData.deviceID == gc.gDEV_TINYG :
+         if self.stateData.deviceID == gc.gDEV_TINYG or \
+            self.stateData.deviceID == gc.gDEV_TINYG2:
+            # newer version (g2core) moved to TinyG style, checking 
+            # style first
+            
             x = statusData.get('posx')
             if x is not None:
                self.xPos.SetValue(x)
@@ -252,6 +244,19 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             if z is not None:
                self.zPos.SetValue(z)
 
+            if self.stateData.deviceID == gc.gDEV_TINYG2:
+               x = statusData.get('mpox')
+               if x is not None:
+                  self.xPos.SetValue(x)
+
+               y = statusData.get('mpoy')
+               if y is not None:
+                  self.yPos.SetValue(y)
+
+               z = statusData.get('mpoz')
+               if z is not None:
+                  self.zPos.SetValue(z)
+               
          else:
             x = statusData.get('wposx')
             if x is not None:
