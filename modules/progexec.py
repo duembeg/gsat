@@ -349,6 +349,11 @@ class gsatProgramExecuteThread(threading.Thread):
 
             if self.deviceID == gc.gDEV_TINYG2:
                rematch = gReTinyG2PosStatus.findall(serialData)
+               
+               # newer version (g2core) moved to TinyG style
+               if len(rematch) == 0:
+                  rematch = gReTinyGPosStatus.findall(serialData)
+                  
             elif self.deviceID == gc.gDEV_TINYG:
                rematch = gReTinyGPosStatus.findall(serialData)
 

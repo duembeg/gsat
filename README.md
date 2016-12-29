@@ -89,6 +89,11 @@ Screen Shoots
 
 Changelog
 ---------
+### 1.5.1
+* Added Support for verbosity changes in TinyG2 latest master branch now known as g2core.
+* Fixed bug on jogging UI; where an operation was selected without selecting an axis. This resulted on a serial write and wait for ack, since string was empty there will be no ack.
+
+
 ### 1.5.0
 * Added support for [TinyG2](https://github.com/synthetos/g2/wiki).
 * Added support for [Mac OS X Mavericks](https://www.apple.com/osx/) with working [OpenCV](http://opencv.org/).

@@ -432,20 +432,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.stateData = stateData
 
       if statusData is not None and self.configAutoMPOS:
-         if self.stateData.deviceID == gc.gDEV_TINYG2:
-            x = statusData.get('mpox')
-            if x is not None:
-               self.jX.SetValue(x)
-
-            y = statusData.get('mpoy')
-            if y is not None:
-               self.jY.SetValue(y)
-
-            z = statusData.get('mpoz')
-            if z is not None:
-               self.jZ.SetValue(z)
-
-         elif self.stateData.deviceID == gc.gDEV_TINYG:
+         if self.stateData.deviceID == gc.gDEV_TINYG or \
+            self.stateData.deviceID == gc.gDEV_TINYG2:
+            # newer version (g2core) moved to TinyG style, checking 
+            # style first
+               
             x = statusData.get('posx')
             if x is not None:
                self.jX.SetValue(x)
@@ -458,6 +449,18 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             if z is not None:
                self.jZ.SetValue(z)
 
+            if self.stateData.deviceID == gc.gDEV_TINYG2:
+               x = statusData.get('mpox')
+               if x is not None:
+                  self.jX.SetValue(x)
+
+               y = statusData.get('mpoy')
+               if y is not None:
+                  self.jY.SetValue(y)
+
+               z = statusData.get('mpoz')
+               if z is not None:
+                  self.jZ.SetValue(z)
          else:
             x = statusData.get('wposx')
             if x is not None:
@@ -848,7 +851,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       cmd = "".join([cmd, cmdx, cmdy, cmdz, "\n"])
 
-      self.mainWindow.SerialWriteWaitForAck(cmd)
+      if len(cmd) > 1:
+         self.mainWindow.SerialWriteWaitForAck(cmd)
+      # else: 
+      # maybe we need to show a hint (did you you forget to select an
+      # axis         
 
    def OnResetToZero(self, e):
       if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
