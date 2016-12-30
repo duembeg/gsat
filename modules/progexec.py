@@ -93,7 +93,7 @@ gReAcknowlege = [
 
 gReErrorAck = [
    re.compile(r'^error:.*\s$'),     # grbl
-   re.compile(r'^.*\serr:.*\s$')    # tinyG
+   re.compile(r'^.*\serr\[\d*\].*$')    # tinyG "tinyg [mm] err[201]: Move < min length: G00 Z5.0000"
 ]
 
 """----------------------------------------------------------------------------
