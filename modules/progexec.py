@@ -51,7 +51,7 @@ gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 gReMachineStatus = re.compile(r'pos', re.I)
 
 # GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReGRBLMachineStatus = re.compile(r'<(.*),MPos:(.*),(.*),(.*),WPos:(.*),(.*),(.*)>')
+gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
 
 # -------------
 #TinyG/TinyG2
@@ -282,9 +282,9 @@ class gsatProgramExecuteThread(threading.Thread):
             machineStatus['posx'] = statusData[1]
             machineStatus['posy'] = statusData[2]
             machineStatus['posz'] = statusData[3]
-            machineStatus['wposx'] = statusData[4]
-            machineStatus['wposy'] = statusData[5]
-            machineStatus['wposz'] = statusData[6]
+            #machineStatus['wposx'] = statusData[4]
+            #machineStatus['wposy'] = statusData[5]
+            #machineStatus['wposz'] = statusData[6]
 
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread re GRBL status match %s" % str(statusData)

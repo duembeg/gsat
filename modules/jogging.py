@@ -462,15 +462,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                if z is not None:
                   self.jZ.SetValue(z)
          else:
-            x = statusData.get('wposx')
+            x = statusData.get('posx')
             if x is not None:
                self.jX.SetValue(x)
 
-            y = statusData.get('wposy')
+            y = statusData.get('posy')
             if y is not None:
                self.jY.SetValue(y)
 
-            z = statusData.get('wposz')
+            z = statusData.get('posz')
             if z is not None:
                self.jZ.SetValue(z)
 
