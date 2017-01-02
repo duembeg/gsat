@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machine.py
 
-   Copyright (C) 2013-2014 Wilhelm Duembeg
+   Copyright (C) 2013-2017 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -33,6 +33,24 @@ import modules.config as gc
 
 
 """----------------------------------------------------------------------------
+   GetDeviceName:
+   translate ID to string.
+----------------------------------------------------------------------------"""
+def GetDeviceName(deviceID):
+      deviceName = "None"
+
+      if deviceID == gc.gDEV_GRBL:
+         deviceName = "Grbl"
+
+      elif deviceID == gc.gDEV_TINYG:
+         deviceName = "TinyG"
+
+      elif deviceID == gc.gDEV_G2CORE:
+         deviceName = "g2core"
+
+      return deviceName
+
+"""----------------------------------------------------------------------------
    GetDeviceID:
    translate string to ID.
 ----------------------------------------------------------------------------"""
@@ -42,11 +60,15 @@ def GetDeviceID(deviceStr):
       if "Grbl" in deviceStr:
          deviceID = gc.gDEV_GRBL
 
-      if "TinyG" in deviceStr:
+      elif "TinyG2" in deviceStr:
+         deviceID = gc.gDEV_G2CORE
+
+      elif "TinyG" in deviceStr:
          deviceID = gc.gDEV_TINYG
 
-      if "TinyG2" in deviceStr:
-         deviceID = gc.gDEV_TINYG2
+      elif "g2core" in deviceStr:
+         deviceID = gc.gDEV_G2CORE
+
 
       return deviceID
 
@@ -74,7 +96,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       flexGridSizer.AddGrowableCol(1)
 
       st = wx.StaticText(self, label="Device")
-      self.deviceComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Device'),
+      deviceID = GetDeviceID(self.configData.Get('/machine/Device'))
+      self.deviceComboBox = wx.ComboBox(self, -1, value=GetDeviceName(deviceID),
          choices=gc.gDEV_LIST, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
@@ -226,49 +249,17 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          if rtime is not None:
             self.runTimeStatus.SetLabel(rtime)
 
+         x = statusData.get('posx')
+         if x is not None:
+            self.xPos.SetValue("{:.3f}".format(x))
 
-         if self.stateData.deviceID == gc.gDEV_TINYG or \
-            self.stateData.deviceID == gc.gDEV_TINYG2:
-            # newer version (g2core) moved to TinyG style, checking 
-            # style first
-            
-            x = statusData.get('posx')
-            if x is not None:
-               self.xPos.SetValue(x)
+         y = statusData.get('posy')
+         if y is not None:
+            self.yPos.SetValue("{:.3f}".format(y))
 
-            y = statusData.get('posy')
-            if y is not None:
-               self.yPos.SetValue(y)
-
-            z = statusData.get('posz')
-            if z is not None:
-               self.zPos.SetValue(z)
-
-            if self.stateData.deviceID == gc.gDEV_TINYG2:
-               x = statusData.get('mpox')
-               if x is not None:
-                  self.xPos.SetValue(x)
-
-               y = statusData.get('mpoy')
-               if y is not None:
-                  self.yPos.SetValue(y)
-
-               z = statusData.get('mpoz')
-               if z is not None:
-                  self.zPos.SetValue(z)
-               
-         else:
-            x = statusData.get('posx')
-            if x is not None:
-               self.xPos.SetValue(x)
-
-            y = statusData.get('posy')
-            if y is not None:
-               self.yPos.SetValue(y)
-
-            z = statusData.get('posz')
-            if z is not None:
-               self.zPos.SetValue(z)
+         z = statusData.get('posz')
+         if z is not None:
+            self.zPos.SetValue("{:.3f}".format(z))
 
          #self.sSpindle.SetLabel("?")
 
@@ -281,7 +272,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          self.machinePort.SetLabel("None")
          self.machineBaud.SetLabel("None")
 
-      self.devStatus.SetLabel(self.configData.Get('/machine/Device'))
+      deviceID = GetDeviceID(self.configData.Get('/machine/Device'))
+      self.devStatus.SetLabel(GetDeviceName(deviceID))
 
       self.Update()
 
@@ -342,7 +334,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Device Status
       st = wx.StaticText(self, label="Device name")
       st.SetFont(font)
-      self.devStatus = wx.StaticText(self, label=self.configData.Get('/machine/Device'))
+      deviceID = GetDeviceID(self.configData.Get('/machine/Device'))
+      self.devStatus = wx.StaticText(self, label=GetDeviceName(deviceID))
       self.devStatus.SetForegroundColour(self.machineDataColor)
       self.devStatus.SetFont(font)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)

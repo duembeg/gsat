@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    config.py
 
-   Copyright (C) 2013-2014 Wilhelm Duembeg
+   Copyright (C) 2013-2017 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -57,7 +57,7 @@ gDEVICE_CMD_SPINDLE_OFF       = "M5\n"
 # --------------------------------------------------------------------------
 # TinyG/TinyG2 commands
 # --------------------------------------------------------------------------
-gTINYG_CMD_GET_STATUS         = "?\n"
+#gTINYG_CMD_GET_STATUS         = "?\n"
 gTINYG_CMD_RESET_TO_VAL       = "G28.3 <AXIS><VAL>\n"
 gTINYG_CMD_ALL_RESET_TO_VAL   = "G28.3 X<XVAL> Y<YVAL> Z<ZVAL>\n"
 gTINYG_CMD_GO_HOME            = "G28.2 <AXIS>0\n"
@@ -66,7 +66,7 @@ gTINYG_CMD_ALL_GO_HOME        = "G28.2 X0 Y0 Z0\n"
 # --------------------------------------------------------------------------
 # Grbl commands
 # --------------------------------------------------------------------------
-gGRBL_CMD_GET_STATUS          = "?\n"
+#gGRBL_CMD_GET_STATUS          = "?\n"
 gGRBL_CMD_RESET_TO_VAL        = "G92 <AXIS><VAL>\n"
 gGRBL_CMD_ALL_RESET_TO_VAL    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
 gGRBL_CMD_GO_HOME             = "G28.2 <AXIS>0\n"
@@ -125,6 +125,7 @@ gEV_CMD_SEND         = 1060
 gEV_CMD_SEND_W_ACK   = 1062
 gEV_CMD_AUTO_STATUS  = 1070
 gEV_CMD_OK_TO_POST   = 1080
+gEV_CMD_GET_STATUS   = 1090
 
 gEV_NULL             = 0100
 gEV_ABORT            = 2000
@@ -146,9 +147,9 @@ gEV_DEVICE_DETECTED  = 2110
 gDEV_NONE            = 0000
 gDEV_GRBL            = 1000
 gDEV_TINYG           = 1100
-gDEV_TINYG2          = 1200
+gDEV_G2CORE          = 1200
 
-gDEV_LIST = ["Grbl", "TinyG", "TinyG2"]
+gDEV_LIST = ["Grbl", "TinyG", "g2core"]
 
 """----------------------------------------------------------------------------
    gsatStateData:
@@ -245,7 +246,7 @@ class gsatConfigData():
          '/cli/CmdHistory'                   :(False, ""),
 
       # machine keys
-         '/machine/Device'                   :(False, "TinyG2"),
+         '/machine/Device'                   :(False, "g2core"),
          '/machine/Port'                     :(False, ""),
          '/machine/Baud'                     :(False, "115200"),
          '/machine/AutoStatus'               :(True , False),

@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    jogging.py
 
-   Copyright (C) 2013-2014 Wilhelm Duembeg
+   Copyright (C) 2013-2017 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -432,48 +432,17 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.stateData = stateData
 
       if statusData is not None and self.configAutoMPOS:
-         if self.stateData.deviceID == gc.gDEV_TINYG or \
-            self.stateData.deviceID == gc.gDEV_TINYG2:
-            # newer version (g2core) moved to TinyG style, checking 
-            # style first
-               
-            x = statusData.get('posx')
-            if x is not None:
-               self.jX.SetValue(x)
+         x = statusData.get('posx')
+         if x is not None:
+            self.jX.SetValue("{:.3f}".format(x))
 
-            y = statusData.get('posy')
-            if y is not None:
-               self.jY.SetValue(y)
+         y = statusData.get('posy')
+         if y is not None:
+            self.jY.SetValue("{:.3f}".format(y))
 
-            z = statusData.get('posz')
-            if z is not None:
-               self.jZ.SetValue(z)
-
-            if self.stateData.deviceID == gc.gDEV_TINYG2:
-               x = statusData.get('mpox')
-               if x is not None:
-                  self.jX.SetValue(x)
-
-               y = statusData.get('mpoy')
-               if y is not None:
-                  self.jY.SetValue(y)
-
-               z = statusData.get('mpoz')
-               if z is not None:
-                  self.jZ.SetValue(z)
-         else:
-            x = statusData.get('posx')
-            if x is not None:
-               self.jX.SetValue(x)
-
-            y = statusData.get('posy')
-            if y is not None:
-               self.jY.SetValue(y)
-
-            z = statusData.get('posz')
-            if z is not None:
-               self.jZ.SetValue(z)
-
+         z = statusData.get('posz')
+         if z is not None:
+            self.jZ.SetValue("{:.3f}".format(z))
 
       if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
          self.resetToZeroButton.Enable()
@@ -853,43 +822,38 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       if len(cmd) > 1:
          self.mainWindow.SerialWriteWaitForAck(cmd)
-      # else: 
+      # else:
       # maybe we need to show a hint (did you you forget to select an
-      # axis         
+      # axis
 
    def OnResetToZero(self, e):
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_G2CORE:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
-
-         if self.configReqUpdateOnJogSetOp:
-            self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
       else:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
 
-         if self.configReqUpdateOnJogSetOp:
-            self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
+      if self.configReqUpdateOnJogSetOp:
+         self.mainWindow.GetMachineStatus()
 
    def OnGoToZero(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
          gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_G2CORE:
          self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
             gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
-
-         if self.configReqUpdateOnJogSetOp:
-            self.mainWindow.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
       else:
          self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
             gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
 
-         if self.configReqUpdateOnJogSetOp:
-            self.mainWindow.SerialWriteWaitForAck(gc.gGRBL_CMD_GET_STATUS)
+      if self.configReqUpdateOnJogSetOp:
+         self.mainWindow.GetMachineStatus()
+
 
    def OnGoToJogVal(self, e):
       self.OnJogCmd(
@@ -897,7 +861,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnGoHome(self, e):
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_TINYG2:
+      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_G2CORE:
          self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             gc.gTINYG_CMD_ALL_GO_HOME, gc.gTINYG_CMD_GO_HOME)
       else:

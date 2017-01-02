@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    mainwnd.py
 
-   Copyright (C) 2013-2014 Wilhelm Duembeg
+   Copyright (C) 2013-2017 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -437,8 +437,8 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoStatus = self.configData.Get('/machine/AutoStatus')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
-      self.deviceName = self.configData.Get('/machine/Device')
       self.stateData.deviceID = mc.GetDeviceID(self.configData.Get('/machine/Device'))
+      self.deviceName = mc.GetDeviceName(self.stateData.deviceID)
       self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
 
       if self.cmdLineOptions.verbose:
@@ -1685,10 +1685,7 @@ class gsatMainWindow(wx.Frame):
          # if too many request are sent Grbl behaves erratically, this is really
          # not require needed with TinyG(2) as its purpose is to update status
          # panel, and TinyG(2) already provides this information at run time.
-         if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
-            self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
-         elif self.stateData.deviceID == gc.gDEV_GRBL:
-            self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+         self.GetMachineStatus()
 
    def GetSerialPortList(self):
       spList = []
@@ -1823,11 +1820,12 @@ class gsatMainWindow(wx.Frame):
          self.GetMachineStatus()
 
    def GetMachineStatus(self):
-      if self.stateData.serialPortIsOpen:
-         if self.stateData.deviceID == gc.gDEV_TINYG2 or self.stateData.deviceID == gc.gDEV_TINYG:
-            self.SerialWriteWaitForAck(gc.gTINYG_CMD_GET_STATUS)
-         elif self.stateData.deviceID == gc.gDEV_GRBL:
-            self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_GET_STATUS, None))
+
+      elif self.cmdLineOptions.verbose:
+         print "gsatMainWindow ERROR: attempt GetMachineStatus without progExecTread!!"
+
 
    def LoadLayoutData(self, key, update=True):
       dimesnionsData = layoutData = self.configFile.Read(key+"/Dimensions")
@@ -2014,6 +2012,8 @@ class gsatMainWindow(wx.Frame):
             self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':prcnt}))
 
          elif te.event_id == gc.gEV_DEVICE_DETECTED:
+            if self.cmdLineOptions.vverbose:
+               print "gsatMainWindow got event gc.gEV_DEVICE_DETECTED."
             self.stateData.deviceDetected = True
             self.GetMachineStatus()
             self.RunDeviceInitScript()

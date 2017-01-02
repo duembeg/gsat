@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    progexec.py
 
-   Copyright (C) 2013-2014 Wilhelm Duembeg
+   Copyright (C) 2013-2017 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -35,66 +35,20 @@ import wx
 
 import modules.config as gc
 
+import modules.device_g2core as dm_g2core
+import modules.device_tinyg as dm_tinyg
+import modules.device_grbl as dm_grbl
+
 # -----------------------------------------------------------------------------
 # regular expressions
 # -----------------------------------------------------------------------------
 gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
-
-# -------------
-# Grbl
-
-# grbl version, example "Grbl 0.8c ['$' for help]"
-gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
-
-# status,
-# quick re check to avoid multiple checks, speeds things up
-gReMachineStatus = re.compile(r'pos', re.I)
-
-# GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
-
-# -------------
-#TinyG/TinyG2
-
-# TinyG detect, example "tinyg [mm] ok>"
-gReTinyGDetect = re.compile(r'tinyg\s+(.*)\s+ok>')
-
-# tinyG example posx:12.000,posy:12.200,posz:10.000,vel:0.000,stat:3
-gReTinyGVerbose = re.compile(r'(\w*):(-?\d+\.?\d*)')
-
-# tinyG query response example:
-#X position:          30.408 mm
-#Y position:          20.701 mm
-#Z position:          10.000 mm
-#Machine state:       Stop
-gReTinyGPosStatus = re.compile(r'(\w*)\s+position:\s+(-?\d+\.?\d*)\s+.*')
-gReTinyGStateStatus = re.compile(r'(\w*)\s+state:\s+(\w*).*')
-
-# tinyG query response example:
-#X machine posn:      30.408 mm
-#Y machine posn:      20.701 mm
-#Z machine posn:      10.000 mm
-#Machine state:       Stop
-gReTinyG2PosStatus = re.compile(r'(\w*)\s+machine posn:\s+(-?\d+\.?\d*)\s+.*')
-
-# -------------
 
 # comments example "( comment string )" or "; comment string"
 gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
 
 # message example "(MSG, CHANGE TOOL BIT: to drill size 0.81300 mm)"
 gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
-
-# acknowledge
-gReAcknowlege = [
-   re.compile(r'^ok\s$'),     # grbl example  "ok"
-   re.compile(r'\sok>\s$')    # tinyG example "tinyg [xxx] ok>"
-]
-
-gReErrorAck = [
-   re.compile(r'^error:.*\s$'),     # grbl
-   re.compile(r'^.*\serr\[\d*\].*$')    # tinyG "tinyg [mm] err[201]: Move < min length: G00 Z5.0000"
-]
 
 """----------------------------------------------------------------------------
    gsatProgramExecuteThread:
@@ -135,6 +89,11 @@ class gsatProgramExecuteThread(threading.Thread):
       self.serialRxThread = None
 
       self.serialWriteQueue = []
+
+      self.deviceModule = None
+
+      # init device module
+      self.InitDeviceModule()
 
       # start thread
       self.start()
@@ -210,6 +169,11 @@ class gsatProgramExecuteThread(threading.Thread):
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_OK_TO_POST."
             self.okToPostEvents = True
 
+         elif e.event_id == gc.gEV_CMD_GET_STATUS:
+            if self.cmdLineOptions.vverbose:
+               print "** gsatProgramExecuteThread got event gc.gEV_CMD_GET_STATUS."
+            self.serialWriteQueue.append((self.deviceModule.GetStatus(), False))
+
          else:
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got unknown event!! [%s]." % str(e.event_id)
@@ -217,9 +181,23 @@ class gsatProgramExecuteThread(threading.Thread):
    """-------------------------------------------------------------------------
    gsatProgramExecuteThread: General Functions
    -------------------------------------------------------------------------"""
+   def InitDeviceModule(self):
+      if self.deviceID == gc.gDEV_G2CORE:
+         self.deviceModule = dm_g2core.gsatDevice_g2core(self.cmdLineOptions)
+      elif self.deviceID == gc.gDEV_TINYG:
+         self.deviceModule = dm_tinyg.gsatDevice_TinyG(self.cmdLineOptions)
+      elif self.deviceID == gc.gDEV_GRBL:
+         self.deviceModule = dm_grbl.gsatDevice_GRBL(self.cmdLineOptions)
+
+      if self.cmdLineOptions.vverbose:
+         print "** gsatProgramExecuteThread Init Device Module (%s)." % self.deviceModule.GetDeviceName()
+
    def SerialWrite(self, serialData):
       exFlag = False
       exMsg = ""
+
+      if len(serialData) == 0:
+         return
 
       # sent data to UI
       self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))
@@ -258,133 +236,23 @@ class gsatProgramExecuteThread(threading.Thread):
          wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
 
 
-   def DecodeStatusData (self, serialData):
+   def DecodeSerialData (self, serialData):
 
-      # -----------------------------------------------------------------
-      # Grbl
-      if self.deviceID == gc.gDEV_GRBL:
+      dataDict = self.deviceModule.Decode(serialData)
 
-         # GRBL status data
-         rematch = gReGRBLMachineStatus.match(serialData)
-         # data is expected to be an array of strings as follows
-         # statusData[0] : Machine state
-         # statusData[1] : Machine X
-         # statusData[2] : Machine Y
-         # statusData[3] : Machine Z
-         # statusData[4] : Work X
-         # statusData[5] : Work Y
-         # statusData[6] : Work Z
+      if 'sr' in dataDict:
+         self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, dataDict['sr']))
 
-         if rematch is not None:
-            statusData = rematch.groups()
-            machineStatus = dict()
-            machineStatus['stat'] = statusData[0]
-            machineStatus['posx'] = statusData[1]
-            machineStatus['posy'] = statusData[2]
-            machineStatus['posz'] = statusData[3]
-            #machineStatus['wposx'] = statusData[4]
-            #machineStatus['wposy'] = statusData[5]
-            #machineStatus['wposz'] = statusData[6]
+      if 'r' in dataDict:
+         if 'fv' in dataDict['r']:
+            self.deviceDetected = True
+            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DEVICE_DETECTED, None))
 
-            if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread re GRBL status match %s" % str(statusData)
-               print "** gsatProgramExecuteThread str match from %s" % str(serialData.strip())
+      return dataDict
 
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, machineStatus))
-
-
-         elif self.deviceDetected == False:
-            rematch = gReGrblVersion.match(serialData)
-            if rematch is not None:
-               self.deviceDetected = True
-               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DEVICE_DETECTED, None))
-
-      # -----------------------------------------------------------------
-      # TinyG and TinyG2
-      if self.deviceID == gc.gDEV_TINYG or self.deviceID == gc.gDEV_TINYG2:
-
-         if self.deviceDetected == False:
-            rematch = gReTinyGDetect.findall(serialData)
-            if len(rematch) > 0:
-               self.deviceDetected = True
-               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DEVICE_DETECTED, None))
-
-         # tinyG verbose/status
-         rematch = gReTinyGVerbose.findall(serialData)
-         if len(rematch) > 0:
-
-            if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread re tinyG verbose match %s" % str(rematch)
-               print "** gsatProgramExecuteThread str match from %s" % str(serialData)
-
-            machineStatus = dict(rematch)
-
-            status = machineStatus.get('stat')
-            if status is not None:
-               if '0' in status:
-                  machineStatus['stat'] = 'Init'
-               elif '1' in status:
-                  machineStatus['stat'] = 'Ready'
-               elif '2' in status:
-                  machineStatus['stat'] = 'Alarm'
-               elif '3' in status:
-                  machineStatus['stat'] = 'Stop'
-               elif '4' in status:
-                  machineStatus['stat'] = 'End'
-               elif '5' in status:
-                  machineStatus['stat'] = 'Run'
-               elif '6' in status:
-                  machineStatus['stat'] = 'Hold'
-               elif '7' in status:
-                  machineStatus['stat'] = 'Probe'
-               elif '8' in status:
-                  machineStatus['stat'] = 'Run'
-               elif '9' in status:
-                  machineStatus['stat'] = 'Home'
-
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, machineStatus))
-
-         else:
-            rematch = []
-
-            if self.deviceID == gc.gDEV_TINYG2:
-               rematch = gReTinyG2PosStatus.findall(serialData)
-               
-               # newer version (g2core) moved to TinyG style
-               if len(rematch) == 0:
-                  rematch = gReTinyGPosStatus.findall(serialData)
-                  
-            elif self.deviceID == gc.gDEV_TINYG:
-               rematch = gReTinyGPosStatus.findall(serialData)
-
-            if len(rematch) > 0:
-               if self.cmdLineOptions.vverbose:
-                  print "** gsatProgramExecuteThread re tinyG status match %s" % str(rematch)
-                  print "** gsatProgramExecuteThread str match from %s" % str(serialData)
-
-               machineStatus = dict()
-
-               if self.deviceID == gc.gDEV_TINYG2:
-                  machineStatus["mpo%s" % rematch[0][0].lower()] = rematch[0][1]
-               elif self.deviceID == gc.gDEV_TINYG:
-                  machineStatus["pos%s" % rematch[0][0].lower()] = rematch[0][1]
-
-               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, machineStatus))
-
-            else:
-               rematch = gReTinyGStateStatus.findall(serialData)
-
-               if len(rematch) > 0:
-                  if self.cmdLineOptions.vverbose:
-                     print "** gsatProgramExecuteThread re tinyG status match %s" % str(serialData)
-
-                  machineStatus = dict()
-                  machineStatus["stat"] = rematch[0][1]
-
-                  self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, machineStatus))
 
    def SerialRead(self):
-      serialData = ""
+      decodeData = {'rx_data':""}
 
       if not self.progExecSerialRxInQueue.empty():
          # get item from queue
@@ -407,15 +275,17 @@ class gsatProgramExecuteThread(threading.Thread):
 
                serialData = e.data
 
-               self.DecodeStatusData(serialData)
+               decodeData = self.DecodeSerialData(serialData)
 
-      return serialData
+               decodeData['rx_data'] = serialData
+
+      return decodeData
 
    def WaitForAcknowledge(self):
       waitForAcknowlege = True
 
       while (waitForAcknowlege):
-         rxData = self.WaitForResponse()
+         rxDataDict = self.WaitForResponse()
 
          if self.swState == gc.gSTATE_ABORT:
             waitForAcknowlege = False
@@ -426,37 +296,37 @@ class gsatProgramExecuteThread(threading.Thread):
          if self.endThread:
             waitForAcknowlege = False
 
-         for reAcknowlege in gReAcknowlege:
-            ack = reAcknowlege.search(rxData)
+         if 'r' in rxDataDict:
+            if self.cmdLineOptions.vverbose:
+               print "** gsatProgramExecuteThread found acknowledgement"\
+                  " [%s]" % str(rxDataDict['r']).strip()
 
-            if ack is not None:
-               if self.cmdLineOptions.vverbose:
-                  print "** gsatProgramExecuteThread found acknowledgement"\
-                     " [%s]" % rxData.strip()
-               waitForAcknowlege = False
-               break
+               if rxDataDict['f'][1] == 0:
+                  print "** gsatProgramExecuteThread acknowledgement OK %s" % str(rxDataDict['f'])
+               else:
+                  print "** gsatProgramExecuteThread acknowledgement ERROR %s" % str(rxDataDict['f'])
 
-         for reErrorAck in gReErrorAck:
-            errAck = reErrorAck.search(rxData)
+            waitForAcknowlege = False
+            break
 
-            if errAck is not None:
-               if self.cmdLineOptions.vverbose:
-                  print "** gsatProgramExecuteThread found error acknowledgement"\
-                     " [%s]" % rxData.strip()
-               waitForAcknowlege = False
-               break
+         if 'err' in rxDataDict:
+            if self.cmdLineOptions.vverbose:
+               print "** gsatProgramExecuteThread found error acknowledgement"\
+                  " [%s]" % str(rxDataDict['r']).strip()
+            waitForAcknowlege = False
+            break
 
    def WaitForResponse(self):
       waitForResponse = True
-      rxData = ""
+      rxDataDict = {}
 
       while (waitForResponse):
-         rxData = self.SerialRead()
+         rxDataDict = self.SerialRead()
 
          if self.swState == gc.gSTATE_ABORT:
             waitForResponse = False
 
-         if len(rxData.strip()) > 0:
+         if len(rxDataDict['rx_data'].strip()) > 0:
             waitForResponse = False
 
          self.ProcessQueue()
@@ -469,28 +339,23 @@ class gsatProgramExecuteThread(threading.Thread):
 
          time.sleep(0.01)
 
-      return rxData
+      return rxDataDict
 
 
    def RunStepSendGcode(self, gcodeData):
       gcode = gcodeData.strip()
 
       if len(gcode) > 0:
-         if self.machineAutoStatus:
-            if self.deviceID == gc.gDEV_TINYG2 or self.deviceID == gc.gDEV_TINYG:
-               gcode = "%s%s" % (gcode, gc.gTINYG_CMD_GET_STATUS)
-            elif self.deviceID == gc.gDEV_GRBL:
-               gcode = "%s%s" % (gcode, gc.gGRBL_CMD_GET_STATUS)
-         else:
-            gcode = "%s\n" % (gcode)
+         gcode = "%s\n" % (gcode)
 
          # write data
          self.SerialWrite(gcode)
 
-
          # wait for response
-         #responseData = self.WaitForResponse()
          self.WaitForAcknowledge()
+
+         if self.machineAutoStatus:
+            self.SerialWrite(self.deviceModule.GetStatus())
 
       self.workingProgramCounter += 1
 
@@ -597,12 +462,8 @@ class gsatProgramExecuteThread(threading.Thread):
       self.serialRxThread = gsatSerialPortThread(self, self.serPort, self.progExecSerialRxOutQueue,
       self.progExecSerialRxInQueue, self.cmdLineOptions)
 
-      # init communication with device (helps to force tinyG into txt mode
-      if self.deviceID == gc.gDEV_TINYG2 or self.deviceID == gc.gDEV_TINYG:
-         self.SerialWrite(gc.gTINYG_CMD_GET_STATUS)
-      elif self.deviceID == gc.gDEV_GRBL:
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
-         self.SerialWrite(gc.gGRBL_CMD_GET_STATUS)
+      # init communication with device
+      self.SerialWrite(self.deviceModule.InitComm())
 
       while(self.endThread != True):
 
