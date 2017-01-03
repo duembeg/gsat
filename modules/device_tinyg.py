@@ -22,7 +22,11 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 import modules.device_base as devbase
 
 """----------------------------------------------------------------------------
@@ -104,6 +108,9 @@ class gsatDevice_TinyG(devbase.gsatDeviceBase):
 
       return dataDict
 
+   def GetSetAxisCmd (self):
+      return "G28.3"
+      
    def GetDeviceName(self):
       return "g2core"
 

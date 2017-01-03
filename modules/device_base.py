@@ -22,7 +22,11 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 
 """----------------------------------------------------------------------------
    gsatDeviceBase:
@@ -41,6 +45,9 @@ class gsatDeviceBase():
    def Decode(self, data):
       return data
 
+   def GetSetAxisCmd (self):
+      return ""
+      
    def GetDeviceName(self):
       return "Base"
 
@@ -49,5 +56,3 @@ class gsatDeviceBase():
 
    def InitComm(self):
       return ""
-
-

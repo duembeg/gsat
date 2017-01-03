@@ -24,6 +24,9 @@
 ----------------------------------------------------------------------------"""
 
 import wx
+import modules.device_g2core as dm_g2core
+import modules.device_tinyg as dm_tinyg
+import modules.device_grbl as dm_grbl
 
 """----------------------------------------------------------------------------
    Globals:
@@ -46,31 +49,12 @@ gOffString = "Off"
 # --------------------------------------------------------------------------
 # device commands
 # --------------------------------------------------------------------------
-gDEVICE_CMD_GO_TO_POS         = "G00 <AXIS><VAL>\n"
-gDEVICE_CMD_ALL_GO_TO_POS     = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gDEVICE_CMD_JOG_X             = "G00 X<VAL>\n"
-gDEVICE_CMD_JOG_Y             = "G00 Y<VAL>\n"
-gDEVICE_CMD_JOG_Z             = "G00 Z<VAL>\n"
-gDEVICE_CMD_SPINDLE_ON        = "M3\n"
-gDEVICE_CMD_SPINDLE_OFF       = "M5\n"
-
-# --------------------------------------------------------------------------
-# TinyG/TinyG2 commands
-# --------------------------------------------------------------------------
-#gTINYG_CMD_GET_STATUS         = "?\n"
-gTINYG_CMD_RESET_TO_VAL       = "G28.3 <AXIS><VAL>\n"
-gTINYG_CMD_ALL_RESET_TO_VAL   = "G28.3 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gTINYG_CMD_GO_HOME            = "G28.2 <AXIS>0\n"
-gTINYG_CMD_ALL_GO_HOME        = "G28.2 X0 Y0 Z0\n"
-
-# --------------------------------------------------------------------------
-# Grbl commands
-# --------------------------------------------------------------------------
-#gGRBL_CMD_GET_STATUS          = "?\n"
-gGRBL_CMD_RESET_TO_VAL        = "G92 <AXIS><VAL>\n"
-gGRBL_CMD_ALL_RESET_TO_VAL    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_GO_HOME             = "G28.2 <AXIS>0\n"
-gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
+gDEVICE_CMD_GO_TO_POS         = "G00"     # G00 <AXIS><VAL>
+gDEVICE_CMD_SPINDLE_ON        = "M3"
+gDEVICE_CMD_SPINDLE_OFF       = "M5"
+gDEVICE_CMD_HOME_AXIS         = "G28.2"   # G28.2 <AXIS>0
+gDEVICE_CMD_SET_AXIS          = "G28.3"   # G28.3 <AXIS><VAL>
+gDEVICE_CMD_OFFSET_AXIS       = "G92"     # G92 <AXIS><VAL>
 
 # --------------------------------------------------------------------------
 # state machine states and transition
@@ -150,6 +134,63 @@ gDEV_TINYG           = 1100
 gDEV_G2CORE          = 1200
 
 gDEV_LIST = ["Grbl", "TinyG", "g2core"]
+
+"""----------------------------------------------------------------------------
+   GetDeviceName:
+   translate ID to string.
+----------------------------------------------------------------------------"""
+def GetDeviceName(deviceID):
+   deviceName = "None"
+
+   if deviceID == gDEV_GRBL:
+      deviceName = "Grbl"
+
+   elif deviceID == gDEV_TINYG:
+      deviceName = "TinyG"
+
+   elif deviceID == gDEV_G2CORE:
+      deviceName = "g2core"
+
+   return deviceName
+
+"""----------------------------------------------------------------------------
+   GetDeviceID:
+   translate string to ID.
+----------------------------------------------------------------------------"""
+def GetDeviceID(deviceStr):
+   deviceID = gDEV_NONE
+
+   if "Grbl" in deviceStr:
+      deviceID = gDEV_GRBL
+
+   elif "TinyG2" in deviceStr:
+      deviceID = gDEV_G2CORE
+
+   elif "TinyG" in deviceStr:
+      deviceID = gDEV_TINYG
+
+   elif "g2core" in deviceStr:
+      deviceID = gDEV_G2CORE
+
+   return deviceID
+
+"""----------------------------------------------------------------------------
+   GetDeviceModule:
+   translate string to ID.
+----------------------------------------------------------------------------"""
+def GetDeviceModule(deviceID, cmdLineOptions):
+   deviceModule = None
+   
+   if deviceID == gDEV_GRBL:
+      deviceModule = dm_grbl.gsatDevice_GRBL(cmdLineOptions)
+
+   elif deviceID == gDEV_TINYG:
+      deviceModule = dm_tinyg.gsatDevice_TinyG(cmdLineOptions)
+
+   elif deviceID == gDEV_G2CORE:
+      deviceModule = dm_g2core.gsatDevice_g2core(cmdLineOptions)
+
+   return deviceModule
 
 """----------------------------------------------------------------------------
    gsatStateData:

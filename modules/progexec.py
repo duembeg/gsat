@@ -35,10 +35,6 @@ import wx
 
 import modules.config as gc
 
-import modules.device_g2core as dm_g2core
-import modules.device_tinyg as dm_tinyg
-import modules.device_grbl as dm_grbl
-
 # -----------------------------------------------------------------------------
 # regular expressions
 # -----------------------------------------------------------------------------
@@ -182,12 +178,7 @@ class gsatProgramExecuteThread(threading.Thread):
    gsatProgramExecuteThread: General Functions
    -------------------------------------------------------------------------"""
    def InitDeviceModule(self):
-      if self.deviceID == gc.gDEV_G2CORE:
-         self.deviceModule = dm_g2core.gsatDevice_g2core(self.cmdLineOptions)
-      elif self.deviceID == gc.gDEV_TINYG:
-         self.deviceModule = dm_tinyg.gsatDevice_TinyG(self.cmdLineOptions)
-      elif self.deviceID == gc.gDEV_GRBL:
-         self.deviceModule = dm_grbl.gsatDevice_GRBL(self.cmdLineOptions)
+      self.deviceModule = gc.GetDeviceModule(self.deviceID, self.cmdLineOptions)
 
       if self.cmdLineOptions.vverbose:
          print "** gsatProgramExecuteThread Init Device Module (%s)." % self.deviceModule.GetDeviceName()
@@ -635,7 +626,7 @@ class gsatSerialPortThread(threading.Thread):
          # check if we need to exit now
          if self.endThread:
             break
-
+         
          if self.serPort.isOpen():
             if self.swState == gc.gSTATE_RUN:
                self.SerialRead()

@@ -437,8 +437,8 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoStatus = self.configData.Get('/machine/AutoStatus')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
-      self.stateData.deviceID = mc.GetDeviceID(self.configData.Get('/machine/Device'))
-      self.deviceName = mc.GetDeviceName(self.stateData.deviceID)
+      self.stateData.deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
+      self.deviceName = gc.GetDeviceName(self.stateData.deviceID)
       self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
 
       if self.cmdLineOptions.verbose:

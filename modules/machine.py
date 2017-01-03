@@ -31,47 +31,6 @@ from wx.lib.agw import floatspin as fs
 
 import modules.config as gc
 
-
-"""----------------------------------------------------------------------------
-   GetDeviceName:
-   translate ID to string.
-----------------------------------------------------------------------------"""
-def GetDeviceName(deviceID):
-      deviceName = "None"
-
-      if deviceID == gc.gDEV_GRBL:
-         deviceName = "Grbl"
-
-      elif deviceID == gc.gDEV_TINYG:
-         deviceName = "TinyG"
-
-      elif deviceID == gc.gDEV_G2CORE:
-         deviceName = "g2core"
-
-      return deviceName
-
-"""----------------------------------------------------------------------------
-   GetDeviceID:
-   translate string to ID.
-----------------------------------------------------------------------------"""
-def GetDeviceID(deviceStr):
-      deviceID = gc.gDEV_NONE
-
-      if "Grbl" in deviceStr:
-         deviceID = gc.gDEV_GRBL
-
-      elif "TinyG2" in deviceStr:
-         deviceID = gc.gDEV_G2CORE
-
-      elif "TinyG" in deviceStr:
-         deviceID = gc.gDEV_TINYG
-
-      elif "g2core" in deviceStr:
-         deviceID = gc.gDEV_G2CORE
-
-
-      return deviceID
-
 """----------------------------------------------------------------------------
    gsatMachineSettingsPanel:
    Machine settings.
@@ -96,8 +55,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       flexGridSizer.AddGrowableCol(1)
 
       st = wx.StaticText(self, label="Device")
-      deviceID = GetDeviceID(self.configData.Get('/machine/Device'))
-      self.deviceComboBox = wx.ComboBox(self, -1, value=GetDeviceName(deviceID),
+      deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
+      self.deviceComboBox = wx.ComboBox(self, -1, value=gc.GetDeviceName(deviceID),
          choices=gc.gDEV_LIST, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
@@ -272,8 +231,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          self.machinePort.SetLabel("None")
          self.machineBaud.SetLabel("None")
 
-      deviceID = GetDeviceID(self.configData.Get('/machine/Device'))
-      self.devStatus.SetLabel(GetDeviceName(deviceID))
+      deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
+      self.devStatus.SetLabel(gc.GetDeviceName(deviceID))
 
       self.Update()
 
@@ -334,8 +293,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Device Status
       st = wx.StaticText(self, label="Device name")
       st.SetFont(font)
-      deviceID = GetDeviceID(self.configData.Get('/machine/Device'))
-      self.devStatus = wx.StaticText(self, label=GetDeviceName(deviceID))
+      deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
+      self.devStatus = wx.StaticText(self, label=gc.GetDeviceName(deviceID))
       self.devStatus.SetForegroundColour(self.machineDataColor)
       self.devStatus.SetFont(font)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)

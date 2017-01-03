@@ -22,7 +22,11 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 import modules.device_base as devbase
 
 """----------------------------------------------------------------------------
@@ -45,17 +49,18 @@ class gsatDevice_g2core(devbase.gsatDeviceBase):
       if data.startswith("{"):
          dataDict = json.loads(data)
 
-         r = dataDict.get('r')
-
-         if r is not None:
+         if 'r' in dataDict:
+            r = dataDict['r']
+            
             # get status response out to avoid digging out later
             if 'sr' in r:
                sr = r['sr']
                dataDict['sr'] = sr
                del r['sr']
 
-         sr = dataDict.get('sr')
-         if sr is not None:
+         if 'sr' in dataDict:
+            sr = dataDict['sr']
+
             if 'stat' in sr:
                status = sr['stat']
 
@@ -96,6 +101,9 @@ class gsatDevice_g2core(devbase.gsatDeviceBase):
 
       return dataDict
 
+   def GetSetAxisCmd (self):
+      return "G28.3"
+      
    def GetDeviceName(self):
       return "g2core"
 

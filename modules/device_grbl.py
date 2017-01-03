@@ -22,7 +22,11 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 import re
 
 import modules.device_base as devbase
@@ -127,6 +131,9 @@ class gsatDevice_GRBL(devbase.gsatDeviceBase):
 
       return dataDict
 
+   def GetSetAxisCmd (self):
+      return "G92"
+      
    def GetDeviceName(self):
       return "GRBL"
 

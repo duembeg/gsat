@@ -731,7 +731,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       return vBoxSizer
 
-   def AxisJog(self, staticControl, cmdString, opAdd):
+   def AxisJog(self, staticControl, axis, opAdd):
       fAxisPos = float(staticControl.GetValue())
 
       if opAdd:
@@ -741,7 +741,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
-      self.mainWindow.SerialWriteWaitForAck(cmdString.replace("<VAL>",fAxisStrPos))
+      
+      cmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " ", axis, str(fAxisStrPos), "\n"])
+      self.mainWindow.SerialWriteWaitForAck(cmd)
 
    def OnAllCheckBox(self, evt):
       self.xCheckBox.SetValue(evt.IsChecked())
@@ -767,58 +769,57 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.allCheckBox.SetValue(False)
 
    def OnXPos(self, e):
-      self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=True)
+      self.AxisJog(self.jX, "X", opAdd=True)
 
    def OnXNeg(self, e):
-      self.AxisJog(self.jX, gc.gDEVICE_CMD_JOG_X, opAdd=False)
+      self.AxisJog(self.jX, "X", opAdd=False)
 
    def OnYPos(self, e):
-      self.AxisJog(self.jY, gc.gDEVICE_CMD_JOG_Y, opAdd=True)
+      self.AxisJog(self.jY, "Y", opAdd=True)
 
    def OnYNeg(self, e):
-      self.AxisJog(self.jY, gc.gDEVICE_CMD_JOG_Y, opAdd=False)
+      self.AxisJog(self.jY, "Y", opAdd=False)
 
    def OnZPos(self, e):
-      self.AxisJog(self.jZ, gc.gDEVICE_CMD_JOG_Z, opAdd=True)
+      self.AxisJog(self.jZ, "Z", opAdd=True)
 
    def OnZNeg(self, e):
-      self.AxisJog(self.jZ, gc.gDEVICE_CMD_JOG_Z, opAdd=False)
+      self.AxisJog(self.jZ, "Z", opAdd=False)
 
    def OnSpindleOn(self, e):
       self.jSpindle.SetValue(gc.gOnString)
-      self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_ON)
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_SPINDLE_ON, "\n"]))
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
-      self.mainWindow.SerialWriteWaitForAck(gc.gDEVICE_CMD_SPINDLE_OFF)
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_SPINDLE_OFF, "\n"]))
 
    def OnUseMachineWorkPosition(self, e):
       self.configAutoMPOS = e.IsChecked()
 
-   def OnJogCmd (self, xval, yval, zval, all_cmd, single_cmd):
+   def OnJogCmd (self, xval, yval, zval, gcode_cmd):
       cmd = ""
       cmdx = ""
       cmdy = ""
       cmdz = ""
+      
 
       if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jX.SetValue(xval)
-         cmdx = "X%s" % xval
+         cmdx = " X%s" % xval
 
       if self.yCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jY.SetValue(yval)
-         cmdy = "Y%s" % yval
+         cmdy = " Y%s" % yval
 
       if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jZ.SetValue(zval)
-         cmdz = "Z%s" % zval
+         cmdz = " Z%s" % zval
 
       if (len(cmdx) > 0) or (len(cmdy) > 0) or (len(cmdz) > 0):
-         cmd = single_cmd.strip()
-         cmd = cmd.replace("<AXIS>", "")
-         cmd = cmd.replace("<VAL>", "")
-
-      cmd = "".join([cmd, cmdx, cmdy, cmdz, "\n"])
+         cmd = "".join([gcode_cmd, cmdx, cmdy, cmdz, "\n"])
 
       if len(cmd) > 1:
          self.mainWindow.SerialWriteWaitForAck(cmd)
@@ -827,29 +828,24 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       # axis
 
    def OnResetToZero(self, e):
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_G2CORE:
-         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
-      else:
-         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+      dm = gc.GetDeviceModule(self.stateData.deviceID, None)
+      
+      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+            dm.GetSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
 
    def OnGoToZero(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_G2CORE:
-         self.OnJogCmd(
-            self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-            gc.gTINYG_CMD_ALL_RESET_TO_VAL, gc.gTINYG_CMD_RESET_TO_VAL)
-      else:
-         self.OnJogCmd(
-            self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-            gc.gGRBL_CMD_ALL_RESET_TO_VAL, gc.gGRBL_CMD_RESET_TO_VAL)
+      dm = gc.GetDeviceModule(self.stateData.deviceID, None)
+      
+      self.OnJogCmd(
+         self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
+         dm.GetSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
@@ -858,15 +854,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def OnGoToJogVal(self, e):
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         gc.gDEVICE_CMD_ALL_GO_TO_POS, gc.gDEVICE_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnGoHome(self, e):
-      if self.stateData.deviceID == gc.gDEV_TINYG or self.stateData.deviceID == gc.gDEV_G2CORE:
-         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            gc.gTINYG_CMD_ALL_GO_HOME, gc.gTINYG_CMD_GO_HOME)
-      else:
-         self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            gc.gGRBL_CMD_ALL_GO_HOME, gc.gGRBL_CMD_GO_HOME)
+      self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
+         gc.gDEVICE_CMD_HOME_AXIS)
 
    def OnPushStack(self, e):
       xVal = self.jX.GetValue()
@@ -907,10 +899,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jY.SetValue(str(fYnp))
          self.jZ.SetValue(str(fZnp))
 
-         goPosCmd = gc.gDEVICE_CMD_ALL_GO_TO_POS
-         goPosCmd = goPosCmd.replace("<XVAL>", str(fXnp))
-         goPosCmd = goPosCmd.replace("<YVAL>", str(fYnp))
-         goPosCmd = goPosCmd.replace("<ZVAL>", str(fZnp))
+         goPosCmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " X", str(fXnp), 
+            " Y", str(fYnp), " Z", str(fZnp)])
          self.mainWindow.SerialWriteWaitForAck(goPosCmd)
 
       if optScr:
