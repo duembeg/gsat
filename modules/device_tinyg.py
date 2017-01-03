@@ -57,13 +57,13 @@ class gsatDevice_TinyG(devbase.gsatDeviceBase):
             if 'f' in r:
                f = r['f']
                dataDict['f'] = f
-               del r['f']
+               #del r['f']
 
             # get status response out to avoid digging out later
             if 'sr' in r:
                sr = r['sr']
                dataDict['sr'] = sr
-               del r['sr']
+               #del r['sr']
 
          if 'sr' in dataDict:
             sr = dataDict['sr']

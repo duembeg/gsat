@@ -56,7 +56,7 @@ class gsatDevice_g2core(devbase.gsatDeviceBase):
             if 'sr' in r:
                sr = r['sr']
                dataDict['sr'] = sr
-               del r['sr']
+               #del r['sr']
 
          if 'sr' in dataDict:
             sr = dataDict['sr']
