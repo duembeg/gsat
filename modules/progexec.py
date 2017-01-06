@@ -168,7 +168,9 @@ class gsatProgramExecuteThread(threading.Thread):
          elif e.event_id == gc.gEV_CMD_GET_STATUS:
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_GET_STATUS."
-            self.serialWriteQueue.append((self.deviceModule.GetStatus(), False))
+            #self.serialWriteQueue.append((self.deviceModule.GetStatus(), False))
+            # should not hold status request for waiting for ack to block
+            self.SerialWrite(self.deviceModule.GetStatus())
 
          else:
             if self.cmdLineOptions.vverbose:
@@ -585,6 +587,10 @@ class gsatSerialPortThread(threading.Thread):
 
                   # add data to queue
                   self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_RXDATA, "%s\n" % serialData))
+                  
+                  # attempt to reduce starvation on other threads
+                  # when serial traffic is constant
+                  time.sleep(0.01)
 
             inDataCnt = self.serPort.inWaiting()
 

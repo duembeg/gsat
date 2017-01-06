@@ -1952,7 +1952,7 @@ class gsatMainWindow(wx.Frame):
       return ret_lienes
 
    """-------------------------------------------------------------------------
-   gsatMainWindow: Serial Port Thread Event Handlers
+   gsatMainWindow: program execution thread Event Handlers
    Handle events coming from serial port thread
    -------------------------------------------------------------------------"""
    def OnThreadEvent(self, e):
@@ -1990,7 +1990,7 @@ class gsatMainWindow(wx.Frame):
                if len(rematch) > 0:
                   machineStatus = dict()
                   for match in rematch:
-                     machineStatus["wpos%s" % match[0].lower()] = match[1]
+                     machineStatus["pos%s" % match[0].lower()] = float(match[1])
 
                   if self.cmdLineOptions.vverbose:
                      print "gsatMainWindow re GRBL GCODE match %s" % str(rematch)
