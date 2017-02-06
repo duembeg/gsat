@@ -1715,6 +1715,11 @@ class gsatMainWindow(wx.Frame):
 
    def SerialOpen(self, port, baud):
       self.serPort.baudrate = baud
+      self.serPort.xonxoff = False
+      self.serPort.bytesize = serial.EIGHTBITS
+      self.serPort.parity = serial.PARITY_NONE
+      self.serPort.stopbits = serial.STOPBITS_ONE
+      self.serPort.rtscts=False
 
       if port != "None":
          portName = port
@@ -1748,6 +1753,7 @@ class gsatMainWindow(wx.Frame):
             self.serPort.close()
 
          if self.serPort.isOpen():
+            self.serPort.flushInput()
             self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
                self.mainWndInQueue, self.cmdLineOptions, self.stateData.deviceID, self.machineAutoStatus)
 
@@ -1982,6 +1988,9 @@ class gsatMainWindow(wx.Frame):
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_OUT."
             self.outputText.AppendText("> %s" % te.data)
+            
+            if not te.data.endswith("\n"):
+               self.outputText.AppendText("\n")
 
             # -----------------------------------------------------------------
             # Grbl DRO Hack

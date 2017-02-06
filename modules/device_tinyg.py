@@ -38,11 +38,12 @@ import modules.device_base as devbase
 class gsatDevice_TinyG(devbase.gsatDeviceBase):
    def __init__(self, cmd_line_options):
       devbase.gsatDeviceBase.__init__(self, cmd_line_options)
-
-   def Encode(self, data):
-      # for now do nothing...
-      return data
-
+      
+      # Init buffer to (-1) when connecting it needs a initial '\n'
+      # that should not be counted
+      self.inputBufferMaxSize = 255
+      self.inputBufferWatermark = float(self.inputBufferMaxSize) * 0.90
+      self.inputBufferSize = -1
 
    def Decode(self, data):
       dataDict = {}
@@ -101,13 +102,42 @@ class gsatDevice_TinyG(devbase.gsatDeviceBase):
                sr['posz'] = sr['mpoz']
             if 'mpoa' in sr:
                sr['posa'] = sr['mpoa']
+               
+         if 'f' in dataDict:
+            f = dataDict['f']
+            
+            # remove buffer part freed from acked command
+            bufferPart = f[2]
+            self.inputBufferSize = self.inputBufferSize - bufferPart
+            
+            if self.cmdLineOptions.vverbose:
+               print "** gsatDevice_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+                  (bufferPart, self.inputBufferSize, \
+                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+                  
+         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+               
 
       else:
          if self.cmdLineOptions.vverbose:
-            print "** gsatDevice_g2core cannot decode data!! [%s]." % data
+            print "** gsatDevice_TinyG cannot decode data!! [%s]." % data
 
       return dataDict
 
+   def Encode(self, data, bookeeping=True):
+      data = data.encode('ascii')
+      
+      if bookeeping:
+         dataLen = len(data)
+         self.inputBufferSize = self.inputBufferSize + dataLen
+               
+         if self.cmdLineOptions.vverbose:
+            print "** gsatDevice_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+               (dataLen, self.inputBufferSize, \
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+         
+      return data
+      
    def GetSetAxisCmd (self):
       return "G28.3"
       
@@ -118,5 +148,14 @@ class gsatDevice_TinyG(devbase.gsatDeviceBase):
       return '{"sr":null}\n'
 
    def InitComm(self):
-      return '{"fv":null}\n'
+      return '\n{"fv":null}\n'
 
+   def OkToSend(self, data):
+      bufferHasRoom = True
+      
+      data = self.Encode(data, bookeeping=False)
+      
+      if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
+         bufferHasRoom = False
+         
+      return bufferHasRoom

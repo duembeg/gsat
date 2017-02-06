@@ -50,8 +50,8 @@ gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{
 # grbl ack, example  "ok"
 gReGRBLMachineAck = re.compile(r'^ok\s$')
 
-# grbl error, example  "error:20"
-gReGRBLMachineError = re.compile(r'^error:(\d+)\s$')
+# grbl error, example  "error:20", "error: Unsupported command"
+gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
 
 
 """----------------------------------------------------------------------------
@@ -63,10 +63,15 @@ gReGRBLMachineError = re.compile(r'^error:(\d+)\s$')
 class gsatDevice_GRBL(devbase.gsatDeviceBase):
    def __init__(self, cmd_line_options):
       devbase.gsatDeviceBase.__init__(self, cmd_line_options)
-
-   def Encode(self, data):
-      # for now do nothing...
-      return data
+      
+      # per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer
+      # includes all characters including nulls and new line)
+      self.inputBufferMaxSize = 127
+      self.inputBufferWatermark = float(self.inputBufferMaxSize) * 0.90
+      self.inputBufferSize = 0
+      self.inputBufferPart = list()
+            
+      self.getSatusCmd = '?'
 
    def Decode(self, data):
       dataDict = {}
@@ -99,14 +104,27 @@ class gsatDevice_GRBL(devbase.gsatDeviceBase):
 
       ack = gReGRBLMachineAck.search(data)
       if ack is not None:
+         bufferPart = self.inputBufferPart.pop(0)
+         self.inputBufferSize = self.inputBufferSize - bufferPart
+         
          if self.cmdLineOptions.vverbose:
             print "** gsatDevice_GRBL found acknowledgement [%s]" % data.strip()
+            
          r = {}
          dataDict['r'] = r
          dataDict['f'] = [0,0,0]
+         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         
+         if self.cmdLineOptions.vverbose:
+            print "** gsatDevice_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               (bufferPart, self.inputBufferSize, \
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
 
       error = gReGRBLMachineError.search(data)
       if error is not None:
+         bufferPart = self.inputBufferPart.pop(0)
+         self.inputBufferSize = self.inputBufferSize - bufferPart
+         
          if self.cmdLineOptions.vverbose:
             print "** gsatDevice_GRBL found error [%s]" % data.strip()
 
@@ -114,8 +132,13 @@ class gsatDevice_GRBL(devbase.gsatDeviceBase):
             r = {}
             dataDict['r'] = r
 
-         dataDict['f'] = [0,error.group(1),0]
-
+         dataDict['f'] = [0,error.group(1).strip(),0]
+         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         
+         if self.cmdLineOptions.vverbose:
+            print "** gsatDevice_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               (bufferPart, self.inputBufferSize, \
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
 
       version = gReGrblVersion.match(data)
       if version is not None:
@@ -128,8 +151,28 @@ class gsatDevice_GRBL(devbase.gsatDeviceBase):
 
          dataDict['r']['fv'] = version.group(1)
          dataDict['f'] = [0,0,0]
+         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
       return dataDict
+      
+   def Encode(self, data, bookeeping=True):
+      
+      if data is not self.getSatusCmd:      
+         
+         data = data.encode('ascii')
+
+         if bookeeping:
+            dataLen = len(data)
+            self.inputBufferSize = self.inputBufferSize + dataLen
+            
+            self.inputBufferPart.append(dataLen)
+               
+            if self.cmdLineOptions.vverbose:
+               print "** gsatDevice_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+                  (dataLen, self.inputBufferSize, \
+                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+         
+      return data
 
    def GetSetAxisCmd (self):
       return "G92"
@@ -138,9 +181,19 @@ class gsatDevice_GRBL(devbase.gsatDeviceBase):
       return "GRBL"
 
    def GetStatus(self):
-      return '?\n'
+      return self.getSatusCmd
 
    def InitComm(self):
-      return self.GetStatus()
+      return '?'
+      
+   def OkToSend(self, data):
+      bufferHasRoom = True
+      
+      data = self.Encode(data, bookeeping=False)
+      
+      if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
+         bufferHasRoom = False
+         
+      return bufferHasRoom
 
 
