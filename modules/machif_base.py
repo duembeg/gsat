@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   device_base.py
+   machif_base.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -29,13 +29,13 @@ except ImportError:
 
 
 """----------------------------------------------------------------------------
-   gsatDeviceBase:
+   gsatMachIf_Base:
 
    Device base class to provide a unified API for specific devices
    (g2core, TinyG, grbl).
 
 ----------------------------------------------------------------------------"""
-class gsatDeviceBase():
+class gsatMachIf_Base():
    def __init__(self, cmd_line_options):
       self.cmdLineOptions = cmd_line_options
 

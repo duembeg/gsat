@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   device_tinyg.py
+   machif_tinyg.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -27,17 +27,17 @@ try:
 except ImportError:
     import json
 
-import modules.device_base as devbase
+import modules.machif_base as mi_base
 
 """----------------------------------------------------------------------------
-   gsatDevice_g2core:
+   gsatMachIf_g2core:
 
    Device g2core class.
 
 ----------------------------------------------------------------------------"""
-class gsatDevice_g2core(devbase.gsatDeviceBase):
+class gsatMachIf_g2core(mi_base.gsatMachIf_Base):
    def __init__(self, cmd_line_options):
-      devbase.gsatDeviceBase.__init__(self, cmd_line_options)
+      mi_base.gsatMachIf_Base.__init__(self, cmd_line_options)
       
       # Init buffer to (1) when connecting it counts that as one char on response
       # initial msg looks like
@@ -108,7 +108,7 @@ class gsatDevice_g2core(devbase.gsatDeviceBase):
             self.inputBufferSize = self.inputBufferSize - bufferPart
             
             if self.cmdLineOptions.vverbose:
-               print "** gsatDevice_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               print "** gsatMachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
                   
@@ -116,7 +116,7 @@ class gsatDevice_g2core(devbase.gsatDeviceBase):
 
       else:
          if self.cmdLineOptions.vverbose:
-            print "** gsatDevice_g2core cannot decode data!! [%s]." % data
+            print "** gsatMachIf_g2core cannot decode data!! [%s]." % data
 
       return dataDict
 
@@ -128,7 +128,7 @@ class gsatDevice_g2core(devbase.gsatDeviceBase):
          self.inputBufferSize = self.inputBufferSize + dataLen
             
          if self.cmdLineOptions.vverbose:
-            print "** gsatDevice_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+            print "** gsatMachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (dataLen, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
          

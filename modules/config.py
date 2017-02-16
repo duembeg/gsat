@@ -24,9 +24,9 @@
 ----------------------------------------------------------------------------"""
 
 import wx
-import modules.device_g2core as dm_g2core
-import modules.device_tinyg as dm_tinyg
-import modules.device_grbl as dm_grbl
+import modules.machif_g2core as mi_g2core
+import modules.machif_tinyg as mi_tinyg
+import modules.machif_grbl as mi_grbl
 
 """----------------------------------------------------------------------------
    Globals:
@@ -182,13 +182,13 @@ def GetDeviceModule(deviceID, cmdLineOptions):
    deviceModule = None
    
    if deviceID == gDEV_GRBL:
-      deviceModule = dm_grbl.gsatDevice_GRBL(cmdLineOptions)
+      deviceModule = mi_grbl.gsatMachIf_GRBL(cmdLineOptions)
 
    elif deviceID == gDEV_TINYG:
-      deviceModule = dm_tinyg.gsatDevice_TinyG(cmdLineOptions)
+      deviceModule = mi_tinyg.gsatMachIf_TinyG(cmdLineOptions)
 
    elif deviceID == gDEV_G2CORE:
-      deviceModule = dm_g2core.gsatDevice_g2core(cmdLineOptions)
+      deviceModule = mi_g2core.gsatMachIf_g2core(cmdLineOptions)
 
    return deviceModule
 
