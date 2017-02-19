@@ -22,11 +22,17 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import serial
+import threading
+import Queue
+
 try:
     import simplejson as json
 except ImportError:
     import json
-
+    
+import modules.config as gc
+import modules.serial_thread as st
 
 """----------------------------------------------------------------------------
    machIf_Base:
@@ -37,12 +43,23 @@ except ImportError:
 ----------------------------------------------------------------------------"""
 class machIf_Base():
    def __init__(self, cmd_line_options, id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
-      self.cmdLineOptions = cmd_line_options
       self.id = id
       self.name = name
       self.inputBufferMaxSize = input_buffer_max_size
       self.inputBufferWatermark = float(self.inputBufferMaxSize) * input_buffer_watermark_prcnt
       self.inputBufferSize = input_buffer_init_val
+      
+      self.cmdLineOptions = cmd_line_options      
+      
+      self.serialPort = None
+      self.serialTxRxThread = None
+      self.serialTxRxInQueue = Queue.Queue()
+      self.serialTxRxOutQueue = Queue.Queue()
+      
+
+   def Close(self):
+      if self.serialTxRxThread is not None:
+         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
 
    def Encode(self, data):
       return data
@@ -62,15 +79,49 @@ class machIf_Base():
    def GetStatus(self):
       return ""
 
-   def Init(self):
-      pass
+   def Init(self, serial):
+      self.serialPort = serial
       
    def InitComm(self):
       return ""
 
-   def Read(self, data):
-      serialData = ""
-      return serialData
+   def Open(self):
+      # inti serial RX thread
+      self.serialTxRxThread = st.serialPortThread(self, self.serialPort, self.serialTxRxOutQueue,
+      self.serialTxRxInQueue, self.cmdLineOptions)
+      self.Write(self.InitComm())
 
-   def Write(self, data, raw_write=False):
-      return ""
+   def Read(self):
+      rxData = {}
+      
+      if self.serialTxRxThread is not None:
+
+         if not self.serialTxRxInQueue.empty():
+            # get item from queue
+            e = self.serialTxRxInQueue.get()
+
+            if e.event_id == gc.gEV_ABORT:
+               rxData['event'] = gc.gEV_ABORT
+
+            elif e.event_id == gc.gEV_SER_RXDATA:
+
+               if len(e.data) > 0:
+                  rxData = self.Decode(e.data)
+                  rxData['raw_data'] = e.data
+      
+      return rxData
+
+   def Write(self, txData, raw_write=False):
+      bytesSent = 0
+      
+      if self.serialTxRxThread is not None:
+         
+         if not raw_write:
+            txData = self.Encode(txData)
+               
+         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SEND, 
+               txData))
+         
+         bytesSent = len(txData)
+         
+      return bytesSent

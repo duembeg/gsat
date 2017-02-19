@@ -39,17 +39,14 @@ import modules.machif as mi
    input buffer max size = 255
    input buffer init size = -1
    input buffer watermark = 90%
+   
+   Init buffer to (-1) when connecting it needs a initial '\n' that
+   should not be counted
 
 ----------------------------------------------------------------------------"""
 class machIf_TinyG(mi.machIf_Base):
    def __init__(self, cmd_line_options):
       mi.machIf_Base.__init__(self, cmd_line_options, 1100, "TinyG", 255, -1, 0.90)
-      
-      # Init buffer to (-1) when connecting it needs a initial '\n'
-      # that should not be counted
-      self.inputBufferMaxSize = 255
-      self.inputBufferWatermark = float(self.inputBufferMaxSize) * 0.90
-      self.inputBufferSize = -1
 
    def Decode(self, data):
       dataDict = {}

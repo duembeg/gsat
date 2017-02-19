@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   progexec.py
+   progexec_thread.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -34,6 +34,7 @@ import pdb
 import wx
 
 import modules.config as gc
+import modules.machif_config as mi
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -47,14 +48,14 @@ gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
 gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 
 """----------------------------------------------------------------------------
-   gsatProgramExecuteThread:
+   programExecuteThread:
    Threads that executes the gcode sending code to serial port. This thread
    allows the UI to continue being responsive to user input while this
    thread is busy executing program or waiting for serial events.
    Additionally it helps for user input not to disturb the rate and flow
    of data sent to the serial port.
 ----------------------------------------------------------------------------"""
-class gsatProgramExecuteThread(threading.Thread):
+class programExecuteThread(threading.Thread):
    """Worker Thread Class."""
    def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, machif_id, machine_auto_status=False):
       """Init Worker Thread Class."""
@@ -65,8 +66,6 @@ class gsatProgramExecuteThread(threading.Thread):
       self.serPort = serial
       self.progExecInQueue = in_queue
       self.progExecOutQueue = out_queue
-      self.progExecSerialTxRxInQueue = Queue.Queue()
-      self.progExecSerialTxRxOutQueue = Queue.Queue()
       self.cmdLineOptions = cmd_line_options
       self.machIfId = machif_id
       self.deviceDetected = False
@@ -82,20 +81,18 @@ class gsatProgramExecuteThread(threading.Thread):
 
       self.machineAutoStatus = machine_auto_status
 
-      self.serialTxRxThread = None
-
       self.serialWriteQueue = []
 
       self.machIfModule = None
 
       # init device module
-      self.InitDeviceModule()
+      self.InitMachineIfModule()
 
       # start thread
       self.start()
 
    """-------------------------------------------------------------------------
-   gsatProgramExecuteThread: Main Window Event Handlers
+   programExecuteThread: Main Window Event Handlers
    Handle events coming from main UI
    -------------------------------------------------------------------------"""
    def ProcessQueue(self):
@@ -114,16 +111,14 @@ class gsatProgramExecuteThread(threading.Thread):
 
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_EXIT."
+               print "** programExecuteThread got event gc.gEV_CMD_EXIT."
             self.endThread = True
             self.swState = gc.gSTATE_IDLE
-
-            if self.serialTxRxThread is not None:
-               self.progExecSerialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+            self.machIfModule.Close()
 
          elif e.event_id == gc.gEV_CMD_RUN:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_RUN, swState->gc.gSTATE_RUN"
+               print "** programExecuteThread got event gc.gEV_CMD_RUN, swState->gc.gSTATE_RUN"
             self.gcodeDataLines = e.data[0]
             self.initialProgramCounter = e.data[1]
             self.workingProgramCounter = self.initialProgramCounter
@@ -132,7 +127,7 @@ class gsatProgramExecuteThread(threading.Thread):
 
          elif e.event_id == gc.gEV_CMD_STEP:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_STEP, swState->gc.gSTATE_STEP"
+               print "** programExecuteThread got event gc.gEV_CMD_STEP, swState->gc.gSTATE_STEP"
             self.gcodeDataLines = e.data[0]
             self.initialProgramCounter = e.data[1]
             self.workingProgramCounter = self.initialProgramCounter
@@ -141,33 +136,33 @@ class gsatProgramExecuteThread(threading.Thread):
 
          elif e.event_id == gc.gEV_CMD_STOP:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE"
+               print "** programExecuteThread got event gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE"
 
             self.swState = gc.gSTATE_IDLE
 
          elif e.event_id == gc.gEV_CMD_SEND:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_SEND."
+               print "** programExecuteThread got event gc.gEV_CMD_SEND."
             self.serialWriteQueue.append((e.data, False))
 
          elif e.event_id == gc.gEV_CMD_SEND_W_ACK:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_SEND_W_ACK."
+               print "** programExecuteThread got event gc.gEV_CMD_SEND_W_ACK."
             self.serialWriteQueue.append((e.data, True))
 
          elif e.event_id == gc.gEV_CMD_AUTO_STATUS:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_AUTO_STATUS."
+               print "** programExecuteThread got event gc.gEV_CMD_AUTO_STATUS."
             self.machineAutoStatus = e.data
 
          elif e.event_id == gc.gEV_CMD_OK_TO_POST:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_OK_TO_POST."
+               print "** programExecuteThread got event gc.gEV_CMD_OK_TO_POST."
             self.okToPostEvents = True
 
          elif e.event_id == gc.gEV_CMD_GET_STATUS:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got event gc.gEV_CMD_GET_STATUS."
+               print "** programExecuteThread got event gc.gEV_CMD_GET_STATUS."
             #self.serialWriteQueue.append((self.machIfModule.GetStatus(), False))
             # should not hold status request for waiting for ack to block
             if self.machIfModule.OkToSend(self.machIfModule.GetStatus()):
@@ -175,68 +170,57 @@ class gsatProgramExecuteThread(threading.Thread):
 
          else:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread got unknown event!! [%s]." % str(e.event_id)
+               print "** programExecuteThread got unknown event!! [%s]." % str(e.event_id)
 
    """-------------------------------------------------------------------------
-   gsatProgramExecuteThread: General Functions
+   programExecuteThread: General Functions
    -------------------------------------------------------------------------"""
-   def InitDeviceModule(self):
-      self.machIfModule = gc.GetMachIfModule(self.machIfId)
+   def InitMachineIfModule(self):
+      self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
       if self.cmdLineOptions.vverbose:
-         print "** gsatProgramExecuteThread Init Device Module (%s)." % self.machIfModule.GetName()
-
-   def DecodeSerialData (self, serialData):
-
-      dataDict = self.machIfModule.Decode(serialData)
-
-      if 'sr' in dataDict:
-         self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, dataDict['sr']))
-
-      if 'r' in dataDict:
-         if 'fv' in dataDict['r']:
-            self.deviceDetected = True
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DEVICE_DETECTED, None))
-
-      return dataDict
-
+         print "** programExecuteThread Init Device Module (%s)." % self.machIfModule.GetName()
+         
+      self.machIfModule.Init(self.serPort)
 
    def SerialRead(self):
-      decodeData = {'rx_data':""}
+      rxData = self.machIfModule.Read()
 
-      if not self.progExecSerialTxRxInQueue.empty():
-         # get item from queue
-         e = self.progExecSerialTxRxInQueue.get()
-
-         if e.event_id == gc.gEV_ABORT:
+      if 'event' in rxData:
+         if rxData['event'] == gc.gEV_ABORT:
             # make sure we stop processing any states...
             self.swState = gc.gSTATE_ABORT
 
             # add data to queue and signal main window to consume
             self.progExecOutQueue.put(gc.threadEvent(gc.gEV_ABORT, e.data))
             wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+      else:
+         if 'raw_data' in rxData:
+            raw_data = rxData['raw_data']
 
-         elif e.event_id == gc.gEV_SER_RXDATA:
-
-            if len(e.data) > 0:
+            if len(raw_data) > 0:
 
                # add data to queue and signal main window to consume
-               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_IN, e.data))
+               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_IN, raw_data))
+               
+         if 'sr' in rxData:
+            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, rxData['sr']))
 
-               serialData = e.data
+         if 'r' in rxData:
+            if 'fv' in rxData['r']:
+               self.deviceDetected = True
+               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DEVICE_DETECTED, None))
 
-               decodeData = self.DecodeSerialData(serialData)
-
-               decodeData['rx_data'] = serialData
-
-      return decodeData
+      return rxData
 
    def SerialWrite(self, serialData):
-      self.progExecSerialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SEND, 
-         self.machIfModule.Encode(serialData)))
+      bytesSent = self.machIfModule.Write(serialData)
       
       # sent data to UI
-      self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))         
+      if bytesSent > 0:
+         self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))
+         
+      return bytesSent
       
    def WaitForAcknowledge(self):
       waitForAcknowlege = True
@@ -255,20 +239,20 @@ class gsatProgramExecuteThread(threading.Thread):
 
          if 'r' in rxDataDict:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread found acknowledgement"\
+               print "** programExecuteThread found acknowledgement"\
                   " [%s]" % str(rxDataDict['r']).strip()
 
                if rxDataDict['f'][1] == 0:
-                  print "** gsatProgramExecuteThread acknowledgement OK %s" % str(rxDataDict['f'])
+                  print "** programExecuteThread acknowledgement OK %s" % str(rxDataDict['f'])
                else:
-                  print "** gsatProgramExecuteThread acknowledgement ERROR %s" % str(rxDataDict['f'])
+                  print "** programExecuteThread acknowledgement ERROR %s" % str(rxDataDict['f'])
 
             waitForAcknowlege = False
             break
 
          if 'err' in rxDataDict:
             if self.cmdLineOptions.vverbose:
-               print "** gsatProgramExecuteThread found error acknowledgement"\
+               print "** programExecuteThread found error acknowledgement"\
                   " [%s]" % str(rxDataDict['r']).strip()
             waitForAcknowlege = False
             break
@@ -283,8 +267,9 @@ class gsatProgramExecuteThread(threading.Thread):
          if self.swState == gc.gSTATE_ABORT:
             waitForResponse = False
 
-         if len(rxDataDict['rx_data'].strip()) > 0:
-            waitForResponse = False
+         if 'raw_data' in rxDataDict:
+            if len(rxDataDict['raw_data'].strip()) > 0:
+               waitForResponse = False
 
          self.ProcessQueue()
 
@@ -336,7 +321,7 @@ class gsatProgramExecuteThread(threading.Thread):
          self.swState = gc.gSTATE_IDLE
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_RUN_END, None))
          if self.cmdLineOptions.vverbose:
-            print "** gsatProgramExecuteThread reach last PC, swState->gc.gSTATE_IDLE"
+            print "** programExecuteThread reach last PC, swState->gc.gSTATE_IDLE"
          return
 
       # update PC
@@ -348,7 +333,7 @@ class gsatProgramExecuteThread(threading.Thread):
          self.swState = gc.gSTATE_BREAK
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_HIT_BRK_PT, None))
          if self.cmdLineOptions.vverbose:
-            print "** gsatProgramExecuteThread encounter breakpoint PC[%s], swState->gc.gSTATE_BREAK" % \
+            print "** programExecuteThread encounter breakpoint PC[%s], swState->gc.gSTATE_BREAK" % \
                (self.workingProgramCounter)
          return
 
@@ -362,7 +347,7 @@ class gsatProgramExecuteThread(threading.Thread):
          self.swState = gc.gSTATE_BREAK
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_HIT_MSG, reMsgSearch.group(1)))
          if self.cmdLineOptions.vverbose:
-            print "** gsatProgramExecuteThread encounter MSG line PC[%s], swState->gc.gSTATE_BREAK, MSG[%s]" % \
+            print "** programExecuteThread encounter MSG line PC[%s], swState->gc.gSTATE_BREAK, MSG[%s]" % \
                (self.workingProgramCounter, reMsgSearch.group(1))
          return
 
@@ -381,7 +366,7 @@ class gsatProgramExecuteThread(threading.Thread):
          self.swState = gc.gSTATE_IDLE
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_STEP_END, None))
          if self.cmdLineOptions.vverbose:
-            print "** gsatProgramExecuteThread reach last PC, swState->gc.gSTATE_IDLE"
+            print "** programExecuteThread reach last PC, swState->gc.gSTATE_IDLE"
          return
 
       # update PC
@@ -392,7 +377,7 @@ class gsatProgramExecuteThread(threading.Thread):
          self.swState = gc.gSTATE_IDLE
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_STEP_END, None))
          if self.cmdLineOptions.vverbose:
-            print "** gsatProgramExecuteThread finish STEP cmd, swState->gc.gSTATE_IDLE"
+            print "** programExecuteThread finish STEP cmd, swState->gc.gSTATE_IDLE"
          return
 
       gcode = self.gcodeDataLines[self.workingProgramCounter]
@@ -424,18 +409,12 @@ class gsatProgramExecuteThread(threading.Thread):
       self.endThread = False
 
       if self.cmdLineOptions.vverbose:
-         print "** gsatProgramExecuteThread start."
+         print "** programExecuteThread start."
 
-      # inti serial RX thread
-      self.serialTxRxThread = gsatSerialPortThread(self, self.serPort, self.progExecSerialTxRxOutQueue,
-      self.progExecSerialTxRxInQueue, self.cmdLineOptions)
-
-      # init communication with device
-      self.SerialWrite(self.machIfModule.InitComm())
+      # inti machine interface
+      self.machIfModule.Open()
 
       while(self.endThread != True):
-         #print "** gsatProgramExecuteThread running....QO: %d, QI:%d" % \
-         #   (self.progExecOutQueue.qsize(), self.progExecInQueue.qsize())
 
          # process input queue for new commands or actions
          self.ProcessQueue()
@@ -461,13 +440,13 @@ class gsatProgramExecuteThread(threading.Thread):
                pass
             else:
                if self.cmdLineOptions.verbose:
-                  print "** gsatProgramExecuteThread unexpected state [%d], moving back to IDLE." \
+                  print "** programExecuteThread unexpected state [%d], moving back to IDLE." \
                      ", swState->gc.gSTATE_IDLE " % (self.swState)
 
                self.ProcessIdleSate()
                self.swState = gc.gSTATE_IDLE
          else:
-            message ="** Serial Port is close, gsatProgramExecuteThread terminating.\n"
+            message ="** Serial Port is close, programExecuteThread terminating.\n"
 
             if self.cmdLineOptions.verbose:
                print message.strip()
@@ -484,203 +463,4 @@ class gsatProgramExecuteThread(threading.Thread):
          time.sleep(0.02)
 
       if self.cmdLineOptions.vverbose:
-         print "** gsatProgramExecuteThread exit."
-
-"""----------------------------------------------------------------------------
-   gsatSerialPortThread:
-   Threads that monitor serial port for new data and sends events to
-   main window.
-----------------------------------------------------------------------------"""
-class gsatSerialPortThread(threading.Thread):
-   """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options):
-      """Init Worker Thread Class."""
-      threading.Thread.__init__(self)
-
-      # init local variables
-      self.notifyWindow = notify_window
-      self.serPort = serial
-      self.serialThreadInQueue = in_queue
-      self.serialThreadOutQueue = out_queue
-      self.cmdLineOptions = cmd_line_options
-
-      self.rxBuffer = ""
-
-      self.swState = gc.gSTATE_RUN
-
-      # start thread
-      self.start()
-
-   """-------------------------------------------------------------------------
-   gsatSerialPortThread: Main Window Event Handlers
-   Handle events coming from main UI
-   -------------------------------------------------------------------------"""
-   def ProcessQueue(self):
-      # process events from queue ---------------------------------------------
-      if not self.serialThreadInQueue.empty():
-         # get item from queue
-         e = self.serialThreadInQueue.get()
-
-         if e.event_id == gc.gEV_CMD_EXIT:
-            if self.cmdLineOptions.vverbose:
-               print "** gsatSerialPortThread got event gc.gEV_CMD_EXIT."
-            self.endThread = True
-         
-         elif e.event_id == gc.gEV_CMD_SEND:
-            if self.cmdLineOptions.vverbose:
-               print "** gsatSerialPortThread got event gc.gEV_CMD_SEND."
-            self.SerialWrite(e.data)
-
-         else:
-            if self.cmdLineOptions.vverbose:
-               print "** gsatSerialPortThread got unknown event!! [%s]." % str(e.event_id)
-
-   """-------------------------------------------------------------------------
-   gsatSerialPortThread: General Functions
-   -------------------------------------------------------------------------"""
-   def SerialRead(self):
-      exFlag = False
-      exMsg = ""
-      serialData = ""
-
-      try:
-         inDataCnt = self.serPort.inWaiting()
-
-         while inDataCnt > 0 and not exFlag:
-
-            # read data from port
-            # Was running with performance issues using readline(), move to read()
-            # Using "".join() as performance is much better then "+="
-            #serialData = self.serPort.readline()
-            #self.rxBuffer += self.serPort.read(inDataCnt)
-            self.rxBuffer = "".join([self.rxBuffer, self.serPort.read(inDataCnt)])
-
-            while '\n' in self.rxBuffer:
-               serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
-
-               if len(serialData) > 0:
-                  #pdb.set_trace()
-
-                  if self.cmdLineOptions.vverbose:
-                     print "[%03d] <- ASCII:{%s} HEX:{%s}" % (len(serialData),
-                        serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
-                  elif self.cmdLineOptions.verbose:
-                     print "[%03d] <- %s" % (len(serialData), serialData.strip())
-
-                  # add data to queue
-                  self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_RXDATA, "%s\n" % serialData))
-                  
-                  # attempt to reduce starvation on other threads
-                  # when serial traffic is constant
-                  time.sleep(0.01)
-
-            inDataCnt = self.serPort.inWaiting()
-
-      except serial.SerialException, e:
-         exMsg = "** PySerial exception: %s\n" % e.message
-         exFlag = True
-
-      except OSError, e:
-         exMsg = "** OSError exception: %s\n" % str(e)
-         exFlag = True
-
-      except IOError, e:
-         exMsg = "** IOError exception: %s\n" % str(e)
-         exFlag = True
-
-      if exFlag:
-         # make sure we stop processing any states...
-         self.swState = gc.gSTATE_ABORT
-
-         if self.cmdLineOptions.verbose:
-            print exMsg.strip()
-
-         # add data to queue
-         self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
-
-   def SerialWrite(self, serialData):
-      exFlag = False
-      exMsg = ""
-
-      if len(serialData) == 0:
-         return
-
-      try:
-         # send command
-         self.serPort.write(serialData)
-
-         if self.cmdLineOptions.vverbose:
-            print "[%03d] -> ASCII:{%s} HEX:{%s}" % (len(serialData),
-               serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
-         elif self.cmdLineOptions.verbose:
-            print "[%03d] -> %s" % (len(serialData), serialData.strip())
-
-      except serial.SerialException, e:
-         exMsg = "** PySerial exception: %s\n" % e.message
-         exFlag = True
-
-      except OSError, e:
-         exMsg = "** OSError exception: %s\n" % str(e)
-         exFlag = True
-
-      except IOError, e:
-         exMsg = "** IOError exception: %s\n" % str(e)
-         exFlag = True
-
-      if exFlag:
-         # make sure we stop processing any states...
-         self.swState = gc.gSTATE_ABORT
-
-         if self.cmdLineOptions.verbose:
-            print exMsg.strip()
-         
-   def run(self):
-      """Run Worker Thread."""
-      # This is the code executing in the new thread.
-      self.endThread = False
-
-      if self.cmdLineOptions.vverbose:
-         print "** gsatSerialPortThread start."
-
-      while(self.endThread != True):
-         #print "** gsatSerialPortThread running.... QO: %d, QI:%d" % \
-         #   (self.serialThreadOutQueue.qsize(), self.serialThreadInQueue.qsize())
-
-         # process input queue for new commands or actions
-         self.ProcessQueue()
-
-         # check if we need to exit now
-         if self.endThread:
-            break
-         
-         if self.serPort.isOpen():
-            if self.swState == gc.gSTATE_RUN:
-               self.SerialRead()
-            elif self.swState == gc.gSTATE_ABORT:
-               # do nothing, wait to be terminated
-               pass
-            else:
-               if self.cmdLineOptions.verbose:
-                  print "** gsatSerialPortThread unexpected state [%d], moving back to IDLE." \
-                     ", swState->gc.gSTATE_IDLE " % (self.swState)
-
-               self.ProcessIdleSate()
-               self.swState = gc.gSTATE_IDLE
-         else:
-            message ="** Serial Port is close, gsatSerialPortThread terminating.\n"
-
-            if self.cmdLineOptions.verbose:
-               print message.strip()
-
-            # make sure we stop processing any states...
-            self.swState = gc.gSTATE_ABORT
-
-            # add data to queue
-            self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, ""))
-            wx.LogMessage(message)
-            break
-
-         time.sleep(0.01)
-
-      if self.cmdLineOptions.vverbose:
-         print "** gsatSerialPortThread exit."
+         print "** programExecuteThread exit."

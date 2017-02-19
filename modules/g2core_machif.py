@@ -39,20 +39,17 @@ import modules.machif as mi
    input buffer max size = 255
    input buffer init size = 1
    input buffer watermark = 90%
-
+   
+   Init buffer to (1) when connecting it counts that as one char on response
+   initial msg looks like
+   {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
+   
+   !!notice f[1,0,1]
+   
 ----------------------------------------------------------------------------"""
 class machIf_g2core(mi.machIf_Base):
    def __init__(self, cmd_line_options):
       mi.machIf_Base.__init__(self, cmd_line_options, 1200, "g2core", 255, 1, 0.90)
-      
-      # Init buffer to (1) when connecting it counts that as one char on response
-      # initial msg looks like
-      # {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
-      # notice f[1,0,1]
-      
-      self.inputBufferMaxSize = 255
-      self.inputBufferWatermark = float(self.inputBufferMaxSize) * 0.90
-      self.inputBufferSize = 1 
 
    def Decode(self, data):
       dataDict = {}

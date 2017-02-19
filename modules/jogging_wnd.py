@@ -30,6 +30,7 @@ from wx.lib import scrolledpanel as scrolled
 from wx.lib.agw import floatspin as fs
 
 import modules.config as gc
+import modules.machif_config as mi
 
 
 """----------------------------------------------------------------------------
@@ -828,10 +829,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       # axis
 
    def OnResetToZero(self, e):
-      mi = gc.GetMachIfModule(self.stateData.machIfId)
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
       
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            mi.GetSetAxisCmd())
+            mim.GetSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
@@ -841,11 +842,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      mi = gc.GetMachineIfModule(self.stateData.machIfId)
+      mim = mi.GetMachineIfModule(self.stateData.machIfId)
       
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         mi.GetSetAxisCmd())
+         mim.GetSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()

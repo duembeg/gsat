@@ -65,16 +65,14 @@ gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
    Input buffer init size = 0
    Input buffer watermark = 90%
 
+   per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer includes
+   all characters including nulls and new line)
+
 ----------------------------------------------------------------------------"""
 class machIf_GRBL(mi.machIf_Base):
    def __init__(self, cmd_line_options):
       mi.machIf_Base.__init__(self, cmd_line_options, 1000, "GRBL", 127, 0, 0.90)
-      
-      # per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer
-      # includes all characters including nulls and new line)
-      self.inputBufferMaxSize = 127
-      self.inputBufferWatermark = float(self.inputBufferMaxSize) * 0.90
-      self.inputBufferSize = 0
+
       self.inputBufferPart = list()
             
       self.getSatusCmd = '?'

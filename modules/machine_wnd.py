@@ -30,6 +30,7 @@ from wx.lib import scrolledpanel as scrolled
 from wx.lib.agw import floatspin as fs
 
 import modules.config as gc
+import modules.machif_config as mi
 
 """----------------------------------------------------------------------------
    gsatMachineSettingsPanel:
@@ -55,9 +56,9 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       flexGridSizer.AddGrowableCol(1)
 
       st = wx.StaticText(self, label="Device")
-      machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
-      self.deviceComboBox = wx.ComboBox(self, -1, value=gc.GetMachIfName(machIfId),
-         choices=gc.gMachIfList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
+      machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.deviceComboBox = wx.ComboBox(self, -1, value=mi.GetMachIfName(machIfId),
+         choices=mi.gMachIfList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
@@ -231,8 +232,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          self.machinePort.SetLabel("None")
          self.machineBaud.SetLabel("None")
 
-      machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
-      self.devStatus.SetLabel(gc.GetMachIfName(machIfId))
+      machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
 
       self.Update()
 
@@ -293,12 +294,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Device Status
       st = wx.StaticText(self, label="Device name")
       st.SetFont(font)
-      machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
-      self.devStatus = wx.StaticText(self, label=gc.GetMachIfName(machIfId))
-      self.devStatus.SetForegroundColour(self.machineDataColor)
-      self.devStatus.SetFont(font)
+      machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.machIfStatus = wx.StaticText(self, label=mi.GetMachIfName(machIfId))
+      self.machIfStatus.SetForegroundColour(self.machineDataColor)
+      self.machIfStatus.SetFont(font)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
-      flexGridSizer.Add(self.devStatus, 0, flag=wx.ALIGN_LEFT)
+      flexGridSizer.Add(self.machIfStatus, 0, flag=wx.ALIGN_LEFT)
 
       # Add Running Status
       st = wx.StaticText(self, label="Device state")

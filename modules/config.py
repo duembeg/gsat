@@ -24,10 +24,6 @@
 ----------------------------------------------------------------------------"""
 
 import wx
-import modules.machif as mi
-import modules.g2core_machif as mi_g2core
-import modules.tinyg_machif as mi_tinyg
-import modules.grbl_machif as mi_grbl
 
 """----------------------------------------------------------------------------
    Globals:
@@ -128,87 +124,14 @@ gEV_TIMER            = 2090
 gEV_DATA_STATUS      = 2100
 gEV_DEVICE_DETECTED  = 2110
 
-# --------------------------------------------------------------------------
-# Device type, this data needs to be in sync with the machif_* files
-# --------------------------------------------------------------------------
-gMACHIF_NONE            = None
-#gMACHIF_GRBL            = 1000
-#gMACHIF_TINYG           = 1100
-#gMACHIF_G2CORE          = 1200
-
-gMachIfList = [] # ["Grbl", "TinyG", "g2core"]
-
-gMachIf_GRBL = mi_grbl.machIf_GRBL(gCmdLineOptions)
-gMachIf_TinyG = mi_tinyg.machIf_TinyG(gCmdLineOptions)
-gMachIf_g2core = mi_g2core.machIf_g2core(gCmdLineOptions)
-
-"""----------------------------------------------------------------------------
-   GetMachIfName:
-   translate ID to string.
-----------------------------------------------------------------------------"""
-def GetMachIfName(machIfId):
-   machIfName = "None"
-
-   if machIfId == gMachIf_GRBL.GetId():
-      machIfName = gMachIf_GRBL.GetName()
-
-   elif machIfId == gMachIf_TinyG.GetId():
-      machIfName = gMachIf_TinyG.GetName()
-
-   elif machIfId == gMachIf_g2core.GetId():
-      machIfName = gMachIf_g2core.GetName()
-
-   return machIfName
-
-"""----------------------------------------------------------------------------
-   GetMachIfId:
-   translate string to ID.
-----------------------------------------------------------------------------"""
-def GetMachIfId(deviceStr):
-   machIfId = gMACHIF_NONE
-
-   if gMachIf_GRBL.GetName() in deviceStr:
-      machIfId = gMachIf_GRBL.GetId()
-
-   elif "TinyG2" in deviceStr:
-      machIfId = gMachIf_g2core.GetId()
-
-   if gMachIf_TinyG.GetName() in deviceStr:
-      machIfId = gMachIf_TinyG.GetId()
-
-   if gMachIf_g2core.GetName() in deviceStr:
-      machIfId = gMachIf_g2core.GetId()
-
-   return machIfId
-
-"""----------------------------------------------------------------------------
-   GetMachIfModule:
-   translate string to ID.
-----------------------------------------------------------------------------"""
-def GetMachIfModule(machIfId):
-   machIfModule = None
-   
-   if machIfId == gMachIf_GRBL.GetId():
-      machIfModule = mi_grbl.machIf_GRBL(gCmdLineOptions)
-
-   elif machIfId == gMachIf_TinyG.GetId():
-      machIfModule = mi_tinyg.machIf_TinyG(gCmdLineOptions)
-
-   elif machIfId == gMachIf_g2core.GetId():
-      machIfModule = mi_g2core.machIf_g2core(gCmdLineOptions)
-
-   return machIfModule
-
 """----------------------------------------------------------------------------
    InitConfig:
 
 ----------------------------------------------------------------------------"""
 def InitConfig(cmd_line_options):
    global gCmdLineOptions
-   global gMachIfList
    
    gCmdLineOptions = cmd_line_options
-   gMachIfList = [gMachIf_GRBL.GetName(), gMachIf_TinyG.GetName(), gMachIf_g2core.GetName()] 
 
 """----------------------------------------------------------------------------
    gsatStateData:

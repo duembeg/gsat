@@ -77,12 +77,13 @@ from wx.lib.wordwrap import wordwrap
 from wx.lib import scrolledpanel as scrolled
 
 import modules.config as gc
+import modules.machif_config as mi
 import images.icons as ico
 import modules.editor_wnd as ed
 import modules.machine_wnd as mc
 import modules.jogging_wnd as jog
 import modules.compvision_wnd as compv
-import modules.progexec as progexec
+import modules.progexec_thread as progexec
 
 """----------------------------------------------------------------------------
    Globals:
@@ -432,8 +433,8 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoStatus = self.configData.Get('/machine/AutoStatus')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
-      self.stateData.machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
-      self.machIfName = gc.GetMachIfName(self.stateData.machIfId)
+      self.stateData.machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.machIfName = mi.GetMachIfName(self.stateData.machIfId)
       self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
 
       if self.cmdLineOptions.verbose:
@@ -1749,7 +1750,7 @@ class gsatMainWindow(wx.Frame):
 
          if self.serPort.isOpen():
             self.serPort.flushInput()
-            self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
+            self.progExecThread = progexec.programExecuteThread(self, self.serPort, self.mainWndOutQueue,
                self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
 
             self.stateData.serialPortIsOpen = True
