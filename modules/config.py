@@ -24,9 +24,10 @@
 ----------------------------------------------------------------------------"""
 
 import wx
-import modules.machif_g2core as mi_g2core
-import modules.machif_tinyg as mi_tinyg
-import modules.machif_grbl as mi_grbl
+import modules.machif as mi
+import modules.g2core_machif as mi_g2core
+import modules.tinyg_machif as mi_tinyg
+import modules.grbl_machif as mi_grbl
 
 """----------------------------------------------------------------------------
    Globals:
@@ -45,6 +46,8 @@ gZeroString = "0.000"
 gNumberFormatString = "%0.3f"
 gOnString = "On"
 gOffString = "Off"
+
+gCmdLineOptions = {}
 
 # --------------------------------------------------------------------------
 # device commands
@@ -126,71 +129,86 @@ gEV_DATA_STATUS      = 2100
 gEV_DEVICE_DETECTED  = 2110
 
 # --------------------------------------------------------------------------
-# Device type
+# Device type, this data needs to be in sync with the machif_* files
 # --------------------------------------------------------------------------
-gDEV_NONE            = 0000
-gDEV_GRBL            = 1000
-gDEV_TINYG           = 1100
-gDEV_G2CORE          = 1200
+gMACHIF_NONE            = None
+#gMACHIF_GRBL            = 1000
+#gMACHIF_TINYG           = 1100
+#gMACHIF_G2CORE          = 1200
 
-gDEV_LIST = ["Grbl", "TinyG", "g2core"]
+gMachIfList = [] # ["Grbl", "TinyG", "g2core"]
+
+gMachIf_GRBL = mi_grbl.machIf_GRBL(gCmdLineOptions)
+gMachIf_TinyG = mi_tinyg.machIf_TinyG(gCmdLineOptions)
+gMachIf_g2core = mi_g2core.machIf_g2core(gCmdLineOptions)
 
 """----------------------------------------------------------------------------
-   GetDeviceName:
+   GetMachIfName:
    translate ID to string.
 ----------------------------------------------------------------------------"""
-def GetDeviceName(deviceID):
-   deviceName = "None"
+def GetMachIfName(machIfId):
+   machIfName = "None"
 
-   if deviceID == gDEV_GRBL:
-      deviceName = "Grbl"
+   if machIfId == gMachIf_GRBL.GetId():
+      machIfName = gMachIf_GRBL.GetName()
 
-   elif deviceID == gDEV_TINYG:
-      deviceName = "TinyG"
+   elif machIfId == gMachIf_TinyG.GetId():
+      machIfName = gMachIf_TinyG.GetName()
 
-   elif deviceID == gDEV_G2CORE:
-      deviceName = "g2core"
+   elif machIfId == gMachIf_g2core.GetId():
+      machIfName = gMachIf_g2core.GetName()
 
-   return deviceName
+   return machIfName
 
 """----------------------------------------------------------------------------
-   GetDeviceID:
+   GetMachIfId:
    translate string to ID.
 ----------------------------------------------------------------------------"""
-def GetDeviceID(deviceStr):
-   deviceID = gDEV_NONE
+def GetMachIfId(deviceStr):
+   machIfId = gMACHIF_NONE
 
-   if "Grbl" in deviceStr:
-      deviceID = gDEV_GRBL
+   if gMachIf_GRBL.GetName() in deviceStr:
+      machIfId = gMachIf_GRBL.GetId()
 
    elif "TinyG2" in deviceStr:
-      deviceID = gDEV_G2CORE
+      machIfId = gMachIf_g2core.GetId()
 
-   elif "TinyG" in deviceStr:
-      deviceID = gDEV_TINYG
+   if gMachIf_TinyG.GetName() in deviceStr:
+      machIfId = gMachIf_TinyG.GetId()
 
-   elif "g2core" in deviceStr:
-      deviceID = gDEV_G2CORE
+   if gMachIf_g2core.GetName() in deviceStr:
+      machIfId = gMachIf_g2core.GetId()
 
-   return deviceID
+   return machIfId
 
 """----------------------------------------------------------------------------
-   GetDeviceModule:
+   GetMachIfModule:
    translate string to ID.
 ----------------------------------------------------------------------------"""
-def GetDeviceModule(deviceID, cmdLineOptions):
-   deviceModule = None
+def GetMachIfModule(machIfId):
+   machIfModule = None
    
-   if deviceID == gDEV_GRBL:
-      deviceModule = mi_grbl.gsatMachIf_GRBL(cmdLineOptions)
+   if machIfId == gMachIf_GRBL.GetId():
+      machIfModule = mi_grbl.machIf_GRBL(gCmdLineOptions)
 
-   elif deviceID == gDEV_TINYG:
-      deviceModule = mi_tinyg.gsatMachIf_TinyG(cmdLineOptions)
+   elif machIfId == gMachIf_TinyG.GetId():
+      machIfModule = mi_tinyg.machIf_TinyG(gCmdLineOptions)
 
-   elif deviceID == gDEV_G2CORE:
-      deviceModule = mi_g2core.gsatMachIf_g2core(cmdLineOptions)
+   elif machIfId == gMachIf_g2core.GetId():
+      machIfModule = mi_g2core.machIf_g2core(gCmdLineOptions)
 
-   return deviceModule
+   return machIfModule
+
+"""----------------------------------------------------------------------------
+   InitConfig:
+
+----------------------------------------------------------------------------"""
+def InitConfig(cmd_line_options):
+   global gCmdLineOptions
+   global gMachIfList
+   
+   gCmdLineOptions = cmd_line_options
+   gMachIfList = [gMachIf_GRBL.GetName(), gMachIf_TinyG.GetName(), gMachIf_g2core.GetName()] 
 
 """----------------------------------------------------------------------------
    gsatStateData:
@@ -207,7 +225,7 @@ class gsatStateData():
       self.serialPortIsOpen = False
       self.serialPort = ""
       self.serialPortBaud = "9600"
-      self.deviceID = 0
+      self.machIfId = 0
       self.deviceDetected = False
 
       # machine status

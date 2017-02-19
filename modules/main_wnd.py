@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   mainwnd.py
+   main_wnd.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -78,11 +78,10 @@ from wx.lib import scrolledpanel as scrolled
 
 import modules.config as gc
 import images.icons as ico
-import modules.editor as ed
-#import modules.link as link
-import modules.machine as mc
-import modules.jogging as jog
-import modules.compvision as compv
+import modules.editor_wnd as ed
+import modules.machine_wnd as mc
+import modules.jogging_wnd as jog
+import modules.compvision_wnd as compv
 import modules.progexec as progexec
 
 """----------------------------------------------------------------------------
@@ -283,7 +282,6 @@ class gsatSettingsDialog(wx.Dialog):
 
       # add pages
       self.AddGeneralPage(0)
-      #self.AddLinkPage(1)
       self.AddProgramPage(1)
       self.AddOutputPage(2)
       self.AddCliPage(3)
@@ -316,11 +314,6 @@ class gsatSettingsDialog(wx.Dialog):
    def AddGeneralPage(self, page):
       self.generalPage = gsatGeneralSettingsPanel(self.noteBook, self.configData)
       self.noteBook.AddPage(self.generalPage, "General")
-      self.noteBook.SetPageImage(page, page)
-
-   def AddLinkPage(self, page):
-      self.linkPage = link.gsatLinkSettingsPanel(self.noteBook, self.configData)
-      self.noteBook.AddPage(self.linkPage, "Link")
       self.noteBook.SetPageImage(page, page)
 
    def AddProgramPage(self, page):
@@ -357,7 +350,6 @@ class gsatSettingsDialog(wx.Dialog):
 
    def UpdatConfigData(self):
       self.generalPage.UpdatConfigData()
-      #self.linkPage.UpdatConfigData()
       self.programPage.UpdatConfigData()
       self.outputPage.UpdatConfigData()
       self.cliPage.UpdatConfigData()
@@ -391,6 +383,9 @@ class gsatMainWindow(wx.Frame):
          self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
+      
+      #init global context
+      gc.InitConfig (cmd_line_options)
 
       # register for thread events
       gc.EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
@@ -437,8 +432,8 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoStatus = self.configData.Get('/machine/AutoStatus')
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
-      self.stateData.deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
-      self.deviceName = gc.GetDeviceName(self.stateData.deviceID)
+      self.stateData.machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.machIfName = gc.GetMachIfName(self.stateData.machIfId)
       self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
 
       if self.cmdLineOptions.verbose:
@@ -453,8 +448,8 @@ class gsatMainWindow(wx.Frame):
          print "  machineAutostatus:        ", self.machineAutoStatus
          print "  machineAutoRefresh:       ", self.machineAutoRefresh
          print "  machineAutoRefreshPeriod: ", self.machineAutoRefreshPeriod
-         print "  deviceName:               ", self.deviceName
-         print "  deviceID:                 ", self.stateData.deviceID
+         print "  machIfName:               ", self.machIfName
+         print "  machIfId:                 ", self.stateData.machIfId
 
    def InitUI(self):
       """ Init main UI """
@@ -1454,7 +1449,7 @@ class gsatMainWindow(wx.Frame):
          "    use cycle-restart command (~) to continue.\n"\
          "    \n"
          "    Note: If this is not desirable please reset %s, by closing and opening\n"\
-         "    the serial link port.\n" % (self.deviceName, self.deviceName))
+         "    the serial link port.\n" % (self.machIfName, self.machIfName))
 
    def OnAbortUpdate(self, e=None):
       state = False
@@ -1755,7 +1750,7 @@ class gsatMainWindow(wx.Frame):
          if self.serPort.isOpen():
             self.serPort.flushInput()
             self.progExecThread = progexec.gsatProgramExecuteThread(self, self.serPort, self.mainWndOutQueue,
-               self.mainWndInQueue, self.cmdLineOptions, self.stateData.deviceID, self.machineAutoStatus)
+               self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
@@ -1994,7 +1989,7 @@ class gsatMainWindow(wx.Frame):
 
             # -----------------------------------------------------------------
             # Grbl DRO Hack
-            if self.machineGrblDroHack and self.stateData.deviceID == gc.gDEV_GRBL:
+            if self.machineGrblDroHack and self.stateData.machIfId == gc.gDEV_GRBL:
                rematch = gReAxis.findall(te.data)
                if len(rematch) > 0:
                   machineStatus = dict()

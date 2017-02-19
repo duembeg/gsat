@@ -828,10 +828,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       # axis
 
    def OnResetToZero(self, e):
-      dm = gc.GetDeviceModule(self.stateData.deviceID, None)
+      mi = gc.GetMachIfModule(self.stateData.machIfId)
       
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            dm.GetSetAxisCmd())
+            mi.GetSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
@@ -841,11 +841,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      dm = gc.GetDeviceModule(self.stateData.deviceID, None)
+      mi = gc.GetMachineIfModule(self.stateData.machIfId)
       
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         dm.GetSetAxisCmd())
+         mi.GetSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()

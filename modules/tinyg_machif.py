@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   machif_tinyg.py
+   tinyg_machif.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -27,26 +27,29 @@ try:
 except ImportError:
     import json
 
-import modules.machif_base as mi_base
+import modules.machif as mi
 
 """----------------------------------------------------------------------------
-   gsatMachIf_g2core:
+   machIf_TinyG:
 
-   Device g2core class.
+   Machine Interface TinyG class.
+   
+   ID = 1100
+   Name = "TinyG"
+   input buffer max size = 255
+   input buffer init size = -1
+   input buffer watermark = 90%
 
 ----------------------------------------------------------------------------"""
-class gsatMachIf_g2core(mi_base.gsatMachIf_Base):
+class machIf_TinyG(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi_base.gsatMachIf_Base.__init__(self, cmd_line_options)
+      mi.machIf_Base.__init__(self, cmd_line_options, 1100, "TinyG", 255, -1, 0.90)
       
-      # Init buffer to (1) when connecting it counts that as one char on response
-      # initial msg looks like
-      # {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
-      # notice f[1,0,1]
-      
+      # Init buffer to (-1) when connecting it needs a initial '\n'
+      # that should not be counted
       self.inputBufferMaxSize = 255
       self.inputBufferWatermark = float(self.inputBufferMaxSize) * 0.90
-      self.inputBufferSize = 1 
+      self.inputBufferSize = -1
 
    def Decode(self, data):
       dataDict = {}
@@ -56,7 +59,13 @@ class gsatMachIf_g2core(mi_base.gsatMachIf_Base):
 
          if 'r' in dataDict:
             r = dataDict['r']
-            
+
+            # get footer response out to avoid digging out later
+            if 'f' in r:
+               f = r['f']
+               dataDict['f'] = f
+               #del r['f']
+
             # get status response out to avoid digging out later
             if 'sr' in r:
                sr = r['sr']
@@ -108,15 +117,16 @@ class gsatMachIf_g2core(mi_base.gsatMachIf_Base):
             self.inputBufferSize = self.inputBufferSize - bufferPart
             
             if self.cmdLineOptions.vverbose:
-               print "** gsatMachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               print "** machIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
                   
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+               
 
       else:
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_g2core cannot decode data!! [%s]." % data
+            print "** machIf_TinyG cannot decode data!! [%s]." % data
 
       return dataDict
 
@@ -126,9 +136,9 @@ class gsatMachIf_g2core(mi_base.gsatMachIf_Base):
       if bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
-            
+               
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+            print "** machIf_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (dataLen, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
          
@@ -137,14 +147,11 @@ class gsatMachIf_g2core(mi_base.gsatMachIf_Base):
    def GetSetAxisCmd (self):
       return "G28.3"
       
-   def GetDeviceName(self):
-      return "g2core"
-
    def GetStatus(self):
       return '{"sr":null}\n'
 
    def InitComm(self):
-      return ''
+      return '\n{"fv":null}\n'
 
    def OkToSend(self, data):
       bufferHasRoom = True

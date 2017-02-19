@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   machif_grbl.py
+   grbl_machif.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -29,7 +29,7 @@ except ImportError:
 
 import re
 
-import modules.machif_base as mi_base
+import modules.machif as mi
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -55,14 +55,20 @@ gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
 
 
 """----------------------------------------------------------------------------
-   gsatMachIf_GRBL:
+   machIf_GRBL:
 
-   Device GRBL class.
+   Machine Interface GRBL class.
+
+   ID = 1000
+   Name = "GRBL"
+   Input buffer max size = 127
+   Input buffer init size = 0
+   Input buffer watermark = 90%
 
 ----------------------------------------------------------------------------"""
-class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
+class machIf_GRBL(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi_base.gsatMachIf_Base.__init__(self, cmd_line_options)
+      mi.machIf_Base.__init__(self, cmd_line_options, 1000, "GRBL", 127, 0, 0.90)
       
       # per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer
       # includes all characters including nulls and new line)
@@ -99,8 +105,8 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
          dataDict['sr'] = sr
 
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_GRBL re GRBL status match %s" % str(statusData)
-            print "** gsatMachIf_GRBL str match from %s" % str(data.strip())
+            print "** machIf_GRBL re GRBL status match %s" % str(statusData)
+            print "** machIf_GRBL str match from %s" % str(data.strip())
 
       ack = gReGRBLMachineAck.search(data)
       if ack is not None:
@@ -112,7 +118,7 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
          self.inputBufferSize = self.inputBufferSize - bufferPart
          
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_GRBL found acknowledgement [%s]" % data.strip()
+            print "** machIf_GRBL found acknowledgement [%s]" % data.strip()
             
          r = {}
          dataDict['r'] = r
@@ -120,7 +126,7 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
          
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+            print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
 
@@ -134,7 +140,7 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
          self.inputBufferSize = self.inputBufferSize - bufferPart
          
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_GRBL found error [%s]" % data.strip()
+            print "** machIf_GRBL found error [%s]" % data.strip()
 
          if 'r' not in dataDict:
             r = {}
@@ -144,14 +150,14 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
          
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+            print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
 
       version = gReGrblVersion.match(data)
       if version is not None:
          if self.cmdLineOptions.vverbose:
-            print "** gsatMachIf_GRBL found device version [%s]" % version.group(1).strip()
+            print "** machIf_GRBL found device version [%s]" % version.group(1).strip()
 
          if 'r' not in dataDict:
             r = {}
@@ -176,7 +182,7 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
             self.inputBufferPart.append(dataLen)
                
             if self.cmdLineOptions.vverbose:
-               print "** gsatMachIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+               print "** machIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                   (dataLen, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
          
@@ -184,9 +190,6 @@ class gsatMachIf_GRBL(mi_base.gsatMachIf_Base):
 
    def GetSetAxisCmd (self):
       return "G92"
-      
-   def GetDeviceName(self):
-      return "GRBL"
 
    def GetStatus(self):
       return self.getSatusCmd

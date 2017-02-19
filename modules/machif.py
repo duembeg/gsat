@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   machif_base.py
+   machif.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -29,15 +29,20 @@ except ImportError:
 
 
 """----------------------------------------------------------------------------
-   gsatMachIf_Base:
+   machIf_Base:
 
-   Device base class to provide a unified API for specific devices
-   (g2core, TinyG, grbl).
+   Machine interface base class to provide a unified API for specific devices
+   (g2core, TinyG, grbl, etc).
 
 ----------------------------------------------------------------------------"""
-class gsatMachIf_Base():
-   def __init__(self, cmd_line_options):
+class machIf_Base():
+   def __init__(self, cmd_line_options, id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
       self.cmdLineOptions = cmd_line_options
+      self.id = id
+      self.name = name
+      self.inputBufferMaxSize = input_buffer_max_size
+      self.inputBufferWatermark = float(self.inputBufferMaxSize) * input_buffer_watermark_prcnt
+      self.inputBufferSize = input_buffer_init_val
 
    def Encode(self, data):
       return data
@@ -48,11 +53,24 @@ class gsatMachIf_Base():
    def GetSetAxisCmd (self):
       return ""
       
-   def GetDeviceName(self):
-      return "Base"
+   def GetId(self):
+      return self.id
+      
+   def GetName(self):
+      return self.name
 
    def GetStatus(self):
       return ""
 
+   def Init(self):
+      pass
+      
    def InitComm(self):
+      return ""
+
+   def Read(self, data):
+      serialData = ""
+      return serialData
+
+   def Write(self, data, raw_write=False):
       return ""

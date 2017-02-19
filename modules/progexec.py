@@ -56,7 +56,7 @@ gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 ----------------------------------------------------------------------------"""
 class gsatProgramExecuteThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, device_id, machine_auto_status=False):
+   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, machif_id, machine_auto_status=False):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
@@ -68,7 +68,7 @@ class gsatProgramExecuteThread(threading.Thread):
       self.progExecSerialTxRxInQueue = Queue.Queue()
       self.progExecSerialTxRxOutQueue = Queue.Queue()
       self.cmdLineOptions = cmd_line_options
-      self.deviceID = device_id
+      self.machIfId = machif_id
       self.deviceDetected = False
       self.okToPostEvents = True
 
@@ -86,7 +86,7 @@ class gsatProgramExecuteThread(threading.Thread):
 
       self.serialWriteQueue = []
 
-      self.deviceModule = None
+      self.machIfModule = None
 
       # init device module
       self.InitDeviceModule()
@@ -168,10 +168,10 @@ class gsatProgramExecuteThread(threading.Thread):
          elif e.event_id == gc.gEV_CMD_GET_STATUS:
             if self.cmdLineOptions.vverbose:
                print "** gsatProgramExecuteThread got event gc.gEV_CMD_GET_STATUS."
-            #self.serialWriteQueue.append((self.deviceModule.GetStatus(), False))
+            #self.serialWriteQueue.append((self.machIfModule.GetStatus(), False))
             # should not hold status request for waiting for ack to block
-            if self.deviceModule.OkToSend(self.deviceModule.GetStatus()):
-               self.SerialWrite(self.deviceModule.GetStatus())
+            if self.machIfModule.OkToSend(self.machIfModule.GetStatus()):
+               self.SerialWrite(self.machIfModule.GetStatus())
 
          else:
             if self.cmdLineOptions.vverbose:
@@ -181,14 +181,14 @@ class gsatProgramExecuteThread(threading.Thread):
    gsatProgramExecuteThread: General Functions
    -------------------------------------------------------------------------"""
    def InitDeviceModule(self):
-      self.deviceModule = gc.GetDeviceModule(self.deviceID, self.cmdLineOptions)
+      self.machIfModule = gc.GetMachIfModule(self.machIfId)
 
       if self.cmdLineOptions.vverbose:
-         print "** gsatProgramExecuteThread Init Device Module (%s)." % self.deviceModule.GetDeviceName()
+         print "** gsatProgramExecuteThread Init Device Module (%s)." % self.machIfModule.GetName()
 
    def DecodeSerialData (self, serialData):
 
-      dataDict = self.deviceModule.Decode(serialData)
+      dataDict = self.machIfModule.Decode(serialData)
 
       if 'sr' in dataDict:
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, dataDict['sr']))
@@ -233,7 +233,7 @@ class gsatProgramExecuteThread(threading.Thread):
 
    def SerialWrite(self, serialData):
       self.progExecSerialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SEND, 
-         self.deviceModule.Encode(serialData)))
+         self.machIfModule.Encode(serialData)))
       
       # sent data to UI
       self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))         
@@ -307,7 +307,7 @@ class gsatProgramExecuteThread(threading.Thread):
       if len(gcode) > 0:
          gcode = "%s\n" % (gcode)
 
-         if self.deviceModule.OkToSend(gcode):
+         if self.machIfModule.OkToSend(gcode):
             # write data
             self.SerialWrite(gcode)
 
@@ -315,7 +315,7 @@ class gsatProgramExecuteThread(threading.Thread):
             self.WaitForAcknowledge()
 
             if self.machineAutoStatus:
-               self.SerialWrite(self.deviceModule.GetStatus())
+               self.SerialWrite(self.machIfModule.GetStatus())
          else:
             writeToDevice = False
             self.SerialRead()            
@@ -411,7 +411,7 @@ class gsatProgramExecuteThread(threading.Thread):
          
          data = self.serialWriteQueue[0]
          
-         if self.deviceModule.OkToSend(data[0]):
+         if self.machIfModule.OkToSend(data[0]):
             self.serialWriteQueue.pop(0)
             self.SerialWrite(data[0])
 
@@ -431,7 +431,7 @@ class gsatProgramExecuteThread(threading.Thread):
       self.progExecSerialTxRxInQueue, self.cmdLineOptions)
 
       # init communication with device
-      self.SerialWrite(self.deviceModule.InitComm())
+      self.SerialWrite(self.machIfModule.InitComm())
 
       while(self.endThread != True):
          #print "** gsatProgramExecuteThread running....QO: %d, QI:%d" % \

@@ -55,9 +55,9 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       flexGridSizer.AddGrowableCol(1)
 
       st = wx.StaticText(self, label="Device")
-      deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
-      self.deviceComboBox = wx.ComboBox(self, -1, value=gc.GetDeviceName(deviceID),
-         choices=gc.gDEV_LIST, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
+      machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.deviceComboBox = wx.ComboBox(self, -1, value=gc.GetMachIfName(machIfId),
+         choices=gc.gMachIfList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
@@ -231,8 +231,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          self.machinePort.SetLabel("None")
          self.machineBaud.SetLabel("None")
 
-      deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
-      self.devStatus.SetLabel(gc.GetDeviceName(deviceID))
+      machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.devStatus.SetLabel(gc.GetMachIfName(machIfId))
 
       self.Update()
 
@@ -293,8 +293,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       # Add Device Status
       st = wx.StaticText(self, label="Device name")
       st.SetFont(font)
-      deviceID = gc.GetDeviceID(self.configData.Get('/machine/Device'))
-      self.devStatus = wx.StaticText(self, label=gc.GetDeviceName(deviceID))
+      machIfId = gc.GetMachIfId(self.configData.Get('/machine/Device'))
+      self.devStatus = wx.StaticText(self, label=gc.GetMachIfName(machIfId))
       self.devStatus.SetForegroundColour(self.machineDataColor)
       self.devStatus.SetFont(font)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
