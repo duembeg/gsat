@@ -187,12 +187,13 @@ class programExecuteThread(threading.Thread):
       rxData = self.machIfModule.Read()
 
       if 'event' in rxData:
-         if rxData['event'] == gc.gEV_ABORT:
+         e = rxData['event']
+         if e['id'] == gc.gEV_ABORT:
             # make sure we stop processing any states...
             self.swState = gc.gSTATE_ABORT
 
             # add data to queue and signal main window to consume
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_ABORT, e.data))
+            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_ABORT, e['data']))
             wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
       else:
          if 'raw_data' in rxData:

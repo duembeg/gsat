@@ -59,6 +59,7 @@ import os
 import sys
 import glob
 import serial
+import tty
 import re
 import threading
 import Queue
@@ -385,9 +386,6 @@ class gsatMainWindow(wx.Frame):
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
       
-      #init global context
-      gc.InitConfig (cmd_line_options)
-
       # register for thread events
       gc.EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
 
@@ -403,6 +401,10 @@ class gsatMainWindow(wx.Frame):
       self.configData.Add('/machine/PortList', self.GetSerialPortList())
       self.configData.Add('/machine/BaudList', self.GetSerialBaudRateList())
       self.InitConfig()
+      
+      #init global config
+      gc.InitConfig (cmd_line_options, self.configData, self.stateData)
+
 
       # init some variables
       self.progExecThread = None
@@ -434,7 +436,7 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoRefresh = self.configData.Get('/machine/AutoRefresh')
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
       self.stateData.machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
-      self.machIfName = mi.GetMachIfName(self.stateData.machIfId)
+      self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
       self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
 
       if self.cmdLineOptions.verbose:
@@ -449,7 +451,7 @@ class gsatMainWindow(wx.Frame):
          print "  machineAutostatus:        ", self.machineAutoStatus
          print "  machineAutoRefresh:       ", self.machineAutoRefresh
          print "  machineAutoRefreshPeriod: ", self.machineAutoRefreshPeriod
-         print "  machIfName:               ", self.machIfName
+         print "  machIfName:               ", self.stateData.machIfName
          print "  machIfId:                 ", self.stateData.machIfId
 
    def InitUI(self):
@@ -1450,7 +1452,7 @@ class gsatMainWindow(wx.Frame):
          "    use cycle-restart command (~) to continue.\n"\
          "    \n"
          "    Note: If this is not desirable please reset %s, by closing and opening\n"\
-         "    the serial link port.\n" % (self.machIfName, self.machIfName))
+         "    the serial link port.\n" % (self.stateData.machIfName, self.stateData.machIfName))
 
    def OnAbortUpdate(self, e=None):
       state = False
@@ -1610,11 +1612,14 @@ class gsatMainWindow(wx.Frame):
          self.SerialWrite(serialData)
 
    def OnClose(self, e):
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+         
+      time.sleep(1)
+      
       if self.stateData.serialPortIsOpen:
          self.SerialClose()
 
-      if self.progExecThread is not None:
-         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
 
       self.machineJoggingPanel.SaveCli()
       self.configData.Save(self.configFile)
@@ -1710,24 +1715,29 @@ class gsatMainWindow(wx.Frame):
       return sbList
 
    def SerialOpen(self, port, baud):
-      self.serPort.baudrate = baud
-      self.serPort.xonxoff = False
-      self.serPort.bytesize = serial.EIGHTBITS
-      self.serPort.parity = serial.PARITY_NONE
-      self.serPort.stopbits = serial.STOPBITS_ONE
-      self.serPort.rtscts=False
+      
+      if self.serPort is not None:
+         if self.serPort.isOpen():
+            self.serPort.flushInput()
+            self.serPort.close()
+
+         del self.serPort
 
       if port != "None":
          portName = port
          if os.name == 'nt':
             portName=r"\\.\%s" % (str(port))
 
-         self.serPort.port = portName
-         self.serPort.timeout=1
-
          try:
-            #import pdb;pdb.set_trace()
-            self.serPort.open()
+            self.serPort = serial.Serial(port=portName,
+               baudrate=baud,
+               timeout=0.001,
+               bytesize=serial.EIGHTBITS,
+               parity=serial.PARITY_NONE,
+               stopbits=serial.STOPBITS_ONE,
+               xonxoff=False,
+               rtscts=False,
+               dsrdtr=False)
 
          except serial.SerialException, e:
             if self.cmdLineOptions.verbose:
@@ -1749,9 +1759,11 @@ class gsatMainWindow(wx.Frame):
             self.serPort.close()
 
          if self.serPort.isOpen():
-            self.serPort.flushInput()
             self.progExecThread = progexec.programExecuteThread(self, self.serPort, self.mainWndOutQueue,
                self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
+
+            serial_fd = self.serPort.fileno()
+            tty.setraw(serial_fd)
 
             self.stateData.serialPortIsOpen = True
             self.stateData.serialPort = port
@@ -1771,12 +1783,19 @@ class gsatMainWindow(wx.Frame):
    def SerialClose(self):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-      self.progExecThread = None
-      self.serPort.close()
+         
+      time.sleep(1)
+      
+      if (self.serPort is not None) and (self.serPort.isOpen()):
+         self.progExecThread = None
+         #self.serPort.flushInput()
+         self.serPort.close()
+         del self.serPort
 
       self.stateData.serialPortIsOpen = False
       self.stateData.deviceDetected = False
       self.AutoRefreshTimerStop()
+      self.stateData.swState = gc.gSTATE_IDLE
       self.UpdateUI()
 
    def SerialWrite(self, serialData):

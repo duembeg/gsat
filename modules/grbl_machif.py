@@ -81,7 +81,6 @@ class machIf_GRBL(mi.machIf_Base):
       dataDict = {}
 
       # GRBL status data
-      rematch = gReGRBLMachineStatus.match(data)
       # data is expected to be an array of strings as follows
       # statusData[0] : Machine state
       # statusData[1] : Machine X
@@ -90,10 +89,15 @@ class machIf_GRBL(mi.machIf_Base):
       # statusData[4] : Work X
       # statusData[5] : Work Y
       # statusData[6] : Work Z
-
-      if rematch is not None:
-         statusData = rematch.groups()
+      
+      status = gReGRBLMachineStatus.match(data)
+      if status is not None:
+         statusData = status.groups()
          sr = {}
+         
+         # remove the "?" used to get status notice no "\n"
+         bufferPart = 1
+         self.inputBufferSize = self.inputBufferSize - bufferPart
 
          sr['stat'] = statusData[0]
          sr['posx'] = float(statusData[1])
@@ -105,11 +109,14 @@ class machIf_GRBL(mi.machIf_Base):
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL re GRBL status match %s" % str(statusData)
             print "** machIf_GRBL str match from %s" % str(data.strip())
+            print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               (bufferPart, self.inputBufferSize, \
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
 
       ack = gReGRBLMachineAck.search(data)
       if ack is not None:
          bufferPart = 0
-         
+
          if len(self.inputBufferPart) > 0:
             bufferPart = self.inputBufferPart.pop(0)
          
@@ -120,7 +127,7 @@ class machIf_GRBL(mi.machIf_Base):
             
          r = {}
          dataDict['r'] = r
-         dataDict['f'] = [0,0,0]
+         dataDict['f'] = [0,0,bufferPart]
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
          
          if self.cmdLineOptions.vverbose:
@@ -143,8 +150,14 @@ class machIf_GRBL(mi.machIf_Base):
          if 'r' not in dataDict:
             r = {}
             dataDict['r'] = r
-
-         dataDict['f'] = [0,error.group(1).strip(),0]
+         
+         error_code = error.group(1).strip()
+         if error_code.isdigit():
+            error_code = int(error_code)
+         else:
+            error_code = -1
+            
+         dataDict['f'] = [0,error_code,bufferPart, error.group(1).strip()]
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
          
          if self.cmdLineOptions.vverbose:
@@ -168,21 +181,42 @@ class machIf_GRBL(mi.machIf_Base):
       return dataDict
       
    def Encode(self, data, bookeeping=True):
+      if len(data) == 0:
+         return data
       
-      if data is not self.getSatusCmd:      
+      data = data.encode('ascii')
+      
+      # handle special cases doe to status in cmd line and how GRBL 
+      # reports deals with this. if not careful we might get two status
+      # from a single line but is not consistence on hos this works.
+      # for this reason if we find "?" on the line will remove all but one
+      # also add 1 to the buffer since the status will remove 1 and
+      # the acknowledged will remove the length of the line. If this is 
+      # not done the "?" will be counted twice when removing from 
+      # input buffer usage.
+      if data.find(self.getSatusCmd) != -1:
+         data = data.replace(self.getSatusCmd, "")
+         data = "".join([data, "?"])
          
-         data = data.encode('ascii')
-
          if bookeeping:
-            dataLen = len(data)
-            self.inputBufferSize = self.inputBufferSize + dataLen
+            self.inputBufferSize = self.inputBufferSize + 1
             
-            self.inputBufferPart.append(dataLen)
-               
-            if self.cmdLineOptions.vverbose:
-               print "** machIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-                  (dataLen, self.inputBufferSize, \
-                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+      if data == self.getSatusCmd and bookeeping:
+         if self.cmdLineOptions.vverbose:
+            print "** machIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+               (1, self.inputBufferSize, \
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+         
+      elif bookeeping:
+         dataLen = len(data)
+         self.inputBufferSize = self.inputBufferSize + dataLen
+         
+         self.inputBufferPart.append(dataLen)
+            
+         if self.cmdLineOptions.vverbose:
+            print "** machIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+               (dataLen, self.inputBufferSize, \
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
          
       return data
 
@@ -193,7 +227,7 @@ class machIf_GRBL(mi.machIf_Base):
       return self.getSatusCmd
 
    def InitComm(self):
-      return '?'
+      return ''
       
    def OkToSend(self, data):
       bufferHasRoom = True

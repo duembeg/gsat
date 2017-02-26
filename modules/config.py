@@ -44,6 +44,8 @@ gOnString = "On"
 gOffString = "Off"
 
 gCmdLineOptions = {}
+gConfigData = None
+gStateData = None
 
 # --------------------------------------------------------------------------
 # device commands
@@ -62,21 +64,21 @@ gDEVICE_CMD_OFFSET_AXIS       = "G92"     # G92 <AXIS><VAL>
 """ ------------------------------------------------------------------------
 
 STATE TABLE::
-state    | RUN UI  | PAUSE UI| STEP UI | STOP UI |  BREAK PT| ERROR   | ST END  | ABORT   |
--------------------------------------------------------------------------------------------
-ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  | IGNORE  |
--------------------------------------------------------------------------------------------
-IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   |
--------------------------------------------------------------------------------------------
-RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | IDLE    | IDLE    | ABORT   |
--------------------------------------------------------------------------------------------
-STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   |
--------------------------------------------------------------------------------------------
-BREAK    | RUN     | PAUSE   | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
--------------------------------------------------------------------------------------------
-PAUSE    | RUN     | IGNORE  | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
--------------------------------------------------------------------------------------------
-USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    | ABORT   |
+state    | RUN UI  | PAUSE UI| STEP UI | STOP UI |  BREAK PT| ERROR   | ST END  | ABORT   | SER CLOSE |
+-------------------------------------------------------------------------------------------------------
+ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  | IGNORE  | IDLE      |
+-------------------------------------------------------------------------------------------------------
+IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   | IGNORE    |
+-------------------------------------------------------------------------------------------------------
+RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | IDLE    | IDLE    | ABORT   | IDLE      |
+-------------------------------------------------------------------------------------------------------
+STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   | IDLE      |
+-------------------------------------------------------------------------------------------------------
+BREAK    | RUN     | PAUSE   | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   | IDLE      |
+-------------------------------------------------------------------------------------------------------
+PAUSE    | RUN     | IGNORE  | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   | IDLE      |
+-------------------------------------------------------------------------------------------------------
+USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    | ABORT   | IDLE      |
 ---------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------ """
@@ -109,6 +111,8 @@ gEV_CMD_SEND_W_ACK   = 1062
 gEV_CMD_AUTO_STATUS  = 1070
 gEV_CMD_OK_TO_POST   = 1080
 gEV_CMD_GET_STATUS   = 1090
+gEV_CMD_MACHIF_OPEN  = 1100
+gEV_CMD_MACHIF_CLOSE = 1110
 
 gEV_NULL             = 0100
 gEV_ABORT            = 2000
@@ -123,15 +127,20 @@ gEV_SER_RXDATA       = 2080
 gEV_TIMER            = 2090
 gEV_DATA_STATUS      = 2100
 gEV_DEVICE_DETECTED  = 2110
+gEV_MACHIF_STATUS    = 2120 
 
 """----------------------------------------------------------------------------
    InitConfig:
 
 ----------------------------------------------------------------------------"""
-def InitConfig(cmd_line_options):
+def InitConfig(cmd_line_options, config_data, state_data):
    global gCmdLineOptions
+   global gConfigData
+   global gStateData
    
    gCmdLineOptions = cmd_line_options
+   gConfigData = config_data
+   gStateData = state_data
 
 """----------------------------------------------------------------------------
    gsatStateData:
@@ -147,8 +156,9 @@ class gsatStateData():
       self.grblDetected = False
       self.serialPortIsOpen = False
       self.serialPort = ""
-      self.serialPortBaud = "9600"
+      self.serialPortBaud = "115200"
       self.machIfId = 0
+      self.machIfName = "None"
       self.deviceDetected = False
 
       # machine status

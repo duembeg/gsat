@@ -24,6 +24,7 @@
 ----------------------------------------------------------------------------"""
 import os
 import re
+import sys
 import serial
 import threading
 import Queue
@@ -151,35 +152,42 @@ class serialPortThread(threading.Thread):
 
       if len(serialData) == 0:
          return
+         
+      if self.serPort.isOpen():
 
-      try:
-         # send command
-         self.serPort.write(serialData)
+         try:
+            # send command
+            self.serPort.write(serialData)
 
-         if self.cmdLineOptions.vverbose:
-            print "[%03d] -> ASCII:{%s} HEX:{%s}" % (len(serialData),
-               serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
-         elif self.cmdLineOptions.verbose:
-            print "[%03d] -> %s" % (len(serialData), serialData.strip())
+            if self.cmdLineOptions.vverbose:
+               print "[%03d] -> ASCII:{%s} HEX:{%s}" % (len(serialData),
+                  serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
+            elif self.cmdLineOptions.verbose:
+               print "[%03d] -> %s" % (len(serialData), serialData.strip())
 
-      except serial.SerialException, e:
-         exMsg = "** PySerial exception: %s\n" % e.message
-         exFlag = True
+         except serial.SerialException, e:
+            exMsg = "** PySerial exception: %s\n" % e.message
+            exFlag = True
 
-      except OSError, e:
-         exMsg = "** OSError exception: %s\n" % str(e)
-         exFlag = True
+         except OSError, e:
+            exMsg = "** OSError exception: %s\n" % str(e)
+            exFlag = True
 
-      except IOError, e:
-         exMsg = "** IOError exception: %s\n" % str(e)
-         exFlag = True
+         except IOError, e:
+            exMsg = "** IOError exception: %s\n" % str(e)
+            exFlag = True
+            
+         except:
+            e = sys.exc_info()[0]
+            exMsg = "** Unexpected excetion: %s\n" % str(e)
+            exFlag = True
 
-      if exFlag:
-         # make sure we stop processing any states...
-         self.swState = gc.gSTATE_ABORT
+         if exFlag:
+            # make sure we stop processing any states...
+            self.swState = gc.gSTATE_ABORT
 
-         if self.cmdLineOptions.verbose:
-            print exMsg.strip()
+            if self.cmdLineOptions.verbose:
+               print exMsg.strip()
          
    def run(self):
       """Run Worker Thread."""

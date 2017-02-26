@@ -101,14 +101,20 @@ class machIf_Base():
             e = self.serialTxRxInQueue.get()
 
             if e.event_id == gc.gEV_ABORT:
-               rxData['event'] = gc.gEV_ABORT
+               rxData['event'] = {}
+               rxData['event']['id'] = gc.gEV_ABORT
+               rxData['event']['data'] = e.data
 
             elif e.event_id == gc.gEV_SER_RXDATA:
 
                if len(e.data) > 0:
                   rxData = self.Decode(e.data)
                   rxData['raw_data'] = e.data
-      
+                  
+            #print gc.gStateData.machIfId
+            #print gc.gStateData.machIfName
+            #print gc.gStateData.serialPort
+            
       return rxData
 
    def Write(self, txData, raw_write=False):
@@ -123,5 +129,5 @@ class machIf_Base():
                txData))
          
          bytesSent = len(txData)
-         
+      
       return bytesSent

@@ -78,17 +78,14 @@ def GetMachIfName(machIfId):
 def GetMachIfId(deviceStr):
    machIfId = gMACHIF_NONE
 
-   if gMachIf_GRBL.GetName() in deviceStr:
+   if deviceStr in [gMachIf_g2core.GetName(), "TinyG2"]:
+      machIfId = gMachIf_g2core.GetId()
+
+   elif deviceStr in [gMachIf_GRBL.GetName(), "Grbl"]:
       machIfId = gMachIf_GRBL.GetId()
 
-   elif "TinyG2" in deviceStr:
-      machIfId = gMachIf_g2core.GetId()
-
-   if gMachIf_TinyG.GetName() in deviceStr:
+   elif deviceStr in [gMachIf_TinyG.GetName()]:
       machIfId = gMachIf_TinyG.GetId()
-
-   if gMachIf_g2core.GetName() in deviceStr:
-      machIfId = gMachIf_g2core.GetId()
 
    return machIfId
 
