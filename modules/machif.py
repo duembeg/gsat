@@ -51,11 +51,11 @@ class machIf_Base():
       
       self.cmdLineOptions = cmd_line_options      
       
-      self.serialPort = None
+      self.serialPortOpen = False
       self.serialTxRxThread = None
       self.serialTxRxInQueue = Queue.Queue()
       self.serialTxRxOutQueue = Queue.Queue()
-      
+      self.stateData = None
 
    def Close(self):
       if self.serialTxRxThread is not None:
@@ -67,29 +67,47 @@ class machIf_Base():
    def Decode(self, data):
       return data
 
+   def GetId(self):
+      return self.id
+
+   def GetInitCommCmd (self):
+      return ""
+     
+   def GetName(self):
+      return self.name
+      
    def GetSetAxisCmd (self):
       return ""
       
-   def GetId(self):
-      return self.id
+   def GetStatusCmd(self):
+      return ""
       
-   def GetName(self):
-      return self.name
-
    def GetStatus(self):
-      return ""
+      if self.OkToSend(self.GetStatusCmd()):
+         self.Write(self.GetStatusCmd())
 
-   def Init(self, serial):
-      self.serialPort = serial
+   def Init(self, state_data):
+      self.stateData = state_data
       
-   def InitComm(self):
-      return ""
+   def IsSerialPortOpen(self):
+      return self.serialPortOpen
+      
+   def OkToSend(self, data):
+      bufferHasRoom = True
+      
+      data = self.Encode(data, bookeeping=False)
+      
+      if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
+         bufferHasRoom = False
+         
+      return bufferHasRoom
 
    def Open(self):
-      # inti serial RX thread
-      self.serialTxRxThread = st.serialPortThread(self, self.serialPort, self.serialTxRxOutQueue,
-      self.serialTxRxInQueue, self.cmdLineOptions)
-      self.Write(self.InitComm())
+      if self.stateData is not None:
+         # inti serial RX thread
+         self.serialTxRxThread = st.serialPortThread(self, self.stateData, self.serialTxRxOutQueue,
+         self.serialTxRxInQueue, self.cmdLineOptions)
+         self.Write(self.GetInitCommCmd())
 
    def Read(self):
       rxData = {}
@@ -100,10 +118,17 @@ class machIf_Base():
             # get item from queue
             e = self.serialTxRxInQueue.get()
 
-            if e.event_id == gc.gEV_ABORT:
+            if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN, 
+               gc.gEV_SER_PORT_CLOSE]:
                rxData['event'] = {}
-               rxData['event']['id'] = gc.gEV_ABORT
+               rxData['event']['id'] = e.event_id 
                rxData['event']['data'] = e.data
+               
+               if e.event_id == gc.gEV_SER_PORT_OPEN:
+                  self.serialPortOpen = True
+
+               elif e.event_id == gc.gEV_SER_PORT_CLOSE:
+                  self.serialPortOpen = False
 
             elif e.event_id == gc.gEV_SER_RXDATA:
 
@@ -113,7 +138,6 @@ class machIf_Base():
                   
             #print gc.gStateData.machIfId
             #print gc.gStateData.machIfName
-            #print gc.gStateData.serialPort
             
       return rxData
 
@@ -125,7 +149,7 @@ class machIf_Base():
          if not raw_write:
             txData = self.Encode(txData)
                
-         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SEND, 
+         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA, 
                txData))
          
          bytesSent = len(txData)

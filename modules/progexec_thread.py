@@ -57,13 +57,13 @@ gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 ----------------------------------------------------------------------------"""
 class programExecuteThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options, machif_id, machine_auto_status=False):
+   def __init__(self, notify_window, state_data, in_queue, out_queue, cmd_line_options, machif_id, machine_auto_status=False):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
       # init local variables
       self.notifyWindow = notify_window
-      self.serPort = serial
+      self.stateData = state_data
       self.progExecInQueue = in_queue
       self.progExecOutQueue = out_queue
       self.cmdLineOptions = cmd_line_options
@@ -112,9 +112,12 @@ class programExecuteThread(threading.Thread):
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_EXIT."
-            self.endThread = True
-            self.swState = gc.gSTATE_IDLE
-            self.machIfModule.Close()
+               
+            if self.machIfModule.IsSerialPortOpen():
+               self.machIfModule.Close()
+            else:
+               self.endThread = True
+               self.swState = gc.gSTATE_IDLE
 
          elif e.event_id == gc.gEV_CMD_RUN:
             if self.cmdLineOptions.vverbose:
@@ -165,8 +168,8 @@ class programExecuteThread(threading.Thread):
                print "** programExecuteThread got event gc.gEV_CMD_GET_STATUS."
             #self.serialWriteQueue.append((self.machIfModule.GetStatus(), False))
             # should not hold status request for waiting for ack to block
-            if self.machIfModule.OkToSend(self.machIfModule.GetStatus()):
-               self.SerialWrite(self.machIfModule.GetStatus())
+            if self.machIfModule.OkToSend(self.machIfModule.GetStatusCmd()):
+               self.SerialWrite(self.machIfModule.GetStatusCmd())
 
          else:
             if self.cmdLineOptions.vverbose:
@@ -181,20 +184,28 @@ class programExecuteThread(threading.Thread):
       if self.cmdLineOptions.vverbose:
          print "** programExecuteThread Init Device Module (%s)." % self.machIfModule.GetName()
          
-      self.machIfModule.Init(self.serPort)
+      self.machIfModule.Init(self.stateData)
 
    def SerialRead(self):
       rxData = self.machIfModule.Read()
 
       if 'event' in rxData:
+         forwardEvent = True
          e = rxData['event']
          if e['id'] == gc.gEV_ABORT:
             # make sure we stop processing any states...
             self.swState = gc.gSTATE_ABORT
+         
+         if e['id'] == gc.gEV_EXIT:
+            self.endThread = True
+            self.swState = gc.gSTATE_IDLE
+            forwardEvent = False
 
+         if forwardEvent:
             # add data to queue and signal main window to consume
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_ABORT, e['data']))
+            self.progExecOutQueue.put(gc.threadEvent(e['id'], e['data']))
             wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+
       else:
          if 'raw_data' in rxData:
             raw_data = rxData['raw_data']
@@ -301,7 +312,7 @@ class programExecuteThread(threading.Thread):
             self.WaitForAcknowledge()
 
             if self.machineAutoStatus:
-               self.SerialWrite(self.machIfModule.GetStatus())
+               self.SerialWrite(self.machIfModule.GetStatusCmd())
          else:
             writeToDevice = False
             self.SerialRead()            
@@ -427,41 +438,28 @@ class programExecuteThread(threading.Thread):
          if self.endThread:
             break
 
-         if self.serPort.isOpen():
-            if self.swState == gc.gSTATE_RUN:
-               self.ProcessRunSate()
-            elif self.swState == gc.gSTATE_STEP:
-               self.ProcessStepSate()
-            elif self.swState == gc.gSTATE_IDLE:
-               self.ProcessIdleSate()
-            elif self.swState == gc.gSTATE_BREAK:
-               self.ProcessIdleSate()
-            elif self.swState == gc.gSTATE_ABORT:
-               # do nothing, wait to be terminated
-               pass
-            else:
-               if self.cmdLineOptions.verbose:
-                  print "** programExecuteThread unexpected state [%d], moving back to IDLE." \
-                     ", swState->gc.gSTATE_IDLE " % (self.swState)
-
-               self.ProcessIdleSate()
-               self.swState = gc.gSTATE_IDLE
-         else:
-            message ="** Serial Port is close, programExecuteThread terminating.\n"
-
-            if self.cmdLineOptions.verbose:
-               print message.strip()
-
-            # make sure we stop processing any states...
-            self.swState = gc.gSTATE_ABORT
-
-            # add data to queue and signal main window to consume
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_ABORT, ""))
-            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-            wx.LogMessage(message)
+         if self.swState == gc.gSTATE_RUN:
+            self.ProcessRunSate()
+         elif self.swState == gc.gSTATE_STEP:
+            self.ProcessStepSate()
+         elif self.swState == gc.gSTATE_IDLE:
+            self.ProcessIdleSate()
+         elif self.swState == gc.gSTATE_BREAK:
+            self.ProcessIdleSate()
+         elif self.swState == gc.gSTATE_ABORT:
             break
+         else:
+            if self.cmdLineOptions.verbose:
+               print "** programExecuteThread unexpected state [%d], moving back to IDLE." \
+                  ", swState->gc.gSTATE_IDLE " % (self.swState)
+
+            self.ProcessIdleSate()
+            self.swState = gc.gSTATE_IDLE
 
          time.sleep(0.02)
 
       if self.cmdLineOptions.vverbose:
          print "** programExecuteThread exit."
+
+      self.progExecOutQueue.put(gc.threadEvent(gc.gEV_EXIT, ""))
+      wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))

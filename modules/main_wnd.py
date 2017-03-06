@@ -1714,90 +1714,19 @@ class gsatMainWindow(wx.Frame):
       sbList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200']
       return sbList
 
-   def SerialOpen(self, port, baud):
-      
-      if self.serPort is not None:
-         if self.serPort.isOpen():
-            self.serPort.flushInput()
-            self.serPort.close()
-
-         del self.serPort
-
-      if port != "None":
-         portName = port
-         if os.name == 'nt':
-            portName=r"\\.\%s" % (str(port))
-
-         try:
-            self.serPort = serial.Serial(port=portName,
-               baudrate=baud,
-               timeout=0.001,
-               bytesize=serial.EIGHTBITS,
-               parity=serial.PARITY_NONE,
-               stopbits=serial.STOPBITS_ONE,
-               xonxoff=False,
-               rtscts=False,
-               dsrdtr=False)
-
-         except serial.SerialException, e:
-            if self.cmdLineOptions.verbose:
-               print "gsatMainWindow pySerial exception: %s" % e.message
-
-            dlg = wx.MessageDialog(self, e.message,
-               "pySerial exception", wx.OK|wx.ICON_STOP)
-            result = dlg.ShowModal()
-            dlg.Destroy()
-            self.serPort.close()
-         except OSError, e:
-            if self.cmdLineOptions.verbose:
-               print "gsatMainWindow OSError exception: %s" % str(e)
-
-            dlg = wx.MessageDialog(self, str(e),
-               "OSError exception", wx.OK|wx.ICON_STOP)
-            result = dlg.ShowModal()
-            dlg.Destroy()
-            self.serPort.close()
-
-         if self.serPort.isOpen():
-            self.progExecThread = progexec.programExecuteThread(self, self.serPort, self.mainWndOutQueue,
-               self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
-
-            serial_fd = self.serPort.fileno()
-            tty.setraw(serial_fd)
-
-            self.stateData.serialPortIsOpen = True
-            self.stateData.serialPort = port
-            self.stateData.serialPortBaud = baud
-            self.AutoRefreshTimerStart()
-      else:
-         dlg = wx.MessageDialog(self,
-            "There is no valid serial port detected.\n" \
-            "connect a valid serial device and try again.",
-            "",
-            wx.OK|wx.ICON_STOP)
-         result = dlg.ShowModal()
-         dlg.Destroy()
-
-      self.UpdateUI()
-
    def SerialClose(self):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         
-      time.sleep(1)
+
+   def SerialOpen(self, port, baud):
+      self.stateData.serialPort = port
+      self.stateData.serialPortBaud = baud
       
-      if (self.serPort is not None) and (self.serPort.isOpen()):
-         self.progExecThread = None
-         #self.serPort.flushInput()
-         self.serPort.close()
-         del self.serPort
+      self.progExecThread = progexec.programExecuteThread(self, self.stateData, self.mainWndOutQueue,
+         self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
 
-      self.stateData.serialPortIsOpen = False
-      self.stateData.deviceDetected = False
-      self.AutoRefreshTimerStop()
-      self.stateData.swState = gc.gSTATE_IDLE
-      self.UpdateUI()
-
+      self.UpdateUI()         
+   
    def SerialWrite(self, serialData):
       if self.stateData.serialPortIsOpen:
 
@@ -1986,7 +1915,11 @@ class gsatMainWindow(wx.Frame):
                print "gsatMainWindow got event gc.gEV_ABORT."
             self.outputText.AppendText(te.data)
             self.progExecThread = None
-            self.SerialClose()
+            self.stateData.serialPortIsOpen = False
+            self.stateData.deviceDetected = False
+            self.AutoRefreshTimerStop()            
+            self.stateData.swState = gc.gSTATE_IDLE
+            self.UpdateUI()
 
          elif te.event_id == gc.gEV_DATA_STATUS:
             self.stateData.machineStatusString = te.data.get('stat', 'Uknown')
@@ -2110,7 +2043,30 @@ class gsatMainWindow(wx.Frame):
 
             if result == wx.ID_YES:
                self.OnRun()
+         elif te.event_id == gc.gEV_SER_PORT_OPEN:
+            if self.cmdLineOptions.vverbose:
+               print "gsatMainWindow got event gc.gEV_SER_PORT_OPEN."
+            
+            self.stateData.serialPortIsOpen = True
+            self.AutoRefreshTimerStart()
+            self.UpdateUI()
 
+         elif te.event_id == gc.gEV_SER_PORT_CLOSE:
+            if self.cmdLineOptions.vverbose:
+               print "gsatMainWindow got event gc.gEV_SER_PORT_CLOSE."
+            
+            self.stateData.serialPortIsOpen = False
+            self.stateData.deviceDetected = False
+            self.AutoRefreshTimerStop()            
+            self.stateData.swState = gc.gSTATE_IDLE
+            self.UpdateUI()
+
+         elif te.event_id == gc.gEV_EXIT:
+            if self.cmdLineOptions.vverbose:
+               print "gsatMainWindow got event gc.gEV_EXIT."
+            
+            self.progExecThread = None
+            
          else:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got UKNOWN event id[%d]" % te.event_id

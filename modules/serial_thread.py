@@ -26,6 +26,7 @@ import os
 import re
 import sys
 import serial
+import tty
 import threading
 import Queue
 import time
@@ -41,13 +42,14 @@ import modules.config as gc
 ----------------------------------------------------------------------------"""
 class serialPortThread(threading.Thread):
    """Worker Thread Class."""
-   def __init__(self, notify_window, serial, in_queue, out_queue, cmd_line_options):
+   def __init__(self, notify_window, state_data, in_queue, out_queue, cmd_line_options):
       """Init Worker Thread Class."""
       threading.Thread.__init__(self)
 
       # init local variables
       self.notifyWindow = notify_window
-      self.serPort = serial
+      self.serPort = None
+      self.stateData = state_data
       self.serialThreadInQueue = in_queue
       self.serialThreadOutQueue = out_queue
       self.cmdLineOptions = cmd_line_options
@@ -72,11 +74,15 @@ class serialPortThread(threading.Thread):
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
                print "** serialPortThread got event gc.gEV_CMD_EXIT."
+            
+            self.SerialClose()
+               
             self.endThread = True
          
-         elif e.event_id == gc.gEV_CMD_SEND:
+         elif e.event_id == gc.gEV_CMD_SER_TXDATA:
             if self.cmdLineOptions.vverbose:
-               print "** serialPortThread got event gc.gEV_CMD_SEND."
+               print "** serialPortThread got event gc.gEV_CMD_SER_TXDATA."
+               
             self.SerialWrite(e.data)
 
          else:
@@ -86,6 +92,91 @@ class serialPortThread(threading.Thread):
    """-------------------------------------------------------------------------
    serialPortThread: General Functions
    -------------------------------------------------------------------------"""
+   def SerialClose(self):
+      if self.serPort is not None: 
+         if self.serPort.isOpen():
+            #self.serPort.flushInput()
+            self.serPort.close()
+            
+            if self.cmdLineOptions.vverbose:
+               print "** serialPortThread close serial port."
+
+            self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_PORT_CLOSE, 0))
+      
+   def SerialOpen(self):
+      exFlag = False
+      exMsg = ""
+
+      self.SerialClose()
+      
+      port = self.stateData.serialPort
+      baud = self.stateData.serialPortBaud
+      
+      #import pdb;pdb.set_trace()
+      
+      if port != "None":
+         portName = port
+         if os.name == 'nt':
+            portName=r"\\.\%s" % (str(port))
+
+         try:
+            self.serPort = serial.Serial(port=portName,
+               baudrate=baud,
+               timeout=0.001,
+               bytesize=serial.EIGHTBITS,
+               parity=serial.PARITY_NONE,
+               stopbits=serial.STOPBITS_ONE,
+               xonxoff=False,
+               rtscts=False,
+               dsrdtr=False)
+
+         except serial.SerialException, e:
+            exMsg = "** PySerial exception: %s\n" % e.message
+            exFlag = True
+
+         except OSError, e:
+            exMsg = "** OSError exception: %s\n" % str(e)
+            exFlag = True
+
+         except IOError, e:
+            exMsg = "** IOError exception: %s\n" % str(e)
+            exFlag = True
+            
+         except:
+            e = sys.exc_info()[0]
+            exMsg = "** Unexpected exception: %s\n" % str(e)
+            exFlag = True
+
+         if self.serPort is not None:
+            if self.serPort.isOpen():
+               # change tty mode, this is strange and not doing it 
+               # was causing issues reconnecting to GRBL if disconnected 
+               # because exception, it was fine other wise.
+               # These two lines makes it so opening port again will 
+               # connect successfully even after exception close
+               serial_fd = self.serPort.fileno()
+               tty.setraw(serial_fd)
+               
+               if self.cmdLineOptions.vverbose:
+                  print "** serialPortThread open serial port [%s] at %s bps." % (portName, baud)
+               
+               # no exceptions report serial port open
+               self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_PORT_OPEN, port))
+               
+      else:
+         exMsg = "There is no valid serial port detected {%s}." % str (port)
+         exFlag = True
+         
+      if exFlag:
+         # make sure we stop processing any states...
+         self.swState = gc.gSTATE_ABORT
+
+         if self.cmdLineOptions.verbose:
+            print exMsg.strip()
+
+         # add data to queue
+         self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
+      
    def SerialRead(self):
       exFlag = False
       exMsg = ""
@@ -136,6 +227,12 @@ class serialPortThread(threading.Thread):
          exMsg = "** IOError exception: %s\n" % str(e)
          exFlag = True
 
+      except:
+         e = sys.exc_info()[0]
+         exMsg = "** Unexpected exception: %s\n" % str(e)
+         exFlag = True
+         
+
       if exFlag:
          # make sure we stop processing any states...
          self.swState = gc.gSTATE_ABORT
@@ -145,6 +242,8 @@ class serialPortThread(threading.Thread):
 
          # add data to queue
          self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
+         self.SerialClose()
+         
 
    def SerialWrite(self, serialData):
       exFlag = False
@@ -189,6 +288,10 @@ class serialPortThread(threading.Thread):
             if self.cmdLineOptions.verbose:
                print exMsg.strip()
          
+            # add data to queue
+            self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
+            self.SerialClose()
+         
    def run(self):
       """Run Worker Thread."""
       # This is the code executing in the new thread.
@@ -196,8 +299,10 @@ class serialPortThread(threading.Thread):
 
       if self.cmdLineOptions.vverbose:
          print "** serialPortThread start."
+         
+      self.SerialOpen()
 
-      while(self.endThread != True):
+      while ((self.endThread != True) and (self.serPort is not None)):
          #print "** serialPortThread running.... QO: %d, QI:%d" % \
          #   (self.serialThreadOutQueue.qsize(), self.serialThreadInQueue.qsize())
 
@@ -239,3 +344,5 @@ class serialPortThread(threading.Thread):
 
       if self.cmdLineOptions.vverbose:
          print "** serialPortThread exit."
+      
+      self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_EXIT, ""))

@@ -101,20 +101,20 @@ open again and will start in IDLE state.
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
 # EVENT ID             EVENT CODE
-gEV_CMD_NULL         = 0100
-gEV_CMD_EXIT         = 1000
-gEV_CMD_RUN          = 1030
-gEV_CMD_STEP         = 1040
-gEV_CMD_STOP         = 1050
-gEV_CMD_SEND         = 1060
-gEV_CMD_SEND_W_ACK   = 1062
-gEV_CMD_AUTO_STATUS  = 1070
-gEV_CMD_OK_TO_POST   = 1080
-gEV_CMD_GET_STATUS   = 1090
-gEV_CMD_MACHIF_OPEN  = 1100
-gEV_CMD_MACHIF_CLOSE = 1110
+gEV_CMD_NULL         =  100
+gEV_CMD_EXIT         =  200
+gEV_CMD_RUN          = 1000
+gEV_CMD_STEP         = 1010
+gEV_CMD_STOP         = 1020
+gEV_CMD_SEND         = 1030
+gEV_CMD_SEND_W_ACK   = 1040
+gEV_CMD_AUTO_STATUS  = 1050
+gEV_CMD_OK_TO_POST   = 1060
+gEV_CMD_GET_STATUS   = 1070
+gEV_CMD_SER_TXDATA   = 1080
 
-gEV_NULL             = 0100
+gEV_NULL             =  100
+gEV_EXIT             =  200
 gEV_ABORT            = 2000
 gEV_RUN_END          = 2010
 gEV_STEP_END         = 2020
@@ -124,10 +124,12 @@ gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
 gEV_SER_RXDATA       = 2080
-gEV_TIMER            = 2090
-gEV_DATA_STATUS      = 2100
-gEV_DEVICE_DETECTED  = 2110
-gEV_MACHIF_STATUS    = 2120 
+gEV_SER_PORT_OPEN    = 2090 
+gEV_SER_PORT_CLOSE   = 2100 
+gEV_TIMER            = 2110
+gEV_DATA_STATUS      = 2120
+gEV_DEVICE_DETECTED  = 2130
+
 
 """----------------------------------------------------------------------------
    InitConfig:

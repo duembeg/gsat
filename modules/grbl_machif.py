@@ -220,23 +220,11 @@ class machIf_GRBL(mi.machIf_Base):
          
       return data
 
-   def GetSetAxisCmd (self):
+   def GetInitCommCmd(self):
+      return ""
+      
+   def GetSetAxisCmd(self):
       return "G92"
-
-   def GetStatus(self):
+      
+   def GetStatusCmd(self):
       return self.getSatusCmd
-
-   def InitComm(self):
-      return ''
-      
-   def OkToSend(self, data):
-      bufferHasRoom = True
-      
-      data = self.Encode(data, bookeeping=False)
-      
-      if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
-         bufferHasRoom = False
-         
-      return bufferHasRoom
-
-

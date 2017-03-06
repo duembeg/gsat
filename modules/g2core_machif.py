@@ -54,7 +54,7 @@ class machIf_g2core(mi.machIf_Base):
    def Decode(self, data):
       dataDict = {}
 
-      if data.startswith("{"):
+      try:
          dataDict = json.loads(data)
 
          if 'r' in dataDict:
@@ -117,7 +117,7 @@ class machIf_g2core(mi.machIf_Base):
                   
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
-      else:
+      except:
          if self.cmdLineOptions.vverbose:
             print "** machIf_g2core cannot decode data!! [%s]." % data
 
@@ -137,21 +137,11 @@ class machIf_g2core(mi.machIf_Base):
          
       return data
       
+   def GetInitCommCmd (self):
+      return ""
+
    def GetSetAxisCmd (self):
       return "G28.3"
       
-   def GetStatus(self):
+   def GetStatusCmd(self):
       return '{"sr":null}\n'
-
-   def InitComm(self):
-      return ''
-
-   def OkToSend(self, data):
-      bufferHasRoom = True
-      
-      data = self.Encode(data, bookeeping=False)
-      
-      if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
-         bufferHasRoom = False
-         
-      return bufferHasRoom
