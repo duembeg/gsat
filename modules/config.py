@@ -124,8 +124,8 @@ gEV_HIT_BRK_PT       = 2050
 gEV_PC_UPDATE        = 2060
 gEV_HIT_MSG          = 2070
 gEV_SER_RXDATA       = 2080
-gEV_SER_PORT_OPEN    = 2090 
-gEV_SER_PORT_CLOSE   = 2100 
+gEV_SER_PORT_OPEN    = 2090
+gEV_SER_PORT_CLOSE   = 2100
 gEV_TIMER            = 2110
 gEV_DATA_STATUS      = 2120
 gEV_DEVICE_DETECTED  = 2130
@@ -139,7 +139,7 @@ def InitConfig(cmd_line_options, config_data, state_data):
    global gCmdLineOptions
    global gConfigData
    global gStateData
-   
+
    gCmdLineOptions = cmd_line_options
    gConfigData = config_data
    gStateData = state_data

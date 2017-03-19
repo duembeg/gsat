@@ -104,7 +104,7 @@ class machIf_GRBL(mi.machIf_Base):
       mi.machIf_Base.__init__(self, cmd_line_options, 1000, "grbl", 127, 0, 0.90)
 
       self.inputBufferPart = list()
-            
+
       self.getSatusCmd = '?'
       self.currentStatus = GRBL_STATE_UKNOWN
       self.autoStatusNextMicro = None
@@ -122,12 +122,12 @@ class machIf_GRBL(mi.machIf_Base):
       # statusData[4] : Work X
       # statusData[5] : Work Y
       # statusData[6] : Work Z
-      
+
       status = gReGRBLMachineStatus.match(data)
       if status is not None:
          statusData = status.groups()
          sr = {}
-         
+
          # remove the "?" used to get status notice no "\n"
          bufferPart = 1
          self.inputBufferSize = self.inputBufferSize - bufferPart
@@ -144,14 +144,14 @@ class machIf_GRBL(mi.machIf_Base):
             print "** machIf_GRBL str match from %s" % str(data.strip())
             print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
          # check on status change
          decodedStatus = gGrblStateDict.get(statusData[0], GRBL_STATE_UKNOWN)
          if self.currentStatus != decodedStatus:
             if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
                self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds= self.stateData.machineStatusAutoRefreshPeriod * 1000)
-               
+
             self.currentStatus = decodedStatus
 
       ack = gReGRBLMachineAck.search(data)
@@ -160,51 +160,51 @@ class machIf_GRBL(mi.machIf_Base):
 
          if len(self.inputBufferPart) > 0:
             bufferPart = self.inputBufferPart.pop(0)
-         
+
          self.inputBufferSize = self.inputBufferSize - bufferPart
-         
+
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL found acknowledgement [%s]" % data.strip()
-            
+
          r = {}
          dataDict['r'] = r
          dataDict['f'] = [0,0,bufferPart]
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
-         
+
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
       error = gReGRBLMachineError.search(data)
       if error is not None:
          bufferPart = 0
-         
+
          if len(self.inputBufferPart) > 0:
             bufferPart = self.inputBufferPart.pop(0)
-         
+
          self.inputBufferSize = self.inputBufferSize - bufferPart
-         
+
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL found error [%s]" % data.strip()
 
          if 'r' not in dataDict:
             r = {}
             dataDict['r'] = r
-         
+
          error_code = error.group(1).strip()
          if error_code.isdigit():
             error_code = int(error_code)
          else:
             error_code = -1
-            
+
          dataDict['f'] = [0,error_code,bufferPart, error.group(1).strip()]
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
-         
+
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
       version = gReGrblVersion.match(data)
       if version is not None:
@@ -220,57 +220,57 @@ class machIf_GRBL(mi.machIf_Base):
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
       return dataDict
-      
+
    def Encode(self, data, bookeeping=True):
       if len(data) == 0:
          return data
-      
+
       data = data.encode('ascii')
-      
-      # handle special cases doe to status in cmd line and how GRBL 
+
+      # handle special cases doe to status in cmd line and how GRBL
       # reports deals with this. if not careful we might get two status
       # from a single line but is not consistence on hos this works.
       # for this reason if we find "?" on the line will remove all but one
       # also add 1 to the buffer since the status will remove 1 and
-      # the acknowledged will remove the length of the line. If this is 
-      # not done the "?" will be counted twice when removing from 
+      # the acknowledged will remove the length of the line. If this is
+      # not done the "?" will be counted twice when removing from
       # input buffer usage.
       if data.find(self.getSatusCmd) != -1:
          data = data.replace(self.getSatusCmd, "")
          data = "".join([data, "?"])
-         
+
          if bookeeping:
             self.inputBufferSize = self.inputBufferSize + 1
-            
+
       if data == self.getSatusCmd and bookeeping:
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (1, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
-         
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+
       elif bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
-         
+
          self.inputBufferPart.append(dataLen)
-            
+
          if self.cmdLineOptions.vverbose:
             print "** machIf_GRBL input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (dataLen, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
-         
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+
       return data
 
    def Init(self, state_data):
       mi.machIf_Base.Init(self, state_data)
       self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
-      
+
    def GetInitCommCmd(self):
       return ""
-      
+
    def GetSetAxisCmd(self):
       return "G92"
-      
+
    def GetStatusCmd(self):
       return self.getSatusCmd
 
@@ -283,42 +283,42 @@ class machIf_GRBL(mi.machIf_Base):
          if  long(tnowMilli - tdeltaMilli) >= 0:
             if self.OkToSend(self.getSatusCmd):
                mi.machIf_Base.Write(self, self.getSatusCmd)
-            
+
             self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
-            
+
       elif self.autoStatusNextMicro != None and self.currentStatus not in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
          self.autoStatusNextMicro = None
-         
+
       if self.machineAutoRefresh != self.stateData.machineStatusAutoRefresh:
          # depending on current state do appropriate action
          if self.machineAutoRefresh == False:
             if self.OkToSend(self.getSatusCmd):
                mi.machIf_Base.Write(self, self.getSatusCmd)
-               
+
             self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
          else:
             self.autoStatusNextMicro = None
-            
+
          # finally update local variable
          self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
-            
-      
+
+
    def Write(self, txData, raw_write=False):
       askForStatus = False
       bytesSent = 0
-      
+
       # moving to active state get at least one status msg
       if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP]:
          askForStatus = True
-         
+
       bytesSent = mi.machIf_Base.Write(self, txData, raw_write)
-      
+
       if askForStatus and self.machineAutoRefresh:
          if self.OkToSend(self.getSatusCmd):
             mi.machIf_Base.Write(self, self.getSatusCmd)
-         
+
          self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
-         
+
       return bytesSent
 
-   
+

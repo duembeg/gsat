@@ -385,7 +385,7 @@ class gsatMainWindow(wx.Frame):
          self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
-      
+
       # register for thread events
       gc.EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
 
@@ -401,7 +401,7 @@ class gsatMainWindow(wx.Frame):
       self.configData.Add('/machine/PortList', self.GetSerialPortList())
       self.configData.Add('/machine/BaudList', self.GetSerialBaudRateList())
       self.InitConfig()
-      
+
       #init global config
       gc.InitConfig (cmd_line_options, self.configData, self.stateData)
 
@@ -1258,7 +1258,7 @@ class gsatMainWindow(wx.Frame):
 
          if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
             self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
-         
+
             self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
             self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
 
@@ -1613,9 +1613,9 @@ class gsatMainWindow(wx.Frame):
    def OnClose(self, e):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
-         
+
       time.sleep(1)
-      
+
       if self.stateData.serialPortIsOpen:
          self.SerialClose()
 
@@ -1702,12 +1702,12 @@ class gsatMainWindow(wx.Frame):
    def SerialOpen(self, port, baud):
       self.stateData.serialPort = port
       self.stateData.serialPortBaud = baud
-      
+
       self.progExecThread = progexec.programExecuteThread(self, self.stateData, self.mainWndOutQueue,
          self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
 
-      self.UpdateUI()         
-   
+      self.UpdateUI()
+
    def SerialWrite(self, serialData):
       if self.stateData.serialPortIsOpen:
 
@@ -1904,14 +1904,14 @@ class gsatMainWindow(wx.Frame):
          elif te.event_id == gc.gEV_DATA_STATUS:
             if 'stat' in te.data:
                self.stateData.machineStatusString = te.data['stat']
-            
+
             if 'fv' in te.data:
                if self.cmdLineOptions.vverbose:
                   print "gsatMainWindow device detected via version string [%s]." % te.data['fv']
                self.stateData.deviceDetected = True
                self.GetMachineStatus()
                self.RunDeviceInitScript()
-               
+
             self.machineStatusPanel.UpdateUI(self.stateData, te.data)
             self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
 
@@ -1925,7 +1925,7 @@ class gsatMainWindow(wx.Frame):
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_OUT."
             self.outputText.AppendText("> %s" % te.data)
-            
+
             if not te.data.endswith("\n"):
                self.outputText.AppendText("\n")
 
@@ -1975,7 +1975,7 @@ class gsatMainWindow(wx.Frame):
                wx.MessageBox(\
                   "Started:	%s\n"\
                   "Ended:	%s\n"\
-                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr), 
+                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr),
                   "G-Code Program",
                   wx.OK|wx.ICON_INFORMATION)
 
@@ -2016,14 +2016,14 @@ class gsatMainWindow(wx.Frame):
          elif te.event_id == gc.gEV_SER_PORT_OPEN:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_SER_PORT_OPEN."
-            
+
             self.stateData.serialPortIsOpen = True
             self.UpdateUI()
 
          elif te.event_id == gc.gEV_SER_PORT_CLOSE:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_SER_PORT_CLOSE."
-            
+
             self.stateData.serialPortIsOpen = False
             self.stateData.deviceDetected = False
             self.stateData.swState = gc.gSTATE_IDLE
@@ -2032,9 +2032,9 @@ class gsatMainWindow(wx.Frame):
          elif te.event_id == gc.gEV_EXIT:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_EXIT."
-            
+
             self.progExecThread = None
-            
+
          else:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got UKNOWN event id[%d]" % te.event_id

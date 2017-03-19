@@ -30,7 +30,7 @@ try:
     import simplejson as json
 except ImportError:
     import json
-    
+
 import modules.config as gc
 import modules.serial_thread as st
 
@@ -48,9 +48,9 @@ class machIf_Base():
       self.inputBufferMaxSize = input_buffer_max_size
       self.inputBufferWatermark = float(self.inputBufferMaxSize) * input_buffer_watermark_prcnt
       self.inputBufferSize = input_buffer_init_val
-      
-      self.cmdLineOptions = cmd_line_options      
-      
+
+      self.cmdLineOptions = cmd_line_options
+
       self.serialPortOpen = False
       self.serialTxRxThread = None
       self.serialTxRxInQueue = Queue.Queue()
@@ -72,34 +72,34 @@ class machIf_Base():
 
    def GetInitCommCmd (self):
       return ""
-     
+
    def GetName(self):
       return self.name
-      
+
    def GetSetAxisCmd (self):
       return ""
-      
+
    def GetStatusCmd(self):
       return ""
-      
+
    def GetStatus(self):
       if self.OkToSend(self.GetStatusCmd()):
          self.Write(self.GetStatusCmd())
 
    def Init(self, state_data):
       self.stateData = state_data
-      
+
    def IsSerialPortOpen(self):
       return self.serialPortOpen
-      
+
    def OkToSend(self, data):
       bufferHasRoom = True
-      
+
       data = self.Encode(data, bookeeping=False)
-      
+
       if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
          bufferHasRoom = False
-         
+
       return bufferHasRoom
 
    def Open(self):
@@ -111,19 +111,19 @@ class machIf_Base():
 
    def Read(self):
       rxData = {}
-      
+
       if self.serialTxRxThread is not None:
 
          if not self.serialTxRxInQueue.empty():
             # get item from queue
             e = self.serialTxRxInQueue.get()
 
-            if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN, 
+            if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN,
                gc.gEV_SER_PORT_CLOSE]:
                rxData['event'] = {}
-               rxData['event']['id'] = e.event_id 
+               rxData['event']['id'] = e.event_id
                rxData['event']['data'] = e.data
-               
+
                if e.event_id == gc.gEV_SER_PORT_OPEN:
                   self.serialPortOpen = True
 
@@ -135,26 +135,26 @@ class machIf_Base():
                if len(e.data) > 0:
                   rxData = self.Decode(e.data)
                   rxData['raw_data'] = e.data
-                  
+
             #print gc.gStateData.machIfId
             #print gc.gStateData.machIfName
-            
+
       return rxData
 
    def Tick(self):
       pass
-      
+
    def Write(self, txData, raw_write=False):
       bytesSent = 0
-      
+
       if self.serialTxRxThread is not None:
-         
+
          if not raw_write:
             txData = self.Encode(txData)
-               
-         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA, 
+
+         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
                txData))
-         
+
          bytesSent = len(txData)
-      
+
       return bytesSent
