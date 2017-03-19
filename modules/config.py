@@ -240,7 +240,7 @@ class gsatConfigData():
          '/cli/CmdHistory'                   :(False, ""),
 
       # machine keys
-         '/machine/Device'                   :(False, "g2core"),
+         '/machine/Device'                   :(False, "grbl"),
          '/machine/Port'                     :(False, ""),
          '/machine/Baud'                     :(False, "115200"),
          '/machine/AutoStatus'               :(True , False),
