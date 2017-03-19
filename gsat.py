@@ -81,6 +81,9 @@ def get_cli_params():
 ----------------------------------------------------------------------------"""
 if __name__ == '__main__':
 
+   if 'ubuntu' in os.getenv('DESKTOP_SESSION', 'unknown'):
+      os.environ["UBUNTU_MENUPROXY"] = "0"
+
    (cmd_line_options, cli_args) = get_cli_params()
 
    app = wx.App(0)
