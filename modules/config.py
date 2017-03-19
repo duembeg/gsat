@@ -244,8 +244,8 @@ class gsatConfigData():
          '/machine/Port'                     :(False, ""),
          '/machine/Baud'                     :(False, "115200"),
          '/machine/AutoStatus'               :(True , False),
-         '/machine/AutoRefresh'              :(True , False),
-         '/machine/AutoRefreshPeriod'        :(True , 1000),
+         '/machine/AutoRefresh'              :(True , True),
+         '/machine/AutoRefreshPeriod'        :(True , 200),
          '/machine/InitScript'               :(False, ""),
          '/machine/GrblDroHack'              :(True , False),
 

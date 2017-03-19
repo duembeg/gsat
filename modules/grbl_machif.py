@@ -108,6 +108,7 @@ class machIf_GRBL(mi.machIf_Base):
       self.getSatusCmd = '?'
       self.currentStatus = GRBL_STATE_UKNOWN
       self.autoStatusNextMicro = None
+      self.machineAutoRefresh = False
 
    def Decode(self, data):
       dataDict = {}
@@ -260,6 +261,10 @@ class machIf_GRBL(mi.machIf_Base):
          
       return data
 
+   def Init(self, state_data):
+      mi.machIf_Base.Init(self, state_data)
+      self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
+      
    def GetInitCommCmd(self):
       return ""
       
@@ -270,6 +275,7 @@ class machIf_GRBL(mi.machIf_Base):
       return self.getSatusCmd
 
    def Tick (self):
+      # check if is time for autorefresh and send get status cmd and prepare next refresh time
       if (self.autoStatusNextMicro != None) and (self.currentStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]):
          tnow = dt.datetime.now()
          tnowMilli = tnow.second*1000 + tnow.microsecond/1000
@@ -282,6 +288,20 @@ class machIf_GRBL(mi.machIf_Base):
             
       elif self.autoStatusNextMicro != None and self.currentStatus not in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
          self.autoStatusNextMicro = None
+         
+      if self.machineAutoRefresh != self.stateData.machineStatusAutoRefresh:
+         # depending on current state do appropriate action
+         if self.machineAutoRefresh == False:
+            if self.OkToSend(self.getSatusCmd):
+               mi.machIf_Base.Write(self, self.getSatusCmd)
+               
+            self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
+         else:
+            self.autoStatusNextMicro = None
+            
+         # finally update local variable
+         self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
+            
       
    def Write(self, txData, raw_write=False):
       askForStatus = False
@@ -293,7 +313,7 @@ class machIf_GRBL(mi.machIf_Base):
          
       bytesSent = mi.machIf_Base.Write(self, txData, raw_write)
       
-      if askForStatus:
+      if askForStatus and self.machineAutoRefresh:
          if self.OkToSend(self.getSatusCmd):
             mi.machIf_Base.Write(self, self.getSatusCmd)
          

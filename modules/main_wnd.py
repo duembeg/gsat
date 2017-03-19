@@ -437,7 +437,6 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
       self.stateData.machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
       self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
-      self.machineGrblDroHack = self.configData.Get('/machine/GrblDroHack')
 
       if self.cmdLineOptions.verbose:
          print "Init config values..."
@@ -916,7 +915,7 @@ class gsatMainWindow(wx.Frame):
          agwStyle=aui.AUI_TB_GRIPPER |
             aui.AUI_TB_OVERFLOW |
             #aui.AUI_TB_TEXT |
-            #aui.AUI_TB_HORZ_TEXT |
+            aui.AUI_TB_HORZ_TEXT |
             #aui.AUI_TB_PLAIN_BACKGROUND
             aui.AUI_TB_DEFAULT_STYLE
       )
@@ -924,7 +923,7 @@ class gsatMainWindow(wx.Frame):
       self.statusToolBar.SetToolBitmapSize(iconSize)
 
       self.statusToolBar.AddSimpleTool(gID_TOOLBAR_LINK_STATUS, "123456789", ico.imgPlugDisconnect.GetBitmap(),
-         "Link Status (link/unlink)")
+         "Open/Close Device port")
       self.statusToolBar.SetToolDisabledBitmap(gID_MENU_RUN, ico.imgPlugDisconnect.GetBitmap())
 
       self.statusToolBar.AddSimpleTool(gID_TOOLBAR_PROGRAM_STATUS, "123456", ico.imgProgram.GetBitmap(),
@@ -1259,9 +1258,9 @@ class gsatMainWindow(wx.Frame):
 
          if self.stateData.machineStatusAutoRefresh != self.machineAutoRefresh or \
             self.stateData.machineStatusAutoRefreshPeriod != self.machineAutoRefreshPeriod:
-
-            self.AutoRefreshTimerStop()
-            self.AutoRefreshTimerStart()
+         
+            self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
+            self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
 
          self.gcText.UpdateSettings(self.configData)
          self.outputText.UpdateSettings(self.configData)
@@ -1452,7 +1451,7 @@ class gsatMainWindow(wx.Frame):
          "    use cycle-restart command (~) to continue.\n"\
          "    \n"
          "    Note: If this is not desirable please reset %s, by closing and opening\n"\
-         "    the serial link port.\n" % (self.stateData.machIfName, self.stateData.machIfName))
+         "    the device serial port.\n" % (self.stateData.machIfName, self.stateData.machIfName))
 
    def OnAbortUpdate(self, e=None):
       state = False
@@ -1550,11 +1549,11 @@ class gsatMainWindow(wx.Frame):
    def OnStatusToolBarForceUpdate(self):
       # Link status
       if self.stateData.serialPortIsOpen:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Linked")
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Close")
          self.statusToolBar.SetToolBitmap(gID_TOOLBAR_LINK_STATUS, ico.imgPlugConnect.GetBitmap())
          self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_LINK_STATUS, ico.imgPlugConnect.GetBitmap())
       else:
-         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Unlinked")
+         self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Open")
          self.statusToolBar.SetToolBitmap(gID_TOOLBAR_LINK_STATUS, ico.imgPlugDisconnect.GetBitmap())
          self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_LINK_STATUS, ico.imgPlugDisconnect.GetBitmap())
 
@@ -1661,24 +1660,6 @@ class gsatMainWindow(wx.Frame):
          self.RunTimerStop()
 
       self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
-
-
-   def AutoRefreshTimerStart(self):
-      self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
-      self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
-
-      if self.stateData.machineStatusAutoRefresh:
-         if self.machineAutoRefreshTimer is not None:
-            self.machineAutoRefreshTimer.Stop()
-         else:
-            t = self.machineAutoRefreshTimer = wx.Timer(self, gID_TIMER_MACHINE_REFRESH)
-            self.Bind(wx.EVT_TIMER, self.OnAutoRefreshTimerAction, t)
-
-         self.machineAutoRefreshTimer.Start(self.stateData.machineStatusAutoRefreshPeriod)
-
-   def AutoRefreshTimerStop(self):
-      if self.machineAutoRefreshTimer is not None:
-         self.machineAutoRefreshTimer.Stop()
 
    def OnAutoRefreshTimerAction(self, e):
       if self.stateData.deviceDetected:
@@ -1917,7 +1898,6 @@ class gsatMainWindow(wx.Frame):
             self.progExecThread = None
             self.stateData.serialPortIsOpen = False
             self.stateData.deviceDetected = False
-            self.AutoRefreshTimerStop()            
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
@@ -1948,24 +1928,6 @@ class gsatMainWindow(wx.Frame):
             
             if not te.data.endswith("\n"):
                self.outputText.AppendText("\n")
-
-            # -----------------------------------------------------------------
-            # Grbl DRO Hack
-            if self.machineGrblDroHack and self.stateData.machIfId == gc.gDEV_GRBL:
-               rematch = gReAxis.findall(te.data)
-               if len(rematch) > 0:
-                  machineStatus = dict()
-                  for match in rematch:
-                     machineStatus["pos%s" % match[0].lower()] = float(match[1])
-
-                  if self.cmdLineOptions.vverbose:
-                     print "gsatMainWindow re GRBL GCODE match %s" % str(rematch)
-                     print "gsatMainWindow str match from %s" % str(te.data.strip())
-
-                  self.stateData.machineStatusString = machineStatus.get('stat', 'Uknown')
-                  self.machineStatusPanel.UpdateUI(self.stateData, machineStatus)
-                  self.machineJoggingPanel.UpdateUI(self.stateData, machineStatus)
-                  #self.UpdateUI()
 
          elif te.event_id == gc.gEV_PC_UPDATE:
             # calculate percentage if lines sent
@@ -2050,12 +2012,12 @@ class gsatMainWindow(wx.Frame):
 
             if result == wx.ID_YES:
                self.OnRun()
+
          elif te.event_id == gc.gEV_SER_PORT_OPEN:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_SER_PORT_OPEN."
             
             self.stateData.serialPortIsOpen = True
-            self.AutoRefreshTimerStart()
             self.UpdateUI()
 
          elif te.event_id == gc.gEV_SER_PORT_CLOSE:
@@ -2064,7 +2026,6 @@ class gsatMainWindow(wx.Frame):
             
             self.stateData.serialPortIsOpen = False
             self.stateData.deviceDetected = False
-            self.AutoRefreshTimerStop()            
             self.stateData.swState = gc.gSTATE_IDLE
             self.UpdateUI()
 
