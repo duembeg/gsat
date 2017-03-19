@@ -232,7 +232,7 @@ class gsatConfigData():
 
       # link keys
          '/link/Port'                        :(False, ""),
-         '/link/Baud'                        :(False, "9600"),
+         '/link/Baud'                        :(False, "115200"),
 
       # cli keys
          '/cli/SaveCmdHistory'               :(True , True),

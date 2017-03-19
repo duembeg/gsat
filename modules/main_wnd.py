@@ -916,7 +916,7 @@ class gsatMainWindow(wx.Frame):
          agwStyle=aui.AUI_TB_GRIPPER |
             aui.AUI_TB_OVERFLOW |
             #aui.AUI_TB_TEXT |
-            aui.AUI_TB_HORZ_TEXT |
+            #aui.AUI_TB_HORZ_TEXT |
             #aui.AUI_TB_PLAIN_BACKGROUND
             aui.AUI_TB_DEFAULT_STYLE
       )
@@ -1922,7 +1922,16 @@ class gsatMainWindow(wx.Frame):
             self.UpdateUI()
 
          elif te.event_id == gc.gEV_DATA_STATUS:
-            self.stateData.machineStatusString = te.data.get('stat', 'Uknown')
+            if 'stat' in te.data:
+               self.stateData.machineStatusString = te.data['stat']
+            
+            if 'fv' in te.data:
+               if self.cmdLineOptions.vverbose:
+                  print "gsatMainWindow device detected via version string [%s]." % te.data['fv']
+               self.stateData.deviceDetected = True
+               self.GetMachineStatus()
+               self.RunDeviceInitScript()
+               
             self.machineStatusPanel.UpdateUI(self.stateData, te.data)
             self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
 
@@ -2001,14 +2010,12 @@ class gsatMainWindow(wx.Frame):
 
             # display run time dialog.
             if self.displayRuntimeDialog:
-               dlg = wx.MessageDialog(self,
+               wx.MessageBox(\
                   "Started:	%s\n"\
                   "Ended:	%s\n"\
-                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr), "G-Code Program",
+                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr), 
+                  "G-Code Program",
                   wx.OK|wx.ICON_INFORMATION)
-
-               result = dlg.ShowModal()
-               dlg.Destroy()
 
          elif te.event_id == gc.gEV_STEP_END:
             if self.cmdLineOptions.vverbose:

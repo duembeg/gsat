@@ -22,6 +22,9 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import time
+import datetime as dt
+
 try:
     import simplejson as json
 except ImportError:
@@ -53,6 +56,33 @@ gReGRBLMachineAck = re.compile(r'^ok\s$')
 # grbl error, example  "error:20", "error: Unsupported command"
 gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
 
+# Numeric reperecentation of state, cehcking strings all the time is not
+# fastest way...
+GRBL_STATE_UKNOWN    = 1000
+GRBL_STATE_IDLE      = 1010
+GRBL_STATE_RUN       = 1020
+GRBL_STATE_HOLD      = 1030
+GRBL_STATE_JOG       = 1040
+GRBL_STATE_ALRARM    = 1050
+GRBL_STATE_DOOR      = 1060
+GRBL_STATE_CHECK     = 1070
+GRBL_STATE_HOME      = 1080
+GRBL_STATE_SLEEP     = 1090
+GRBL_STATE_STOP      = 1100
+
+gGrblStateDict = {
+   "Idle"   : GRBL_STATE_IDLE,
+   "Run"    : GRBL_STATE_RUN,
+   "Hold"   : GRBL_STATE_HOLD,
+   "Jog"    : GRBL_STATE_JOG,
+   "Alarm"  : GRBL_STATE_ALRARM,
+   "Door"   : GRBL_STATE_DOOR,
+   "Check"  : GRBL_STATE_CHECK,
+   "Home"   : GRBL_STATE_HOME,
+   "Sleep"  : GRBL_STATE_SLEEP,
+   "Stop"   : GRBL_STATE_STOP
+   }
+
 
 """----------------------------------------------------------------------------
    machIf_GRBL:
@@ -71,11 +101,13 @@ gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
 ----------------------------------------------------------------------------"""
 class machIf_GRBL(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi.machIf_Base.__init__(self, cmd_line_options, 1000, "GRBL", 127, 0, 0.90)
+      mi.machIf_Base.__init__(self, cmd_line_options, 1000, "grbl", 127, 0, 0.90)
 
       self.inputBufferPart = list()
             
       self.getSatusCmd = '?'
+      self.currentStatus = GRBL_STATE_UKNOWN
+      self.autoStatusNextMicro = None
 
    def Decode(self, data):
       dataDict = {}
@@ -112,6 +144,14 @@ class machIf_GRBL(mi.machIf_Base):
             print "** machIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
+
+         # check on status change
+         decodedStatus = gGrblStateDict.get(statusData[0], GRBL_STATE_UKNOWN)
+         if self.currentStatus != decodedStatus:
+            if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
+               self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds= self.stateData.machineStatusAutoRefreshPeriod * 1000)
+               
+            self.currentStatus = decodedStatus
 
       ack = gReGRBLMachineAck.search(data)
       if ack is not None:
@@ -228,3 +268,37 @@ class machIf_GRBL(mi.machIf_Base):
       
    def GetStatusCmd(self):
       return self.getSatusCmd
+
+   def Tick (self):
+      if (self.autoStatusNextMicro != None) and (self.currentStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]):
+         tnow = dt.datetime.now()
+         tnowMilli = tnow.second*1000 + tnow.microsecond/1000
+         tdeltaMilli = self.autoStatusNextMicro.second*1000 +  self.autoStatusNextMicro.microsecond/1000
+         if  long(tnowMilli - tdeltaMilli) >= 0:
+            if self.OkToSend(self.getSatusCmd):
+               mi.machIf_Base.Write(self, self.getSatusCmd)
+            
+            self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
+            
+      elif self.autoStatusNextMicro != None and self.currentStatus not in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
+         self.autoStatusNextMicro = None
+      
+   def Write(self, txData, raw_write=False):
+      askForStatus = False
+      bytesSent = 0
+      
+      # moving to active state get at least one status msg
+      if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP]:
+         askForStatus = True
+         
+      bytesSent = mi.machIf_Base.Write(self, txData, raw_write)
+      
+      if askForStatus:
+         if self.OkToSend(self.getSatusCmd):
+            mi.machIf_Base.Write(self, self.getSatusCmd)
+         
+         self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
+         
+      return bytesSent
+
+   

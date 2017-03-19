@@ -141,6 +141,9 @@ class machIf_Base():
             
       return rxData
 
+   def Tick(self):
+      pass
+      
    def Write(self, txData, raw_write=False):
       bytesSent = 0
       

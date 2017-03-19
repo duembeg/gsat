@@ -68,7 +68,6 @@ class programExecuteThread(threading.Thread):
       self.progExecOutQueue = out_queue
       self.cmdLineOptions = cmd_line_options
       self.machIfId = machif_id
-      self.deviceDetected = False
       self.okToPostEvents = True
 
       self.gcodeDataLines = []
@@ -182,12 +181,13 @@ class programExecuteThread(threading.Thread):
       self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
       if self.cmdLineOptions.vverbose:
-         print "** programExecuteThread Init Device Module (%s)." % self.machIfModule.GetName()
+         print "** programExecuteThread Init MachIf Module (%s)." % self.machIfModule.GetName()
          
       self.machIfModule.Init(self.stateData)
 
    def SerialRead(self):
       rxData = self.machIfModule.Read()
+      mainWndEvent = False;
 
       if 'event' in rxData:
          forwardEvent = True
@@ -204,7 +204,7 @@ class programExecuteThread(threading.Thread):
          if forwardEvent:
             # add data to queue and signal main window to consume
             self.progExecOutQueue.put(gc.threadEvent(e['id'], e['data']))
-            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+            mainWndEvent = True
 
       else:
          if 'raw_data' in rxData:
@@ -214,15 +214,20 @@ class programExecuteThread(threading.Thread):
 
                # add data to queue and signal main window to consume
                self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_IN, raw_data))
+               mainWndEvent = True
                
          if 'sr' in rxData:
             self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, rxData['sr']))
+            mainWndEvent = True
 
          if 'r' in rxData:
             if 'fv' in rxData['r']:
-               self.deviceDetected = True
-               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DEVICE_DETECTED, None))
+               self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, rxData['r']))
+               mainWndEvent = True
 
+      if mainWndEvent:
+         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+         
       return rxData
 
    def SerialWrite(self, serialData):
@@ -234,6 +239,10 @@ class programExecuteThread(threading.Thread):
          
       return bytesSent
       
+   def Tick(self):
+      self.machIfModule.Tick()
+      self.ProcessQueue()
+   
    def WaitForAcknowledge(self):
       waitForAcknowlege = True
 
@@ -283,7 +292,7 @@ class programExecuteThread(threading.Thread):
             if len(rxDataDict['raw_data'].strip()) > 0:
                waitForResponse = False
 
-         self.ProcessQueue()
+         self.Tick()
 
          if self.endThread:
             waitForResponse = False
@@ -428,8 +437,8 @@ class programExecuteThread(threading.Thread):
 
       while(self.endThread != True):
 
-         # process input queue for new commands or actions
-         self.ProcessQueue()
+         # process bookeeping input queue for new commands or actions
+         self.Tick()
 
          # process write queue from UI cmds
          self.ProcessSerialWriteQueue()
@@ -437,7 +446,7 @@ class programExecuteThread(threading.Thread):
          # check if we need to exit now
          if self.endThread:
             break
-
+         
          if self.swState == gc.gSTATE_RUN:
             self.ProcessRunSate()
          elif self.swState == gc.gSTATE_STEP:

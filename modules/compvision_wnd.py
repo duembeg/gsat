@@ -348,10 +348,10 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
 
    def StopCapture(self):
-      if self.cmdLineOptions.vverbose:
-         print "** gsatCV2Panel StopCapture."
 
       if self.capture:
+         if self.cmdLineOptions.vverbose:
+            print "** gsatCV2Panel StopCapture."
 
          self.capture = False
 
