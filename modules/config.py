@@ -247,7 +247,6 @@ class gsatConfigData():
          '/machine/AutoRefresh'              :(True , True),
          '/machine/AutoRefreshPeriod'        :(True , 200),
          '/machine/InitScript'               :(False, ""),
-         '/machine/GrblDroHack'              :(True , False),
 
       # jogging keys
          '/jogging/XYZReadOnly'              :(True , False),

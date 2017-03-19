@@ -113,7 +113,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.cbAutoRefresh = wx.CheckBox(self, wx.ID_ANY, "Auto Refresh Period")
       self.cbAutoRefresh.SetValue(self.configData.Get('/machine/AutoRefresh'))
       self.cbAutoRefresh.SetToolTip(
-         wx.ToolTip("Send \"STATUS\" request on a time base (experimental)"))
+         wx.ToolTip("Send \"STATUS\" request on a time base (experimental, GRBL only)"))
       hBoxSizer.Add(self.cbAutoRefresh, flag=wx.ALIGN_CENTER_VERTICAL)
 
       # Add spin ctrl
@@ -127,22 +127,11 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
       vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT|wx.EXPAND, border=20)
 
-      # Add Grbl DRO hack check box
-      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.cbGrblDroHack = wx.CheckBox(self, wx.ID_ANY, "Enable Grbl DRO hack")
-      self.cbGrblDroHack.SetValue(self.configData.Get('/machine/GrblDroHack'))
-      self.cbGrblDroHack.SetToolTip(
-         wx.ToolTip("If Device is Grbl, it uses output GCODE to update DRO status"))
-      hBoxSizer.Add(self.cbGrblDroHack, flag=wx.ALIGN_CENTER_VERTICAL)
-
-      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP|wx.LEFT|wx.BOTTOM, border=20)
-
    def UpdatConfigData(self):
       self.configData.Set('/machine/Device', self.deviceComboBox.GetValue())
       self.configData.Set('/machine/Port', self.spComboBox.GetValue())
       self.configData.Set('/machine/Baud', self.sbrComboBox.GetValue())
       self.configData.Set('/machine/InitScript', self.tcInitScript.GetValue())
-      self.configData.Set('/machine/GrblDroHack', self.cbGrblDroHack.GetValue())
       self.configData.Set('/machine/AutoStatus', self.cbAutoStatus.GetValue())
       self.configData.Set('/machine/AutoRefresh', self.cbAutoRefresh.GetValue())
       self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
