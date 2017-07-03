@@ -73,6 +73,7 @@ from wx import stc as stc
 from wx.lib.mixins import listctrl as listmix
 from wx.lib.agw import aui as aui
 from wx.lib.agw import floatspin as fs
+from wx.lib.agw import genericmessagedialog as gmd
 #from wx.lib.agw import flatmenu as fm
 from wx.lib.wordwrap import wordwrap
 from wx.lib import scrolledpanel as scrolled
@@ -385,6 +386,11 @@ class gsatMainWindow(wx.Frame):
          self.configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
 
       self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
+
+      if sys.platform in 'darwin':
+         # for Mac OS X to properly display icon in task bar
+         self.tbicon = wx.TaskBarIcon(iconType=wx.TBI_DOCK)
+         self.tbicon.SetIcon(ico.imgGCSBlack32x32.GetIcon(), __appname__)
 
       # register for thread events
       gc.EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
@@ -1702,6 +1708,8 @@ class gsatMainWindow(wx.Frame):
    def SerialOpen(self, port, baud):
       self.stateData.serialPort = port
       self.stateData.serialPortBaud = baud
+      self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
+      self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
 
       self.progExecThread = progexec.programExecuteThread(self, self.stateData, self.mainWndOutQueue,
          self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
@@ -1972,12 +1980,18 @@ class gsatMainWindow(wx.Frame):
 
             # display run time dialog.
             if self.displayRuntimeDialog:
-               wx.MessageBox(\
+               msgText = \
                   "Started:	%s\n"\
                   "Ended:	%s\n"\
-                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr),
-                  "G-Code Program",
-                  wx.OK|wx.ICON_INFORMATION)
+                  "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr)
+               
+               if sys.platform in 'darwin':
+                  # because dialog icons where not working correctly in Mac OS X
+                  gmd.GenericMessageDialog(msgText, "G-Code Program", 
+                     wx.OK|wx.ICON_INFORMATION)
+               else:
+                  wx.MessageBox(msgText, "G-Code Program",
+                     wx.OK|wx.ICON_INFORMATION)
 
          elif te.event_id == gc.gEV_STEP_END:
             if self.cmdLineOptions.vverbose:
@@ -2001,11 +2015,21 @@ class gsatMainWindow(wx.Frame):
             self.outputText.AppendText("** MSG: %s" % te.data.strip())
 
             if lastSwState == gc.gSTATE_RUN:
-               dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
-                  wx.YES_NO|wx.YES_DEFAULT|wx.ICON_INFORMATION)
+               if sys.platform in 'darwin':
+                  # because dialog icons where not working correctly in Mac OS X
+                  dlg = gmd.GenericMessageDialog(self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
+                     wx.YES_NO|wx.YES_DEFAULT|wx.ICON_INFORMATION)
+               else:
+                  dlg = wx.MessageDialog(self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
+                     wx.YES_NO|wx.YES_DEFAULT|wx.ICON_INFORMATION)
             else:
-               dlg = wx.MessageDialog(self, te.data.strip(), "G-Code Message",
-                  wx.OK|wx.ICON_INFORMATION)
+               if sys.platform in 'darwin':
+                  # because dialog icons where not working correctly in Mac OS X
+                  dlg = gmd.GenericMessageDialog(self, te.data.strip(), "G-Code Message",
+                     wx.OK|wx.ICON_INFORMATION)
+               else:
+                  dlg = wx.MessageDialog(self, te.data.strip(), "G-Code Message",
+                     wx.OK|wx.ICON_INFORMATION)
 
             result = dlg.ShowModal()
             dlg.Destroy()
