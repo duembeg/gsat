@@ -842,7 +842,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          gc.gDEVICE_CMD_GO_TO_POS)
 
    def OnResetToJogVal(self, e):
-      mim = mi.GetMachineIfModule(self.stateData.machIfId)
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
       
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
