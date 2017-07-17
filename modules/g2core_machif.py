@@ -141,7 +141,8 @@ class machIf_g2core(mi.machIf_Base):
       return ""
 
    def GetSetAxisCmd (self):
-      return "G28.3"
+      #return "G28.3"
+      return "G92"
       
    def GetStatusCmd(self):
       return '{"sr":null}\n'

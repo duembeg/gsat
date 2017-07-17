@@ -131,7 +131,7 @@ class serialPortThread(threading.Thread):
                dsrdtr=False)
 
          except serial.SerialException, e:
-            exMsg = "** PySerial exception: %s\n" % e.message
+            exMsg = "** PySerial exception: %s\n" % str(e)
             exFlag = True
 
          except OSError, e:
