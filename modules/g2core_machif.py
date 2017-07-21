@@ -137,8 +137,8 @@ class machIf_g2core(mi.machIf_Base):
          
       return data
       
-   def GetInitCommCmd (self):
-      return ""
+   def GetQueueFlushCmd (self):
+      return "%\n"
 
    def GetSetAxisCmd (self):
       #return "G28.3"

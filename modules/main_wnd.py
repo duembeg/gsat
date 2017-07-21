@@ -1449,15 +1449,19 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
 
    def OnAbort(self, e):
-      self.serPort.write("!\n")
-      self.Stop(gc.gSTATE_ABORT)
-      self.outputText.AppendText("> !\n")
+      self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
+      
+      #self.serPort.write("!\n")
+      #self.Stop(gc.gSTATE_ABORT)
+      self.Stop()
+      #self.outputText.AppendText("> !\n")
+      
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
+      
       self.outputText.AppendText(
-         "*** ABORT!!! a feed-hold command (!) has been sent to %s, you can\n"\
-         "    use cycle-restart command (~) to continue.\n"\
-         "    \n"
-         "    Note: If this is not desirable please reset %s, by closing and opening\n"\
-         "    the device serial port.\n" % (self.stateData.machIfName, self.stateData.machIfName))
+         "*** ABORT!!! a feed-hold command (%s) has been sent to %s, you can\n"\
+         "    use cycle-restart command (%s) to continue.\n"\
+         "" % (mim.GetFeedHoldCmd(), self.stateData.machIfName, mim.GetCycleStartCmd()))
 
    def OnAbortUpdate(self, e=None):
       state = False

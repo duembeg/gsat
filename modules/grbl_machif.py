@@ -265,9 +265,6 @@ class machIf_GRBL(mi.machIf_Base):
       mi.machIf_Base.Init(self, state_data)
       self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
-   def GetInitCommCmd(self):
-      return ""
-
    def GetSetAxisCmd(self):
       return "G92"
 

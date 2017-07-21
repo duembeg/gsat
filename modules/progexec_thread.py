@@ -170,6 +170,21 @@ class programExecuteThread(threading.Thread):
             if self.machIfModule.OkToSend(self.machIfModule.GetStatusCmd()):
                self.SerialWrite(self.machIfModule.GetStatusCmd())
 
+         elif e.event_id == gc.gEv_CMD_FEED_HOLD:
+            if self.cmdLineOptions.vverbose:
+               print "** programExecuteThread got event gc.gEv_CMD_FEED_HOLD."
+            
+            # this command is usually use for abort and machine stop
+            # send without checking if ok... 
+            self.SerialWrite(self.machIfModule.GetFeedHoldCmd())
+               
+         elif e.event_id == gc.gEv_CMD_CYCLE_START:
+            if self.cmdLineOptions.vverbose:
+               print "** programExecuteThread got event gc.gEv_CMD_CYCLE_START."
+            
+            if self.machIfModule.OkToSend(self.machIfModule.GetCycleStartCmd()):
+               self.SerialWrite(self.machIfModule.GetCycleStartCmd())
+
          else:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got unknown event!! [%s]." % str(e.event_id)
@@ -456,6 +471,7 @@ class programExecuteThread(threading.Thread):
          elif self.swState == gc.gSTATE_BREAK:
             self.ProcessIdleSate()
          elif self.swState == gc.gSTATE_ABORT:
+            self.ProcessIdleSate()
             break
          else:
             if self.cmdLineOptions.verbose:

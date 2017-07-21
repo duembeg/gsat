@@ -67,14 +67,23 @@ class machIf_Base():
    def Decode(self, data):
       return data
 
+   def GetCycleStartCmd (self):
+      return "~\n"
+      
    def GetId(self):
       return self.id
+
+   def GetFeedHoldCmd (self):
+      return "!\n"
 
    def GetInitCommCmd (self):
       return ""
 
    def GetName(self):
       return self.name
+
+   def GetQueueFlushCmd (self):
+      return ""
 
    def GetSetAxisCmd (self):
       return ""
