@@ -636,14 +636,14 @@ class gsatMainWindow(wx.Frame):
       runMenu.AppendItem(breakItem)
 
       runMenu.Append(gID_MENU_BREAK_REMOVE_ALL, "Breakpoint &Remove All")
-      
+
       runMenu.AppendSeparator()
 
       setPCItem = wx.MenuItem(runMenu, gID_MENU_SET_PC,"Set &PC")
       if os.name != 'nt':
          setPCItem.SetBitmap(ico.imgSetMapPin.GetBitmap())
       runMenu.AppendItem(setPCItem)
-      
+
       resetPCItem = wx.MenuItem(runMenu, gID_MENU_RESET_PC,"&Reset PC")
       if os.name != 'nt':
          resetPCItem.SetBitmap(ico.imgResetMapPin.GetBitmap())
@@ -653,14 +653,14 @@ class gsatMainWindow(wx.Frame):
       if os.name != 'nt':
          gotoPCItem.SetBitmap(ico.imgGotoMapPin.GetBitmap())
       runMenu.AppendItem(gotoPCItem)
-     
+
       runMenu.AppendSeparator()
 
       machineCycleStart = wx.MenuItem(runMenu, gID_MENU_MACHINE_CYCLE_START,"Machine &Cycle Start")
       if os.name != 'nt':
          machineCycleStart.SetBitmap(ico.imgCycleStart.GetBitmap())
       runMenu.AppendItem(machineCycleStart)
-      
+
       machineFeedHold = wx.MenuItem(runMenu, gID_MENU_MACHINE_FEED_HOLD,"Machine &Feed Hold")
       if os.name != 'nt':
          machineFeedHold.SetBitmap(ico.imgFeedHold.GetBitmap())
@@ -672,7 +672,7 @@ class gsatMainWindow(wx.Frame):
       runMenu.AppendItem(machineReset)
 
       runMenu.AppendSeparator()
-      
+
       abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT,"&Abort")
       if os.name != 'nt':
          abortItem.SetBitmap(ico.imgAbort.GetBitmap())
@@ -762,7 +762,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnBreakToggle,         id=gID_MENU_BREAK_TOGGLE)
       self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll,      id=gID_MENU_BREAK_REMOVE_ALL)
       self.Bind(wx.EVT_MENU, self.OnSetPC,               id=gID_MENU_SET_PC)
-      self.Bind(wx.EVT_MENU, self.OnResetPC,             id=gID_MENU_RESET_PC)      
+      self.Bind(wx.EVT_MENU, self.OnResetPC,             id=gID_MENU_RESET_PC)
       self.Bind(wx.EVT_MENU, self.OnGoToPC,              id=gID_MENU_GOTO_PC)
       self.Bind(wx.EVT_MENU, self.OnMachineCycleStart,   id=gID_MENU_MACHINE_CYCLE_START)
       self.Bind(wx.EVT_MENU, self.OnMachineFeedHold,     id=gID_MENU_MACHINE_FEED_HOLD)
@@ -775,7 +775,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_BUTTON, self.OnStop,              id=gID_MENU_STOP)
       self.Bind(wx.EVT_BUTTON, self.OnBreakToggle,       id=gID_MENU_BREAK_TOGGLE)
       self.Bind(wx.EVT_BUTTON, self.OnSetPC,             id=gID_MENU_SET_PC)
-      self.Bind(wx.EVT_BUTTON, self.OnResetPC,           id=gID_MENU_RESET_PC)            
+      self.Bind(wx.EVT_BUTTON, self.OnResetPC,           id=gID_MENU_RESET_PC)
       self.Bind(wx.EVT_BUTTON, self.OnGoToPC,            id=gID_MENU_GOTO_PC)
       self.Bind(wx.EVT_BUTTON, self.OnMachineCycleStart, id=gID_MENU_MACHINE_CYCLE_START)
       self.Bind(wx.EVT_BUTTON, self.OnMachineFeedHold,   id=gID_MENU_MACHINE_FEED_HOLD)
@@ -800,7 +800,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineResetUpdate,
                                                          id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
-      
+
 
       #------------------------------------------------------------------------
       # tools menu bind
@@ -933,7 +933,7 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STOP, ico.imgStopDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
-      
+
       self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, "Break Toggle",
          ico.imgBreak.GetBitmap(), "Breakpoint Toggle\tF9")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_BREAK_TOGGLE, ico.imgBreakDisabled.GetBitmap())
@@ -957,7 +957,7 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_CYCLE_START, "Cycle Start", ico.imgCycleStart.GetBitmap(),
          "Machine Cycle Start")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CYCLE_START, ico.imgCycleStartDisabled.GetBitmap())
-      
+
       self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_FEED_HOLD, "Feed Hold", ico.imgFeedHold.GetBitmap(),
          "Machine Feed Hold")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_FEED_HOLD, ico.imgFeedHoldDisabled.GetBitmap())
@@ -967,7 +967,7 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_RESET, ico.imgMachineResetDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
-      
+
       self.gcodeToolBar.AddSimpleTool(gID_MENU_ABORT, "Abort", ico.imgAbort.GetBitmap(),
          "Abort")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_ABORT, ico.imgAbortDisabled.GetBitmap())
@@ -1518,7 +1518,7 @@ class gsatMainWindow(wx.Frame):
          e.Enable(state)
 
       self.gcodeToolBar.EnableTool(gID_MENU_RESET_PC, state)
-      
+
    def OnGoToPC(self, e):
       self.gcText.GoToPC()
 
@@ -1534,7 +1534,7 @@ class gsatMainWindow(wx.Frame):
    def OnMachineCycleStart(self, e):
       if self.progExecThread is not None:
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_CYCLE_START, None))
-         
+
          if (self.stateData.swState == gc.gSTATE_PAUSE):
             self.OnRun(e)
 
@@ -1552,10 +1552,10 @@ class gsatMainWindow(wx.Frame):
 
    def OnMachineFeedHold(self, e):
       if self.progExecThread is not None:
-         
+
          if (self.stateData.swState == gc.gSTATE_RUN):
             self.OnPause(e)
-         
+
          self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
 
    def OnMachineFeedHoldUpdate(self, e=None):
@@ -1588,14 +1588,14 @@ class gsatMainWindow(wx.Frame):
 
    def OnAbort(self, e):
       self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
-      
+
       #self.serPort.write("!\n")
       #self.Stop(gc.gSTATE_ABORT)
       self.Stop()
       #self.outputText.AppendText("> !\n")
-      
+
       mim = mi.GetMachIfModule(self.stateData.machIfId)
-      
+
       self.outputText.AppendText(
          "*** ABORT!!! a feed-hold command (%s) has been sent to %s, you can\n"\
          "    use cycle-restart command (%s) to continue.\n"\
@@ -2126,10 +2126,10 @@ class gsatMainWindow(wx.Frame):
                   "Started:	%s\n"\
                   "Ended:	%s\n"\
                   "Run time:	%s" % (runStartTimeStr, runEndTimeStr, runTimeStr)
-               
+
                if sys.platform in 'darwin':
                   # because dialog icons where not working correctly in Mac OS X
-                  gmd.GenericMessageDialog(msgText, "G-Code Program", 
+                  gmd.GenericMessageDialog(msgText, "G-Code Program",
                      wx.OK|wx.ICON_INFORMATION)
                else:
                   wx.MessageBox(msgText, "G-Code Program",

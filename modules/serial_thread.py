@@ -74,15 +74,15 @@ class serialPortThread(threading.Thread):
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
                print "** serialPortThread got event gc.gEV_CMD_EXIT."
-            
+
             self.SerialClose()
-               
+
             self.endThread = True
-         
+
          elif e.event_id == gc.gEV_CMD_SER_TXDATA:
             if self.cmdLineOptions.vverbose:
                print "** serialPortThread got event gc.gEV_CMD_SER_TXDATA."
-               
+
             self.SerialWrite(e.data)
 
          else:
@@ -93,27 +93,27 @@ class serialPortThread(threading.Thread):
    serialPortThread: General Functions
    -------------------------------------------------------------------------"""
    def SerialClose(self):
-      if self.serPort is not None: 
+      if self.serPort is not None:
          if self.serPort.isOpen():
             #self.serPort.flushInput()
             self.serPort.close()
-            
+
             if self.cmdLineOptions.vverbose:
                print "** serialPortThread close serial port."
 
             self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_PORT_CLOSE, 0))
-      
+
    def SerialOpen(self):
       exFlag = False
       exMsg = ""
 
       self.SerialClose()
-      
+
       port = self.stateData.serialPort
       baud = self.stateData.serialPortBaud
-      
+
       #import pdb;pdb.set_trace()
-      
+
       if port != "None":
          portName = port
          if os.name == 'nt':
@@ -141,7 +141,7 @@ class serialPortThread(threading.Thread):
          except IOError, e:
             exMsg = "** IOError exception: %s\n" % str(e)
             exFlag = True
-            
+
          except:
             e = sys.exc_info()[0]
             exMsg = "** Unexpected exception: %s\n" % str(e)
@@ -149,24 +149,24 @@ class serialPortThread(threading.Thread):
 
          if self.serPort is not None:
             if self.serPort.isOpen():
-               # change tty mode, this is strange and not doing it 
-               # was causing issues reconnecting to GRBL if disconnected 
+               # change tty mode, this is strange and not doing it
+               # was causing issues reconnecting to GRBL if disconnected
                # because exception, it was fine other wise.
-               # These two lines makes it so opening port again will 
+               # These two lines makes it so opening port again will
                # connect successfully even after exception close
                serial_fd = self.serPort.fileno()
                tty.setraw(serial_fd)
-               
+
                if self.cmdLineOptions.vverbose:
                   print "** serialPortThread open serial port [%s] at %s bps." % (portName, baud)
-               
+
                # no exceptions report serial port open
                self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_PORT_OPEN, port))
-               
+
       else:
          exMsg = "There is no valid serial port detected {%s}." % str (port)
          exFlag = True
-         
+
       if exFlag:
          # make sure we stop processing any states...
          self.swState = gc.gSTATE_ABORT
@@ -176,7 +176,7 @@ class serialPortThread(threading.Thread):
 
          # add data to queue
          self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
-      
+
    def SerialRead(self):
       exFlag = False
       exMsg = ""
@@ -208,7 +208,7 @@ class serialPortThread(threading.Thread):
 
                   # add data to queue
                   self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_RXDATA, "%s\n" % serialData))
-                  
+
                   # attempt to reduce starvation on other threads
                   # when serial traffic is constant
                   time.sleep(0.01)
@@ -231,7 +231,7 @@ class serialPortThread(threading.Thread):
          e = sys.exc_info()[0]
          exMsg = "** Unexpected exception: %s\n" % str(e)
          exFlag = True
-         
+
 
       if exFlag:
          # make sure we stop processing any states...
@@ -243,7 +243,7 @@ class serialPortThread(threading.Thread):
          # add data to queue
          self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
          self.SerialClose()
-         
+
 
    def SerialWrite(self, serialData):
       exFlag = False
@@ -251,7 +251,7 @@ class serialPortThread(threading.Thread):
 
       if len(serialData) == 0:
          return
-         
+
       if self.serPort.isOpen():
 
          try:
@@ -275,7 +275,7 @@ class serialPortThread(threading.Thread):
          except IOError, e:
             exMsg = "** IOError exception: %s\n" % str(e)
             exFlag = True
-            
+
          except:
             e = sys.exc_info()[0]
             exMsg = "** Unexpected excetion: %s\n" % str(e)
@@ -287,11 +287,11 @@ class serialPortThread(threading.Thread):
 
             if self.cmdLineOptions.verbose:
                print exMsg.strip()
-         
+
             # add data to queue
             self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
             self.SerialClose()
-         
+
    def run(self):
       """Run Worker Thread."""
       # This is the code executing in the new thread.
@@ -299,7 +299,7 @@ class serialPortThread(threading.Thread):
 
       if self.cmdLineOptions.vverbose:
          print "** serialPortThread start."
-         
+
       self.SerialOpen()
 
       while ((self.endThread != True) and (self.serPort is not None)):
@@ -312,7 +312,7 @@ class serialPortThread(threading.Thread):
          # check if we need to exit now
          if self.endThread:
             break
-         
+
          if self.serPort.isOpen():
             if self.swState == gc.gSTATE_RUN:
                self.SerialRead()
@@ -344,5 +344,5 @@ class serialPortThread(threading.Thread):
 
       if self.cmdLineOptions.vverbose:
          print "** serialPortThread exit."
-      
+
       self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_EXIT, ""))
