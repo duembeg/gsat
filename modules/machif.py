@@ -57,6 +57,12 @@ class machIf_Base():
       self.serialTxRxOutQueue = Queue.Queue()
       self.stateData = None
 
+   def _Reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
+      self.inputBufferMaxSize = input_buffer_max_size
+      self.inputBufferWatermark = float(self.inputBufferMaxSize) * input_buffer_watermark_prcnt
+      self.inputBufferSize = input_buffer_init_val
+
+
    def Close(self):
       if self.serialTxRxThread is not None:
          self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
@@ -152,6 +158,9 @@ class machIf_Base():
             #print gc.gStateData.machIfName
 
       return rxData
+      
+   def Reset(self):
+      pass
 
    def Tick(self):
       pass
