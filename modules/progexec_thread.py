@@ -191,6 +191,8 @@ class programExecuteThread(threading.Thread):
                print "** programExecuteThread got event gc.gEV_CMD_RESET."
 
             self.SerialWrite(self.machIfModule.GetResetCmd())
+            time.sleep(2)
+            self.machIfModule.Reset()
 
          else:
             if self.cmdLineOptions.vverbose:

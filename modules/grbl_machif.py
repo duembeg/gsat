@@ -47,8 +47,11 @@ gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 # quick re check to avoid multiple checks, speeds things up
 gReMachineStatus = re.compile(r'pos', re.I)
 
-# GRBL example "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
+# GRBL example 
+#   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
+#   "<Hold:29|WPos:20.163,0.000,20.000>"
+#gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
+gReGRBLMachineStatus = re.compile(r'<(\w+)[:]{0,1}[\d]*[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
 
 # grbl ack, example  "ok"
 gReGRBLMachineAck = re.compile(r'^ok\s$')
@@ -83,6 +86,9 @@ gGrblStateDict = {
    "Stop"   : GRBL_STATE_STOP
    }
 
+gInputBufferMaxSize = 127
+gInputBufferInitVal = 0
+gInputBufferWatermarkPrcnt = 0.90
 
 """----------------------------------------------------------------------------
    machIf_GRBL:
@@ -101,7 +107,7 @@ gGrblStateDict = {
 ----------------------------------------------------------------------------"""
 class machIf_GRBL(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi.machIf_Base.__init__(self, cmd_line_options, 1000, "grbl", 127, 0, 0.90)
+      mi.machIf_Base.__init__(self, cmd_line_options, 1000, "grbl", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
 
       self.inputBufferPart = list()
 
@@ -130,7 +136,11 @@ class machIf_GRBL(mi.machIf_Base):
 
          # remove the "?" used to get status notice no "\n"
          bufferPart = 1
-         self.inputBufferSize = self.inputBufferSize - bufferPart
+                  
+         if (self.inputBufferSize >= bufferPart):
+            self.inputBufferSize = self.inputBufferSize - bufferPart
+         else:
+            bufferPart = 0
 
          sr['stat'] = statusData[0]
          sr['posx'] = float(statusData[1])
@@ -299,13 +309,15 @@ class machIf_GRBL(mi.machIf_Base):
          # finally update local variable
          self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
+   def Reset(self):
+      mi.machIf_Base._Reset(self, gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
 
    def Write(self, txData, raw_write=False):
       askForStatus = False
       bytesSent = 0
 
       # moving to active state get at least one status msg
-      if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP]:
+      if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP, GRBL_STATE_HOLD]:
          askForStatus = True
 
       bytesSent = mi.machIf_Base.Write(self, txData, raw_write)
@@ -317,5 +329,3 @@ class machIf_GRBL(mi.machIf_Base):
          self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
       return bytesSent
-
-
