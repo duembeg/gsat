@@ -29,6 +29,11 @@ except ImportError:
 
 import modules.machif as mi
 
+
+gInputBufferMaxSize = 255
+gInputBufferInitVal = -1
+gInputBufferWatermarkPrcnt = 0.90
+
 """----------------------------------------------------------------------------
    machIf_TinyG:
 
@@ -46,7 +51,7 @@ import modules.machif as mi
 ----------------------------------------------------------------------------"""
 class machIf_TinyG(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi.machIf_Base.__init__(self, cmd_line_options, 1100, "TinyG", 255, -1, 0.90)
+      mi.machIf_Base.__init__(self, cmd_line_options, 1100, "TinyG", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
 
    def Decode(self, data):
       dataDict = {}
@@ -113,6 +118,9 @@ class machIf_TinyG(mi.machIf_Base):
             bufferPart = f[2]
             self.inputBufferSize = self.inputBufferSize - bufferPart
 
+            if (self.inputBufferSize < 0):
+               self.inputBufferSize = 0
+
             if self.cmdLineOptions.vverbose:
                print "** machIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
@@ -149,3 +157,6 @@ class machIf_TinyG(mi.machIf_Base):
 
    def GetStatusCmd(self):
       return '{"sr":null}\n'
+
+   def Reset(self):
+      mi.machIf_Base._Reset(self, gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
