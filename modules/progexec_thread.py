@@ -175,16 +175,23 @@ class programExecuteThread(threading.Thread):
                print "** programExecuteThread got event gc.gEv_CMD_FEED_HOLD."
             
             # this command is usually use for abort and machine stop
-            # send without checking if ok... 
+            # we can't afford to skip this action, send without checking if ok... 
             self.SerialWrite(self.machIfModule.GetFeedHoldCmd())
                
          elif e.event_id == gc.gEv_CMD_CYCLE_START:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEv_CMD_CYCLE_START."
             
-            if self.machIfModule.OkToSend(self.machIfModule.GetCycleStartCmd()):
-               self.SerialWrite(self.machIfModule.GetCycleStartCmd())
+            # this command is usually use for resume after a machine stop
+            # thus, queues most probably full send without checking if ok... 
+            self.SerialWrite(self.machIfModule.GetCycleStartCmd())
 
+         elif e.event_id == gc.gEV_CMD_RESET:
+            if self.cmdLineOptions.vverbose:
+               print "** programExecuteThread got event gc.gEV_CMD_RESET."
+            
+            self.SerialWrite(self.machIfModule.GetResetCmd())
+            
          else:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got unknown event!! [%s]." % str(e.event_id)
