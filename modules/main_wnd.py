@@ -36,7 +36,7 @@ __description__ = \
 __authors__     = ['Wilhelm Duembeg']
 __author__      = ','.join(__authors__)
 __credits__     = []
-__copyright__   = 'Copyright (c) 2013-2014'
+__copyright__   = 'Copyright (c) 2013-2017'
 __license__     = 'GPL v2, Copyright (c) 2013-2014'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
@@ -793,10 +793,12 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate,    id=gID_MENU_SET_PC)
       self.Bind(wx.EVT_UPDATE_UI, self.OnResetPCUpdate,  id=gID_MENU_RESET_PC)
       self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate,   id=gID_MENU_GOTO_PC)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineCycleStart,
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineCycleStartUpdate,
                                                          id=gID_MENU_MACHINE_CYCLE_START)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHold,id=gID_MENU_MACHINE_FEED_HOLD)
-      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineReset,   id=gID_MENU_MACHINE_RESET)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHoldUpdate,
+                                                         id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineResetUpdate,
+                                                         id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
       
 
@@ -1530,8 +1532,11 @@ class gsatMainWindow(wx.Frame):
 
 
    def OnMachineCycleStart(self, e):
-      #self.Stop()
-      pass
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_CYCLE_START, None))
+         
+         if (self.stateData.swState == gc.gSTATE_PAUSE):
+            self.OnRun(e)
 
    def OnMachineCycleStartUpdate(self, e=None):
       state = False
@@ -1546,8 +1551,12 @@ class gsatMainWindow(wx.Frame):
 
 
    def OnMachineFeedHold(self, e):
-      #self.Stop()
-      pass
+      if self.progExecThread is not None:
+         
+         if (self.stateData.swState == gc.gSTATE_RUN):
+            self.OnPause(e)
+         
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
 
    def OnMachineFeedHoldUpdate(self, e=None):
       state = False
@@ -1562,8 +1571,8 @@ class gsatMainWindow(wx.Frame):
 
 
    def OnMachineReset(self, e):
-      #self.Stop()
-      pass
+      if self.progExecThread is not None:
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_RESET, None))
 
    def OnMachineResetUpdate(self, e=None):
       state = False

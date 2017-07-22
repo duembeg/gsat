@@ -68,13 +68,13 @@ class machIf_Base():
       return data
 
    def GetCycleStartCmd (self):
-      return "~\n"
+      return "~"
       
    def GetId(self):
       return self.id
 
    def GetFeedHoldCmd (self):
-      return "!\n"
+      return "!"
 
    def GetInitCommCmd (self):
       return ""
@@ -85,6 +85,9 @@ class machIf_Base():
    def GetQueueFlushCmd (self):
       return ""
 
+   def GetResetCmd (self):
+      return "\x18"
+      
    def GetSetAxisCmd (self):
       return ""
 
