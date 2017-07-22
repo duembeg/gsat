@@ -117,7 +117,11 @@ gID_MENU_STOP                    = wx.NewId()
 gID_MENU_BREAK_TOGGLE            = wx.NewId()
 gID_MENU_BREAK_REMOVE_ALL        = wx.NewId()
 gID_MENU_SET_PC                  = wx.NewId()
+gID_MENU_RESET_PC                = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
+gID_MENU_MACHINE_CYCLE_START     = wx.NewId()
+gID_MENU_MACHINE_FEED_HOLD       = wx.NewId()
+gID_MENU_MACHINE_RESET           = wx.NewId()
 gID_MENU_ABORT                   = wx.NewId()
 gID_MENU_IN2MM                   = wx.NewId()
 gID_MENU_MM2IN                   = wx.NewId()
@@ -626,28 +630,49 @@ class gsatMainWindow(wx.Frame):
       runMenu.AppendItem(stopItem)
 
       runMenu.AppendSeparator()
-      breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE,
-                                                      "Brea&kpoint Toggle\tF9")
+      breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE, "Brea&kpoint Toggle\tF9")
       if os.name != 'nt':
          breakItem.SetBitmap(ico.imgBreak.GetBitmap())
       runMenu.AppendItem(breakItem)
 
-      runMenu.Append(gID_MENU_BREAK_REMOVE_ALL,       "Breakpoint &Remove All")
+      runMenu.Append(gID_MENU_BREAK_REMOVE_ALL, "Breakpoint &Remove All")
+      
       runMenu.AppendSeparator()
 
       setPCItem = wx.MenuItem(runMenu, gID_MENU_SET_PC,"Set &PC")
       if os.name != 'nt':
-         setPCItem.SetBitmap(ico.imgMapPin.GetBitmap())
+         setPCItem.SetBitmap(ico.imgSetMapPin.GetBitmap())
       runMenu.AppendItem(setPCItem)
+      
+      resetPCItem = wx.MenuItem(runMenu, gID_MENU_RESET_PC,"&Reset PC")
+      if os.name != 'nt':
+         resetPCItem.SetBitmap(ico.imgResetMapPin.GetBitmap())
+      runMenu.AppendItem(resetPCItem)
 
-      gotoPCItem = wx.MenuItem(runMenu, gID_MENU_GOTO_PC,
-                                                      "&Goto PC")
+      gotoPCItem = wx.MenuItem(runMenu, gID_MENU_GOTO_PC, "&Goto PC")
       if os.name != 'nt':
          gotoPCItem.SetBitmap(ico.imgGotoMapPin.GetBitmap())
       runMenu.AppendItem(gotoPCItem)
-
+     
       runMenu.AppendSeparator()
 
+      machineCycleStart = wx.MenuItem(runMenu, gID_MENU_MACHINE_CYCLE_START,"Machine &Cycle Start")
+      if os.name != 'nt':
+         machineCycleStart.SetBitmap(ico.imgCycleStart.GetBitmap())
+      runMenu.AppendItem(machineCycleStart)
+      
+      machineFeedHold = wx.MenuItem(runMenu, gID_MENU_MACHINE_FEED_HOLD,"Machine &Feed Hold")
+      if os.name != 'nt':
+         machineFeedHold.SetBitmap(ico.imgFeedHold.GetBitmap())
+      runMenu.AppendItem(machineFeedHold)
+
+      machineReset = wx.MenuItem(runMenu, gID_MENU_MACHINE_RESET,"Machine Reset")
+      if os.name != 'nt':
+         machineReset.SetBitmap(ico.imgMachineReset.GetBitmap())
+      runMenu.AppendItem(machineReset)
+
+      runMenu.AppendSeparator()
+      
       abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT,"&Abort")
       if os.name != 'nt':
          abortItem.SetBitmap(ico.imgAbort.GetBitmap())
@@ -737,7 +762,11 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnBreakToggle,         id=gID_MENU_BREAK_TOGGLE)
       self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll,      id=gID_MENU_BREAK_REMOVE_ALL)
       self.Bind(wx.EVT_MENU, self.OnSetPC,               id=gID_MENU_SET_PC)
+      self.Bind(wx.EVT_MENU, self.OnResetPC,             id=gID_MENU_RESET_PC)      
       self.Bind(wx.EVT_MENU, self.OnGoToPC,              id=gID_MENU_GOTO_PC)
+      self.Bind(wx.EVT_MENU, self.OnMachineCycleStart,   id=gID_MENU_MACHINE_CYCLE_START)
+      self.Bind(wx.EVT_MENU, self.OnMachineFeedHold,     id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_MENU, self.OnMachineReset,        id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_MENU, self.OnAbort,               id=gID_MENU_ABORT)
 
       self.Bind(wx.EVT_BUTTON, self.OnRun,               id=gID_MENU_RUN)
@@ -746,7 +775,11 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_BUTTON, self.OnStop,              id=gID_MENU_STOP)
       self.Bind(wx.EVT_BUTTON, self.OnBreakToggle,       id=gID_MENU_BREAK_TOGGLE)
       self.Bind(wx.EVT_BUTTON, self.OnSetPC,             id=gID_MENU_SET_PC)
+      self.Bind(wx.EVT_BUTTON, self.OnResetPC,           id=gID_MENU_RESET_PC)            
       self.Bind(wx.EVT_BUTTON, self.OnGoToPC,            id=gID_MENU_GOTO_PC)
+      self.Bind(wx.EVT_BUTTON, self.OnMachineCycleStart, id=gID_MENU_MACHINE_CYCLE_START)
+      self.Bind(wx.EVT_BUTTON, self.OnMachineFeedHold,   id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_BUTTON, self.OnMachineReset,      id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_BUTTON, self.OnAbort,             id=gID_MENU_ABORT)
 
       self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate,      id=gID_MENU_RUN)
@@ -758,8 +791,14 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_UPDATE_UI, self.OnBreakRemoveAllUpdate,
                                                          id=gID_MENU_BREAK_REMOVE_ALL)
       self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate,    id=gID_MENU_SET_PC)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnResetPCUpdate,  id=gID_MENU_RESET_PC)
       self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate,   id=gID_MENU_GOTO_PC)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineCycleStart,
+                                                         id=gID_MENU_MACHINE_CYCLE_START)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHold,id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineReset,   id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
+      
 
       #------------------------------------------------------------------------
       # tools menu bind
@@ -892,20 +931,41 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STOP, ico.imgStopDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
+      
       self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, "Break Toggle",
          ico.imgBreak.GetBitmap(), "Breakpoint Toggle\tF9")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_BREAK_TOGGLE, ico.imgBreakDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
-      self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", ico.imgMapPin.GetBitmap(),
-         "Set Program Counter (PC) from current position")
-      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, ico.imgMapPinDisabled.GetBitmap())
+
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC", ico.imgSetMapPin.GetBitmap(),
+         "Set Program Counter (PC) to current position")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, ico.imgSetMapPinDisabled.GetBitmap())
+
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_RESET_PC, "Set PC", ico.imgResetMapPin.GetBitmap(),
+         "Reset Program Counter (PC) to beginning of file")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_RESET_PC, ico.imgResetMapPinDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC", ico.imgGotoMapPin.GetBitmap(),
          "Goto current Program Counter (PC)")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSeparator()
+
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_CYCLE_START, "Cycle Start", ico.imgCycleStart.GetBitmap(),
+         "Machine Cycle Start")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CYCLE_START, ico.imgCycleStartDisabled.GetBitmap())
+      
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_FEED_HOLD, "Feed Hold", ico.imgFeedHold.GetBitmap(),
+         "Machine Feed Hold")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_FEED_HOLD, ico.imgFeedHoldDisabled.GetBitmap())
+
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_RESET, "Reset", ico.imgMachineReset.GetBitmap(),
+         "Machine Reset")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_RESET, ico.imgMachineResetDisabled.GetBitmap())
+
+      self.gcodeToolBar.AddSeparator()
+      
       self.gcodeToolBar.AddSimpleTool(gID_MENU_ABORT, "Abort", ico.imgAbort.GetBitmap(),
          "Abort")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_ABORT, ico.imgAbortDisabled.GetBitmap())
@@ -1289,7 +1349,11 @@ class gsatMainWindow(wx.Frame):
       self.OnStopUpdate()
       self.OnBreakToggleUpdate()
       self.OnSetPCUpdate()
+      self.OnResetPCUpdate()
       self.OnGoToPCUpdate()
+      self.OnMachineCycleStartUpdate()
+      self.OnMachineFeedHoldUpdate()
+      self.OnMachineResetUpdate()
       self.OnAbortUpdate()
       self.gcodeToolBar.Refresh()
 
@@ -1437,6 +1501,22 @@ class gsatMainWindow(wx.Frame):
 
       self.gcodeToolBar.EnableTool(gID_MENU_SET_PC, state)
 
+   def OnResetPC(self, e):
+      self.SetPC(0)
+
+   def OnResetPCUpdate(self, e=None):
+      state = False
+      if (self.stateData.swState == gc.gSTATE_IDLE or \
+          self.stateData.swState == gc.gSTATE_BREAK or \
+          self.stateData.swState == gc.gSTATE_PAUSE):
+
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_RESET_PC, state)
+      
    def OnGoToPC(self, e):
       self.gcText.GoToPC()
 
@@ -1447,6 +1527,55 @@ class gsatMainWindow(wx.Frame):
          e.Enable(state)
 
       self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
+
+
+   def OnMachineCycleStart(self, e):
+      #self.Stop()
+      pass
+
+   def OnMachineCycleStartUpdate(self, e=None):
+      state = False
+      if self.stateData.serialPortIsOpen:
+
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_CYCLE_START, state)
+
+
+   def OnMachineFeedHold(self, e):
+      #self.Stop()
+      pass
+
+   def OnMachineFeedHoldUpdate(self, e=None):
+      state = False
+      if self.stateData.serialPortIsOpen:
+
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_FEED_HOLD, state)
+
+
+   def OnMachineReset(self, e):
+      #self.Stop()
+      pass
+
+   def OnMachineResetUpdate(self, e=None):
+      state = False
+      if self.stateData.serialPortIsOpen:
+
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_RESET, state)
+
 
    def OnAbort(self, e):
       self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
