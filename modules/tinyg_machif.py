@@ -33,13 +33,13 @@ import modules.machif as mi
    machIf_TinyG:
 
    Machine Interface TinyG class.
-   
+
    ID = 1100
    Name = "TinyG"
    input buffer max size = 255
    input buffer init size = -1
    input buffer watermark = 90%
-   
+
    Init buffer to (-1) when connecting it needs a initial '\n' that
    should not be counted
 
@@ -105,21 +105,21 @@ class machIf_TinyG(mi.machIf_Base):
                sr['posz'] = sr['mpoz']
             if 'mpoa' in sr:
                sr['posa'] = sr['mpoa']
-               
+
          if 'f' in dataDict:
             f = dataDict['f']
-            
+
             # remove buffer part freed from acked command
             bufferPart = f[2]
             self.inputBufferSize = self.inputBufferSize - bufferPart
-            
+
             if self.cmdLineOptions.vverbose:
                print "** machIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
-                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
-                  
+                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
-               
+
 
       except:
          if self.cmdLineOptions.vverbose:
@@ -129,23 +129,23 @@ class machIf_TinyG(mi.machIf_Base):
 
    def Encode(self, data, bookeeping=True):
       data = data.encode('ascii')
-      
+
       if bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
-               
+
          if self.cmdLineOptions.vverbose:
             print "** machIf_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (dataLen, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize))) 
-         
+               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+
       return data
-      
+
    def GetInitCommCmd (self):
       return '\n{"fv":null}\n'
-      
+
    def GetSetAxisCmd (self):
       return "G28.3"
-      
+
    def GetStatusCmd(self):
       return '{"sr":null}\n'

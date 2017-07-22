@@ -111,7 +111,7 @@ class programExecuteThread(threading.Thread):
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_EXIT."
-               
+
             if self.machIfModule.IsSerialPortOpen():
                self.machIfModule.Close()
             else:
@@ -173,25 +173,25 @@ class programExecuteThread(threading.Thread):
          elif e.event_id == gc.gEv_CMD_FEED_HOLD:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEv_CMD_FEED_HOLD."
-            
+
             # this command is usually use for abort and machine stop
-            # we can't afford to skip this action, send without checking if ok... 
+            # we can't afford to skip this action, send without checking if ok...
             self.SerialWrite(self.machIfModule.GetFeedHoldCmd())
-               
+
          elif e.event_id == gc.gEv_CMD_CYCLE_START:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEv_CMD_CYCLE_START."
-            
+
             # this command is usually use for resume after a machine stop
-            # thus, queues most probably full send without checking if ok... 
+            # thus, queues most probably full send without checking if ok...
             self.SerialWrite(self.machIfModule.GetCycleStartCmd())
 
          elif e.event_id == gc.gEV_CMD_RESET:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_RESET."
-            
+
             self.SerialWrite(self.machIfModule.GetResetCmd())
-            
+
          else:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got unknown event!! [%s]." % str(e.event_id)
@@ -204,7 +204,7 @@ class programExecuteThread(threading.Thread):
 
       if self.cmdLineOptions.vverbose:
          print "** programExecuteThread Init MachIf Module (%s)." % self.machIfModule.GetName()
-         
+
       self.machIfModule.Init(self.stateData)
 
    def SerialRead(self):
@@ -217,7 +217,7 @@ class programExecuteThread(threading.Thread):
          if e['id'] == gc.gEV_ABORT:
             # make sure we stop processing any states...
             self.swState = gc.gSTATE_ABORT
-         
+
          if e['id'] == gc.gEV_EXIT:
             self.endThread = True
             self.swState = gc.gSTATE_IDLE
@@ -237,7 +237,7 @@ class programExecuteThread(threading.Thread):
                # add data to queue and signal main window to consume
                self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_IN, raw_data))
                mainWndEvent = True
-               
+
          if 'sr' in rxData:
             self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, rxData['sr']))
             mainWndEvent = True
@@ -249,22 +249,22 @@ class programExecuteThread(threading.Thread):
 
       if mainWndEvent:
          wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-         
+
       return rxData
 
    def SerialWrite(self, serialData):
       bytesSent = self.machIfModule.Write(serialData)
-      
+
       # sent data to UI
       if bytesSent > 0:
          self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))
-         
+
       return bytesSent
-      
+
    def Tick(self):
       self.machIfModule.Tick()
       self.ProcessQueue()
-   
+
    def WaitForAcknowledge(self):
       waitForAcknowlege = True
 
@@ -329,7 +329,7 @@ class programExecuteThread(threading.Thread):
 
    def RunStepSendGcode(self, gcodeData):
       writeToDevice = True
-      
+
       gcode = gcodeData.strip()
 
       if len(gcode) > 0:
@@ -346,7 +346,7 @@ class programExecuteThread(threading.Thread):
                self.SerialWrite(self.machIfModule.GetStatusCmd())
          else:
             writeToDevice = False
-            self.SerialRead()            
+            self.SerialRead()
 
       if writeToDevice:
          self.workingProgramCounter += 1
@@ -436,9 +436,9 @@ class programExecuteThread(threading.Thread):
 
    def ProcessSerialWriteQueue(self):
       if len(self.serialWriteQueue) > 0:
-         
+
          data = self.serialWriteQueue[0]
-         
+
          if self.machIfModule.OkToSend(data[0]):
             self.serialWriteQueue.pop(0)
             self.SerialWrite(data[0])
@@ -468,7 +468,7 @@ class programExecuteThread(threading.Thread):
          # check if we need to exit now
          if self.endThread:
             break
-         
+
          if self.swState == gc.gSTATE_RUN:
             self.ProcessRunSate()
          elif self.swState == gc.gSTATE_STEP:

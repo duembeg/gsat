@@ -742,7 +742,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
-      
+
       cmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " ", axis, str(fAxisStrPos), "\n"])
       self.mainWindow.SerialWriteWaitForAck(cmd)
 
@@ -805,7 +805,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       cmdx = ""
       cmdy = ""
       cmdz = ""
-      
+
 
       if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jX.SetValue(xval)
@@ -830,7 +830,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def OnResetToZero(self, e):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
-      
+
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
             mim.GetSetAxisCmd())
 
@@ -843,7 +843,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def OnResetToJogVal(self, e):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
-      
+
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
          mim.GetSetAxisCmd())
@@ -900,7 +900,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jY.SetValue(str(fYnp))
          self.jZ.SetValue(str(fZnp))
 
-         goPosCmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " X", str(fXnp), 
+         goPosCmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " X", str(fXnp),
             " Y", str(fYnp), " Z", str(fZnp)])
          self.mainWindow.SerialWriteWaitForAck(goPosCmd)
 

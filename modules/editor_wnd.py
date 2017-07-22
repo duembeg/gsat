@@ -367,15 +367,15 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
    def AppendText(self, string):
       readOnly = self.GetReadOnly()
       self.SetReadOnly(False)
-      
+
       try:
          stc.StyledTextCtrl.AppendText(self, string)
-         
+
       except:
-         # sometimes there are utf_8 exceptions specially when 
+         # sometimes there are utf_8 exceptions specially when
          # recovering from bad connection
          pass
-         
+
       self.SetReadOnly(readOnly)
 
       if self.autoScroll:

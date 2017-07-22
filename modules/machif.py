@@ -69,7 +69,7 @@ class machIf_Base():
 
    def GetCycleStartCmd (self):
       return "~"
-      
+
    def GetId(self):
       return self.id
 
@@ -87,7 +87,7 @@ class machIf_Base():
 
    def GetResetCmd (self):
       return "\x18"
-      
+
    def GetSetAxisCmd (self):
       return ""
 

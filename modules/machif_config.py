@@ -51,7 +51,7 @@ gMachIf_GRBL = mi_grbl.machIf_GRBL(gc.gCmdLineOptions)
 gMachIf_TinyG = mi_tinyg.machIf_TinyG(gc.gCmdLineOptions)
 gMachIf_g2core = mi_g2core.machIf_g2core(gc.gCmdLineOptions)
 
-gMachIfList = [gMachIf_GRBL.GetName(), gMachIf_TinyG.GetName(), gMachIf_g2core.GetName()] 
+gMachIfList = [gMachIf_GRBL.GetName(), gMachIf_TinyG.GetName(), gMachIf_g2core.GetName()]
 
 """----------------------------------------------------------------------------
    GetMachIfName:
@@ -95,7 +95,7 @@ def GetMachIfId(deviceStr):
 ----------------------------------------------------------------------------"""
 def GetMachIfModule(machIfId):
    machIfModule = None
-   
+
    if machIfId == gMachIf_GRBL.GetId():
       machIfModule = mi_grbl.machIf_GRBL(gc.gCmdLineOptions)
 
