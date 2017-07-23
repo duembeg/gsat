@@ -635,7 +635,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          "Alt + arrow = 100 * increment (or Alt + mouse wheel)"))
       hsStepSizeBoxSizer.Add(self.stepSpinCtrl, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      stepButtonSize = (40, -1)
+      stepButtonSize = (45, -1)
 
       self.stepSize0P05 = wx.Button(self, label="0.05", size=stepButtonSize)
       self.stepSize0P05.SetToolTip(wx.ToolTip("Set step size to 0.05"))
@@ -647,10 +647,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P1)
       hsStepSizeBoxSizer.Add(self.stepSize0P1)
 
-      self.stepSize0P2 = wx.Button(self, label="0.2", size=stepButtonSize)
-      self.stepSize0P2.SetToolTip(wx.ToolTip("Set step size to 0.2"))
-      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P2)
-      hsStepSizeBoxSizer.Add(self.stepSize0P2)
+      #self.stepSize0P2 = wx.Button(self, label="0.2", size=stepButtonSize)
+      #self.stepSize0P2.SetToolTip(wx.ToolTip("Set step size to 0.2"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P2)
+      #hsStepSizeBoxSizer.Add(self.stepSize0P2)
 
       self.stepSize1 = wx.Button(self, label="1", size=stepButtonSize)
       self.stepSize1.SetToolTip(wx.ToolTip("Set step size to 1"))
