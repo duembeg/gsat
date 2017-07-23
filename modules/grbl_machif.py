@@ -107,7 +107,7 @@ gInputBufferWatermarkPrcnt = 0.90
 ----------------------------------------------------------------------------"""
 class machIf_GRBL(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi.machIf_Base.__init__(self, cmd_line_options, 1000, "grbl", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+      super(machIf_GRBL, self).__init__(cmd_line_options, 1000, "grbl", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
 
       self.inputBufferPart = list()
 
@@ -272,7 +272,7 @@ class machIf_GRBL(mi.machIf_Base):
       return data
 
    def Init(self, state_data):
-      mi.machIf_Base.Init(self, state_data)
+      super(machIf_GRBL, self).Init(state_data)
       self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
    def GetSetAxisCmd(self):
@@ -289,7 +289,7 @@ class machIf_GRBL(mi.machIf_Base):
          tdeltaMilli = self.autoStatusNextMicro.second*1000 +  self.autoStatusNextMicro.microsecond/1000
          if  long(tnowMilli - tdeltaMilli) >= 0:
             if self.OkToSend(self.getSatusCmd):
-               mi.machIf_Base.Write(self, self.getSatusCmd)
+               super(machIf_GRBL, self).Write(self.getSatusCmd)
 
             self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
@@ -300,7 +300,7 @@ class machIf_GRBL(mi.machIf_Base):
          # depending on current state do appropriate action
          if self.machineAutoRefresh == False:
             if self.OkToSend(self.getSatusCmd):
-               mi.machIf_Base.Write(self, self.getSatusCmd)
+               super(machIf_GRBL, self).Write(self.getSatusCmd)
 
             self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
          else:
@@ -310,7 +310,7 @@ class machIf_GRBL(mi.machIf_Base):
          self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
    def Reset(self):
-      mi.machIf_Base._Reset(self, gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+      super(machIf_GRBL, self)._Reset(gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
 
    def Write(self, txData, raw_write=False):
       askForStatus = False
@@ -320,11 +320,11 @@ class machIf_GRBL(mi.machIf_Base):
       if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP, GRBL_STATE_HOLD]:
          askForStatus = True
 
-      bytesSent = mi.machIf_Base.Write(self, txData, raw_write)
+      bytesSent = super(machIf_GRBL, self).Write(txData, raw_write)
 
       if askForStatus and self.machineAutoRefresh:
          if self.OkToSend(self.getSatusCmd):
-            mi.machIf_Base.Write(self, self.getSatusCmd)
+            super(machIf_GRBL, self).Write(self.getSatusCmd)
 
          self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
 

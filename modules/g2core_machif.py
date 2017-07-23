@@ -49,7 +49,7 @@ import modules.machif as mi
 ----------------------------------------------------------------------------"""
 class machIf_g2core(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi.machIf_Base.__init__(self, cmd_line_options, 1200, "g2core", 255, 1, 0.90)
+      super(machIf_g2core, self).__init__(cmd_line_options, 1200, "g2core", 255, 1, 0.90)
 
    def Decode(self, data):
       dataDict = {}
