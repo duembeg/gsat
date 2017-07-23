@@ -81,7 +81,14 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       self.cbReqUpdateOnJogSetOp.SetValue(self.configData.Get('/jogging/ReqUpdateOnJogSetOp'))
       self.cbReqUpdateOnJogSetOp.SetToolTip(
          wx.ToolTip("If enable after each JOG set operation (ie set to ZERO) a machine update request will be sent to device"))
-      vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT|wx.BOTTOM, border=20)
+      vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT, border=20)
+
+      # Add perform Z operation last check box
+      self.cbZJogMovesLast = wx.CheckBox(self, wx.ID_ANY, "Z jog moves last")
+      self.cbZJogMovesLast.SetValue(self.configData.Get('/jogging/ZJogMovesLast'))
+      self.cbZJogMovesLast.SetToolTip(
+         wx.ToolTip("If enable, any XY jog moves are perform first and Z jog moves are last"))
+      vBoxSizer.Add(self.cbZJogMovesLast, flag=wx.LEFT|wx.BOTTOM, border=20)
 
       # Custom controls
       text = wx.StaticText(self, label="Custom Controls")
@@ -214,6 +221,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
       self.configData.Set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
       self.configData.Set('/jogging/ReqUpdateOnJogSetOp', self.cbReqUpdateOnJogSetOp.GetValue())
+      self.configData.Set('/jogging/ZJogMovesLast', self.cbZJogMovesLast.GetValue())
 
       for cn in range(4):
          cnp1 = cn+1
@@ -315,11 +323,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       #self.spinCtrl.SetFocus()
       self.LoadCli()
 
+      self.SavedJogPos = None
+
    def InitConfig(self):
       # jogging data
       self.configXYZReadOnly         = self.configData.Get('/jogging/XYZReadOnly')
       self.configAutoMPOS            = self.configData.Get('/jogging/AutoMPOS')
       self.configReqUpdateOnJogSetOp = self.configData.Get('/jogging/ReqUpdateOnJogSetOp')
+      self.configZJogMovesLast       = self.configData.Get('/jogging/ZJogMovesLast')
 
       self.configCustom1Label       = self.configData.Get('/jogging/Custom1Label')
       self.configCustom1OptPosition = self.configData.Get('/jogging/Custom1OptPosition')
@@ -391,6 +402,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jZ.SetBackgroundColour(gc.gEdityBkColor)
 
       self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
+      self.ZJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
 
       self.custom1Button.SetLabel(self.configCustom1Label)
       self.custom2Button.SetLabel(self.configCustom2Label)
@@ -500,13 +512,19 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeXYButton.Disable()
          self.homeButton.Disable()
 
+      if self.SavedJogPos is None:
+         self.restorePositionButton.Disable()
+      else:
+         self.restorePositionButton.Enable()
+
 
    def CreateJoggingControls(self):
       # Add Buttons -----------------------------------------------------------
-      joggingGridSizer = wx.GridBagSizer(1,3)
-      vZButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      vSpindleButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      vCoolantButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      gbzJoggingGridSizer = wx.GridBagSizer(1,3)
+      vsZBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      vsSpindleBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      vsCoolantBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      hsStepSizeBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       buttonSize = (50,50)
       buttonSizeLong = (50,75)
@@ -517,118 +535,150 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.positiveXButton.SetToolTip(
          wx.ToolTip("Move X axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnXPos, self.positiveXButton)
-      joggingGridSizer.Add(self.positiveXButton, pos=(1,2))      
+      gbzJoggingGridSizer.Add(self.positiveXButton, pos=(1,2))
 
       self.negativeXButton = wx.BitmapButton(self, -1, ico.imgNX.GetBitmap(), size=buttonSize)
       self.negativeXButton.SetToolTip(
          wx.ToolTip("Move X axis on negative direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnXNeg, self.negativeXButton)
-      joggingGridSizer.Add(self.negativeXButton, pos=(1,0))
-
+      gbzJoggingGridSizer.Add(self.negativeXButton, pos=(1,0))
 
       # Y axis buttons
       self.positiveYButton = wx.BitmapButton(self, -1, ico.imgPY.GetBitmap(), size=buttonSize)
       self.positiveYButton.SetToolTip(
          wx.ToolTip("Move Y axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnYPos, self.positiveYButton)
-      joggingGridSizer.Add(self.positiveYButton, pos=(0,1))
-      
+      gbzJoggingGridSizer.Add(self.positiveYButton, pos=(0,1))
+
       self.negativeYButton = wx.BitmapButton(self, -1, ico.imgNY.GetBitmap(), size=buttonSize)
       self.negativeYButton.SetToolTip(
          wx.ToolTip("Move Y axis on negative direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnYNeg, self.negativeYButton)
-      joggingGridSizer.Add(self.negativeYButton, pos=(2,1))
-
+      gbzJoggingGridSizer.Add(self.negativeYButton, pos=(2,1))
 
       # Z axis buttons
       self.positiveZButton = wx.BitmapButton(self, -1, ico.imgPZ.GetBitmap(), size=buttonSizeLong)
       self.positiveZButton.SetToolTip(
          wx.ToolTip("Move Z axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZPos, self.positiveZButton)
-      vZButtonBoxSizer.Add(self.positiveZButton)
+      vsZBoxSizer.Add(self.positiveZButton)
 
       self.negativeZButton = wx.BitmapButton(self, -1, ico.imgNZ.GetBitmap(), size=buttonSizeLong)
       self.negativeZButton.SetToolTip(
          wx.ToolTip("Move Z axis on negative direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZNeg, self.negativeZButton)
-      vZButtonBoxSizer.Add(self.negativeZButton)
-      joggingGridSizer.Add(vZButtonBoxSizer, pos=(0,4), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
-
+      vsZBoxSizer.Add(self.negativeZButton)
+      gbzJoggingGridSizer.Add(vsZBoxSizer, pos=(0,3), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
 
       # Spindle buttons
       self.spindleOnButton = wx.BitmapButton(self, -1, ico.imgSpindleOn.GetBitmap(), size=buttonSizeWideLong)
       self.spindleOnButton.SetToolTip(wx.ToolTip("Spindle ON"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      vSpindleButtonBoxSizer.Add(self.spindleOnButton)
+      vsSpindleBoxSizer.Add(self.spindleOnButton)
 
       self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(), size=buttonSizeWideLong)
       self.spindleOffButton.SetToolTip(wx.ToolTip("Spindle OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.spindleOffButton)
-      vSpindleButtonBoxSizer.Add(self.spindleOffButton)
-      joggingGridSizer.Add(vSpindleButtonBoxSizer, pos=(0,6), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
-      
+      vsSpindleBoxSizer.Add(self.spindleOffButton)
+      gbzJoggingGridSizer.Add(vsSpindleBoxSizer, pos=(0,4), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
+
       # Coolant Buttons
       self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(), size=buttonSizeWideLong)
       self.coolantOnButton.SetToolTip(wx.ToolTip("Coolant ON"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.coolantOnButton)
-      vCoolantButtonBoxSizer.Add(self.coolantOnButton)
+      self.Bind(wx.EVT_BUTTON, self.OnCoolantOn, self.coolantOnButton)
+      vsCoolantBoxSizer.Add(self.coolantOnButton)
 
       self.coolantOffButton = wx.BitmapButton(self, -1, ico.imgCoolantOff.GetBitmap(), size=buttonSizeWideLong)
       self.coolantOffButton.SetToolTip(wx.ToolTip("Coolant OFF"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)
-      vCoolantButtonBoxSizer.Add(self.coolantOffButton)
-      joggingGridSizer.Add(vCoolantButtonBoxSizer, pos=(0,7), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
-      
+      self.Bind(wx.EVT_BUTTON, self.OnCoolantOff, self.coolantOffButton)
+      vsCoolantBoxSizer.Add(self.coolantOffButton)
+      gbzJoggingGridSizer.Add(vsCoolantBoxSizer, pos=(0,5), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
+
       # Home Buttons
       self.homeXButton = wx.BitmapButton(self, -1, ico.imgHomeX.GetBitmap(), size=buttonSize)
       self.homeXButton.SetToolTip(wx.ToolTip("Home X axis"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
-      joggingGridSizer.Add(self.homeXButton, pos=(0,0))
-      
+      self.Bind(wx.EVT_BUTTON, self.OnHomeX, self.homeXButton)
+      gbzJoggingGridSizer.Add(self.homeXButton, pos=(0,0))
+
       self.homeYButton = wx.BitmapButton(self, -1, ico.imgHomeY.GetBitmap(), size=buttonSize)
       self.homeYButton.SetToolTip(wx.ToolTip("Home Y axis"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
-      joggingGridSizer.Add(self.homeYButton, pos=(0,2))
+      self.Bind(wx.EVT_BUTTON, self.OnHomeY, self.homeYButton)
+      gbzJoggingGridSizer.Add(self.homeYButton, pos=(0,2))
 
       self.homeZButton = wx.BitmapButton(self, -1, ico.imgHomeZ.GetBitmap(), size=buttonSize)
       self.homeZButton.SetToolTip(wx.ToolTip("Home Z axis"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
-      joggingGridSizer.Add(self.homeZButton, pos=(2,2))
+      self.Bind(wx.EVT_BUTTON, self.OnHomeZ, self.homeZButton)
+      gbzJoggingGridSizer.Add(self.homeZButton, pos=(2,2))
 
       self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(), size=buttonSize)
       self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)
-      joggingGridSizer.Add(self.homeXYButton, pos=(2,0))
+      self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
+      gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
 
       self.homeButton = wx.BitmapButton(self, -1, ico.imgHome.GetBitmap(), size=buttonSize)
       self.homeButton.SetToolTip(wx.ToolTip("Home XYZ axis"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
-      joggingGridSizer.Add(self.homeButton, pos=(1,1))
+      self.Bind(wx.EVT_BUTTON, self.OnHome, self.homeButton)
+      gbzJoggingGridSizer.Add(self.homeButton, pos=(2,0))
 
+      # add step size controls
+      spinText = wx.StaticText(self, -1, "Step size")
+      gbzJoggingGridSizer.Add(spinText, pos=(3,0), span=(1,6), flag=wx.TOP, border=5)
 
-      #return hButtonBoxSizer
-      return joggingGridSizer
+      self.stepSpinCtrl = fs.FloatSpin(self, -1,
+         min_val=0, max_val=99999, increment=0.10, value=1.0,
+         agwStyle=fs.FS_LEFT)
+      self.stepSpinCtrl.SetFormat("%f")
+      self.stepSpinCtrl.SetDigits(4)
+      self.stepSpinCtrl.SetToolTip(wx.ToolTip(
+         "Shift + arrow = 2 * increment (or Shift + mouse wheel)\n"\
+         "Ctrl + arrow = 10 * increment (or Ctrl + mouse wheel)\n"\
+         "Alt + arrow = 100 * increment (or Alt + mouse wheel)"))
+      hsStepSizeBoxSizer.Add(self.stepSpinCtrl, flag=wx.ALIGN_CENTER_VERTICAL)
+
+      stepButtonSize = (40, -1)
+
+      self.stepSize0P05 = wx.Button(self, label="0.05", size=stepButtonSize)
+      self.stepSize0P05.SetToolTip(wx.ToolTip("Set step size to 0.05"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P05)
+      hsStepSizeBoxSizer.Add(self.stepSize0P05)
+
+      self.stepSize0P1 = wx.Button(self, label="0.1", size=stepButtonSize)
+      self.stepSize0P1.SetToolTip(wx.ToolTip("Set step size to 0.1"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P1)
+      hsStepSizeBoxSizer.Add(self.stepSize0P1)
+
+      self.stepSize0P2 = wx.Button(self, label="0.2", size=stepButtonSize)
+      self.stepSize0P2.SetToolTip(wx.ToolTip("Set step size to 0.2"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P2)
+      hsStepSizeBoxSizer.Add(self.stepSize0P2)
+
+      self.stepSize1 = wx.Button(self, label="1", size=stepButtonSize)
+      self.stepSize1.SetToolTip(wx.ToolTip("Set step size to 1"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize1)
+      hsStepSizeBoxSizer.Add(self.stepSize1)
+
+      self.stepSize5 = wx.Button(self, label="5", size=stepButtonSize)
+      self.stepSize5.SetToolTip(wx.ToolTip("Set step size to 5"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize5)
+      hsStepSizeBoxSizer.Add(self.stepSize5)
+
+      self.stepSize10 = wx.Button(self, label="10", size=stepButtonSize)
+      self.stepSize10.SetToolTip(wx.ToolTip("Set step size to 10"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize10)
+      hsStepSizeBoxSizer.Add(self.stepSize10)
+
+      gbzJoggingGridSizer.Add(hsStepSizeBoxSizer, pos=(4,0), span=(1,6))
+
+      return gbzJoggingGridSizer
 
    def CreatePositionStatusControls(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       # add status controls
-      spinText = wx.StaticText(self, -1, "Step size  ")
-      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL)
-
-      self.spinCtrl = fs.FloatSpin(self, -1,
-         min_val=0, max_val=99999, increment=0.10, value=1.0,
-         agwStyle=fs.FS_LEFT)
-      self.spinCtrl.SetFormat("%f")
-      self.spinCtrl.SetDigits(4)
-
-      vBoxSizer.Add(self.spinCtrl, 0,
-         flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, border=5)
-
       spinText = wx.StaticText(self, -1, "Jog status  ")
       vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      flexGridSizer = wx.FlexGridSizer(4,2,1,3)
+      flexGridSizer = wx.FlexGridSizer(5,2,1,3)
       vBoxSizer.Add(flexGridSizer,0 , flag=wx.ALL|wx.EXPAND, border=5)
 
       # Add X pos
@@ -656,6 +706,12 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
+      st = wx.StaticText(self, label="CO")
+      self.jCoolant = wx.TextCtrl(self, value=gc.gOffString, style=wx.TE_READONLY)
+      self.jCoolant.SetBackgroundColour(gc.gReadOnlyBkColor)
+      flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      flexGridSizer.Add(self.jCoolant, 1, flag=wx.EXPAND)
+
       # Add Checkbox for sync with work position
       self.useWorkPosCheckBox = wx.CheckBox (self, label="Auto MPOS")
       self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
@@ -664,6 +720,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             "jogging operation use these values to operate"))
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
       vBoxSizer.Add(self.useWorkPosCheckBox)
+
+      # Add Checkbox for Z moves last
+      self.ZJogMovesLastCheckBox = wx.CheckBox (self, label="Z jog mov last")
+      self.ZJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
+      self.ZJogMovesLastCheckBox.SetToolTip(
+         wx.ToolTip("If enabled, XY jog moves then Z Jog moves last"))
+      self.Bind(wx.EVT_CHECKBOX, self.OnZJogMovesLast, self.ZJogMovesLastCheckBox)
+      vBoxSizer.Add(self.ZJogMovesLastCheckBox)
 
       return vBoxSizer
 
@@ -698,34 +762,34 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
 
       # Add reset and move to zero(0) buttons
-      vButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       self.resetToZeroButton = wx.Button(self, label="f = 0")
       self.resetToZeroButton.SetToolTip(wx.ToolTip("Set f axis to zero(0)"))
       self.Bind(wx.EVT_BUTTON, self.OnResetToZero, self.resetToZeroButton)
-      vButtonBoxSizer.Add(self.resetToZeroButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+      hBoxSizer.Add(self.resetToZeroButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
       self.gotoToZeroButton = wx.Button(self, label="f -> 0")
       self.gotoToZeroButton.SetToolTip(wx.ToolTip("Move f axis to zero(0)"))
       self.Bind(wx.EVT_BUTTON, self.OnGoToZero, self.gotoToZeroButton)
-      vButtonBoxSizer.Add(self.gotoToZeroButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+      hBoxSizer.Add(self.gotoToZeroButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
-      vBoxSizer.Add(vButtonBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
+      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
 
       # Add reset and move to jog buttons
-      vButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       self.resetToJogButton = wx.Button(self, label="f = Jog(f)")
       self.resetToJogButton.SetToolTip(wx.ToolTip("Set f axis to Jog(f) current value"))
       self.Bind(wx.EVT_BUTTON, self.OnResetToJogVal, self.resetToJogButton)
-      vButtonBoxSizer.Add(self.resetToJogButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+      hBoxSizer.Add(self.resetToJogButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
       self.gotoToJogButton = wx.Button(self, label="f -> Jog(f)")
       self.gotoToJogButton.SetToolTip(wx.ToolTip("Move f axis to Jog(f) current value"))
       self.Bind(wx.EVT_BUTTON, self.OnGoToJogVal, self.gotoToJogButton)
-      vButtonBoxSizer.Add(self.gotoToJogButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+      hBoxSizer.Add(self.gotoToJogButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
-      vBoxSizer.Add(vButtonBoxSizer, flag=wx.TOP|wx.EXPAND)#, border=5)
+      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND)#, border=5)
 
       # Add move home buttons
       self.gotoToHomeButton = wx.Button(self, label="f -> Home")
@@ -734,25 +798,42 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       vBoxSizer.Add(self.gotoToHomeButton, flag=wx.TOP|wx.EXPAND)#, border=5)
 
 
-      spinText = wx.StaticText(self, -1, "Jog memory stack")
-      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.EXPAND, border=5)
+      # Jog memory functions
+      spinText = wx.StaticText(self, -1, "Jog memory")
+      vBoxSizer.Add(spinText,0 , flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM|wx.EXPAND, border=5)
+
+      # add save and restore position buttons
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+      self.savePositionButton = wx.Button(self, label="SAV POS")
+      self.savePositionButton.SetToolTip(wx.ToolTip("Save current jog position"))
+      self.Bind(wx.EVT_BUTTON, self.OnSaveJogPosition, self.savePositionButton)
+      hBoxSizer.Add(self.savePositionButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      self.restorePositionButton = wx.Button(self, label="RES POS")
+      self.restorePositionButton.SetToolTip(wx.ToolTip("Move axises to saved position"))
+      self.Bind(wx.EVT_BUTTON, self.OnRestoreJogPosition, self.restorePositionButton)
+      hBoxSizer.Add(self.restorePositionButton, flag=wx.TOP|wx.EXPAND)#, border=5)
+
+      vBoxSizer.Add(hBoxSizer, flag=wx.EXPAND)
+
 
       # add jog position memory stack
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
-      self.pushStackButton = wx.Button(self, label="+", style=wx.BU_EXACTFIT)
+      self.pushStackButton = wx.Button(self, label="+", size=(30, -1))
       self.pushStackButton.SetToolTip(
          wx.ToolTip("Adds current jog position values to jog memory stack"))
       self.Bind(wx.EVT_BUTTON, self.OnPushStack, self.pushStackButton)
-      hBoxSizer.Add(self.pushStackButton, 1, flag=wx.EXPAND)
+      hBoxSizer.Add(self.pushStackButton, flag=wx.ALIGN_CENTER_VERTICAL)
 
       self.jogMemoryStackComboBox = wx.combo.BitmapComboBox(self, -1, value="", size=(10,-1),
-         choices=[], style=wx.CB_READONLY|wx.CB_DROPDOWN)
+         choices=[], style=wx.CB_READONLY|wx.CB_DROPDOWN|wx.TAB_TRAVERSAL)
       self.jogMemoryStackComboBox.SetToolTip(wx.ToolTip("jog memory stack"))
       self.Bind(wx.EVT_COMBOBOX, self.OnPopStack, self.jogMemoryStackComboBox)
-      hBoxSizer.Add(self.jogMemoryStackComboBox, 2, flag=wx.EXPAND)
+      hBoxSizer.Add(self.jogMemoryStackComboBox, 3, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
-      vBoxSizer.Add(hBoxSizer, flag=wx.TOP|wx.EXPAND, border=5)
+      vBoxSizer.Add(hBoxSizer, flag=wx.EXPAND)
 
       return vBoxSizer
 
@@ -793,15 +874,22 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       fAxisPos = float(staticControl.GetValue())
 
       if opAdd:
-         fAxisPos += self.spinCtrl.GetValue()
+         fAxisPos += self.stepSpinCtrl.GetValue()
       else:
-         fAxisPos -= self.spinCtrl.GetValue()
+         fAxisPos -= self.stepSpinCtrl.GetValue()
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
 
       cmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " ", axis, str(fAxisStrPos), "\n"])
       self.mainWindow.SerialWriteWaitForAck(cmd)
+
+      #cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, gc.gDEVICE_CMD_GO_TO_POS, " ", axis, str(fAxisStrPos), "\n"])
+      #self.mainWindow.SerialWriteWaitForAck(cmd)
+
+      #cmd = "".join([gc.gGDEVICE_CMD_ABSOLUTE, "\n"])
+      #self.mainWindow.SerialWriteWaitForAck(cmd)
+
 
    def OnAllCheckBox(self, evt):
       self.xCheckBox.SetValue(evt.IsChecked())
@@ -854,15 +942,55 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.mainWindow.SerialWriteWaitForAck("".join(
          [gc.gDEVICE_CMD_SPINDLE_OFF, "\n"]))
 
+   def OnCoolantOn(self, e):
+      self.jCoolant.SetValue(gc.gOnString)
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_COOLANT_ON, "\n"]))
+
+   def OnCoolantOff(self, e):
+      self.jCoolant.SetValue(gc.gOffString)
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_COOLANT_OFF, "\n"]))
+
+   def OnHomeX(self, e):
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_HOME_AXIS, " X", gc.gZeroString, "\n"]))
+
+   def OnHomeY(self, e):
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_HOME_AXIS, " Y", gc.gZeroString, "\n"]))
+
+   def OnHomeZ(self, e):
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_HOME_AXIS, " Z", gc.gZeroString, "\n"]))
+
+   def OnHomeXY(self, e):
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_HOME_AXIS, " X", gc.gZeroString,
+         " Y", gc.gZeroString, "\n"]))
+
+   def OnHome(self, e):
+      # on home operation don't use Z move last option
+      # home operation should move Z to a safe place first before
+      # moving X or Y axis
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_HOME_AXIS, " X", gc.gZeroString,
+         " Y", gc.gZeroString, " Z", gc.gZeroString, "\n"]))
+
+   def OnSetStepSize(self, e):
+      self.stepSpinCtrl.SetValue(float(e.GetEventObject().GetLabel()))
+
    def OnUseMachineWorkPosition(self, e):
       self.configAutoMPOS = e.IsChecked()
+
+   def OnZJogMovesLast(self, e):
+      self.configZJogMovesLast = e.IsChecked()
 
    def OnJogCmd (self, xval, yval, zval, gcode_cmd):
       cmd = ""
       cmdx = ""
       cmdy = ""
       cmdz = ""
-
 
       if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
          self.jX.SetValue(xval)
@@ -876,14 +1004,19 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jZ.SetValue(zval)
          cmdz = " Z%s" % zval
 
-      if (len(cmdx) > 0) or (len(cmdy) > 0) or (len(cmdz) > 0):
-         cmd = "".join([gcode_cmd, cmdx, cmdy, cmdz, "\n"])
+      if (self.configZJogMovesLast):
+         if (len(cmdx) > 0) or (len(cmdy) > 0):
+            cmd = "".join([gcode_cmd, cmdx, cmdy, "\n"])
+            self.mainWindow.SerialWriteWaitForAck(cmd)
 
-      if len(cmd) > 1:
-         self.mainWindow.SerialWriteWaitForAck(cmd)
-      # else:
-      # maybe we need to show a hint (did you you forget to select an
-      # axis
+         if (len(cmdz) > 0):
+            cmd = "".join([gcode_cmd, cmdz, "\n"])
+            self.mainWindow.SerialWriteWaitForAck(cmd)
+
+      else:
+         if (len(cmdx) > 0) or (len(cmdy) > 0) or (len(cmdz) > 0):
+            cmd = "".join([gcode_cmd, cmdx, cmdy, cmdz, "\n"])
+            self.mainWindow.SerialWriteWaitForAck(cmd)
 
    def OnResetToZero(self, e):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
@@ -908,7 +1041,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
 
-
    def OnGoToJogVal(self, e):
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
@@ -917,6 +1049,30 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def OnGoHome(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
          gc.gDEVICE_CMD_HOME_AXIS)
+
+   def OnSaveJogPosition(self, e):
+      xVal = self.jX.GetValue()
+      yVal = self.jY.GetValue()
+      zVal = self.jZ.GetValue()
+
+      self.SavedJogPos = (xVal, yVal, zVal)
+      self.restorePositionButton.Enable()
+
+   def OnRestoreJogPosition(self, e):
+      cmdx = " X%s" % self.SavedJogPos[0]
+      cmdy = " Y%s" % self.SavedJogPos[1]
+      cmdz = " Z%s" % self.SavedJogPos[2]
+      gcode_cmd = gc.gDEVICE_CMD_GO_TO_POS
+
+      if (self.configZJogMovesLast):
+         cmd = "".join([gcode_cmd, cmdx, cmdy, "\n"])
+         self.mainWindow.SerialWriteWaitForAck(cmd)
+
+         cmd = "".join([gcode_cmd, cmdz, "\n"])
+         self.mainWindow.SerialWriteWaitForAck(cmd)
+      else:
+         cmd = "".join([gcode_cmd, cmdx, cmdy, cmdz, "\n"])
+         self.mainWindow.SerialWriteWaitForAck(cmd)
 
    def OnPushStack(self, e):
       xVal = self.jX.GetValue()
