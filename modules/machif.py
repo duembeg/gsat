@@ -41,7 +41,7 @@ import modules.serial_thread as st
    (g2core, TinyG, grbl, etc).
 
 ----------------------------------------------------------------------------"""
-class machIf_Base():
+class machIf_Base(object):
    def __init__(self, cmd_line_options, id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
       self.id = id
       self.name = name

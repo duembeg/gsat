@@ -51,7 +51,7 @@ gInputBufferWatermarkPrcnt = 0.90
 ----------------------------------------------------------------------------"""
 class machIf_TinyG(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      mi.machIf_Base.__init__(self, cmd_line_options, 1100, "TinyG", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+      super(machIf_TinyG, self).__init__(cmd_line_options, 1100, "TinyG", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
 
    def Decode(self, data):
       dataDict = {}
@@ -159,4 +159,4 @@ class machIf_TinyG(mi.machIf_Base):
       return '{"sr":null}\n'
 
    def Reset(self):
-      mi.machIf_Base._Reset(self, gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+      super(machIf_TinyG, self)._Reset(self, gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
