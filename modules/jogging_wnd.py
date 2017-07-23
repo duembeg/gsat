@@ -32,6 +32,8 @@ from wx.lib.agw import floatspin as fs
 import modules.config as gc
 import modules.machif_config as mi
 
+import images.icons as ico
+
 
 """----------------------------------------------------------------------------
    gsatJoggingSettingsPanel:
@@ -459,11 +461,18 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.negativeZButton.Enable()
          self.spindleOnButton.Enable()
          self.spindleOffButton.Enable()
+         self.coolantOnButton.Enable()
+         self.coolantOffButton.Enable()
          self.custom1Button.Enable()
          self.custom2Button.Enable()
          self.custom3Button.Enable()
          self.custom4Button.Enable()
          self.cliComboBox.Enable()
+         self.homeXButton.Enable()
+         self.homeYButton.Enable()
+         self.homeZButton.Enable()
+         self.homeXYButton.Enable()
+         self.homeButton.Enable()
       else:
          self.resetToZeroButton.Disable()
          self.resetToJogButton.Disable()
@@ -478,79 +487,127 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.negativeZButton.Disable()
          self.spindleOnButton.Disable()
          self.spindleOffButton.Disable()
+         self.coolantOnButton.Disable()
+         self.coolantOffButton.Disable()
          self.custom1Button.Disable()
          self.custom2Button.Disable()
          self.custom3Button.Disable()
          self.custom4Button.Disable()
          self.cliComboBox.Disable()
+         self.homeXButton.Disable()
+         self.homeYButton.Disable()
+         self.homeZButton.Disable()
+         self.homeXYButton.Disable()
+         self.homeButton.Disable()
 
 
    def CreateJoggingControls(self):
       # Add Buttons -----------------------------------------------------------
-      hButtonBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-      vYButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      joggingGridSizer = wx.GridBagSizer(1,3)
       vZButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      vOtherButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      vSpindleButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
+      vCoolantButtonBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       buttonSize = (50,50)
+      buttonSizeLong = (50,75)
+      buttonSizeWideLong = (60,75)
 
-      self.negativeXButton = wx.Button(self, label="-X", size=buttonSize)
-      self.negativeXButton.SetToolTip(
-         wx.ToolTip("Move X axis on negative direction by step size"))
-      self.Bind(wx.EVT_BUTTON, self.OnXNeg, self.negativeXButton)
-      hButtonBoxSizer.Add(self.negativeXButton, flag=wx.ALIGN_CENTER_VERTICAL)
-
-      self.positiveYButton = wx.Button(self, label="+Y", size=buttonSize)
-      self.positiveYButton.SetToolTip(
-         wx.ToolTip("Move Y axis on positive direction by step size"))
-      self.Bind(wx.EVT_BUTTON, self.OnYPos, self.positiveYButton)
-      vYButtonBoxSizer.Add(self.positiveYButton)
-
-      self.negativeYButton = wx.Button(self, label="-Y", size=buttonSize)
-      self.negativeYButton.SetToolTip(
-         wx.ToolTip("Move Y axis on negative direction by step size"))
-      self.Bind(wx.EVT_BUTTON, self.OnYNeg, self.negativeYButton)
-      vYButtonBoxSizer.Add(self.negativeYButton)
-      hButtonBoxSizer.Add(vYButtonBoxSizer, flag=wx.ALIGN_CENTER_VERTICAL)
-
-      self.positiveXButton = wx.Button(self, label="+X", size=buttonSize)
+      # X axis buttons
+      self.positiveXButton = wx.BitmapButton(self, -1, ico.imgPX.GetBitmap(), size=buttonSize)
       self.positiveXButton.SetToolTip(
          wx.ToolTip("Move X axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnXPos, self.positiveXButton)
-      hButtonBoxSizer.Add(self.positiveXButton, flag=wx.ALIGN_CENTER_VERTICAL)
+      joggingGridSizer.Add(self.positiveXButton, pos=(1,2))      
 
-      spacerText = wx.StaticText(self, label="   ")
-      hButtonBoxSizer.Add(spacerText, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.negativeXButton = wx.BitmapButton(self, -1, ico.imgNX.GetBitmap(), size=buttonSize)
+      self.negativeXButton.SetToolTip(
+         wx.ToolTip("Move X axis on negative direction by step size"))
+      self.Bind(wx.EVT_BUTTON, self.OnXNeg, self.negativeXButton)
+      joggingGridSizer.Add(self.negativeXButton, pos=(1,0))
 
-      self.positiveZButton = wx.Button(self, label="+Z", size=buttonSize)
+
+      # Y axis buttons
+      self.positiveYButton = wx.BitmapButton(self, -1, ico.imgPY.GetBitmap(), size=buttonSize)
+      self.positiveYButton.SetToolTip(
+         wx.ToolTip("Move Y axis on positive direction by step size"))
+      self.Bind(wx.EVT_BUTTON, self.OnYPos, self.positiveYButton)
+      joggingGridSizer.Add(self.positiveYButton, pos=(0,1))
+      
+      self.negativeYButton = wx.BitmapButton(self, -1, ico.imgNY.GetBitmap(), size=buttonSize)
+      self.negativeYButton.SetToolTip(
+         wx.ToolTip("Move Y axis on negative direction by step size"))
+      self.Bind(wx.EVT_BUTTON, self.OnYNeg, self.negativeYButton)
+      joggingGridSizer.Add(self.negativeYButton, pos=(2,1))
+
+
+      # Z axis buttons
+      self.positiveZButton = wx.BitmapButton(self, -1, ico.imgPZ.GetBitmap(), size=buttonSizeLong)
       self.positiveZButton.SetToolTip(
          wx.ToolTip("Move Z axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZPos, self.positiveZButton)
       vZButtonBoxSizer.Add(self.positiveZButton)
 
-      self.negativeZButton = wx.Button(self, label="-Z", size=buttonSize)
+      self.negativeZButton = wx.BitmapButton(self, -1, ico.imgNZ.GetBitmap(), size=buttonSizeLong)
       self.negativeZButton.SetToolTip(
          wx.ToolTip("Move Z axis on negative direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZNeg, self.negativeZButton)
       vZButtonBoxSizer.Add(self.negativeZButton)
-      hButtonBoxSizer.Add(vZButtonBoxSizer, flag=wx.ALIGN_CENTER_VERTICAL)
+      joggingGridSizer.Add(vZButtonBoxSizer, pos=(0,4), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
 
-      spacerText = wx.StaticText(self, label="     ")
-      hButtonBoxSizer.Add(spacerText, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      self.spindleOnButton = wx.Button(self, label="SP ON", size=(60,50))
+      # Spindle buttons
+      self.spindleOnButton = wx.BitmapButton(self, -1, ico.imgSpindleOn.GetBitmap(), size=buttonSizeWideLong)
       self.spindleOnButton.SetToolTip(wx.ToolTip("Spindle ON"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      vOtherButtonBoxSizer.Add(self.spindleOnButton)
+      vSpindleButtonBoxSizer.Add(self.spindleOnButton)
 
-      self.spindleOffButton = wx.Button(self, label="SP OFF", size=(60,50))
+      self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(), size=buttonSizeWideLong)
       self.spindleOffButton.SetToolTip(wx.ToolTip("Spindle OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.spindleOffButton)
-      vOtherButtonBoxSizer.Add(self.spindleOffButton)
+      vSpindleButtonBoxSizer.Add(self.spindleOffButton)
+      joggingGridSizer.Add(vSpindleButtonBoxSizer, pos=(0,6), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
+      
+      # Coolant Buttons
+      self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(), size=buttonSizeWideLong)
+      self.coolantOnButton.SetToolTip(wx.ToolTip("Coolant ON"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.coolantOnButton)
+      vCoolantButtonBoxSizer.Add(self.coolantOnButton)
 
-      hButtonBoxSizer.Add(vOtherButtonBoxSizer, flag=wx.ALIGN_BOTTOM)
+      self.coolantOffButton = wx.BitmapButton(self, -1, ico.imgCoolantOff.GetBitmap(), size=buttonSizeWideLong)
+      self.coolantOffButton.SetToolTip(wx.ToolTip("Coolant OFF"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)
+      vCoolantButtonBoxSizer.Add(self.coolantOffButton)
+      joggingGridSizer.Add(vCoolantButtonBoxSizer, pos=(0,7), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
+      
+      # Home Buttons
+      self.homeXButton = wx.BitmapButton(self, -1, ico.imgHomeX.GetBitmap(), size=buttonSize)
+      self.homeXButton.SetToolTip(wx.ToolTip("Home X axis"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
+      joggingGridSizer.Add(self.homeXButton, pos=(0,0))
+      
+      self.homeYButton = wx.BitmapButton(self, -1, ico.imgHomeY.GetBitmap(), size=buttonSize)
+      self.homeYButton.SetToolTip(wx.ToolTip("Home Y axis"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
+      joggingGridSizer.Add(self.homeYButton, pos=(0,2))
 
-      return hButtonBoxSizer
+      self.homeZButton = wx.BitmapButton(self, -1, ico.imgHomeZ.GetBitmap(), size=buttonSize)
+      self.homeZButton.SetToolTip(wx.ToolTip("Home Z axis"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
+      joggingGridSizer.Add(self.homeZButton, pos=(2,2))
+
+      self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(), size=buttonSize)
+      self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)
+      joggingGridSizer.Add(self.homeXYButton, pos=(2,0))
+
+      self.homeButton = wx.BitmapButton(self, -1, ico.imgHome.GetBitmap(), size=buttonSize)
+      self.homeButton.SetToolTip(wx.ToolTip("Home XYZ axis"))
+      #self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.coolantOffButton)      
+      joggingGridSizer.Add(self.homeButton, pos=(1,1))
+
+
+      #return hButtonBoxSizer
+      return joggingGridSizer
 
    def CreatePositionStatusControls(self):
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
