@@ -53,9 +53,14 @@ gStateData = None
 gDEVICE_CMD_GO_TO_POS         = "G00"     # G00 <AXIS><VAL>
 gDEVICE_CMD_SPINDLE_ON        = "M3"
 gDEVICE_CMD_SPINDLE_OFF       = "M5"
+gDEVICE_CMD_COOLANT_ON        = "M7"
+gDEVICE_CMD_COOLANT_OFF       = "M9"
 gDEVICE_CMD_HOME_AXIS         = "G28.2"   # G28.2 <AXIS>0
 gDEVICE_CMD_SET_AXIS          = "G28.3"   # G28.3 <AXIS><VAL>
+gDEVICE_CMD_ABSOLUTE          = "G90"     # G90
+gDEVICE_CMD_INCREMENTAL       = "G91"     # G91
 gDEVICE_CMD_OFFSET_AXIS       = "G92"     # G92 <AXIS><VAL>
+
 
 # --------------------------------------------------------------------------
 # state machine states and transition
@@ -256,6 +261,7 @@ class gsatConfigData():
          '/jogging/XYZReadOnly'              :(True , False),
          '/jogging/AutoMPOS'                 :(True , True),
          '/jogging/ReqUpdateOnJogSetOp'      :(True , True),
+         '/jogging/ZJogMovesLast'            :(True , True),
          '/jogging/Custom1Label'             :(False, "Custom 1"),
          '/jogging/Custom1OptPosition'       :(True , True),
          '/jogging/Custom1OptScript'         :(True , False),
@@ -365,5 +371,3 @@ class threadEvent():
    def __init__(self, event_id, data):
       self.event_id = event_id
       self.data = data
-
-
