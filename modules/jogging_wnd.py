@@ -521,9 +521,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def CreateJoggingControls(self):
       # Add Buttons -----------------------------------------------------------
       gbzJoggingGridSizer = wx.GridBagSizer(1,3)
-      vsZBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      vsSpindleBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      vsCoolantBoxSizer = wx.BoxSizer(wx.VERTICAL)
       hsStepSizeBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
 
       buttonSize = (50,50)
@@ -567,7 +564,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          wx.ToolTip("Move Z axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZPos, self.positiveZButton)
       gbzJoggingGridSizer.Add(self.positiveZButton, pos=(0,3))
-      #vsZBoxSizer.Add(self.positiveZButton)
 
       self.negativeZButton = wx.BitmapButton(self, -1, ico.imgNegZ.GetBitmap(), 
          size=buttonSize, style=wx.BORDER_NONE)
@@ -575,32 +571,32 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          wx.ToolTip("Move Z axis on negative direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZNeg, self.negativeZButton)
       gbzJoggingGridSizer.Add(self.negativeZButton, pos=(2,3))
-      #vsZBoxSizer.Add(self.negativeZButton)
-      #gbzJoggingGridSizer.Add(vsZBoxSizer, pos=(0,3), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
 
       # Spindle buttons
-      self.spindleOnButton = wx.BitmapButton(self, -1, ico.imgSpindleOn.GetBitmap(), size=buttonSizeWideLong)
+      self.spindleOnButton = wx.BitmapButton(self, -1, ico.imgSpindleOn.GetBitmap(), 
+         size=buttonSize, style=wx.BORDER_NONE)
       self.spindleOnButton.SetToolTip(wx.ToolTip("Spindle ON"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      vsSpindleBoxSizer.Add(self.spindleOnButton)
+      gbzJoggingGridSizer.Add(self.spindleOnButton, pos=(0,4))
 
-      self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(), size=buttonSizeWideLong)
+      self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(), 
+         size=buttonSize, style=wx.BORDER_NONE)
       self.spindleOffButton.SetToolTip(wx.ToolTip("Spindle OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.spindleOffButton)
-      vsSpindleBoxSizer.Add(self.spindleOffButton)
-      gbzJoggingGridSizer.Add(vsSpindleBoxSizer, pos=(0,4), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
+      gbzJoggingGridSizer.Add(self.spindleOffButton, pos=(0,5))
 
       # Coolant Buttons
-      self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(), size=buttonSizeWideLong)
+      self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(), 
+         size=buttonSize, style=wx.BORDER_NONE)
       self.coolantOnButton.SetToolTip(wx.ToolTip("Coolant ON"))
       self.Bind(wx.EVT_BUTTON, self.OnCoolantOn, self.coolantOnButton)
-      vsCoolantBoxSizer.Add(self.coolantOnButton)
+      gbzJoggingGridSizer.Add(self.coolantOnButton, pos=(1,4))
 
-      self.coolantOffButton = wx.BitmapButton(self, -1, ico.imgCoolantOff.GetBitmap(), size=buttonSizeWideLong)
+      self.coolantOffButton = wx.BitmapButton(self, -1, ico.imgCoolantOff.GetBitmap(), 
+         size=buttonSize, style=wx.BORDER_NONE)
       self.coolantOffButton.SetToolTip(wx.ToolTip("Coolant OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnCoolantOff, self.coolantOffButton)
-      vsCoolantBoxSizer.Add(self.coolantOffButton)
-      gbzJoggingGridSizer.Add(vsCoolantBoxSizer, pos=(0,5), span=(3,0), flag=wx.ALIGN_CENTER_VERTICAL)
+      gbzJoggingGridSizer.Add(self.coolantOffButton, pos=(1,5))
 
       # Home Buttons
       self.homeXButton = wx.BitmapButton(self, -1, ico.imgHomeX.GetBitmap(), 

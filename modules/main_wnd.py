@@ -450,6 +450,7 @@ class gsatMainWindow(wx.Frame):
 
       if self.cmdLineOptions.verbose:
          print "Init config values..."
+         print "  wxVersion:                ", wx.version()
          print "  displayRuntimeDialog:     ", self.displayRuntimeDialog
          print "  saveBackupFile:           ", self.saveBackupFile
          print "  maxFileHistory:           ", self.maxFileHistory
