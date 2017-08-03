@@ -33,6 +33,7 @@ gReadOnlyBkColor = wx.Colour(242, 241, 240)
 
 
 gWILDCARD = \
+   "gcode (*.ngc; *.nc; *.gcode)|*.ngc;*.nc;*.gcode|"\
    "ngc (*.ngc)|*.ngc|" \
    "nc (*.nc)|*.nc|" \
    "gcode (*.gcode)|*.gcode|" \

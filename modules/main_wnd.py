@@ -429,6 +429,7 @@ class gsatMainWindow(wx.Frame):
 
       # register for close events
       self.Bind(wx.EVT_CLOSE, self.OnClose)
+      #self.Bind (wx.EVT_IDLE, self.OnThreadEvent)
 
       self.InitUI()
       self.Centre()
@@ -1056,7 +1057,7 @@ class gsatMainWindow(wx.Frame):
          defaultDir=currentDir,
          defaultFile=currentFile,
          wildcard=gc.gWILDCARD,
-         style=wx.OPEN | wx.FD_FILE_MUST_EXIST
+         style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
          )
 
       if dlgFile.ShowModal() == wx.ID_OK:
@@ -2038,7 +2039,7 @@ class gsatMainWindow(wx.Frame):
    Handle events coming from serial port thread
    -------------------------------------------------------------------------"""
    def OnThreadEvent(self, e):
-      while (not self.mainWndInQueue.empty()):
+      if not self.mainWndInQueue.empty():
          # get dat from queue
          te = self.mainWndInQueue.get()
 
@@ -2063,6 +2064,9 @@ class gsatMainWindow(wx.Frame):
                self.GetMachineStatus()
                self.RunDeviceInitScript()
 
+            prcnt = "%.2f%%" % abs((float(self.stateData.programCounter)/float(len(self.stateData.gcodeFileLines)-1) * 100))
+            te.data['prcnt'] = prcnt
+
             self.machineStatusPanel.UpdateUI(self.stateData, te.data)
             self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
 
@@ -2075,20 +2079,19 @@ class gsatMainWindow(wx.Frame):
          elif te.event_id == gc.gEV_DATA_OUT:
             if self.cmdLineOptions.vverbose:
                print "gsatMainWindow got event gc.gEV_DATA_OUT."
+
             self.outputText.AppendText("> %s" % te.data)
 
-            if not te.data.endswith("\n"):
+            if te.data[-1:] != "\n":
                self.outputText.AppendText("\n")
 
          elif te.event_id == gc.gEV_PC_UPDATE:
             # calculate percentage if lines sent
-            prcnt = "%.2f%%" % (float(te.data)/float(len(self.stateData.gcodeFileLines)) * 100)
 
             if self.cmdLineOptions.vverbose:
-               print "gsatMainWindow got event gc.gEV_PC_UPDATE [%s], %s sent." \
-                  % (str(te.data), prcnt)
+               print "gsatMainWindow got event gc.gEV_PC_UPDATE [%s]." \
+                  % str(te.data)
             self.SetPC(te.data)
-            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':prcnt}))
 
          elif te.event_id == gc.gEV_DEVICE_DETECTED:
             if self.cmdLineOptions.vverbose:
@@ -2102,10 +2105,6 @@ class gsatMainWindow(wx.Frame):
                print "gsatMainWindow got event gc.gEV_RUN_END, 100%% sent."
             self.stateData.swState = gc.gSTATE_IDLE
             self.RunTimerStop()
-            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':"100.00%"}))
-            self.Refresh()
-            self.UpdateUI()
-            self.SetPC(0)
 
             # calculate run time
             if self.runEndTime == 0:
@@ -2120,6 +2119,9 @@ class gsatMainWindow(wx.Frame):
             runEndTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
 
             self.machineStatusPanel.UpdateUI(self.stateData, dict({'rtime':runTimeStr}))
+            self.Refresh()
+            self.UpdateUI()
+            print self.stateData.programCounter
 
             # display run time dialog.
             if self.displayRuntimeDialog:
@@ -2135,6 +2137,11 @@ class gsatMainWindow(wx.Frame):
                else:
                   wx.MessageBox(msgText, "G-Code Program",
                      wx.OK|wx.ICON_INFORMATION)
+
+            self.SetPC(0)
+            self.machineStatusPanel.UpdateUI(self.stateData, dict({'prcnt':"100.00%"}))
+            self.Refresh()
+            self.UpdateUI()
 
          elif te.event_id == gc.gEV_STEP_END:
             if self.cmdLineOptions.vverbose:

@@ -79,9 +79,9 @@ class machIf_g2core(mi.machIf_Base):
                elif 2 == status:
                   sr['stat'] = 'Alarm'
                elif 3 == status:
-                  sr['stat'] = 'Stop'
+                  sr['stat'] = 'Prog Stop'
                elif 4 == status:
-                  sr['stat'] = 'End'
+                  sr['stat'] = 'Prog End'
                elif 5 == status:
                   sr['stat'] = 'Run'
                elif 6 == status:
@@ -91,7 +91,16 @@ class machIf_g2core(mi.machIf_Base):
                elif 8 == status:
                   sr['stat'] = 'Run'
                elif 9 == status:
-                  sr['stat'] = 'Home'
+                  sr['stat'] = 'Homeming'
+               elif 10 == status:
+                  sr['stat'] = 'Jog'
+               elif 11 == status:
+                  sr['stat'] = 'InterLock'
+               elif 12 == status:
+                  sr['stat'] = 'Shutdown'
+               elif 13 == status:
+                  sr['stat'] = 'Panic'
+                  
 
             # deal with old versions of g2core
             if 'mpox' in sr:
