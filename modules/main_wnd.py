@@ -2216,7 +2216,7 @@ class gsatMainWindow(wx.Frame):
             self.UpdateUI()
 
       # tell program exec thread that our queue is empty, ok to post more event
-      self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
+      #self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
 
    def RunDeviceInitScript (self):
       # run init script

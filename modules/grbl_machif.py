@@ -237,7 +237,7 @@ class machIf_GRBL(mi.machIf_Base):
 
       data = data.encode('ascii')
 
-      # handle special cases doe to status in cmd line and how GRBL
+      # handle special cases due to status in cmd line and how GRBL
       # reports deals with this. if not careful we might get two status
       # from a single line but is not consistence on hos this works.
       # for this reason if we find "?" on the line will remove all but one

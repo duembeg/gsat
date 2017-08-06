@@ -201,7 +201,7 @@ class serialPortThread(threading.Thread):
                   #pdb.set_trace()
 
                   if self.cmdLineOptions.vverbose:
-                     print "[%03d] <- ASCII:{%s} HEX:{%s}" % (len(serialData),
+                     print "[%03d] <- ASCII:%s HEX:%s" % (len(serialData),
                         serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
                   elif self.cmdLineOptions.verbose:
                      print "[%03d] <- %s" % (len(serialData), serialData.strip())
@@ -259,7 +259,7 @@ class serialPortThread(threading.Thread):
             self.serPort.write(serialData)
 
             if self.cmdLineOptions.vverbose:
-               print "[%03d] -> ASCII:{%s} HEX:{%s}" % (len(serialData),
+               print "[%03d] -> ASCII:%s HEX:%s" % (len(serialData),
                   serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
             elif self.cmdLineOptions.verbose:
                print "[%03d] -> %s" % (len(serialData), serialData.strip())

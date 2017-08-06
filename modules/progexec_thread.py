@@ -97,9 +97,10 @@ class programExecuteThread(threading.Thread):
    def ProcessQueue(self):
       # check output queue and notify UI if is not empty
       if not self.progExecOutQueue.empty():
-         if self.okToPostEvents:
-            self.okToPostEvents = False
-            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+         #if self.okToPostEvents:
+         #   self.okToPostEvents = False
+         #   wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+         wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
 
       # process events from queue ---------------------------------------------
       if not self.progExecInQueue.empty():
@@ -158,9 +159,10 @@ class programExecuteThread(threading.Thread):
             self.machineAutoStatus = e.data
 
          elif e.event_id == gc.gEV_CMD_OK_TO_POST:
-            if self.cmdLineOptions.vverbose:
-               print "** programExecuteThread got event gc.gEV_CMD_OK_TO_POST."
-            self.okToPostEvents = True
+            #if self.cmdLineOptions.vverbose:
+            #   print "** programExecuteThread got event gc.gEV_CMD_OK_TO_POST."
+            #self.okToPostEvents = True
+            pass
 
          elif e.event_id == gc.gEV_CMD_GET_STATUS:
             if self.cmdLineOptions.vverbose:

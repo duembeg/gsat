@@ -22,12 +22,21 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import re
+
 try:
     import simplejson as json
 except ImportError:
     import json
 
 import modules.machif as mi
+
+# -----------------------------------------------------------------------------
+# regular expressions
+# -----------------------------------------------------------------------------
+# g2core text ack, example  "ok>"
+gReG2CoreMachineAck = re.compile(r'.+ok>\s$')
+
 
 """----------------------------------------------------------------------------
    machIf_g2core:
@@ -37,7 +46,7 @@ import modules.machif as mi
    ID = 1200
    Name = "g2core"
    input buffer max size = 255
-   input buffer init size = 1
+   input buffer init size = 0
    input buffer watermark = 90%
 
    Init buffer to (1) when connecting it counts that as one char on response
@@ -49,7 +58,9 @@ import modules.machif as mi
 ----------------------------------------------------------------------------"""
 class machIf_g2core(mi.machIf_Base):
    def __init__(self, cmd_line_options):
-      super(machIf_g2core, self).__init__(cmd_line_options, 1200, "g2core", 255, 1, 0.90)
+      super(machIf_g2core, self).__init__(cmd_line_options, 1200, "g2core", 255, 0, 0.90)
+
+      self.inputBufferPart = list()
 
    def Decode(self, data):
       dataDict = {}
@@ -100,7 +111,7 @@ class machIf_g2core(mi.machIf_Base):
                   sr['stat'] = 'Shutdown'
                elif 13 == status:
                   sr['stat'] = 'Panic'
-                  
+
 
             # deal with old versions of g2core
             if 'mpox' in sr:
@@ -112,23 +123,29 @@ class machIf_g2core(mi.machIf_Base):
             if 'mpoa' in sr:
                sr['posa'] = sr['mpoa']
 
-         if 'f' in dataDict:
-            f = dataDict['f']
+         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
-            # remove buffer part freed from acked command
-            bufferPart = f[2]
+      except:
+         ack = gReG2CoreMachineAck.match(data)
+         if ack is not None:
+            dataDict['r'] = {"f":[1,0,0]}
+         else:
+            if self.cmdLineOptions.vverbose:
+               print "** machIf_g2core cannot decode data!! [%s]." % data
+
+      if 'r' in dataDict:
+         # checking for count in "f" response doesn't always work as expected and broke on edge branch
+         # it was never specify that this was the functionality so abandoning that solution
+
+         if len(self.inputBufferPart) > 0:
+            bufferPart = self.inputBufferPart.pop(0)
+
             self.inputBufferSize = self.inputBufferSize - bufferPart
 
             if self.cmdLineOptions.vverbose:
                print "** machIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
-
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
-
-      except:
-         if self.cmdLineOptions.vverbose:
-            print "** machIf_g2core cannot decode data!! [%s]." % data
 
       return dataDict
 
@@ -138,6 +155,8 @@ class machIf_g2core(mi.machIf_Base):
       if bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
+
+         self.inputBufferPart.append(dataLen)
 
          if self.cmdLineOptions.vverbose:
             print "** machIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
