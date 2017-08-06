@@ -25,6 +25,7 @@
 
 import os
 import re
+import serial.tools.list_ports
 import wx
 from wx.lib import scrolledpanel as scrolled
 from wx.lib.agw import floatspin as fs
@@ -58,7 +59,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       st = wx.StaticText(self, label="Device")
       machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
       self.deviceComboBox = wx.ComboBox(self, -1, value=mi.GetMachIfName(machIfId),
-         choices=mi.gMachIfList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
+         choices=sorted(mi.gMachIfList), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER|wx.CB_READONLY)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
@@ -72,6 +73,9 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
          choices=spList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
+
+      self.Bind(wx.EVT_COMBOBOX, self.OnSpComboBoxSelect)
+      self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown)
 
       # Add baud rate controls
       st = wx.StaticText(self, label="Baud Rate")
@@ -135,6 +139,18 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/machine/AutoStatus', self.cbAutoStatus.GetValue())
       self.configData.Set('/machine/AutoRefresh', self.cbAutoRefresh.GetValue())
       self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
+
+   def OnSpComboBoxSelect(self, event):
+      value = self.spComboBox.GetValue()
+      port = value.split(",")[0]
+      self.spComboBox.SetValue(port)
+
+   def OnSpComboBoxDropDown(self, event):
+      serListInfo = serial.tools.list_ports.comports()
+      serList = ["%s, %s" % (i.device, i.description) for i in serListInfo]
+      serList.sort()
+
+      self.spComboBox.Set(serList)
 
 
 
