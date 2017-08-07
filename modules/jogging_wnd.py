@@ -419,9 +419,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.cliComboBox = wx.combo.BitmapComboBox(self, style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER|wx.WANTS_CHARS)
       self.cliComboBox.SetToolTip(wx.ToolTip("Command Line Interface (CLI)"))
       self.cliComboBox.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter)
-      #self.cliComboBox.Bind(wx.EVT_CHAR, self.OnCliChar)
       self.cliComboBox.Bind(wx.EVT_KEY_DOWN, self.OnCliKeyDown)
-      #self.cliComboBox.Bind(wx.EVT_KEY_UP, self.OnCliKeyUp)
       vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND|wx.ALL, border=1)
 
 
@@ -1297,7 +1295,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       evObj = e.GetEventObject()
 
       #if (not self.keybaordJoggingEnable) or (self.cliComboBox == evObj):
-      if (self.cliComboBox == evObj):
+      if evObj in [self.cliComboBox, self.stepSpinCtrl.GetTextCtrl(), 
+         self.spindleSpeedSpinCtrl.GetTextCtrl(), self.jX, self.jY, self.jZ]:
          e.Skip()
       else:
 
