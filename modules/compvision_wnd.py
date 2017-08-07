@@ -481,8 +481,14 @@ class gsatComputerVisionThread(threading.Thread):
       time.sleep(1)
 
       # init sensor frame size
-      self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
-      self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
+      try:
+         # OpenCV 3
+         self.captureDevice.set(self.cv2.CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
+         self.captureDevice.set(self.cv2.CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
+      except AttributeError:
+         # OpenCV 2
+         self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
+         self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
 
       # init before work loop
       self.endThread = False
