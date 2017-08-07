@@ -52,7 +52,8 @@ gStateData = None
 # device commands
 # --------------------------------------------------------------------------
 gDEVICE_CMD_GO_TO_POS         = "G00"     # G00 <AXIS><VAL>
-gDEVICE_CMD_SPINDLE_ON        = "M3"
+gDEVICE_CMD_SPINDLE_CW_ON     = "M3"
+gDEVICE_CMD_SPINDLE_CCW_ON    = "M4"
 gDEVICE_CMD_SPINDLE_OFF       = "M5"
 gDEVICE_CMD_COOLANT_ON        = "M7"
 gDEVICE_CMD_COOLANT_OFF       = "M9"

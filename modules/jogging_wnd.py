@@ -263,6 +263,8 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
       self.InitUI()
       self.SetAutoLayout(True)
       self.SetupScrolling()
+      self.stateData = None
+      self.keybaordJoggingEnable = False
       #self.FitInside()
 
    def InitUI(self):
@@ -443,6 +445,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.SetSizer(vPanelBoxSizer)
       self.Layout()
 
+      self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
 
@@ -460,6 +464,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             self.jZ.SetValue("{:.3f}".format(z))
 
       if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
+         self.keybaordJoggingEnable = True
          self.resetToZeroButton.Enable()
          self.resetToJogButton.Enable()
          self.gotoToZeroButton.Enable()
@@ -471,7 +476,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.negativeYButton.Enable()
          self.positiveZButton.Enable()
          self.negativeZButton.Enable()
-         self.spindleOnButton.Enable()
+         self.spindleCWOnButton.Enable()
+         self.spindleCCWOnButton.Enable()
          self.spindleOffButton.Enable()
          self.coolantOnButton.Enable()
          self.coolantOffButton.Enable()
@@ -485,7 +491,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeZButton.Enable()
          self.homeXYButton.Enable()
          self.homeButton.Enable()
+
+         if self.SavedJogPos is None:
+            self.restorePositionButton.Disable()
+         else:
+            self.restorePositionButton.Enable()
+
       else:
+         self.keybaordJoggingEnable = False
          self.resetToZeroButton.Disable()
          self.resetToJogButton.Disable()
          self.gotoToZeroButton.Disable()
@@ -497,7 +510,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.negativeYButton.Disable()
          self.positiveZButton.Disable()
          self.negativeZButton.Disable()
-         self.spindleOnButton.Disable()
+         self.spindleCWOnButton.Disable()
+         self.spindleCCWOnButton.Disable()
          self.spindleOffButton.Disable()
          self.coolantOnButton.Disable()
          self.coolantOffButton.Disable()
@@ -511,31 +525,28 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeZButton.Disable()
          self.homeXYButton.Disable()
          self.homeButton.Disable()
-
-      if self.SavedJogPos is None:
          self.restorePositionButton.Disable()
-      else:
-         self.restorePositionButton.Enable()
 
 
    def CreateJoggingControls(self):
       # Add Buttons -----------------------------------------------------------
-      gbzJoggingGridSizer = wx.GridBagSizer(1,3)
-      hsStepSizeBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      gbzJoggingGridSizer = wx.GridBagSizer(0,0)
+      gbStepSizeGridSizer = wx.GridBagSizer(0,0)
+      gbSpindleSpeedGridSizer = wx.GridBagSizer(0,0)
 
       buttonSize = (50,50)
       buttonSizeLong = (50,75)
       buttonSizeWideLong = (60,75)
 
       # X axis buttons
-      self.positiveXButton = wx.BitmapButton(self, -1, ico.imgPosX.GetBitmap(), 
+      self.positiveXButton = wx.BitmapButton(self, -1, ico.imgPosX.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.positiveXButton.SetToolTip(
          wx.ToolTip("Move X axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnXPos, self.positiveXButton)
       gbzJoggingGridSizer.Add(self.positiveXButton, pos=(1,2))
 
-      self.negativeXButton = wx.BitmapButton(self, -1, ico.imgNegX.GetBitmap(), 
+      self.negativeXButton = wx.BitmapButton(self, -1, ico.imgNegX.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.negativeXButton.SetToolTip(
          wx.ToolTip("Move X axis on negative direction by step size"))
@@ -543,14 +554,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       gbzJoggingGridSizer.Add(self.negativeXButton, pos=(1,0))
 
       # Y axis buttons
-      self.positiveYButton = wx.BitmapButton(self, -1, ico.imgPosY.GetBitmap(), 
+      self.positiveYButton = wx.BitmapButton(self, -1, ico.imgPosY.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.positiveYButton.SetToolTip(
          wx.ToolTip("Move Y axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnYPos, self.positiveYButton)
       gbzJoggingGridSizer.Add(self.positiveYButton, pos=(0,1))
 
-      self.negativeYButton = wx.BitmapButton(self, -1, ico.imgNegY.GetBitmap(), 
+      self.negativeYButton = wx.BitmapButton(self, -1, ico.imgNegY.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.negativeYButton.SetToolTip(
          wx.ToolTip("Move Y axis on negative direction by step size"))
@@ -558,14 +569,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       gbzJoggingGridSizer.Add(self.negativeYButton, pos=(2,1))
 
       # Z axis buttons
-      self.positiveZButton = wx.BitmapButton(self, -1, ico.imgPosZ.GetBitmap(), 
+      self.positiveZButton = wx.BitmapButton(self, -1, ico.imgPosZ.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.positiveZButton.SetToolTip(
          wx.ToolTip("Move Z axis on positive direction by step size"))
       self.Bind(wx.EVT_BUTTON, self.OnZPos, self.positiveZButton)
       gbzJoggingGridSizer.Add(self.positiveZButton, pos=(0,3))
 
-      self.negativeZButton = wx.BitmapButton(self, -1, ico.imgNegZ.GetBitmap(), 
+      self.negativeZButton = wx.BitmapButton(self, -1, ico.imgNegZ.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.negativeZButton.SetToolTip(
          wx.ToolTip("Move Z axis on negative direction by step size"))
@@ -573,110 +584,147 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       gbzJoggingGridSizer.Add(self.negativeZButton, pos=(2,3))
 
       # Spindle buttons
-      self.spindleOnButton = wx.BitmapButton(self, -1, ico.imgSpindleOn.GetBitmap(), 
+      self.spindleCWOnButton = wx.BitmapButton(self, -1, ico.imgSpindleCWOn.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
-      self.spindleOnButton.SetToolTip(wx.ToolTip("Spindle ON"))
-      self.Bind(wx.EVT_BUTTON, self.OnSpindleOn, self.spindleOnButton)
-      gbzJoggingGridSizer.Add(self.spindleOnButton, pos=(0,4))
+      self.spindleCWOnButton.SetToolTip(wx.ToolTip("Spindle CW ON"))
+      self.Bind(wx.EVT_BUTTON, self.OnSpindleCWOn, self.spindleCWOnButton)
+      gbzJoggingGridSizer.Add(self.spindleCWOnButton, pos=(0,4))
 
-      self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(), 
+      self.spindleCCWOnButton = wx.BitmapButton(self, -1, ico.imgSpindleCCWOn.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.spindleCCWOnButton.SetToolTip(wx.ToolTip("Spindle CCW ON"))
+      self.Bind(wx.EVT_BUTTON, self.OnSpindleCCWOn, self.spindleCCWOnButton)
+      gbzJoggingGridSizer.Add(self.spindleCCWOnButton, pos=(0,5))
+
+      self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.spindleOffButton.SetToolTip(wx.ToolTip("Spindle OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.spindleOffButton)
-      gbzJoggingGridSizer.Add(self.spindleOffButton, pos=(0,5))
+      gbzJoggingGridSizer.Add(self.spindleOffButton, pos=(0,6))
 
       # Coolant Buttons
-      self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(), 
+      self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.coolantOnButton.SetToolTip(wx.ToolTip("Coolant ON"))
       self.Bind(wx.EVT_BUTTON, self.OnCoolantOn, self.coolantOnButton)
       gbzJoggingGridSizer.Add(self.coolantOnButton, pos=(1,4))
 
-      self.coolantOffButton = wx.BitmapButton(self, -1, ico.imgCoolantOff.GetBitmap(), 
+      self.coolantOffButton = wx.BitmapButton(self, -1, ico.imgCoolantOff.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.coolantOffButton.SetToolTip(wx.ToolTip("Coolant OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnCoolantOff, self.coolantOffButton)
       gbzJoggingGridSizer.Add(self.coolantOffButton, pos=(1,5))
 
       # Home Buttons
-      self.homeXButton = wx.BitmapButton(self, -1, ico.imgHomeX.GetBitmap(), 
+      self.homeButton = wx.BitmapButton(self, -1, ico.imgHomeXYZ.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.homeButton.SetToolTip(wx.ToolTip("Home XYZ axis"))
+      self.Bind(wx.EVT_BUTTON, self.OnHome, self.homeButton)
+      gbzJoggingGridSizer.Add(self.homeButton, pos=(0,0))
+
+      self.homeXButton = wx.BitmapButton(self, -1, ico.imgHomeX.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.homeXButton.SetToolTip(wx.ToolTip("Home X axis"))
       self.Bind(wx.EVT_BUTTON, self.OnHomeX, self.homeXButton)
-      gbzJoggingGridSizer.Add(self.homeXButton, pos=(0,0))
+      gbzJoggingGridSizer.Add(self.homeXButton, pos=(0,2))
 
-      self.homeYButton = wx.BitmapButton(self, -1, ico.imgHomeY.GetBitmap(), 
+      self.homeYButton = wx.BitmapButton(self, -1, ico.imgHomeY.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.homeYButton.SetToolTip(wx.ToolTip("Home Y axis"))
       self.Bind(wx.EVT_BUTTON, self.OnHomeY, self.homeYButton)
       gbzJoggingGridSizer.Add(self.homeYButton, pos=(2,2))
 
-      self.homeZButton = wx.BitmapButton(self, -1, ico.imgHomeZ.GetBitmap(), 
+      self.homeZButton = wx.BitmapButton(self, -1, ico.imgHomeZ.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.homeZButton.SetToolTip(wx.ToolTip("Home Z axis"))
       self.Bind(wx.EVT_BUTTON, self.OnHomeZ, self.homeZButton)
       gbzJoggingGridSizer.Add(self.homeZButton, pos=(1,3))
 
-      self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(), 
+      self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
       self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
       gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
 
-      self.homeButton = wx.BitmapButton(self, -1, ico.imgHomeXYZ.GetBitmap(), 
-         size=buttonSize, style=wx.BORDER_NONE)
-      self.homeButton.SetToolTip(wx.ToolTip("Home XYZ axis"))
-      self.Bind(wx.EVT_BUTTON, self.OnHome, self.homeButton)
-      gbzJoggingGridSizer.Add(self.homeButton, pos=(0,2))
-
       # add step size controls
+      stepButtonSize = (45, -1)
+
       spinText = wx.StaticText(self, -1, "Step size")
-      gbzJoggingGridSizer.Add(spinText, pos=(3,0), span=(1,6), flag=wx.TOP, border=5)
+      gbStepSizeGridSizer.Add(spinText, pos=(0,0), span=(1,5), flag=wx.TOP, border=5)
 
       self.stepSpinCtrl = fs.FloatSpin(self, -1,
          min_val=0, max_val=99999, increment=0.10, value=1.0,
-         agwStyle=fs.FS_LEFT)
+         size=(stepButtonSize[0]*2,-1), agwStyle=fs.FS_LEFT)
       self.stepSpinCtrl.SetFormat("%f")
       self.stepSpinCtrl.SetDigits(4)
       self.stepSpinCtrl.SetToolTip(wx.ToolTip(
-         "Shift + arrow = 2 * increment (or Shift + mouse wheel)\n"\
-         "Ctrl + arrow = 10 * increment (or Ctrl + mouse wheel)\n"\
-         "Alt + arrow = 100 * increment (or Alt + mouse wheel)"))
-      hsStepSizeBoxSizer.Add(self.stepSpinCtrl, flag=wx.ALIGN_CENTER_VERTICAL)
-
-      stepButtonSize = (45, -1)
+         "Shift + mouse wheel = 2 * increment\n"\
+         "Ctrl + mouse wheel = 10 * increment\n"\
+         "Alt + mouse wheel = 100 * increment"))
+      gbStepSizeGridSizer.Add(self.stepSpinCtrl, pos=(1,0), span=(1,2), flag=wx.ALIGN_CENTER_VERTICAL)
 
       self.stepSize0P05 = wx.Button(self, label="0.05", size=stepButtonSize)
       self.stepSize0P05.SetToolTip(wx.ToolTip("Set step size to 0.05"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P05)
-      hsStepSizeBoxSizer.Add(self.stepSize0P05)
+      gbStepSizeGridSizer.Add(self.stepSize0P05, pos=(1,2))
 
       self.stepSize0P1 = wx.Button(self, label="0.1", size=stepButtonSize)
       self.stepSize0P1.SetToolTip(wx.ToolTip("Set step size to 0.1"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P1)
-      hsStepSizeBoxSizer.Add(self.stepSize0P1)
-
-      #self.stepSize0P2 = wx.Button(self, label="0.2", size=stepButtonSize)
-      #self.stepSize0P2.SetToolTip(wx.ToolTip("Set step size to 0.2"))
-      #self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P2)
-      #hsStepSizeBoxSizer.Add(self.stepSize0P2)
+      gbStepSizeGridSizer.Add(self.stepSize0P1, pos=(1,3))
 
       self.stepSize1 = wx.Button(self, label="1", size=stepButtonSize)
       self.stepSize1.SetToolTip(wx.ToolTip("Set step size to 1"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize1)
-      hsStepSizeBoxSizer.Add(self.stepSize1)
+      gbStepSizeGridSizer.Add(self.stepSize1, pos=(1,4))
 
       self.stepSize5 = wx.Button(self, label="5", size=stepButtonSize)
       self.stepSize5.SetToolTip(wx.ToolTip("Set step size to 5"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize5)
-      hsStepSizeBoxSizer.Add(self.stepSize5)
+      gbStepSizeGridSizer.Add(self.stepSize5, pos=(2,0))
 
       self.stepSize10 = wx.Button(self, label="10", size=stepButtonSize)
       self.stepSize10.SetToolTip(wx.ToolTip("Set step size to 10"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize10)
-      hsStepSizeBoxSizer.Add(self.stepSize10)
+      gbStepSizeGridSizer.Add(self.stepSize10, pos=(2,1))
 
-      gbzJoggingGridSizer.Add(hsStepSizeBoxSizer, pos=(4,0), span=(1,6))
+      self.stepSize20 = wx.Button(self, label="20", size=stepButtonSize)
+      self.stepSize20.SetToolTip(wx.ToolTip("Set step size to 20"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize20)
+      gbStepSizeGridSizer.Add(self.stepSize20, pos=(2,2))
+
+      self.stepSize50 = wx.Button(self, label="50", size=stepButtonSize)
+      self.stepSize50.SetToolTip(wx.ToolTip("Set step size to 50"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize50)
+      gbStepSizeGridSizer.Add(self.stepSize50, pos=(2,3))
+
+      self.stepSize100 = wx.Button(self, label="100", size=stepButtonSize)
+      self.stepSize100.SetToolTip(wx.ToolTip("Set step size to 100"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize100)
+      gbStepSizeGridSizer.Add(self.stepSize100, pos=(2,4))
+
+
+      gbzJoggingGridSizer.Add(gbStepSizeGridSizer, pos=(3,0), span=(3,5))
+
+
+      # add spindle speed controls
+
+      spinText = wx.StaticText(self, -1, "Spindle speed")
+      gbSpindleSpeedGridSizer.Add(spinText, pos=(0,0), span=(1,2), flag=wx.TOP, border=5)
+
+
+      self.spindleSpeedSpinCtrl = fs.FloatSpin(self, -1,
+         min_val=0, max_val=99999, increment=100, value=12000,
+         size=(stepButtonSize[0]*2,-1), agwStyle=fs.FS_LEFT)
+      self.spindleSpeedSpinCtrl.SetFormat("%f")
+      self.spindleSpeedSpinCtrl.SetDigits(0)
+      self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip(
+         "Shift + mouse wheel = 2 * increment\n"\
+         "Ctrl + mouse wheel = 10 * increment\n"\
+         "Alt + mouse wheel = 100 * increment"))
+      gbSpindleSpeedGridSizer.Add(self.spindleSpeedSpinCtrl, pos=(1,0), span=(1,2), flag=wx.ALIGN_CENTER_VERTICAL)
+
+      gbzJoggingGridSizer.Add(gbSpindleSpeedGridSizer, pos=(3,5), span=(2,2))
 
       return gbzJoggingGridSizer
 
@@ -941,10 +989,17 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def OnZNeg(self, e):
       self.AxisJog(self.jZ, "Z", opAdd=False)
 
-   def OnSpindleOn(self, e):
+   def OnSpindleCWOn(self, e):
       self.jSpindle.SetValue(gc.gOnString)
-      self.mainWindow.SerialWriteWaitForAck("".join(
-         [gc.gDEVICE_CMD_SPINDLE_ON, "\n"]))
+      speed = self.spindleSpeedSpinCtrl.GetValue()
+      spped_cmd = "".join([gc.gDEVICE_CMD_SPINDLE_CW_ON, " S", "%d" % round(speed), "\n"])
+      self.mainWindow.SerialWriteWaitForAck(spped_cmd)
+
+   def OnSpindleCCWOn(self, e):
+      self.jSpindle.SetValue(gc.gOnString)
+      speed = self.spindleSpeedSpinCtrl.GetValue()
+      spped_cmd = "".join([gc.gDEVICE_CMD_SPINDLE_CCW_ON, " S", "%d" % round(speed), "\n"])
+      self.mainWindow.SerialWriteWaitForAck(spped_cmd)
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
@@ -1065,7 +1120,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       zVal = self.jZ.GetValue()
 
       self.SavedJogPos = (xVal, yVal, zVal)
-      self.restorePositionButton.Enable()
+
+      if self.stateData is not None:
+         if self.stateData.serialPortIsOpen and not self.stateData.swState == gc.gSTATE_RUN:
+            self.restorePositionButton.Enable()
 
    def OnRestoreJogPosition(self, e):
       cmdx = " X%s" % self.SavedJogPos[0]
@@ -1226,3 +1284,60 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          if len(cliCmdHistory) > 0:
             cliCmdHistory =  "|".join(cliCmdHistory)
             self.configData.Set('/cli/CmdHistory', cliCmdHistory)
+
+   def OnKeyPress(self, e):
+      '''
+      WXK_MULTIPLY
+      WXK_ADD
+      WXK_SEPARATOR
+      WXK_SUBTRACT
+      WXK_DECIMAL
+      WXK_DIVIDE
+      http://docs.wxwidgets.org/3.1/defs_8h.html#a41c4609211685cff198618963ec8f77d
+      '''
+      evObj = e.GetEventObject()
+
+      if (not self.keybaordJoggingEnable) or (self.cliComboBox == evObj):
+         e.Skip()
+      else:
+
+         key = e.GetKeyCode()
+
+         #print dir(e)
+         #print e.GetModifiers()
+
+         if (key == wx.WXK_UP) or (key == wx.WXK_NUMPAD_UP):
+            self.OnYPos(e)
+         elif (key == wx.WXK_DOWN) or (key == wx.WXK_NUMPAD_DOWN):
+            self.OnYNeg(e)
+         elif (key == wx.WXK_LEFT) or (key == wx.WXK_NUMPAD_LEFT):
+            self.OnXNeg(e)
+         elif (key == wx.WXK_RIGHT) or (key == wx.WXK_NUMPAD_RIGHT):
+            self.OnXPos(e)
+         elif (key == wx.WXK_HOME) or (key == wx.WXK_NUMPAD_HOME):
+            self.OnHome(e)
+         elif (key == wx.WXK_PAGEUP) or (key == wx.WXK_NUMPAD_PAGEUP):
+            self.OnZPos(e)
+         elif (key == wx.WXK_PAGEDOWN) or (key == wx.WXK_NUMPAD_PAGEDOWN):
+            self.OnZNeg(e)
+         elif (key == wx.WXK_END) or (key == wx.WXK_NUMPAD_END):
+            print "END Key Pressed"
+         elif (key == wx.WXK_INSERT) or (key == wx.WXK_NUMPAD_INSERT):
+            print "INSERT Key Pressed"
+         elif (key == wx.WXK_DELETE) or (key == wx.WXK_NUMPAD_DELETE):
+            print "DELETE Key Pressed"
+         elif (key == wx.WXK_NUMPAD_DIVIDE):
+            print "DIVIDE Key Pressed"
+         elif (key == wx.WXK_NUMPAD_MULTIPLY):
+            print "MULTIPLY Key Pressed"
+         elif (key == wx.WXK_NUMPAD_SUBTRACT):
+            print "SUBTRACT Key Pressed"
+         elif (key == wx.WXK_NUMPAD_ADD):
+            print "ADD Key Pressed"
+         elif (key == wx.WXK_NUMPAD_ENTER):
+            print "ENTER Key Pressed"
+
+         else:
+            print key
+
+            e.Skip()
