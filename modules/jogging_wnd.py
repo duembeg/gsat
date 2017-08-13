@@ -929,17 +929,20 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       fAxisPos = float(staticControl.GetValue())
 
       if opAdd:
-         fAxisPos += self.stepSpinCtrl.GetValue()
+         #fAxisPos += self.stepSpinCtrl.GetValue()
+         fAxisPos = self.stepSpinCtrl.GetValue()
       else:
-         fAxisPos -= self.stepSpinCtrl.GetValue()
+         #fAxisPos -= self.stepSpinCtrl.GetValue()
+         fAxisPos = -1 * self.stepSpinCtrl.GetValue()
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
 
-      cmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " ", axis, str(fAxisStrPos), "\n"])
+      cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, " ", gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, 
+         " ", axis, str(fAxisStrPos), "\n  ", gc.gDEVICE_CMD_ABSOLUTE, "\n"])
       self.mainWindow.SerialWriteWaitForAck(cmd)
 
-      #cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, gc.gDEVICE_CMD_GO_TO_POS, " ", axis, str(fAxisStrPos), "\n"])
+      #cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, " ", axis, str(fAxisStrPos), "\n"])
       #self.mainWindow.SerialWriteWaitForAck(cmd)
 
       #cmd = "".join([gc.gGDEVICE_CMD_ABSOLUTE, "\n"])
@@ -1092,7 +1095,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def OnGoToZero(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-         gc.gDEVICE_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_RAPID_LINEAR_MOVE)
 
    def OnResetToJogVal(self, e):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
@@ -1107,7 +1110,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def OnGoToJogVal(self, e):
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         gc.gDEVICE_CMD_GO_TO_POS)
+         gc.gDEVICE_CMD_RAPID_LINEAR_MOVE)
 
    def OnGoHome(self, e):
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
@@ -1128,7 +1131,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       cmdx = " X%s" % self.SavedJogPos[0]
       cmdy = " Y%s" % self.SavedJogPos[1]
       cmdz = " Z%s" % self.SavedJogPos[2]
-      gcode_cmd = gc.gDEVICE_CMD_GO_TO_POS
+      gcode_cmd = gc.gDEVICE_CMD_RAPID_LINEAR_MOVE
 
       if (self.configZJogMovesLast):
          cmd = "".join([gcode_cmd, cmdx, cmdy, "\n"])
@@ -1179,7 +1182,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jY.SetValue(str(fYnp))
          self.jZ.SetValue(str(fZnp))
 
-         goPosCmd = "".join([gc.gDEVICE_CMD_GO_TO_POS, " X", str(fXnp),
+         goPosCmd = "".join([gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, " X", str(fXnp),
             " Y", str(fYnp), " Z", str(fZnp)])
          self.mainWindow.SerialWriteWaitForAck(goPosCmd)
 

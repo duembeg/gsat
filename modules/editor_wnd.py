@@ -113,7 +113,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
       vColorSizer = wx.BoxSizer(wx.VERTICAL)
       foregroundColorSizer = wx.GridSizer(1,6,0,0)
       backgroundColorSizer = wx.GridSizer(1,6,0,0)
-      syntaxColorSizer = wx.GridSizer(2,6,0,0)
+      syntaxColorSizer = wx.GridSizer(3,6,0,0)
 
       # Foreground
       text = wx.StaticText(self, label="Foreground")
@@ -175,12 +175,17 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
          text = wx.StaticText(self, label="Syntax highlighting")
          vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
 
-         text = wx.StaticText(self, label="G Codes")
+         text = wx.StaticText(self, label="G Code")
          syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
          self.gCodeHighlight = csel.ColourSelect(self, -1, "",
             hex_to_rgb(self.configData.Get('/%s/GCodeHighlight' % self.key)))
          syntaxColorSizer.Add(self.gCodeHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
+         text = wx.StaticText(self, label="M Code")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.gModeHighlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/MCodeHighlight' % self.key)))
+         syntaxColorSizer.Add(self.gModeHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
          text = wx.StaticText(self, label="Axis Codes")
          syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -194,6 +199,12 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
          self.parametersHighlight = csel.ColourSelect(self, -1, "",
             hex_to_rgb(self.configData.Get('/%s/ParametersHighlight' % self.key)))
          syntaxColorSizer.Add(self.parametersHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
+
+         text = wx.StaticText(self, label="Parameters2")
+         syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+         self.parameters2Highlight = csel.ColourSelect(self, -1, "",
+            hex_to_rgb(self.configData.Get('/%s/Parameters2Highlight' % self.key)))
+         syntaxColorSizer.Add(self.parameters2Highlight, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT)
 
          text = wx.StaticText(self, label="Comments")
          syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -247,10 +258,16 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
          self.configData.Set('/%s/GCodeHighlight' % self.key,
             self.gCodeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
+         self.configData.Set('/%s/MCodeHighlight' % self.key,
+            self.gModeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
          self.configData.Set('/%s/AxisHighlight' % self.key,
             self.axisHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
          self.configData.Set('/%s/ParametersHighlight' % self.key,
+            self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
+         self.configData.Set('/%s/Parameters2Highlight' % self.key,
             self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
          self.configData.Set('/%s/CommentsHighlight' % self.key,
@@ -447,8 +464,10 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
       self.configCaretLineForeground      = self.configData.Get('/code/CaretLineForeground')
       self.configCaretLineBackground      = self.configData.Get('/code/CaretLineBackground')
       self.configGCodeHighlight           = self.configData.Get('/code/GCodeHighlight')
+      self.configMCodeHighlight           = self.configData.Get('/code/MCodeHighlight')
       self.configAxisHighlight            = self.configData.Get('/code/AxisHighlight')
       self.configParametersHighlight      = self.configData.Get('/code/ParametersHighlight')
+      self.configParameters2Highlight     = self.configData.Get('/code/Parameters2Highlight')
       self.configGCodeLineNumberHighlight = self.configData.Get('/code/GCodeLineNumberHighlight')
       self.configCommentsHighlight        = self.configData.Get('/code/CommentsHighlight')
 
@@ -512,7 +531,11 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
       # g-code
       self.StyleSetSpec(stc.STC_P_OPERATOR, "fore:%s" % self.configGCodeHighlight)
-      self.reGCode = re.compile(r'[GM]\d+\.{0,1}\d*', re.IGNORECASE)
+      self.reGCode = re.compile(r'[G]\d+\.{0,1}\d*', re.IGNORECASE)
+
+      # m-code
+      self.StyleSetSpec(stc.STC_P_CLASSNAME, "fore:%s" % self.configMCodeHighlight)
+      self.reMCode = re.compile(r'[M]\d+\.{0,1}\d*', re.IGNORECASE)
 
       # axis
       self.StyleSetSpec(stc.STC_P_WORD, "fore:%s" % self.configAxisHighlight)
@@ -521,6 +544,10 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
       # parameters
       self.StyleSetSpec(stc.STC_P_WORD2, "fore:%s" % self.configParametersHighlight)
       self.reParams = re.compile(r'([DEFHLOPQRST])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
+
+      # parameters 2
+      self.StyleSetSpec(stc.STC_P_DEFNAME, "fore:%s" % self.configParameters2Highlight)
+      self.reParams2 = re.compile(r'([EF])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
       # g-code line number
       self.StyleSetSpec(stc.STC_P_IDENTIFIER, "fore:%s" % self.configGCodeLineNumberHighlight)
@@ -562,6 +589,13 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
          self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(0)-m.start(0), stc.STC_P_OPERATOR)
 
+      # match mcodes
+      mArray = self.reMCode.finditer(stData)
+
+      for m in mArray:
+         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_CLASSNAME)
+
       # match line number
       mArray = self.reLineNumber.finditer(stData)
 
@@ -575,6 +609,12 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
       for m in mArray:
          self.StartStyling(stStart+m.start(1), 31)   # in this example, only style the text style bits
          self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD2)
+
+      mArray = self.reParams2.finditer(stData)
+
+      for m in mArray:
+         self.StartStyling(stStart+m.start(0), 31)   # in this example, only style the text style bits
+         self.SetStyling(m.end(0)-m.start(0), stc.STC_P_DEFNAME)
 
       # match axis
       mArray = self.reAxis.finditer(stData)

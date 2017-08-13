@@ -51,7 +51,10 @@ gStateData = None
 # --------------------------------------------------------------------------
 # device commands
 # --------------------------------------------------------------------------
-gDEVICE_CMD_GO_TO_POS         = "G00"     # G00 <AXIS><VAL>
+gDEVICE_CMD_RAPID_LINEAR_MOVE = "G0"      # G00 <AXIS><VAL>
+gDEVICE_CMD_LINEAR_MOVE       = "G1"      # G01 <AXIS><VAL>
+gDEVICE_CMD_ARC_CW_MOVE       = "G2"
+gDEVICE_CMD_ARC_CCW_MOVE      = "G3"
 gDEVICE_CMD_SPINDLE_CW_ON     = "M3"
 gDEVICE_CMD_SPINDLE_CCW_ON    = "M4"
 gDEVICE_CMD_SPINDLE_OFF       = "M5"
@@ -220,11 +223,13 @@ class gsatConfigData():
          '/code/ReadOnly'                    :(True , True),
          '/code/WindowForeground'            :(False, '#000000'),
          '/code/WindowBackground'            :(False, '#FFFFFF'),
-         '/code/GCodeHighlight'              :(False, '#0000FF'),
-         '/code/AxisHighlight'               :(False, '#007F00'), #007F7F
-         '/code/ParametersHighlight'         :(False, '#7F0000'),
+         '/code/GCodeHighlight'              :(False, '#0000ff'), #0000FF'
+         '/code/MCodeHighlight'              :(False, '#7f007f'), #742b77
+         '/code/AxisHighlight'               :(False, '#ff0000'), #007F00
+         '/code/ParametersHighlight'         :(False, '#ff0000'),
+         '/code/Parameters2Highlight'        :(False, '#f4b730'),
          '/code/GCodeLineNumberHighlight'    :(False, '#BFBFBF'),
-         '/code/CommentsHighlight'           :(False, '#FFC300'),
+         '/code/CommentsHighlight'           :(False, '#007F00'), #FFC300
 
 
       # output keys
