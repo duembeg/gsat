@@ -57,7 +57,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       text = wx.StaticText(self, label="General")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
-      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
       # Add readonly check box
       self.cbXYZReadOnly = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
@@ -94,7 +94,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       text = wx.StaticText(self, label="Custom Controls")
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
-      vBoxSizer.Add(text, 0, wx.ALL, border=5)
+      vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
       box1, c1CtrlArray = self.CreateCustomControlSettings(1)
       box2, c2CtrlArray = self.CreateCustomControlSettings(2)
@@ -103,10 +103,10 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
       self.customCtrlArray = [c1CtrlArray, c2CtrlArray, c3CtrlArray, c4CtrlArray]
 
-      vBoxSizer.Add(box1, 0, flag=wx.LEFT|wx.EXPAND, border=20)
-      vBoxSizer.Add(box2, 0, flag=wx.LEFT|wx.EXPAND, border=20)
-      vBoxSizer.Add(box3, 0, flag=wx.LEFT|wx.EXPAND, border=20)
-      vBoxSizer.Add(box4, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box1, proportion=1, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box2, proportion=1, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box3, proportion=1, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizer.Add(box4, proportion=1, flag=wx.LEFT|wx.EXPAND, border=20)
 
       self.SetSizer(vBoxSizer)
 
@@ -116,106 +116,32 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       text = wx.StaticText(self, label="Custom Control %d" % cn)
       font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
       text.SetFont(font)
-      vBoxSizerRoot.Add(text, 0, flag=wx.ALL, border=5)
+      vBoxSizerRoot.Add(text, flag=wx.ALL, border=5)
 
       # Label
       hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
       text = wx.StaticText(self, label="Label")
-      hBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.RIGHT|wx.BOTTOM, border=5)
+      hBoxSizer.Add(text, flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.RIGHT|wx.BOTTOM, border=5)
       tcLabel = wx.TextCtrl(self, -1,
          self.configData.Get('/jogging/Custom%dLabel' % cn), size=(125, -1))
-      hBoxSizer.Add(tcLabel, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      hBoxSizer.Add(tcLabel, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      # radio buttons (position/script)
-      positionRadioButton = wx.RadioButton(self, -1, 'Position', style=wx.RB_GROUP)
-      positionRadioButton.SetValue(self.configData.Get('/jogging/Custom%dOptPosition' % cn))
-      hBoxSizer.Add(positionRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
-
-      scriptRadioButton = wx.RadioButton(self, -1, 'Script')
-      scriptRadioButton.SetValue(self.configData.Get('/jogging/Custom%dOptScript' % cn))
-      hBoxSizer.Add(scriptRadioButton, flag=wx.LEFT|wx.EXPAND, border=5)
-
-      vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
-
-      # position controls
-      vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-      text = wx.StaticText(self, label="Position")
-      vBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL|wx.TOP, border=5)
-
-      gCustomSizer = wx.FlexGridSizer(3,3,0,0)
-
-      text = wx.StaticText(self, label="X Settings")
-      gCustomSizer.Add(text, flag=wx.LEFT|wx.ALIGN_BOTTOM, border=5)
-      text = wx.StaticText(self, label="Y Settings")
-      gCustomSizer.Add(text, flag=wx.LEFT|wx.ALIGN_BOTTOM, border=5)
-      text = wx.StaticText(self, label="Z Settings")
-      gCustomSizer.Add(text, flag=wx.LEFT|wx.ALIGN_BOTTOM, border=5)
-
-      # check boxes
-      cbXIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
-      cbXIsOffset.SetValue(self.configData.Get('/jogging/Custom%dXIsOffset' % cn))
-      cbXIsOffset.SetToolTip(wx.ToolTip("If set the value is treated as an offset"))
-      gCustomSizer.Add(cbXIsOffset, flag=wx.ALL, border=5)
-
-      cbYIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
-      cbYIsOffset.SetValue(self.configData.Get('/jogging/Custom%dYIsOffset' % cn))
-      cbYIsOffset.SetToolTip(wx.ToolTip("If set the value is treated as an offset"))
-      gCustomSizer.Add(cbYIsOffset, flag=wx.ALL, border=5)
-
-      cbZIsOffset = wx.CheckBox(self, wx.ID_ANY, "Is Offset")
-      cbZIsOffset.SetValue(self.configData.Get('/jogging/Custom%dZIsOffset' % cn))
-      cbZIsOffset.SetToolTip(wx.ToolTip("When set the value is treated as an offset"))
-      gCustomSizer.Add(cbZIsOffset, flag=wx.ALL, border=5)
-
-      # spin controls
-      scXValue = fs.FloatSpin(self, -1,
-         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
-         agwStyle=fs.FS_LEFT)
-      scXValue.SetFormat("%f")
-      scXValue.SetDigits(4)
-      scXValue.SetValue(self.configData.Get('/jogging/Custom%dXValue' % cn))
-      gCustomSizer.Add(scXValue, flag=wx.ALL, border=5)
-
-      scYValue = fs.FloatSpin(self, -1,
-         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
-         agwStyle=fs.FS_LEFT)
-      scYValue.SetFormat("%f")
-      scYValue.SetDigits(4)
-      scYValue.SetValue(self.configData.Get('/jogging/Custom%dYValue' % cn))
-      gCustomSizer.Add(scYValue,
-         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
-
-      scZValue = fs.FloatSpin(self, -1,
-         min_val=-100000, max_val=100000, increment=0.10, value=1.0,
-         agwStyle=fs.FS_LEFT)
-      scZValue.SetFormat("%f")
-      scZValue.SetDigits(4)
-      scZValue.SetValue(self.configData.Get('/jogging/Custom%dZValue' % cn))
-      gCustomSizer.Add(scZValue,
-         flag=wx.ALL|wx.LEFT|wx.ALIGN_CENTER_VERTICAL, border=5)
-
-      vBoxSizer.Add(gCustomSizer, 0, flag=wx.LEFT|wx.EXPAND, border=5)
-      vBoxSizerRoot.Add(vBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+      vBoxSizerRoot.Add(hBoxSizer, flag=wx.LEFT, border=20)
 
       # add edit control for script
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
       text = wx.StaticText(self, wx.ID_ANY, "Script")
-      vBoxSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      vBoxSizer.Add(text, flag=wx.ALIGN_CENTER_VERTICAL)
 
       tcScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
       tcScript.SetValue(self.configData.Get('/jogging/Custom%dScript' % cn))
-      #tcScript.SetToolTip(wx.ToolTip("This script is sent to device upon connect detect"))
-      vBoxSizer.Add(tcScript, 1, flag=wx.ALIGN_CENTER_VERTICAL|wx.EXPAND|wx.LEFT, border=10)
+      tcScript.SetToolTip(wx.ToolTip("This script is sent to device when custom button is pressed"))
+      vBoxSizer.Add(tcScript, proportion=1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.BOTTOM, border=10)
 
-      vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.EXPAND|wx.BOTTOM|wx.LEFT|wx.RIGHT, border=20)
+      vBoxSizerRoot.Add(vBoxSizer, proportion=1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=20)
 
-      return vBoxSizerRoot, [
-         tcLabel, positionRadioButton, scriptRadioButton,
-         cbXIsOffset, cbYIsOffset, cbZIsOffset,
-         scXValue   , scYValue   , scZValue,
-         tcScript
-      ]
+      return vBoxSizerRoot, [tcLabel, tcScript]
 
    def UpdatConfigData(self):
       self.configData.Set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
@@ -228,26 +154,8 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
          self.configData.Set('/jogging/Custom%dLabel' % cnp1,
             self.customCtrlArray[cn][0].GetValue())
 
-         self.configData.Set('/jogging/Custom%dOptPosition' % cnp1,
-            self.customCtrlArray[cn][1].GetValue())
-         self.configData.Set('/jogging/Custom%dOptScript' % cnp1,
-            self.customCtrlArray[cn][2].GetValue())
-
-         self.configData.Set('/jogging/Custom%dXIsOffset' % cnp1,
-            self.customCtrlArray[cn][3].GetValue())
-         self.configData.Set('/jogging/Custom%dYIsOffset' % cnp1,
-            self.customCtrlArray[cn][4].GetValue())
-         self.configData.Set('/jogging/Custom%dZIsOffset' % cnp1,
-            self.customCtrlArray[cn][5].GetValue())
-
-         self.configData.Set('/jogging/Custom%dXValue' % cnp1,
-            self.customCtrlArray[cn][6].GetValue())
-         self.configData.Set('/jogging/Custom%dYValue' % cnp1,
-            self.customCtrlArray[cn][7].GetValue())
-         self.configData.Set('/jogging/Custom%dZValue' % cnp1,
-            self.customCtrlArray[cn][8].GetValue())
          self.configData.Set('/jogging/Custom%dScript' % cnp1,
-            self.customCtrlArray[cn][9].GetValue())
+            self.customCtrlArray[cn][1].GetValue())
 
 """----------------------------------------------------------------------------
    gsatCliSettingsPanel:
@@ -335,47 +243,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.configZJogMovesLast       = self.configData.Get('/jogging/ZJogMovesLast')
 
       self.configCustom1Label       = self.configData.Get('/jogging/Custom1Label')
-      self.configCustom1OptPosition = self.configData.Get('/jogging/Custom1OptPosition')
-      self.configCustom1OptScript   = self.configData.Get('/jogging/Custom1OptScript')
-      self.configCustom1XIsOffset   = self.configData.Get('/jogging/Custom1XIsOffset')
-      self.configCustom1XValue      = self.configData.Get('/jogging/Custom1XValue')
-      self.configCustom1YIsOffset   = self.configData.Get('/jogging/Custom1YIsOffset')
-      self.configCustom1YValue      = self.configData.Get('/jogging/Custom1YValue')
-      self.configCustom1ZIsOffset   = self.configData.Get('/jogging/Custom1ZIsOffset')
-      self.configCustom1ZValue      = self.configData.Get('/jogging/Custom1ZValue')
       self.configCustom1Script      = self.configData.Get('/jogging/Custom1Script')
 
       self.configCustom2Label       = self.configData.Get('/jogging/Custom2Label')
-      self.configCustom2OptPosition = self.configData.Get('/jogging/Custom2OptPosition')
-      self.configCustom2OptScript   = self.configData.Get('/jogging/Custom2OptScript')
-      self.configCustom2XIsOffset   = self.configData.Get('/jogging/Custom2XIsOffset')
-      self.configCustom2XValue      = self.configData.Get('/jogging/Custom2XValue')
-      self.configCustom2YIsOffset   = self.configData.Get('/jogging/Custom2YIsOffset')
-      self.configCustom2YValue      = self.configData.Get('/jogging/Custom2YValue')
-      self.configCustom2ZIsOffset   = self.configData.Get('/jogging/Custom2ZIsOffset')
-      self.configCustom2ZValue      = self.configData.Get('/jogging/Custom2ZValue')
       self.configCustom2Script      = self.configData.Get('/jogging/Custom2Script')
 
       self.configCustom3Label       = self.configData.Get('/jogging/Custom3Label')
-      self.configCustom3OptPosition = self.configData.Get('/jogging/Custom3OptPosition')
-      self.configCustom3OptScript   = self.configData.Get('/jogging/Custom3OptScript')
-      self.configCustom3XIsOffset   = self.configData.Get('/jogging/Custom3XIsOffset')
-      self.configCustom3XValue      = self.configData.Get('/jogging/Custom3XValue')
-      self.configCustom3YIsOffset   = self.configData.Get('/jogging/Custom3YIsOffset')
-      self.configCustom3YValue      = self.configData.Get('/jogging/Custom3YValue')
-      self.configCustom3ZIsOffset   = self.configData.Get('/jogging/Custom3ZIsOffset')
-      self.configCustom3ZValue      = self.configData.Get('/jogging/Custom3ZValue')
       self.configCustom3Script      = self.configData.Get('/jogging/Custom3Script')
 
       self.configCustom4Label       = self.configData.Get('/jogging/Custom4Label')
-      self.configCustom4OptPosition = self.configData.Get('/jogging/Custom4OptPosition')
-      self.configCustom4OptScript   = self.configData.Get('/jogging/Custom4OptScript')
-      self.configCustom4XIsOffset   = self.configData.Get('/jogging/Custom4XIsOffset')
-      self.configCustom4XValue      = self.configData.Get('/jogging/Custom4XValue')
-      self.configCustom4YIsOffset   = self.configData.Get('/jogging/Custom4YIsOffset')
-      self.configCustom4YValue      = self.configData.Get('/jogging/Custom4YValue')
-      self.configCustom4ZIsOffset   = self.configData.Get('/jogging/Custom4ZIsOffset')
-      self.configCustom4ZValue      = self.configData.Get('/jogging/Custom4ZValue')
       self.configCustom4Script      = self.configData.Get('/jogging/Custom4Script')
 
       # cli data
@@ -487,8 +363,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeXButton.Enable()
          self.homeYButton.Enable()
          self.homeZButton.Enable()
-         self.homeXYButton.Enable()
          self.homeButton.Enable()
+         self.SetToZeroButton.Enable()
+         self.GoToZeroXYButton.Enable()
 
          if self.SavedJogPos is None:
             self.restorePositionButton.Disable()
@@ -521,8 +398,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeXButton.Disable()
          self.homeYButton.Disable()
          self.homeZButton.Disable()
-         self.homeXYButton.Disable()
          self.homeButton.Disable()
+         self.SetToZeroButton.Disable()
+         self.GoToZeroXYButton.Disable()
+
          self.restorePositionButton.Disable()
 
 
@@ -586,19 +465,19 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          size=buttonSize, style=wx.BORDER_NONE)
       self.spindleCWOnButton.SetToolTip(wx.ToolTip("Spindle CW ON"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleCWOn, self.spindleCWOnButton)
-      gbzJoggingGridSizer.Add(self.spindleCWOnButton, pos=(0,4))
+      gbzJoggingGridSizer.Add(self.spindleCWOnButton, pos=(2,4))
 
       self.spindleCCWOnButton = wx.BitmapButton(self, -1, ico.imgSpindleCCWOn.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.spindleCCWOnButton.SetToolTip(wx.ToolTip("Spindle CCW ON"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleCCWOn, self.spindleCCWOnButton)
-      gbzJoggingGridSizer.Add(self.spindleCCWOnButton, pos=(0,5))
+      gbzJoggingGridSizer.Add(self.spindleCCWOnButton, pos=(2,5))
 
       self.spindleOffButton = wx.BitmapButton(self, -1, ico.imgSpindleOff.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.spindleOffButton.SetToolTip(wx.ToolTip("Spindle OFF"))
       self.Bind(wx.EVT_BUTTON, self.OnSpindleOff, self.spindleOffButton)
-      gbzJoggingGridSizer.Add(self.spindleOffButton, pos=(0,6))
+      gbzJoggingGridSizer.Add(self.spindleOffButton, pos=(2,6))
 
       # Coolant Buttons
       self.coolantOnButton = wx.BitmapButton(self, -1, ico.imgCoolantOn.GetBitmap(),
@@ -638,11 +517,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.Bind(wx.EVT_BUTTON, self.OnHomeZ, self.homeZButton)
       gbzJoggingGridSizer.Add(self.homeZButton, pos=(1,3))
 
-      self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(),
-         size=buttonSize, style=wx.BORDER_NONE)
-      self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
-      self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
-      gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
+      #self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(),
+      #   size=buttonSize, style=wx.BORDER_NONE)
+      #self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
+      #self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
+      #gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
 
       # add step size controls
       stepButtonSize = (45, -1)
@@ -661,52 +540,61 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          "Alt + mouse wheel = 100 * increment"))
       gbStepSizeGridSizer.Add(self.stepSpinCtrl, pos=(1,0), span=(1,2), flag=wx.ALIGN_CENTER_VERTICAL)
 
-      self.stepSize0P05 = wx.Button(self, label="0.05", size=stepButtonSize)
-      self.stepSize0P05.SetToolTip(wx.ToolTip("Set step size to 0.05"))
-      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P05)
-      gbStepSizeGridSizer.Add(self.stepSize0P05, pos=(1,2))
+      self.stepSize0p05 = wx.Button(self, label="0.05", size=stepButtonSize)
+      self.stepSize0p05.SetToolTip(wx.ToolTip("Set step size to 0.05"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0p05)
+      gbStepSizeGridSizer.Add(self.stepSize0p05, pos=(1,2))
 
-      self.stepSize0P1 = wx.Button(self, label="0.1", size=stepButtonSize)
-      self.stepSize0P1.SetToolTip(wx.ToolTip("Set step size to 0.1"))
-      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0P1)
-      gbStepSizeGridSizer.Add(self.stepSize0P1, pos=(1,3))
+      self.stepSize0p1 = wx.Button(self, label="0.1", size=stepButtonSize)
+      self.stepSize0p1.SetToolTip(wx.ToolTip("Set step size to 0.1"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0p1)
+      gbStepSizeGridSizer.Add(self.stepSize0p1, pos=(1,3))
+
+      self.stepSize0p5 = wx.Button(self, label="0.5", size=stepButtonSize)
+      self.stepSize0p5.SetToolTip(wx.ToolTip("Set step size to 0.5"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0p5)
+      gbStepSizeGridSizer.Add(self.stepSize0p5, pos=(2,0))
 
       self.stepSize1 = wx.Button(self, label="1", size=stepButtonSize)
       self.stepSize1.SetToolTip(wx.ToolTip("Set step size to 1"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize1)
-      gbStepSizeGridSizer.Add(self.stepSize1, pos=(1,4))
+      gbStepSizeGridSizer.Add(self.stepSize1, pos=(2,1))
 
       self.stepSize5 = wx.Button(self, label="5", size=stepButtonSize)
       self.stepSize5.SetToolTip(wx.ToolTip("Set step size to 5"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize5)
-      gbStepSizeGridSizer.Add(self.stepSize5, pos=(2,0))
+      gbStepSizeGridSizer.Add(self.stepSize5, pos=(2,2))
 
       self.stepSize10 = wx.Button(self, label="10", size=stepButtonSize)
       self.stepSize10.SetToolTip(wx.ToolTip("Set step size to 10"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize10)
-      gbStepSizeGridSizer.Add(self.stepSize10, pos=(2,1))
+      gbStepSizeGridSizer.Add(self.stepSize10, pos=(2,3))
 
       self.stepSize20 = wx.Button(self, label="20", size=stepButtonSize)
       self.stepSize20.SetToolTip(wx.ToolTip("Set step size to 20"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize20)
-      gbStepSizeGridSizer.Add(self.stepSize20, pos=(2,2))
+      gbStepSizeGridSizer.Add(self.stepSize20, pos=(3,0))
 
       self.stepSize50 = wx.Button(self, label="50", size=stepButtonSize)
       self.stepSize50.SetToolTip(wx.ToolTip("Set step size to 50"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize50)
-      gbStepSizeGridSizer.Add(self.stepSize50, pos=(2,3))
+      gbStepSizeGridSizer.Add(self.stepSize50, pos=(3,1))
 
       self.stepSize100 = wx.Button(self, label="100", size=stepButtonSize)
       self.stepSize100.SetToolTip(wx.ToolTip("Set step size to 100"))
       self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize100)
-      gbStepSizeGridSizer.Add(self.stepSize100, pos=(2,4))
+      gbStepSizeGridSizer.Add(self.stepSize100, pos=(3,2))
+
+      self.stepSize200 = wx.Button(self, label="200", size=stepButtonSize)
+      self.stepSize200.SetToolTip(wx.ToolTip("Set step size to 200"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize200)
+      gbStepSizeGridSizer.Add(self.stepSize200, pos=(3,3))
 
 
-      gbzJoggingGridSizer.Add(gbStepSizeGridSizer, pos=(3,0), span=(3,5))
+      gbzJoggingGridSizer.Add(gbStepSizeGridSizer, pos=(3,0), span=(4,4))
 
 
       # add spindle speed controls
-
       spinText = wx.StaticText(self, -1, "Spindle speed")
       gbSpindleSpeedGridSizer.Add(spinText, pos=(0,0), span=(1,2), flag=wx.TOP, border=5)
 
@@ -722,7 +610,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          "Alt + mouse wheel = 100 * increment"))
       gbSpindleSpeedGridSizer.Add(self.spindleSpeedSpinCtrl, pos=(1,0), span=(1,2), flag=wx.ALIGN_CENTER_VERTICAL)
 
-      gbzJoggingGridSizer.Add(gbSpindleSpeedGridSizer, pos=(3,5), span=(2,2))
+      gbzJoggingGridSizer.Add(gbSpindleSpeedGridSizer, pos=(3,4), span=(2,2))
+
+
+      # add Zero and go to Zero buttons
+      self.SetToZeroButton = wx.BitmapButton(self, -1, ico.imgSetToZero.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.SetToZeroButton.SetToolTip(wx.ToolTip("Set all axis to zero"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetToZero, self.SetToZeroButton)
+      gbzJoggingGridSizer.Add(self.SetToZeroButton, pos=(1,1))
+
+      self.GoToZeroXYButton = wx.BitmapButton(self, -1, ico.imgGoToZeroXY.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.GoToZeroXYButton.SetToolTip(wx.ToolTip("Move XY axis to zero"))
+      self.Bind(wx.EVT_BUTTON, self.OnGoToZeroXY, self.GoToZeroXYButton)
+      gbzJoggingGridSizer.Add(self.GoToZeroXYButton, pos=(2,0))
 
       return gbzJoggingGridSizer
 
@@ -938,7 +840,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
       staticControl.SetValue(fAxisStrPos)
 
-      cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, " ", gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, 
+      cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, " ", gc.gDEVICE_CMD_RAPID_LINEAR_MOVE,
          " ", axis, str(fAxisStrPos), "\n  ", gc.gDEVICE_CMD_ABSOLUTE, "\n"])
       self.mainWindow.SerialWriteWaitForAck(cmd)
 
@@ -1041,6 +943,18 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.mainWindow.SerialWriteWaitForAck("".join(
          [gc.gDEVICE_CMD_HOME_AXIS, " X", gc.gZeroString,
          " Y", gc.gZeroString, " Z", gc.gZeroString, "\n"]))
+
+   def OnSetToZero(self, e):
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
+
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [mim.GetSetAxisCmd(), " X", gc.gZeroString, " Y", gc.gZeroString,
+         " Z", gc.gZeroString, "\n"]))
+
+   def OnGoToZeroXY(self, e):
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, " X", gc.gZeroString,
+         " Y", gc.gZeroString, "\n"]))
 
    def OnSetStepSize(self, e):
       buttonById = self.FindWindowById(e.GetId())
@@ -1156,79 +1070,25 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.jY.SetValue(re.search("Y(\S+),Z", strXYZ).group(1))
       self.jZ.SetValue(re.search("Z(\S+)", strXYZ).group(1))
 
-   def OnCustomButton(self, optPos, optScr, xo, xv, yo, yv, zo, zv, script):
+   def OnCustomButton(self, script):
+      scriptLines = script.splitlines()
 
-      if optPos:
-         fXPos = float(self.jX.GetValue())
-         fYPos = float(self.jY.GetValue())
-         fZPos = float(self.jZ.GetValue())
-         fXVal = float(xv)
-         fYVal = float(yv)
-         fZVal = float(zv)
-
-         fXnp = fXVal
-         if xo:
-            fXnp = fXPos + fXVal
-
-         fYnp = fYVal
-         if yo:
-            fYnp = fYPos + fYVal
-
-         fZnp = fZVal
-         if zo:
-            fZnp = fZPos + fZVal
-
-         self.jX.SetValue(str(fXnp))
-         self.jY.SetValue(str(fYnp))
-         self.jZ.SetValue(str(fZnp))
-
-         goPosCmd = "".join([gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, " X", str(fXnp),
-            " Y", str(fYnp), " Z", str(fZnp)])
-         self.mainWindow.SerialWriteWaitForAck(goPosCmd)
-
-      if optScr:
-         scriptLines = script.splitlines()
-
-         if len(scriptLines) > 0:
-            for scriptLine in scriptLines:
-               scriptLine = "".join([scriptLine, "\n"])
-               self.mainWindow.SerialWriteWaitForAck(scriptLine)
+      if len(scriptLines) > 0:
+         for scriptLine in scriptLines:
+            scriptLine = "".join([scriptLine, "\n"])
+            self.mainWindow.SerialWriteWaitForAck(scriptLine)
 
    def OnCustom1Button(self, e):
-      self.OnCustomButton(
-         self.configCustom1OptPosition, self.configCustom1OptScript,
-         self.configCustom1XIsOffset, self.configCustom1XValue,
-         self.configCustom1YIsOffset, self.configCustom1YValue,
-         self.configCustom1ZIsOffset, self.configCustom1ZValue,
-         self.configCustom1Script
-      )
+      self.OnCustomButton(self.configCustom1Script)
 
    def OnCustom2Button(self, e):
-      self.OnCustomButton(
-         self.configCustom2OptPosition, self.configCustom2OptScript,
-         self.configCustom2XIsOffset, self.configCustom2XValue,
-         self.configCustom2YIsOffset, self.configCustom2YValue,
-         self.configCustom2ZIsOffset, self.configCustom2ZValue,
-         self.configCustom2Script
-      )
+      self.OnCustomButton(self.configCustom2Script)
 
    def OnCustom3Button(self, e):
-      self.OnCustomButton(
-         self.configCustom3OptPosition, self.configCustom3OptScript,
-         self.configCustom3XIsOffset, self.configCustom3XValue,
-         self.configCustom3YIsOffset, self.configCustom3YValue,
-         self.configCustom3ZIsOffset, self.configCustom3ZValue,
-         self.configCustom3Script
-      )
+      self.OnCustomButton(self.configCustom3Script)
 
    def OnCustom4Button(self, e):
-      self.OnCustomButton(
-         self.configCustom4OptPosition, self.configCustom4OptScript,
-         self.configCustom4XIsOffset, self.configCustom4XValue,
-         self.configCustom4YIsOffset, self.configCustom4YValue,
-         self.configCustom4ZIsOffset, self.configCustom4ZValue,
-         self.configCustom4Script
-      )
+      self.OnCustomButton(self.configCustom4Script)
 
    def OnRefresh(self, e):
       pass
@@ -1298,7 +1158,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       evObj = e.GetEventObject()
 
       #if (not self.keybaordJoggingEnable) or (self.cliComboBox == evObj):
-      if evObj in [self.cliComboBox, self.stepSpinCtrl.GetTextCtrl(), 
+      if evObj in [self.cliComboBox, self.stepSpinCtrl.GetTextCtrl(),
          self.spindleSpeedSpinCtrl.GetTextCtrl(), self.jX, self.jY, self.jZ]:
          e.Skip()
       else:
@@ -1344,7 +1204,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             wx.PostEvent(self, evt)
             #self.OnZNeg(e)
          elif (key == wx.WXK_END) or (key == wx.WXK_NUMPAD_END):
-            print "END Key Pressed"
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.GoToZeroXYButton.GetId())
+            self.GoToZeroXYButton.SetFocus()
+            wx.PostEvent(self, evt)
+            #self.OnGoToZeroXY(e)
+         elif (key == 383):
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroButton.GetId())
+            self.SetToZeroButton.SetFocus()
+            wx.PostEvent(self, evt)
+            #self.OnSetToZero(e)
          elif (key == wx.WXK_INSERT) or (key == wx.WXK_NUMPAD_INSERT):
             print "INSERT Key Pressed"
          elif (key == wx.WXK_DELETE) or (key == wx.WXK_NUMPAD_DELETE):
@@ -1362,14 +1230,16 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          elif (key == wx.WXK_NUMPAD_ENTER):
             print "ENTER Key Pressed"
          elif (key == wx.WXK_NUMPAD0):
-            print "Numpad0"
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p05.GetId())
+            self.stepSize0p05.SetFocus()
+            wx.PostEvent(self, evt)
          elif (key == wx.WXK_NUMPAD1):
-            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0P05.GetId())
-            self.stepSize0P05.SetFocus()
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p1.GetId())
+            self.stepSize0p1.SetFocus()
             wx.PostEvent(self, evt)
          elif (key == wx.WXK_NUMPAD2):
-            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0P1.GetId())
-            self.stepSize0P1.SetFocus()
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p5.GetId())
+            self.stepSize0p5.SetFocus()
             wx.PostEvent(self, evt)
          elif (key == wx.WXK_NUMPAD3):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize1.GetId())
@@ -1396,7 +1266,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             self.stepSize100.SetFocus()
             wx.PostEvent(self, evt)
          elif (key == wx.WXK_NUMPAD9):
-            print "Numpad9"
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize200.GetId())
+            self.stepSize200.SetFocus()
+            wx.PostEvent(self, evt)
 
          else:
             print key
