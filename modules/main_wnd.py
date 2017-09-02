@@ -1380,7 +1380,7 @@ class gsatMainWindow(wx.Frame):
          self.stateData.swState = gc.gSTATE_RUN
          self.UpdateUI()
 
-   def OnRunUpdate(self, e=None):
+   def OnRunHelper(self):
       state = False
       if self.stateData.serialPortIsOpen and \
          (self.stateData.swState == gc.gSTATE_IDLE or \
@@ -1388,6 +1388,11 @@ class gsatMainWindow(wx.Frame):
           self.stateData.swState == gc.gSTATE_PAUSE):
 
          state = True
+
+      return state
+
+   def OnRunUpdate(self, e=None):
+      state = self.OnRunHelper()
 
       if e is not None:
          e.Enable(state)
@@ -1563,7 +1568,6 @@ class gsatMainWindow(wx.Frame):
    def OnMachineFeedHoldUpdate(self, e=None):
       state = False
       if self.stateData.serialPortIsOpen:
-
          state = True
 
       if e is not None:

@@ -492,7 +492,7 @@ class programExecuteThread(threading.Thread):
             self.ProcessIdleSate()
             self.swState = gc.gSTATE_IDLE
 
-         time.sleep(0.02)
+         #time.sleep(0.02)
 
       if self.cmdLineOptions.vverbose:
          print "** programExecuteThread exit."

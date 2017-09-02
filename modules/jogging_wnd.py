@@ -365,6 +365,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeZButton.Enable()
          self.homeButton.Enable()
          self.SetToZeroButton.Enable()
+         self.SetToZeroXYButton.Enable()
+         self.SetToZeroZButton.Enable()
          self.GoToZeroXYButton.Enable()
 
          if self.SavedJogPos is None:
@@ -400,6 +402,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.homeZButton.Disable()
          self.homeButton.Disable()
          self.SetToZeroButton.Disable()
+         self.SetToZeroXYButton.Disable()
+         self.SetToZeroZButton.Disable()
          self.GoToZeroXYButton.Disable()
 
          self.restorePositionButton.Disable()
@@ -618,13 +622,25 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          size=buttonSize, style=wx.BORDER_NONE)
       self.SetToZeroButton.SetToolTip(wx.ToolTip("Set all axis to zero"))
       self.Bind(wx.EVT_BUTTON, self.OnSetToZero, self.SetToZeroButton)
-      gbzJoggingGridSizer.Add(self.SetToZeroButton, pos=(1,1))
+      gbzJoggingGridSizer.Add(self.SetToZeroButton, pos=(0,4))
+
+      self.SetToZeroXYButton = wx.BitmapButton(self, -1, ico.imgSetToZeroXY.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.SetToZeroXYButton.SetToolTip(wx.ToolTip("Set X and Y axis to zero"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetToZeroXY, self.SetToZeroXYButton)
+      gbzJoggingGridSizer.Add(self.SetToZeroXYButton, pos=(0,5))
+
+      self.SetToZeroZButton = wx.BitmapButton(self, -1, ico.imgSetToZeroZ.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.SetToZeroZButton.SetToolTip(wx.ToolTip("Set Z axis to zero"))
+      self.Bind(wx.EVT_BUTTON, self.OnSetToZeroZ, self.SetToZeroZButton)
+      gbzJoggingGridSizer.Add(self.SetToZeroZButton, pos=(0,6))
 
       self.GoToZeroXYButton = wx.BitmapButton(self, -1, ico.imgGoToZeroXY.GetBitmap(),
          size=buttonSize, style=wx.BORDER_NONE)
       self.GoToZeroXYButton.SetToolTip(wx.ToolTip("Move XY axis to zero"))
       self.Bind(wx.EVT_BUTTON, self.OnGoToZeroXY, self.GoToZeroXYButton)
-      gbzJoggingGridSizer.Add(self.GoToZeroXYButton, pos=(2,0))
+      gbzJoggingGridSizer.Add(self.GoToZeroXYButton, pos=(1,1))
 
       return gbzJoggingGridSizer
 
@@ -951,6 +967,19 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          [mim.GetSetAxisCmd(), " X", gc.gZeroString, " Y", gc.gZeroString,
          " Z", gc.gZeroString, "\n"]))
 
+   def OnSetToZeroXY(self, e):
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
+
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [mim.GetSetAxisCmd(), " X", gc.gZeroString,
+         " Y", gc.gZeroString, "\n"]))
+
+   def OnSetToZeroZ(self, e):
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
+
+      self.mainWindow.SerialWriteWaitForAck("".join(
+         [mim.GetSetAxisCmd(), " Z", gc.gZeroString, "\n"]))
+
    def OnGoToZeroXY(self, e):
       self.mainWindow.SerialWriteWaitForAck("".join(
          [gc.gDEVICE_CMD_RAPID_LINEAR_MOVE, " X", gc.gZeroString,
@@ -1173,102 +1202,138 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             self.positiveYButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnYPos(e)
+
          elif (key == wx.WXK_DOWN) or (key == wx.WXK_NUMPAD_DOWN):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.negativeYButton.GetId())
             self.negativeYButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnYNeg(e)
+
          elif (key == wx.WXK_LEFT) or (key == wx.WXK_NUMPAD_LEFT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.negativeXButton.GetId())
             self.negativeXButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnXNeg(e)
+
          elif (key == wx.WXK_RIGHT) or (key == wx.WXK_NUMPAD_RIGHT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.positiveXButton.GetId())
             self.positiveXButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnXPos(e)
+
          elif (key == wx.WXK_HOME) or (key == wx.WXK_NUMPAD_HOME):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeButton.GetId())
             self.homeButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnHome(e)
+
          elif (key == wx.WXK_PAGEUP) or (key == wx.WXK_NUMPAD_PAGEUP):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.positiveZButton.GetId())
             self.positiveZButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnZPos(e)
+
          elif (key == wx.WXK_PAGEDOWN) or (key == wx.WXK_NUMPAD_PAGEDOWN):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.negativeZButton.GetId())
             self.negativeZButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnZNeg(e)
+
          elif (key == wx.WXK_END) or (key == wx.WXK_NUMPAD_END):
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroXYButton.GetId())
+            self.SetToZeroXYButton.SetFocus()
+            wx.PostEvent(self, evt)
+            #self.OnSetToZeroXY(e)
+
+         elif (key == wx.WXK_NUMPAD_BEGIN): # number "5" on keypad when not in numlock
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.GoToZeroXYButton.GetId())
             self.GoToZeroXYButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnGoToZeroXY(e)
-         elif (key == 383):
+
+         elif (key == wx.WXK_INSERT) or (key == wx.WXK_NUMPAD_INSERT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroButton.GetId())
             self.SetToZeroButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnSetToZero(e)
-         elif (key == wx.WXK_INSERT) or (key == wx.WXK_NUMPAD_INSERT):
-            print "INSERT Key Pressed"
+
          elif (key == wx.WXK_DELETE) or (key == wx.WXK_NUMPAD_DELETE):
-            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeZButton.GetId())
-            self.homeZButton.SetFocus()
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroZButton.GetId())
+            self.SetToZeroZButton.SetFocus()
             wx.PostEvent(self, evt)
+            #self.OnSetToZero(e)
+
          elif (key == wx.WXK_NUMPAD_DIVIDE):
             print "DIVIDE Key Pressed"
+
          elif (key == wx.WXK_NUMPAD_MULTIPLY):
-            print "MULTIPLY Key Pressed"
+            canRun = self.mainWindow.OnRunHelper()
+
+            if canRun:
+               self.mainWindow.OnRun(e)
+
          elif (key == wx.WXK_NUMPAD_SUBTRACT):
             print "SUBTRACT Key Pressed"
+
          elif (key == wx.WXK_NUMPAD_ADD):
             print "ADD Key Pressed"
+
          elif (key == wx.WXK_NUMPAD_ENTER):
-            print "ENTER Key Pressed"
+            self.mainWindow.OnMachineFeedHold(e)
+
          elif (key == wx.WXK_NUMPAD0):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p05.GetId())
             self.stepSize0p05.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD1):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p1.GetId())
             self.stepSize0p1.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD2):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p5.GetId())
             self.stepSize0p5.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD3):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize1.GetId())
             self.stepSize1.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD4):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize5.GetId())
             self.stepSize5.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD5):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize10.GetId())
             self.stepSize10.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD6):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize20.GetId())
             self.stepSize20.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD7):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize50.GetId())
             self.stepSize50.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD8):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize100.GetId())
             self.stepSize100.SetFocus()
             wx.PostEvent(self, evt)
+
          elif (key == wx.WXK_NUMPAD9):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize200.GetId())
             self.stepSize200.SetFocus()
             wx.PostEvent(self, evt)
+
+         elif (key == wx.WXK_NUMLOCK):
+            #print "NUMLOCK Key Pressed"
+            pass
 
          else:
             print key

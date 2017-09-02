@@ -340,7 +340,7 @@ class serialPortThread(threading.Thread):
             wx.LogMessage(message)
             break
 
-         time.sleep(0.01)
+         #time.sleep(0.01)
 
       if self.cmdLineOptions.vverbose:
          print "** serialPortThread exit."
