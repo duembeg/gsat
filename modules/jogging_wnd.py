@@ -84,6 +84,13 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT, border=20)
 
       # Add perform Z operation last check box
+      self.cbNumKeypadPendant = wx.CheckBox(self, wx.ID_ANY, "Numeric Keypad Pendant")
+      self.cbNumKeypadPendant.SetValue(self.configData.Get('/jogging/NumKeypadPendant'))
+      self.cbNumKeypadPendant.SetToolTip(
+         wx.ToolTip("If enable, numeric keypad pendant functionality is enabled"))
+      vBoxSizer.Add(self.cbNumKeypadPendant, flag=wx.LEFT, border=20)
+
+      # Add perform Z operation last check box
       self.cbZJogMovesLast = wx.CheckBox(self, wx.ID_ANY, "Z jog moves last")
       self.cbZJogMovesLast.SetValue(self.configData.Get('/jogging/ZJogMovesLast'))
       self.cbZJogMovesLast.SetToolTip(
@@ -147,6 +154,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
       self.configData.Set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
       self.configData.Set('/jogging/ReqUpdateOnJogSetOp', self.cbReqUpdateOnJogSetOp.GetValue())
+      self.configData.Set('/jogging/NumKeypadPendant', self.cbNumKeypadPendant.GetValue())
       self.configData.Set('/jogging/ZJogMovesLast', self.cbZJogMovesLast.GetValue())
 
       for cn in range(4):
@@ -240,7 +248,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.configXYZReadOnly         = self.configData.Get('/jogging/XYZReadOnly')
       self.configAutoMPOS            = self.configData.Get('/jogging/AutoMPOS')
       self.configReqUpdateOnJogSetOp = self.configData.Get('/jogging/ReqUpdateOnJogSetOp')
+      self.configNumKeypadPendant    = self.configData.Get('/jogging/NumKeypadPendant')
       self.configZJogMovesLast       = self.configData.Get('/jogging/ZJogMovesLast')
+
 
       self.configCustom1Label       = self.configData.Get('/jogging/Custom1Label')
       self.configCustom1Script      = self.configData.Get('/jogging/Custom1Script')
@@ -280,7 +290,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.jZ.SetBackgroundColour(gc.gEdityBkColor)
 
       self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
-      self.ZJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
+      self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
+      self.zJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
 
       self.custom1Button.SetLabel(self.configCustom1Label)
       self.custom2Button.SetLabel(self.configCustom2Label)
@@ -694,13 +705,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.Bind(wx.EVT_CHECKBOX, self.OnUseMachineWorkPosition, self.useWorkPosCheckBox)
       vBoxSizer.Add(self.useWorkPosCheckBox)
 
+      # Add Checkbox for numeric keypad pendant
+      self.numKeypadPendantCheckBox = wx.CheckBox (self, label="NumKeypad pen")
+      self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
+      self.numKeypadPendantCheckBox.SetToolTip(
+         wx.ToolTip("If enabled, numeric keypad functionality sis enabled"))
+      self.Bind(wx.EVT_CHECKBOX, self.OnNumKeypadPendant, self.numKeypadPendantCheckBox)
+      vBoxSizer.Add(self.numKeypadPendantCheckBox)
+
       # Add Checkbox for Z moves last
-      self.ZJogMovesLastCheckBox = wx.CheckBox (self, label="Z jog mov last")
-      self.ZJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
-      self.ZJogMovesLastCheckBox.SetToolTip(
+      self.zJogMovesLastCheckBox = wx.CheckBox (self, label="Z jog move last")
+      self.zJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
+      self.zJogMovesLastCheckBox.SetToolTip(
          wx.ToolTip("If enabled, XY jog moves then Z Jog moves last"))
-      self.Bind(wx.EVT_CHECKBOX, self.OnZJogMovesLast, self.ZJogMovesLastCheckBox)
-      vBoxSizer.Add(self.ZJogMovesLastCheckBox)
+      self.Bind(wx.EVT_CHECKBOX, self.OnZJogMovesLast, self.zJogMovesLastCheckBox)
+      vBoxSizer.Add(self.zJogMovesLastCheckBox)
 
       return vBoxSizer
 
@@ -992,6 +1011,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
    def OnUseMachineWorkPosition(self, e):
       self.configAutoMPOS = e.IsChecked()
 
+   def OnNumKeypadPendant(self, e):
+      self.configNumKeypadPendant = e.IsChecked()
+
    def OnZJogMovesLast(self, e):
       self.configZJogMovesLast = e.IsChecked()
 
@@ -1182,8 +1204,12 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       #print wx.WXK_NUMLOCK
       #print wx.WXK_SCROLL
       #print wx.WXK_NUMPAD_BEGIN (5 on keypad when num lock is off)
-
       '''
+
+      if not self.configNumKeypadPendant:
+         e.Skip()
+         return
+
       evObj = e.GetEventObject()
 
       #if (not self.keybaordJoggingEnable) or (self.cliComboBox == evObj):
