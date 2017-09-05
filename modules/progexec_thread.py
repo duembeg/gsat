@@ -74,6 +74,7 @@ class programExecuteThread(threading.Thread):
       self.breakPointSet = set()
       self.initialProgramCounter = 0
       self.workingCounterWorking = 0
+      self.lastWorkingCounterWorking = -1
 
       self.swState = gc.gSTATE_IDLE
       self.lastEventID = gc.gEV_CMD_NULL
@@ -359,7 +360,6 @@ class programExecuteThread(threading.Thread):
          if self.swState == gc.gSTATE_IDLE:
             self.progExecOutQueue.put(gc.threadEvent(gc.gEV_PC_UPDATE, self.workingProgramCounter))
 
-
    def ProcessRunSate(self):
       # send data to serial port ----------------------------------------------
 
@@ -372,7 +372,9 @@ class programExecuteThread(threading.Thread):
          return
 
       # update PC
-      self.progExecOutQueue.put(gc.threadEvent(gc.gEV_PC_UPDATE, self.workingProgramCounter))
+      if self.lastWorkingCounterWorking != self.workingProgramCounter:
+         self.progExecOutQueue.put(gc.threadEvent(gc.gEV_PC_UPDATE, self.workingProgramCounter))
+         self.lastWorkingCounterWorking = self.workingProgramCounter
 
       # check for break point hit
       if (self.workingProgramCounter in self.breakPointSet) and \
@@ -492,7 +494,7 @@ class programExecuteThread(threading.Thread):
             self.ProcessIdleSate()
             self.swState = gc.gSTATE_IDLE
 
-         #time.sleep(0.02)
+         time.sleep(0.01)
 
       if self.cmdLineOptions.vverbose:
          print "** programExecuteThread exit."

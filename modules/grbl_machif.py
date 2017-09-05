@@ -47,7 +47,7 @@ gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 # quick re check to avoid multiple checks, speeds things up
 gReMachineStatus = re.compile(r'pos', re.I)
 
-# GRBL example 
+# GRBL example
 #   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
 #   "<Hold:29|WPos:20.163,0.000,20.000>"
 #gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
@@ -136,7 +136,7 @@ class machIf_GRBL(mi.machIf_Base):
 
          # remove the "?" used to get status notice no "\n"
          bufferPart = 1
-                  
+
          if (self.inputBufferSize >= bufferPart):
             self.inputBufferSize = self.inputBufferSize - bufferPart
          else:
@@ -258,6 +258,8 @@ class machIf_GRBL(mi.machIf_Base):
                (1, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
+      elif data in [self.GetCycleStartCmd(), self.GetFeedHoldCmd()]:
+         pass
       elif bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen

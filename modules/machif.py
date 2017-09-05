@@ -158,7 +158,7 @@ class machIf_Base(object):
             #print gc.gStateData.machIfName
 
       return rxData
-      
+
    def Reset(self):
       pass
 
@@ -172,6 +172,12 @@ class machIf_Base(object):
 
          if not raw_write:
             txData = self.Encode(txData)
+
+         # in current design there is only one thread writing, bypass queue
+         # to improve jogging. This should be safe as there is only one thread
+         # writing and one reading. If issues start happening go back to queuing
+         # solution, UPDATE: there was no observable benefit.
+         # self.serialTxRxThread.SerialWrite(txData)
 
          self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
                txData))

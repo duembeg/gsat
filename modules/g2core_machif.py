@@ -152,7 +152,9 @@ class machIf_g2core(mi.machIf_Base):
    def Encode(self, data, bookeeping=True):
       data = data.encode('ascii')
 
-      if bookeeping:
+      if data in [self.GetCycleStartCmd(), self.GetFeedHoldCmd()]:
+         pass
+      elif bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
 
