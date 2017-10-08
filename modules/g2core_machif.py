@@ -31,15 +31,9 @@ except ImportError:
 
 import modules.machif as mi
 
-# -----------------------------------------------------------------------------
-# regular expressions
-# -----------------------------------------------------------------------------
-# g2core text ack, example  "ok>"
-gReG2CoreMachineAck = re.compile(r'.+ok>\s$')
-
 
 """----------------------------------------------------------------------------
-   machIf_g2core:
+   MachIf_g2core:
 
    Machine Interface g2core class.
 
@@ -56,13 +50,18 @@ gReG2CoreMachineAck = re.compile(r'.+ok>\s$')
    !!notice f[1,0,1]
 
 ----------------------------------------------------------------------------"""
-class machIf_g2core(mi.machIf_Base):
+class MachIf_g2core(mi.MachIf_Base):
+
+   # g2core text ack, example  "ok>"
+   reG2CoreMachineAck = re.compile(r'.+ok>\s$')
+
    def __init__(self, cmd_line_options):
-      super(machIf_g2core, self).__init__(cmd_line_options, 1200, "g2core", 255, 0, 0.90)
+      super(MachIf_g2core, self).__init__(cmd_line_options, 1200,
+         "g2core", 255, 0, 0.90)
 
       self.inputBufferPart = list()
 
-   def Decode(self, data):
+   def decode(self, data):
       dataDict = {}
 
       try:
@@ -75,7 +74,6 @@ class machIf_g2core(mi.machIf_Base):
             if 'sr' in r:
                sr = r['sr']
                dataDict['sr'] = sr
-               #del r['sr']
 
          if 'sr' in dataDict:
             sr = dataDict['sr']
@@ -112,7 +110,6 @@ class machIf_g2core(mi.machIf_Base):
                elif 13 == status:
                   sr['stat'] = 'Panic'
 
-
             # deal with old versions of g2core
             if 'mpox' in sr:
                sr['posx'] = sr['mpox']
@@ -126,12 +123,12 @@ class machIf_g2core(mi.machIf_Base):
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
       except:
-         ack = gReG2CoreMachineAck.match(data)
+         ack = slef.reG2CoreMachineAck.match(data)
          if ack is not None:
             dataDict['r'] = {"f":[1,0,0]}
          else:
             if self.cmdLineOptions.vverbose:
-               print "** machIf_g2core cannot decode data!! [%s]." % data
+               print "** MachIf_g2core cannot decode data!! [%s]." % data
 
       if 'r' in dataDict:
          # checking for count in "f" response doesn't always work as expected and broke on edge branch
@@ -143,16 +140,20 @@ class machIf_g2core(mi.machIf_Base):
             self.inputBufferSize = self.inputBufferSize - bufferPart
 
             if self.cmdLineOptions.vverbose:
-               print "** machIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               print "** MachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+         else:
+            pass
+            #print "hmmm this could be a problem"
+            #print dataDict
 
       return dataDict
 
-   def Encode(self, data, bookeeping=True):
+   def encode(self, data, bookeeping=True):
       data = data.encode('ascii')
 
-      if data in [self.GetCycleStartCmd(), self.GetFeedHoldCmd()]:
+      if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
          pass
       elif bookeeping:
          dataLen = len(data)
@@ -161,18 +162,24 @@ class machIf_g2core(mi.machIf_Base):
          self.inputBufferPart.append(dataLen)
 
          if self.cmdLineOptions.vverbose:
-            print "** machIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+            print "** MachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (dataLen, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
       return data
 
-   def GetQueueFlushCmd (self):
+   def getQueueFlushCmd (self):
       return "%\n"
 
-   def GetSetAxisCmd (self):
+   def getSetAxisCmd (self):
       #return "G28.3"
       return "G92"
 
-   def GetStatusCmd(self):
+   def getStatusCmd(self):
       return '{"sr":null}\n'
+
+   def reset(self):
+      super(MachIf_g2core, self)._reset(self.inputBufferMaxSize,
+         0, self.inputBufferWatermarkPrcnt)
+
+      self.inputBufferPart = list()

@@ -121,6 +121,7 @@ gID_MENU_RESET_PC                = wx.NewId()
 gID_MENU_GOTO_PC                 = wx.NewId()
 gID_MENU_MACHINE_CYCLE_START     = wx.NewId()
 gID_MENU_MACHINE_FEED_HOLD       = wx.NewId()
+gID_MENU_MACHINE_QUEUE_FLUSH     = wx.NewId()
 gID_MENU_MACHINE_RESET           = wx.NewId()
 gID_MENU_ABORT                   = wx.NewId()
 gID_MENU_IN2MM                   = wx.NewId()
@@ -668,6 +669,11 @@ class gsatMainWindow(wx.Frame):
          machineFeedHold.SetBitmap(ico.imgFeedHold.GetBitmap())
       runMenu.AppendItem(machineFeedHold)
 
+      machineQueueFlush = wx.MenuItem(runMenu, gID_MENU_MACHINE_QUEUE_FLUSH,"Machine &Queue Flush")
+      if os.name != 'nt':
+         machineQueueFlush.SetBitmap(ico.imgQueueFlush.GetBitmap())
+      runMenu.AppendItem(machineQueueFlush)
+
       machineReset = wx.MenuItem(runMenu, gID_MENU_MACHINE_RESET,"Machine Reset")
       if os.name != 'nt':
          machineReset.SetBitmap(ico.imgMachineReset.GetBitmap())
@@ -768,6 +774,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_MENU, self.OnGoToPC,              id=gID_MENU_GOTO_PC)
       self.Bind(wx.EVT_MENU, self.OnMachineCycleStart,   id=gID_MENU_MACHINE_CYCLE_START)
       self.Bind(wx.EVT_MENU, self.OnMachineFeedHold,     id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_MENU, self.OnMachineQueueFlush,   id=gID_MENU_MACHINE_QUEUE_FLUSH)
       self.Bind(wx.EVT_MENU, self.OnMachineReset,        id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_MENU, self.OnAbort,               id=gID_MENU_ABORT)
 
@@ -781,6 +788,7 @@ class gsatMainWindow(wx.Frame):
       self.Bind(wx.EVT_BUTTON, self.OnGoToPC,            id=gID_MENU_GOTO_PC)
       self.Bind(wx.EVT_BUTTON, self.OnMachineCycleStart, id=gID_MENU_MACHINE_CYCLE_START)
       self.Bind(wx.EVT_BUTTON, self.OnMachineFeedHold,   id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_BUTTON, self.OnMachineQueueFlush, id=gID_MENU_MACHINE_QUEUE_FLUSH)
       self.Bind(wx.EVT_BUTTON, self.OnMachineReset,      id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_BUTTON, self.OnAbort,             id=gID_MENU_ABORT)
 
@@ -799,6 +807,8 @@ class gsatMainWindow(wx.Frame):
                                                          id=gID_MENU_MACHINE_CYCLE_START)
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHoldUpdate,
                                                          id=gID_MENU_MACHINE_FEED_HOLD)
+      self.Bind(wx.EVT_UPDATE_UI, self.OnMachineQueueFlushUpdate,
+                                                         id=gID_MENU_MACHINE_QUEUE_FLUSH)
       self.Bind(wx.EVT_UPDATE_UI, self.OnMachineResetUpdate,
                                                          id=gID_MENU_MACHINE_RESET)
       self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
@@ -963,6 +973,10 @@ class gsatMainWindow(wx.Frame):
       self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_FEED_HOLD, "Feed Hold", ico.imgFeedHold.GetBitmap(),
          "Machine Feed Hold")
       self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_FEED_HOLD, ico.imgFeedHoldDisabled.GetBitmap())
+
+      self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_QUEUE_FLUSH, "Queue Flush", ico.imgQueueFlush.GetBitmap(),
+         "Machine Queue Flush")
+      self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_QUEUE_FLUSH, ico.imgQueueFlushDisabled.GetBitmap())
 
       self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_RESET, "Reset", ico.imgMachineReset.GetBitmap(),
          "Machine Reset")
@@ -1357,6 +1371,7 @@ class gsatMainWindow(wx.Frame):
       self.OnGoToPCUpdate()
       self.OnMachineCycleStartUpdate()
       self.OnMachineFeedHoldUpdate()
+      self.OnMachineQueueFlushUpdate()
       self.OnMachineResetUpdate()
       self.OnAbortUpdate()
       self.gcodeToolBar.Refresh()
@@ -1540,7 +1555,7 @@ class gsatMainWindow(wx.Frame):
 
    def OnMachineCycleStart(self, e):
       if self.progExecThread is not None:
-         self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_CYCLE_START, None))
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_CYCLE_START, None))
 
          if (self.stateData.swState == gc.gSTATE_PAUSE):
             self.OnRun(e)
@@ -1563,7 +1578,7 @@ class gsatMainWindow(wx.Frame):
          if (self.stateData.swState == gc.gSTATE_RUN):
             self.OnPause(e)
 
-         self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_FEED_HOLD, None))
 
    def OnMachineFeedHoldUpdate(self, e=None):
       state = False
@@ -1575,6 +1590,21 @@ class gsatMainWindow(wx.Frame):
 
       self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_FEED_HOLD, state)
 
+
+   def OnMachineQueueFlush(self, e):
+      if self.progExecThread is not None:
+
+         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_QUEUE_FLUSH, None))
+
+   def OnMachineQueueFlushUpdate(self, e=None):
+      state = False
+      if self.stateData.serialPortIsOpen:
+         state = True
+
+      if e is not None:
+         e.Enable(state)
+
+      self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_QUEUE_FLUSH, state)
 
    def OnMachineReset(self, e):
       if self.progExecThread is not None:
@@ -1593,7 +1623,7 @@ class gsatMainWindow(wx.Frame):
 
 
    def OnAbort(self, e):
-      self.mainWndOutQueue.put(gc.threadEvent(gc.gEv_CMD_FEED_HOLD, None))
+      self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_FEED_HOLD, None))
 
       #self.serPort.write("!\n")
       #self.Stop(gc.gSTATE_ABORT)
@@ -2223,6 +2253,9 @@ class gsatMainWindow(wx.Frame):
       #self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
 
    def RunDeviceInitScript (self):
+      # comments example "( comment string )" or "; comment string"
+      reGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
+
       # run init script
       initScript = str(self.configData.Get('/machine/InitScript')).splitlines()
 
@@ -2232,7 +2265,13 @@ class gsatMainWindow(wx.Frame):
 
          self.outputText.AppendText("Queuing machine init script...\n")
          for initLine in initScript:
+
+            for reComments in reGcodeComments:
+               initLine = reComments.sub("", initLine)
+
             initLine = "".join([initLine, "\n"])
-            #self.SerialWrite(initLine)
-            self.SerialWriteWaitForAck(initLine)
-            self.outputText.AppendText(initLine)
+
+            if len(initLine.strip()) > 0:
+               #self.SerialWrite(initLine)
+               self.SerialWriteWaitForAck(initLine)
+               self.outputText.AppendText(initLine)

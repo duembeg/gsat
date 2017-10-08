@@ -30,12 +30,8 @@ except ImportError:
 import modules.machif as mi
 
 
-gInputBufferMaxSize = 255
-gInputBufferInitVal = -1
-gInputBufferWatermarkPrcnt = 0.90
-
 """----------------------------------------------------------------------------
-   machIf_TinyG:
+   MachIf_TinyG:
 
    Machine Interface TinyG class.
 
@@ -49,11 +45,17 @@ gInputBufferWatermarkPrcnt = 0.90
    should not be counted
 
 ----------------------------------------------------------------------------"""
-class machIf_TinyG(mi.machIf_Base):
-   def __init__(self, cmd_line_options):
-      super(machIf_TinyG, self).__init__(cmd_line_options, 1100, "TinyG", gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+class MachIf_TinyG(mi.MachIf_Base):
+   inputBufferMaxSize = 255
+   inputBufferInitVal = -1
+   inputBufferWatermarkPrcnt = 0.90
 
-   def Decode(self, data):
+   def __init__(self, cmd_line_options):
+      super(MachIf_TinyG, self).__init__(cmd_line_options, 1100, "TinyG",
+         self.inputBufferMaxSize, self.inputBufferInitVal,
+         self.inputBufferWatermarkPrcnt)
+
+   def decode(self, data):
       dataDict = {}
 
       try:
@@ -122,7 +124,7 @@ class machIf_TinyG(mi.machIf_Base):
                self.inputBufferSize = 0
 
             if self.cmdLineOptions.vverbose:
-               print "** machIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+               print "** MachIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
@@ -131,34 +133,38 @@ class machIf_TinyG(mi.machIf_Base):
 
       except:
          if self.cmdLineOptions.vverbose:
-            print "** machIf_TinyG cannot decode data!! [%s]." % data
+            print "** MachIf_TinyG cannot decode data!! [%s]." % data
 
       return dataDict
 
-   def Encode(self, data, bookeeping=True):
+   def encode(self, data, bookeeping=True):
       data = data.encode('ascii')
 
-      if data in [self.GetCycleStartCmd(), self.GetFeedHoldCmd()]:
+      if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
          pass
       elif bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
 
          if self.cmdLineOptions.vverbose:
-            print "** machIf_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+            print "** MachIf_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
                (dataLen, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
 
       return data
 
-   def GetInitCommCmd (self):
+   def getInitCommCmd (self):
       return '\n{"fv":null}\n'
 
-   def GetSetAxisCmd (self):
+   def getQueueFlushCmd (self):
+      return "%\n"
+
+   def getSetAxisCmd (self):
       return "G28.3"
 
-   def GetStatusCmd(self):
+   def getStatusCmd(self):
       return '{"sr":null}\n'
 
-   def Reset(self):
-      super(machIf_TinyG, self)._Reset(self, gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+   def reset(self):
+      super(MachIf_TinyG, self)._reset(self.inputBufferMaxSize,
+         self.inputBufferInitVal, self.inputBufferWatermarkPrcnt)

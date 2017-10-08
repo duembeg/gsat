@@ -36,11 +36,11 @@ import wx
 import modules.config as gc
 
 """----------------------------------------------------------------------------
-   serialPortThread:
+   SerialPortThread:
    Threads that monitor serial port for new data and sends events to
    main window.
 ----------------------------------------------------------------------------"""
-class serialPortThread(threading.Thread):
+class SerialPortThread(threading.Thread):
    """Worker Thread Class."""
    def __init__(self, notify_window, state_data, in_queue, out_queue, cmd_line_options):
       """Init Worker Thread Class."""
@@ -62,10 +62,10 @@ class serialPortThread(threading.Thread):
       self.start()
 
    """-------------------------------------------------------------------------
-   serialPortThread: Main Window Event Handlers
+   SerialPortThread: Main Window Event Handlers
    Handle events coming from main UI
    -------------------------------------------------------------------------"""
-   def ProcessQueue(self):
+   def processQueue(self):
       # process events from queue ---------------------------------------------
       if not self.serialThreadInQueue.empty():
          # get item from queue
@@ -73,41 +73,41 @@ class serialPortThread(threading.Thread):
 
          if e.event_id == gc.gEV_CMD_EXIT:
             if self.cmdLineOptions.vverbose:
-               print "** serialPortThread got event gc.gEV_CMD_EXIT."
+               print "** SerialPortThread got event gc.gEV_CMD_EXIT."
 
-            self.SerialClose()
+            self.serialClose()
 
             self.endThread = True
 
          elif e.event_id == gc.gEV_CMD_SER_TXDATA:
             if self.cmdLineOptions.vverbose:
-               print "** serialPortThread got event gc.gEV_CMD_SER_TXDATA."
+               print "** SerialPortThread got event gc.gEV_CMD_SER_TXDATA."
 
-            self.SerialWrite(e.data)
+            self.serialWrite(e.data)
 
          else:
             if self.cmdLineOptions.vverbose:
-               print "** serialPortThread got unknown event!! [%s]." % str(e.event_id)
+               print "** SerialPortThread got unknown event!! [%s]." % str(e.event_id)
 
    """-------------------------------------------------------------------------
-   serialPortThread: General Functions
+   SerialPortThread: General Functions
    -------------------------------------------------------------------------"""
-   def SerialClose(self):
+   def serialClose(self):
       if self.serPort is not None:
          if self.serPort.isOpen():
             #self.serPort.flushInput()
             self.serPort.close()
 
             if self.cmdLineOptions.vverbose:
-               print "** serialPortThread close serial port."
+               print "** SerialPortThread close serial port."
 
             self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_PORT_CLOSE, 0))
 
-   def SerialOpen(self):
+   def serialOpen(self):
       exFlag = False
       exMsg = ""
 
-      self.SerialClose()
+      self.serialClose()
 
       port = self.stateData.serialPort
       baud = self.stateData.serialPortBaud
@@ -158,7 +158,7 @@ class serialPortThread(threading.Thread):
                tty.setraw(serial_fd)
 
                if self.cmdLineOptions.vverbose:
-                  print "** serialPortThread open serial port [%s] at %s bps." % (portName, baud)
+                  print "** SerialPortThread open serial port [%s] at %s bps." % (portName, baud)
 
                # no exceptions report serial port open
                self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_SER_PORT_OPEN, port))
@@ -177,7 +177,7 @@ class serialPortThread(threading.Thread):
          # add data to queue
          self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
 
-   def SerialRead(self):
+   def serialRead(self):
       exFlag = False
       exMsg = ""
       serialData = ""
@@ -242,10 +242,10 @@ class serialPortThread(threading.Thread):
 
          # add data to queue
          self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
-         self.SerialClose()
+         self.serialClose()
 
 
-   def SerialWrite(self, serialData):
+   def serialWrite(self, serialData):
       exFlag = False
       exMsg = ""
 
@@ -290,7 +290,7 @@ class serialPortThread(threading.Thread):
 
             # add data to queue
             self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
-            self.SerialClose()
+            self.serialClose()
 
    def run(self):
       """Run Worker Thread."""
@@ -298,16 +298,16 @@ class serialPortThread(threading.Thread):
       self.endThread = False
 
       if self.cmdLineOptions.vverbose:
-         print "** serialPortThread start."
+         print "** SerialPortThread start."
 
-      self.SerialOpen()
+      self.serialOpen()
 
       while ((self.endThread != True) and (self.serPort is not None)):
-         #print "** serialPortThread running.... QO: %d, QI:%d" % \
+         #print "** SerialPortThread running.... QO: %d, QI:%d" % \
          #   (self.serialThreadOutQueue.qsize(), self.serialThreadInQueue.qsize())
 
          # process input queue for new commands or actions
-         self.ProcessQueue()
+         self.processQueue()
 
          # check if we need to exit now
          if self.endThread:
@@ -315,19 +315,18 @@ class serialPortThread(threading.Thread):
 
          if self.serPort.isOpen():
             if self.swState == gc.gSTATE_RUN:
-               self.SerialRead()
+               self.serialRead()
             elif self.swState == gc.gSTATE_ABORT:
                # do nothing, wait to be terminated
                pass
             else:
                if self.cmdLineOptions.verbose:
-                  print "** serialPortThread unexpected state [%d], moving back to IDLE." \
-                     ", swState->gc.gSTATE_IDLE " % (self.swState)
+                  print "** SerialPortThread unexpected state [%d], Aborting..." % (self.swState)
 
-               self.ProcessIdleSate()
-               self.swState = gc.gSTATE_IDLE
+               self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
+               break
          else:
-            message ="** Serial Port is close, serialPortThread terminating.\n"
+            message ="** Serial Port is close, SerialPortThread terminating.\n"
 
             if self.cmdLineOptions.verbose:
                print message.strip()
@@ -343,6 +342,6 @@ class serialPortThread(threading.Thread):
          time.sleep(0.01)
 
       if self.cmdLineOptions.vverbose:
-         print "** serialPortThread exit."
+         print "** SerialPortThread exit."
 
       self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_EXIT, ""))

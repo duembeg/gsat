@@ -658,6 +658,36 @@ imgFeedHoldDisabled = PyEmbeddedImage(
     "QMam8bOiVsnktPG9T005cNKxSqp+sWuAfluNto8h+CzsxGPHj+erqQ1toumc5AH44s1vA0QZ"
     "pU+eiiS9G/camwff6H6WgEQ/sSD30H2nG/gGqct2z+LvT7EAAAAASUVORK5CYII=")
 
+#------------------------------------------------------------------------------
+# imgQueueFlush
+#------------------------------------------------------------------------------
+imgQueueFlush = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4QoIDAEiW6nbCAAAAnpJREFUOMulk1tI03EU"
+    "x79///821/h7i+U0YZQiyqpNpqJSVopIgg+5sAjsISzFHqInUey1y4N0gW5SI0gjhTB6SXOa"
+    "snIMWReNbDjEpfB3sy3Tdvn/f/9LT5MuKkLn6ZwD58Ph+z0H+M+g4slhm/8+AAuAAIBpAE9H"
+    "z6RPbBkAAAcfcO2pLFOXa9AaPHPhxeVV8kSW5Ztvm7IiGwESfi8cjRmXl4KRMTVNqYvzUvKz"
+    "dKpGWZIubLZBwt8NSRRffeVWQ9GISOdkag2shjpVdGOmaMsAwvO+pWA4KkkyfiwTOjtTmyES"
+    "cnJLAKvVWmhwX6sJz32mFUUGz4vYrmZYwvP5GwEYAGhra7vOsmyi0+mcet5n6zxw/ta8xitB"
+    "+CkgwVStIoKg2xRA07S2ubnprMm038txHFqqcndWlppxpWcEK8EQCB+jNgLQJSUlZT6fLzEt"
+    "LTXHaNyboygK9DuSGbvzHYYmFwBFwnwI3Irrcde6d2A2m1ttNtvVWCwGnW4XzMda/B/676QH"
+    "AgvQaDS4+GgEX0ieOz6gKIo7cK+2aU3EaDQ6Xl9ff8nl/rgoCBK8Q33pgiDBMenFidsvEdIb"
+    "seeIxWKuKbYQnodESP8fLng8HkdBQaGxorxSP2i3B3y+GTyzj+JoWSkyktTgsssgsCzGe4fd"
+    "IiEdwYd1A/+cckVFVTfLJqnGxoZnXK7p9sLj5xaLqsv1/jBB1NoKrqvbTVFUR6T39MB6v6AC"
+    "YACQwjCMiWGYfWLybpWSW3soraEh//uL1+/h/9QpTnQNAogCiAGQ1lyIawOAl2U5IIrirBz+"
+    "NgtatRDhJL0y9+auPNkzBWAbABEAD0COA34BAtQSbHx+DkcAAAAASUVORK5CYII=")
+
+imgQueueFlushDisabled = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAAJcEhZ"
+    "cwAACxMAAAsTAQCanBgAAAAHdElNRQfhCggMAi8ONfR2AAABbElEQVQoz4XRySuEARjH8e/M"
+    "O15kMMryGgmhyZY1aSRT5CBOLv4AIjcnEXcXudkOclC2k5qDQYYowlAkgzElY5sskTFes7nY"
+    "Kc/pOXz69fR74J9RAPQOUoiTfcZbN34CAcBkrIpWF6WXuyoMmsqtOc8vALPLpbrEYknrSX0Q"
+    "51f+AGBQqCrFKE3EXbx+03z+CZTvi3xy4/ZxLyTEe+q/JryBuqLDaocQQCY4/CXjK1BBe294"
+    "yOruZE/DqYNHdOJLzA8ghDU35touqI4tZYRbZMU3UKI3WzOPC9JkcoIXOMaD/L2ovLbh7mdi"
+    "qLkyxjkJZQC3BSBgGW0CECKVk/bEzGR1i9rFGmNIZGt1WuuFv2/PBqA8WM7PMkhzzhNMlKFB"
+    "IpRpi7dzYubjyBtf19TS0XrH0KVNeiKKKYui0zjz+SyRJDSqXFWOWkwpr81Y3L7u2THh5hnf"
+    "e9UBZL/Ta3+yC45r6azfuksQXmT8AK+PV37mxx+rpwAAAABJRU5ErkJggg==")
+
 
 #------------------------------------------------------------------------------
 # imgGotoMapPin

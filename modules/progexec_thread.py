@@ -114,8 +114,8 @@ class programExecuteThread(threading.Thread):
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_EXIT."
 
-            if self.machIfModule.IsSerialPortOpen():
-               self.machIfModule.Close()
+            if self.machIfModule.isSerialPortOpen():
+               self.machIfModule.close()
             else:
                self.endThread = True
                self.swState = gc.gSTATE_IDLE
@@ -168,34 +168,41 @@ class programExecuteThread(threading.Thread):
          elif e.event_id == gc.gEV_CMD_GET_STATUS:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_GET_STATUS."
-            #self.serialWriteQueue.append((self.machIfModule.GetStatus(), False))
+            #self.serialWriteQueue.append((self.machIfModule.getStatus(), False))
             # should not hold status request for waiting for ack to block
-            if self.machIfModule.OkToSend(self.machIfModule.GetStatusCmd()):
-               self.SerialWrite(self.machIfModule.GetStatusCmd())
+            if self.machIfModule.okToSend(self.machIfModule.getStatusCmd()):
+               self.SerialWrite(self.machIfModule.getStatusCmd())
 
-         elif e.event_id == gc.gEv_CMD_FEED_HOLD:
+         elif e.event_id == gc.gEV_CMD_CYCLE_START:
             if self.cmdLineOptions.vverbose:
-               print "** programExecuteThread got event gc.gEv_CMD_FEED_HOLD."
-
-            # this command is usually use for abort and machine stop
-            # we can't afford to skip this action, send without checking if ok...
-            self.SerialWrite(self.machIfModule.GetFeedHoldCmd())
-
-         elif e.event_id == gc.gEv_CMD_CYCLE_START:
-            if self.cmdLineOptions.vverbose:
-               print "** programExecuteThread got event gc.gEv_CMD_CYCLE_START."
+               print "** programExecuteThread got event gc.gEV_CMD_CYCLE_START."
 
             # this command is usually use for resume after a machine stop
             # thus, queues most probably full send without checking if ok...
-            self.SerialWrite(self.machIfModule.GetCycleStartCmd())
+            self.SerialWrite(self.machIfModule.getCycleStartCmd())
+
+         elif e.event_id == gc.gEV_CMD_FEED_HOLD:
+            if self.cmdLineOptions.vverbose:
+               print "** programExecuteThread got event gc.gEV_CMD_FEED_HOLD."
+
+            # this command is usually use for abort and machine stop
+            # we can't afford to skip this action, send without checking if ok...
+            self.SerialWrite(self.machIfModule.getFeedHoldCmd())
+
+         elif e.event_id == gc.gEV_CMD_QUEUE_FLUSH:
+            if self.cmdLineOptions.vverbose:
+               print "** programExecuteThread got event gc.gEV_CMD_QUEUE_FLUSH."
+
+            self.SerialWrite(self.machIfModule.getQueueFlushCmd())
+            self.machIfModule.reset()
 
          elif e.event_id == gc.gEV_CMD_RESET:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_RESET."
 
-            self.SerialWrite(self.machIfModule.GetResetCmd())
+            self.SerialWrite(self.machIfModule.getResetCmd())
             time.sleep(2)
-            self.machIfModule.Reset()
+            self.machIfModule.reset()
 
          else:
             if self.cmdLineOptions.vverbose:
@@ -208,12 +215,12 @@ class programExecuteThread(threading.Thread):
       self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
       if self.cmdLineOptions.vverbose:
-         print "** programExecuteThread Init MachIf Module (%s)." % self.machIfModule.GetName()
+         print "** programExecuteThread Init MachIf Module (%s)." % self.machIfModule.getName()
 
-      self.machIfModule.Init(self.stateData)
+      self.machIfModule.init(self.stateData)
 
    def SerialRead(self):
-      rxData = self.machIfModule.Read()
+      rxData = self.machIfModule.read()
       mainWndEvent = False;
 
       if 'event' in rxData:
@@ -258,7 +265,7 @@ class programExecuteThread(threading.Thread):
       return rxData
 
    def SerialWrite(self, serialData):
-      bytesSent = self.machIfModule.Write(serialData)
+      bytesSent = self.machIfModule.write(serialData)
 
       # sent data to UI
       if bytesSent > 0:
@@ -267,7 +274,7 @@ class programExecuteThread(threading.Thread):
       return bytesSent
 
    def Tick(self):
-      self.machIfModule.Tick()
+      self.machIfModule.tick()
       self.ProcessQueue()
 
    def WaitForAcknowledge(self):
@@ -340,7 +347,7 @@ class programExecuteThread(threading.Thread):
       if len(gcode) > 0:
          gcode = "%s\n" % (gcode)
 
-         if self.machIfModule.OkToSend(gcode):
+         if self.machIfModule.okToSend(gcode):
             # write data
             self.SerialWrite(gcode)
 
@@ -348,7 +355,7 @@ class programExecuteThread(threading.Thread):
             self.WaitForAcknowledge()
 
             if self.machineAutoStatus:
-               self.SerialWrite(self.machIfModule.GetStatusCmd())
+               self.SerialWrite(self.machIfModule.getStatusCmd())
          else:
             writeToDevice = False
             self.SerialRead()
@@ -445,7 +452,7 @@ class programExecuteThread(threading.Thread):
 
          data = self.serialWriteQueue[0]
 
-         if self.machIfModule.OkToSend(data[0]):
+         if self.machIfModule.okToSend(data[0]):
             self.serialWriteQueue.pop(0)
             self.SerialWrite(data[0])
 
@@ -461,7 +468,7 @@ class programExecuteThread(threading.Thread):
          print "** programExecuteThread start."
 
       # inti machine interface
-      self.machIfModule.Open()
+      self.machIfModule.open()
 
       while(self.endThread != True):
 

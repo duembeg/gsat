@@ -122,9 +122,10 @@ gEV_CMD_AUTO_STATUS  = 1050
 gEV_CMD_OK_TO_POST   = 1060
 gEV_CMD_GET_STATUS   = 1070
 gEV_CMD_SER_TXDATA   = 1080
-gEv_CMD_CYCLE_START  = 1090
-gEv_CMD_FEED_HOLD    = 1100
-gEV_CMD_RESET        = 1110
+gEV_CMD_CYCLE_START  = 1090
+gEV_CMD_FEED_HOLD    = 1100
+gEV_CMD_QUEUE_FLUSH  = 1110
+gEV_CMD_RESET        = 1120
 
 
 gEV_NULL             =  100
@@ -203,7 +204,7 @@ class gsatConfigData():
       # main app keys
          '/mainApp/DisplayRunTimeDialog'     :(True , True),
          '/mainApp/BackupFile'               :(True , True),
-         '/mainApp/MaxFileHistory'           :(True , 8),
+         '/mainApp/MaxFileHistory'           :(True , 10),
          '/mainApp/RoundInch2mm'             :(True , 4),
          '/mainApp/Roundmm2Inch'             :(True , 4),
          #'/mainApp/DefaultLayout/Dimensions' :(False, ""),

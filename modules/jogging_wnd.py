@@ -983,21 +983,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
 
       self.mainWindow.SerialWriteWaitForAck("".join(
-         [mim.GetSetAxisCmd(), " X", gc.gZeroString, " Y", gc.gZeroString,
+         [mim.getSetAxisCmd(), " X", gc.gZeroString, " Y", gc.gZeroString,
          " Z", gc.gZeroString, "\n"]))
 
    def OnSetToZeroXY(self, e):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
 
       self.mainWindow.SerialWriteWaitForAck("".join(
-         [mim.GetSetAxisCmd(), " X", gc.gZeroString,
+         [mim.getSetAxisCmd(), " X", gc.gZeroString,
          " Y", gc.gZeroString, "\n"]))
 
    def OnSetToZeroZ(self, e):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
 
       self.mainWindow.SerialWriteWaitForAck("".join(
-         [mim.GetSetAxisCmd(), " Z", gc.gZeroString, "\n"]))
+         [mim.getSetAxisCmd(), " Z", gc.gZeroString, "\n"]))
 
    def OnGoToZeroXY(self, e):
       self.mainWindow.SerialWriteWaitForAck("".join(
@@ -1053,7 +1053,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       mim = mi.GetMachIfModule(self.stateData.machIfId)
 
       self.OnJogCmd(gc.gZeroString, gc.gZeroString, gc.gZeroString,
-            mim.GetSetAxisCmd())
+            mim.getSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
@@ -1067,7 +1067,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       self.OnJogCmd(
          self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-         mim.GetSetAxisCmd())
+         mim.getSetAxisCmd())
 
       if self.configReqUpdateOnJogSetOp:
          self.mainWindow.GetMachineStatus()
