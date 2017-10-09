@@ -280,9 +280,9 @@ class gsatConfigData():
          '/jogging/Custom4Label'             :(False, "Custom 4"),
          '/jogging/Custom4Script'            :(False, ""),
          '/jogging/SpindleSpeed'             :(True , 12000),
-         '/jogging/ProbeDistance'            :(True , 19.6),
-         '/jogging/ProbeMaxDistance'         :(True , 40),
-         '/jogging/ProbeFeedRate'            :(True , 100),
+         '/jogging/ProbeDistance'            :(True , 19.6000),
+         '/jogging/ProbeMaxDistance'         :(True , -40.0000),
+         '/jogging/ProbeFeedRate'            :(True , 100.0000),
 
 
       # CV2 keys
