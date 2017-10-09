@@ -272,13 +272,17 @@ class gsatConfigData():
          '/jogging/NumKeypadPendant'         :(True , False),
          '/jogging/ZJogMovesLast'            :(True , False),
          '/jogging/Custom1Label'             :(False, "Custom 1"),
-         '/jogging/Custom1Script'            :(False , ""),
+         '/jogging/Custom1Script'            :(False, ""),
          '/jogging/Custom2Label'             :(False, "Custom 2"),
-         '/jogging/Custom2Script'            :(False , ""),
+         '/jogging/Custom2Script'            :(False, ""),
          '/jogging/Custom3Label'             :(False, "Custom 3"),
-         '/jogging/Custom3Script'            :(False , ""),
+         '/jogging/Custom3Script'            :(False, ""),
          '/jogging/Custom4Label'             :(False, "Custom 4"),
-         '/jogging/Custom4Script'            :(False , ""),
+         '/jogging/Custom4Script'            :(False, ""),
+         '/jogging/SpindleSpeed'             :(True , 12000),
+         '/jogging/ProbeDistance'            :(True , 19.6),
+         '/jogging/ProbeMaxDistance'         :(True , 40),
+         '/jogging/ProbeFeedRate'            :(True , 100),
 
 
       # CV2 keys

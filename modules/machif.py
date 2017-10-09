@@ -112,11 +112,14 @@ class MachIf_Base(object):
    def getQueueFlushCmd (self):
       return ""
 
+   def getProbeAxisCmd (self):
+      return "G38.2"
+
    def getResetCmd (self):
       return "\x18"
 
    def getSetAxisCmd (self):
-      return ""
+      return "G92"
 
    def getStatusCmd(self):
       return ""

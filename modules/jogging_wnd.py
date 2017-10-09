@@ -84,10 +84,10 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT, border=20)
 
       # Add perform Z operation last check box
-      self.cbNumKeypadPendant = wx.CheckBox(self, wx.ID_ANY, "Numeric Keypad Pendant")
+      self.cbNumKeypadPendant = wx.CheckBox(self, wx.ID_ANY, "Numeric Keypad as cnc pendant")
       self.cbNumKeypadPendant.SetValue(self.configData.Get('/jogging/NumKeypadPendant'))
       self.cbNumKeypadPendant.SetToolTip(
-         wx.ToolTip("If enable, numeric keypad pendant functionality is enabled"))
+         wx.ToolTip("Probe Z axis"))
       vBoxSizer.Add(self.cbNumKeypadPendant, flag=wx.LEFT, border=20)
 
       # Add perform Z operation last check box
@@ -95,7 +95,92 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       self.cbZJogMovesLast.SetValue(self.configData.Get('/jogging/ZJogMovesLast'))
       self.cbZJogMovesLast.SetToolTip(
          wx.ToolTip("If enable, any XY jog moves are perform first and Z jog moves are last"))
-      vBoxSizer.Add(self.cbZJogMovesLast, flag=wx.LEFT|wx.BOTTOM, border=20)
+
+      vBoxSizer.Add(self.cbZJogMovesLast, flag=wx.LEFT, border=20)
+
+      vBoxSizer.AddSpacer(20)
+
+      # Spindle
+      text = wx.StaticText(self, label="Spindle Default Settings")
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vBoxSizer.Add(text, flag=wx.ALL, border=5)
+
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.spindleSpeedSpinCtrl = fs.FloatSpin(self, -1,
+         min_val=0, max_val=99999, increment=100,
+         value=self.configData.Get('/jogging/SpindleSpeed'),
+         size=(-1,-1), agwStyle=fs.FS_LEFT)
+      self.spindleSpeedSpinCtrl.SetFormat("%f")
+      self.spindleSpeedSpinCtrl.SetDigits(0)
+      self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip(
+         "Shift + mouse wheel = 2 * increment\n"\
+         "Ctrl + mouse wheel = 10 * increment\n"\
+         "Alt + mouse wheel = 100 * increment"))
+      hBoxSizer.Add(self.spindleSpeedSpinCtrl, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      st = wx.StaticText(self, wx.ID_ANY, "RPM")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      vBoxSizer.AddSpacer(20)
+
+      # Z probe
+      text = wx.StaticText(self, label="Z Probe Default Settings")
+      font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      text.SetFont(font)
+      vBoxSizer.Add(text, flag=wx.ALL, border=5)
+
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.probeZDistanceSpinCtrl = fs.FloatSpin(self, -1,
+         min_val=-99999, max_val=99999, increment=0.1,
+         value=self.configData.Get('/jogging/ProbeDistance'),
+         size=(-1,-1), agwStyle=fs.FS_LEFT)
+      self.probeZDistanceSpinCtrl.SetFormat("%f")
+      self.probeZDistanceSpinCtrl.SetDigits(6)
+      self.probeZDistanceSpinCtrl.SetToolTip(wx.ToolTip(
+         "Shift + mouse wheel = 2 * increment\n"\
+         "Ctrl + mouse wheel = 10 * increment\n"\
+         "Alt + mouse wheel = 100 * increment"))
+      hBoxSizer.Add(self.probeZDistanceSpinCtrl, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      st = wx.StaticText(self, wx.ID_ANY, "Probe Z height")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.probeZMaxDistanceSpinCtrl = fs.FloatSpin(self, -1,
+         min_val=-99999, max_val=99999, increment=0.1,
+         value=self.configData.Get('/jogging/ProbeMaxDistance'),
+         size=(-1,-1), agwStyle=fs.FS_LEFT)
+      self.probeZMaxDistanceSpinCtrl.SetFormat("%f")
+      self.probeZMaxDistanceSpinCtrl.SetDigits(6)
+      self.probeZMaxDistanceSpinCtrl.SetToolTip(wx.ToolTip(
+         "Shift + mouse wheel = 2 * increment\n"\
+         "Ctrl + mouse wheel = 10 * increment\n"\
+         "Alt + mouse wheel = 100 * increment"))
+      hBoxSizer.Add(self.probeZMaxDistanceSpinCtrl, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      st = wx.StaticText(self, wx.ID_ANY, "Probe Z max travel")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.probeZFeedRateSpinCtrl = fs.FloatSpin(self, -1,
+         min_val=-0, max_val=99999, increment=0.1,
+         value=self.configData.Get('/jogging/ProbeFeedRate'),
+         size=(-1,-1), agwStyle=fs.FS_LEFT)
+      self.probeZFeedRateSpinCtrl.SetFormat("%f")
+      self.probeZFeedRateSpinCtrl.SetDigits(6)
+      self.probeZFeedRateSpinCtrl.SetToolTip(wx.ToolTip(
+         "Shift + mouse wheel = 2 * increment\n"\
+         "Ctrl + mouse wheel = 10 * increment\n"\
+         "Alt + mouse wheel = 100 * increment"))
+      hBoxSizer.Add(self.probeZFeedRateSpinCtrl, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      st = wx.StaticText(self, wx.ID_ANY, "Probe Z feed rate")
+      hBoxSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT|wx.EXPAND, border=20)
+
+      vBoxSizer.AddSpacer(20)
 
       # Custom controls
       text = wx.StaticText(self, label="Custom Controls")
@@ -156,6 +241,12 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/jogging/ReqUpdateOnJogSetOp', self.cbReqUpdateOnJogSetOp.GetValue())
       self.configData.Set('/jogging/NumKeypadPendant', self.cbNumKeypadPendant.GetValue())
       self.configData.Set('/jogging/ZJogMovesLast', self.cbZJogMovesLast.GetValue())
+
+      self.configData.Set('/jogging/SpindleSpeed', self.spindleSpeedSpinCtrl.GetValue())
+
+      self.configData.Set('/jogging/ProbeDistance', self.probeZDistanceSpinCtrl.GetValue())
+      self.configData.Set('/jogging/ProbeMaxDistance', self.probeZMaxDistanceSpinCtrl.GetValue())
+      self.configData.Set('/jogging/ProbeFeedRate', self.probeZFeedRateSpinCtrl.GetValue())
 
       for cn in range(4):
          cnp1 = cn+1
@@ -251,12 +342,17 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.configNumKeypadPendant    = self.configData.Get('/jogging/NumKeypadPendant')
       self.configZJogMovesLast       = self.configData.Get('/jogging/ZJogMovesLast')
 
+      self.configSpindleSpeed        = self.configData.Get('/jogging/SpindleSpeed')
 
-      self.configCustom1Label       = self.configData.Get('/jogging/Custom1Label')
-      self.configCustom1Script      = self.configData.Get('/jogging/Custom1Script')
+      self.configProbeDistance       = self.configData.Get('/jogging/ProbeDistance')
+      self.configProbeMaxDistance    = self.configData.Get('/jogging/ProbeMaxDistance')
+      self.configProbeFeedRate       = self.configData.Get('/jogging/ProbeFeedRate')
 
-      self.configCustom2Label       = self.configData.Get('/jogging/Custom2Label')
-      self.configCustom2Script      = self.configData.Get('/jogging/Custom2Script')
+      self.configCustom1Label        = self.configData.Get('/jogging/Custom1Label')
+      self.configCustom1Script       = self.configData.Get('/jogging/Custom1Script')
+
+      self.configCustom2Label        = self.configData.Get('/jogging/Custom2Label')
+      self.configCustom2Script       = self.configData.Get('/jogging/Custom2Script')
 
       self.configCustom3Label       = self.configData.Get('/jogging/Custom3Label')
       self.configCustom3Script      = self.configData.Get('/jogging/Custom3Script')
@@ -292,6 +388,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
       self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
       self.zJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
+
+      self.spindleSpeedSpinCtrl.SetValue(self.configSpindleSpeed)
 
       self.custom1Button.SetLabel(self.configCustom1Label)
       self.custom2Button.SetLabel(self.configCustom2Label)
@@ -379,6 +477,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.SetToZeroXYButton.Enable()
          self.SetToZeroZButton.Enable()
          self.GoToZeroXYButton.Enable()
+         self.probeZButton.Enable()
 
          if self.SavedJogPos is None:
             self.restorePositionButton.Disable()
@@ -416,6 +515,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          self.SetToZeroXYButton.Disable()
          self.SetToZeroZButton.Disable()
          self.GoToZeroXYButton.Disable()
+         self.probeZButton.Disable()
 
          self.restorePositionButton.Disable()
 
@@ -615,7 +715,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
 
       self.spindleSpeedSpinCtrl = fs.FloatSpin(self, -1,
-         min_val=0, max_val=99999, increment=100, value=12000,
+         min_val=0, max_val=99999, increment=100, value=self.configSpindleSpeed,
          size=(stepButtonSize[0]*2,-1), agwStyle=fs.FS_LEFT)
       self.spindleSpeedSpinCtrl.SetFormat("%f")
       self.spindleSpeedSpinCtrl.SetDigits(0)
@@ -652,6 +752,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.GoToZeroXYButton.SetToolTip(wx.ToolTip("Move XY axis to zero"))
       self.Bind(wx.EVT_BUTTON, self.OnGoToZeroXY, self.GoToZeroXYButton)
       gbzJoggingGridSizer.Add(self.GoToZeroXYButton, pos=(1,1))
+
+      # Probe buttons
+      self.probeZButton = wx.BitmapButton(self, -1, ico.imgProbeZ.GetBitmap(),
+         size=buttonSize, style=wx.BORDER_NONE)
+      self.probeZButton.SetToolTip(wx.ToolTip("Probe Z"))
+      self.Bind(wx.EVT_BUTTON, self.OnProbeZ, self.probeZButton)
+      gbzJoggingGridSizer.Add(self.probeZButton, pos=(1,6))
+
 
       return gbzJoggingGridSizer
 
@@ -709,7 +817,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.numKeypadPendantCheckBox = wx.CheckBox (self, label="NumKeypad pen")
       self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
       self.numKeypadPendantCheckBox.SetToolTip(
-         wx.ToolTip("If enabled, numeric keypad functionality sis enabled"))
+         wx.ToolTip("Enables numeric keypad as pendant"))
       self.Bind(wx.EVT_CHECKBOX, self.OnNumKeypadPendant, self.numKeypadPendantCheckBox)
       vBoxSizer.Add(self.numKeypadPendantCheckBox)
 
@@ -941,18 +1049,34 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
    def OnSpindleOff(self, e):
       self.jSpindle.SetValue(gc.gOffString)
-      self.mainWindow.SerialWriteWaitForAck("".join(
-         [gc.gDEVICE_CMD_SPINDLE_OFF, "\n"]))
+      self.mainWindow.SerialWriteWaitForAck(
+         "".join([gc.gDEVICE_CMD_SPINDLE_OFF, "\n"]))
 
    def OnCoolantOn(self, e):
       self.jCoolant.SetValue(gc.gOnString)
-      self.mainWindow.SerialWriteWaitForAck("".join(
-         [gc.gDEVICE_CMD_COOLANT_ON, "\n"]))
+      self.mainWindow.SerialWriteWaitForAck(
+         "".join([gc.gDEVICE_CMD_COOLANT_ON, "\n"]))
 
    def OnCoolantOff(self, e):
       self.jCoolant.SetValue(gc.gOffString)
-      self.mainWindow.SerialWriteWaitForAck("".join(
-         [gc.gDEVICE_CMD_COOLANT_OFF, "\n"]))
+      self.mainWindow.SerialWriteWaitForAck(
+         "".join([gc.gDEVICE_CMD_COOLANT_OFF, "\n"]))
+
+   def OnProbeZ(self, e):
+      mim = mi.GetMachIfModule(self.stateData.machIfId)
+
+      self.mainWindow.SerialWriteWaitForAck(
+         "".join([
+            mim.getProbeAxisCmd(),
+            " Z%f" % self.configProbeMaxDistance,
+            " F%f" % self.configProbeFeedRate,
+            "\n"]))
+
+      self.mainWindow.SerialWriteWaitForAck(
+         "".join([
+            mim.getSetAxisCmd(),
+            " Z%f" % self.configProbeDistance,
+            "\n"]))
 
    def OnHomeX(self, e):
       self.mainWindow.SerialWriteWaitForAck("".join(
@@ -1299,10 +1423,16 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                self.mainWindow.OnRun(e)
 
          elif (key == wx.WXK_NUMPAD_SUBTRACT):
-            print "SUBTRACT Key Pressed"
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeZButton.GetId())
+            self.homeZButton.SetFocus()
+            wx.PostEvent(self, evt)
+            #self.OnSetToZero(e)
 
          elif (key == wx.WXK_NUMPAD_ADD):
-            print "ADD Key Pressed"
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.probeZButton.GetId())
+            self.probeZButton.SetFocus()
+            wx.PostEvent(self, evt)
+            #self.OnSetToZero(e)
 
          elif (key == wx.WXK_NUMPAD_ENTER):
             self.mainWindow.OnMachineFeedHold(e)
