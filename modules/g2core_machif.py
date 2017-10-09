@@ -123,7 +123,7 @@ class MachIf_g2core(mi.MachIf_Base):
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
       except:
-         ack = slef.reG2CoreMachineAck.match(data)
+         ack = self.reG2CoreMachineAck.match(data)
          if ack is not None:
             dataDict['r'] = {"f":[1,0,0]}
          else:
