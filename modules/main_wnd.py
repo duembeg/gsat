@@ -449,6 +449,9 @@ class gsatMainWindow(wx.Frame):
       self.machineAutoRefreshPeriod = self.configData.Get('/machine/AutoRefreshPeriod')
       self.stateData.machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
       self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
+      self.stateData.serialPort = self.configData.Get('/machine/Port')
+      self.stateData.serialPortBaud = self.configData.Get('/machine/Baud')
+
 
       if self.cmdLineOptions.verbose:
          print "Init config values..."
@@ -465,6 +468,8 @@ class gsatMainWindow(wx.Frame):
          print "  machineAutoRefreshPeriod: ", self.machineAutoRefreshPeriod
          print "  machIfName:               ", self.stateData.machIfName
          print "  machIfId:                 ", self.stateData.machIfId
+         print "  machIfPort:               ", self.stateData.serialPort
+         print "  machIfBaud:               ", self.stateData.serialPortBaud
 
    def InitUI(self):
       """ Init main UI """
@@ -1635,7 +1640,7 @@ class gsatMainWindow(wx.Frame):
       self.outputText.AppendText(
          "*** ABORT!!! a feed-hold command (%s) has been sent to %s, you can\n"\
          "    use cycle-restart command (%s) to continue.\n"\
-         "" % (mim.GetFeedHoldCmd(), self.stateData.machIfName, mim.GetCycleStartCmd()))
+         "" % (mim.getFeedHoldCmd(), self.stateData.machIfName, mim.getCycleStartCmd()))
 
    def OnAbortUpdate(self, e=None):
       state = False
@@ -2091,9 +2096,9 @@ class gsatMainWindow(wx.Frame):
             if 'stat' in te.data:
                self.stateData.machineStatusString = te.data['stat']
 
-            if 'fv' in te.data:
+            if 'fb' in te.data:
                if self.cmdLineOptions.vverbose:
-                  print "gsatMainWindow device detected via version string [%s]." % te.data['fv']
+                  print "gsatMainWindow device detected via version string [%s]." % te.data['fb']
                self.stateData.deviceDetected = True
                self.GetMachineStatus()
                self.RunDeviceInitScript()

@@ -51,13 +51,17 @@ import modules.machif as mi
 
 ----------------------------------------------------------------------------"""
 class MachIf_g2core(mi.MachIf_Base):
+   inputBufferMaxSize = 255
+   inputBufferInitVal = 0
+   inputBufferWatermarkPrcnt = 0.90
 
    # g2core text ack, example  "ok>"
    reG2CoreMachineAck = re.compile(r'.+ok>\s$')
 
    def __init__(self, cmd_line_options):
       super(MachIf_g2core, self).__init__(cmd_line_options, 1200,
-         "g2core", 255, 0, 0.90)
+         "g2core", self.inputBufferMaxSize, self.inputBufferInitVal,
+         self.inputBufferWatermarkPrcnt)
 
       self.inputBufferPart = list()
 
@@ -180,6 +184,6 @@ class MachIf_g2core(mi.MachIf_Base):
 
    def reset(self):
       super(MachIf_g2core, self)._reset(self.inputBufferMaxSize,
-         0, self.inputBufferWatermarkPrcnt)
+         self.inputBufferInitVal, self.inputBufferWatermarkPrcnt)
 
       self.inputBufferPart = list()

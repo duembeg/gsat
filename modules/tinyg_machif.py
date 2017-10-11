@@ -22,6 +22,8 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import re
+
 try:
     import simplejson as json
 except ImportError:
@@ -50,10 +52,15 @@ class MachIf_TinyG(mi.MachIf_Base):
    inputBufferInitVal = -1
    inputBufferWatermarkPrcnt = 0.90
 
+   # TinyG text ack, example  "ok>"
+   reTinyGMachineAck = re.compile(r'.+ok>\s$')
+
    def __init__(self, cmd_line_options):
-      super(MachIf_TinyG, self).__init__(cmd_line_options, 1100, "TinyG",
-         self.inputBufferMaxSize, self.inputBufferInitVal,
+      super(MachIf_TinyG, self).__init__(cmd_line_options, 1100,
+         "TinyG", self.inputBufferMaxSize, self.inputBufferInitVal,
          self.inputBufferWatermarkPrcnt)
+
+      self.inputBufferPart = list()
 
    def decode(self, data):
       dataDict = {}
@@ -68,13 +75,21 @@ class MachIf_TinyG(mi.MachIf_Base):
             if 'f' in r:
                f = r['f']
                dataDict['f'] = f
-               #del r['f']
 
             # get status response out to avoid digging out later
             if 'sr' in r:
                sr = r['sr']
                dataDict['sr'] = sr
-               #del r['sr']
+
+            # get version out to avoid digging out later
+            if 'sys' in r:
+               sys = r['sys']
+
+               if 'fb' in sys:
+                  r['fb'] = sys['fb']
+
+               if 'fv' in sys:
+                  r['fv'] = sys['fv']
 
          if 'sr' in dataDict:
             sr = dataDict['sr']
@@ -130,10 +145,13 @@ class MachIf_TinyG(mi.MachIf_Base):
 
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
-
       except:
-         if self.cmdLineOptions.vverbose:
-            print "** MachIf_TinyG cannot decode data!! [%s]." % data
+         ack = self.reTinyGMachineAck.match(data)
+         if ack is not None:
+            dataDict['r'] = {"f":[1,0,0]}
+         else:
+            if self.cmdLineOptions.vverbose:
+               print "** MachIf_TinyG cannot decode data!! [%s]." % data
 
       return dataDict
 
@@ -154,7 +172,7 @@ class MachIf_TinyG(mi.MachIf_Base):
       return data
 
    def getInitCommCmd (self):
-      return '\n{"fv":null}\n'
+      return '\n{"sys":null}\n'
 
    def getQueueFlushCmd (self):
       return "%\n"
@@ -168,3 +186,5 @@ class MachIf_TinyG(mi.MachIf_Base):
    def reset(self):
       super(MachIf_TinyG, self)._reset(self.inputBufferMaxSize,
          self.inputBufferInitVal, self.inputBufferWatermarkPrcnt)
+
+      self.inputBufferPart = list()

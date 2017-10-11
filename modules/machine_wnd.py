@@ -200,11 +200,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
-      if statusData is not None:
 
-         stat = statusData.get('stat')
-         if stat is not None:
-            self.runStatus.SetLabel(stat)
+      if statusData is not None:
 
          prcnt = statusData.get('prcnt')
          if prcnt is not None:
@@ -226,22 +223,34 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
          if z is not None:
             self.zPos.SetValue("{:.3f}".format(z))
 
-         ver = statusData.get('fv')
-         if ver is not None:
-            self.version.SetLabel(str(ver))
+         fr = statusData.get('vel')
+         if fr is not None:
+            self.frVal.SetValue("{:.2f}".format(fr))
+
+         fv = statusData.get('fv')
+         fb = statusData.get('fb')
+
+         if (fb is not None) and (fv is not None):
+            self.version.SetLabel("fb[%s] fv[%s]" % (str(fb), str(fv)))
+         elif fb is not None:
+            self.version.SetLabel(str(fb))
 
       if stateData.serialPortIsOpen:
          self.refreshButton.Enable()
-         self.machinePort.SetLabel(stateData.serialPort)
-         self.machineBaud.SetLabel(stateData.serialPortBaud)
+
+         if statusData is not None:
+            stat = statusData.get('stat')
+            if stat is not None:
+               self.runStatus.SetLabel(stat)
       else:
          self.refreshButton.Disable()
-         self.machinePort.SetLabel("None")
-         self.machineBaud.SetLabel("None")
-         self.version.SetLabel("None")
+         self.version.SetLabel("uknown")
+         self.runStatus.SetLabel("detach")
 
       machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
       self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
+      self.machinePort.SetLabel(stateData.serialPort)
+      self.machineBaud.SetLabel(stateData.serialPortBaud)
 
       self.Update()
 
@@ -253,7 +262,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
    def CreateDroBox(self):
       positionBoxSizer = self.CreateStaticBox("DRO")
-      fGridSizer = wx.FlexGridSizer(3, 2)
+      fGridSizer = wx.FlexGridSizer(4, 2)
       positionBoxSizer.Add(fGridSizer, 0, flag=wx.EXPAND)
 
       # set font properties
@@ -265,7 +274,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       self.xPos = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
       self.xPos.SetValue(gc.gZeroString)
       self.xPos.SetFont(font)
-      fGridSizer.Add(st, 0, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, border=5)
       fGridSizer.Add(self.xPos, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
 
       # Y axis
@@ -274,17 +283,26 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       self.yPos = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
       self.yPos.SetValue(gc.gZeroString)
       self.yPos.SetFont(font)
-      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, border=5)
       fGridSizer.Add(self.yPos, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
 
-      #Z axis
+      # Z axis
       st = wx.StaticText(self, label="Z")
       st.SetFont(font)
       self.zPos = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
       self.zPos.SetValue(gc.gZeroString)
       self.zPos.SetFont(font)
-      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL, border=5)
+      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, border=5)
       fGridSizer.Add(self.zPos, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
+
+      # Feed Rate
+      st = wx.StaticText(self, label="FR")
+      st.SetFont(font)
+      self.frVal = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_READONLY|wx.TE_RIGHT)
+      self.frVal.SetValue("{:.2f}".format(eval(gc.gZeroString)))
+      self.frVal.SetFont(font)
+      fGridSizer.Add(st, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, border=5)
+      fGridSizer.Add(self.frVal, 1, flag=wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, border=5)
 
       # finish init flex grid sizer
       fGridSizer.AddGrowableCol(1, 1)

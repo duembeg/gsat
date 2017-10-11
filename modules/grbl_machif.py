@@ -51,7 +51,7 @@ gReMachineStatus = re.compile(r'pos', re.I)
 #   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
 #   "<Hold:29|WPos:20.163,0.000,20.000>"
 #gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
-gReGRBLMachineStatus = re.compile(r'<(\w+)[:]{0,1}[\d]*[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
+gReGRBLMachineStatus = re.compile(r'<(\w+)[:]{0,1}[\d]*[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
 
 # grbl ack, example  "ok"
 gReGRBLMachineAck = re.compile(r'^ok\s$')
@@ -152,6 +152,7 @@ class MachIf_GRBL(mi.MachIf_Base):
          sr['posx'] = float(statusData[1])
          sr['posy'] = float(statusData[2])
          sr['posz'] = float(statusData[3])
+         sr['vel']  = float(statusData[4])
 
          dataDict['sr'] = sr
 
@@ -231,7 +232,7 @@ class MachIf_GRBL(mi.MachIf_Base):
             r = {}
             dataDict['r'] = r
 
-         dataDict['r']['fv'] = version.group(1)
+         dataDict['r']['fb'] = version.group(1)
          dataDict['f'] = [0,0,0]
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 

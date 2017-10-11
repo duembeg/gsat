@@ -255,7 +255,7 @@ class programExecuteThread(threading.Thread):
             mainWndEvent = True
 
          if 'r' in rxData:
-            if 'fv' in rxData['r']:
+            if 'fb' in rxData['r']:
                self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_STATUS, rxData['r']))
                mainWndEvent = True
 
