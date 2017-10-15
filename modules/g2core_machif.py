@@ -55,8 +55,28 @@ class MachIf_g2core(mi.MachIf_Base):
    inputBufferInitVal = 0
    inputBufferWatermarkPrcnt = 0.90
 
-   # g2core text ack, example  "ok>"
-   reG2CoreMachineAck = re.compile(r'.+ok>\s$')
+   # text mode re expressions
+   reMachineAck = re.compile(r'.+ok>\s$')
+   reMachinePos = re.compile(r'(\w)\s+position:\s+([+-]{0,1}\d+\.\d+)')
+   reMachineVel = re.compile(r'Velocity:\s+(\d+\.\d+)')
+   reMachineStat = re.compile(r'Machine state:\s+(\w+)')
+
+   stat_dict ={
+      0:'Init',
+      1:'Ready',
+      2:'Alarm',
+      3:'Stop',
+      4:'End',
+      5:'Run',
+      6:'Hold',
+      7:'Probe',
+      8:'Cycle',
+      9:'Homeming',
+      10:'Jog',
+      11:'InterLock',
+      12:'Shutdown',
+      13:'Panic',
+      }
 
    def __init__(self, cmd_line_options):
       super(MachIf_g2core, self).__init__(cmd_line_options, 1200,
@@ -84,35 +104,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
             if 'stat' in sr:
                status = sr['stat']
-
-               if 0 == status:
-                  sr['stat'] = 'Init'
-               elif 1 == status:
-                  sr['stat'] = 'Ready'
-               elif 2 == status:
-                  sr['stat'] = 'Alarm'
-               elif 3 == status:
-                  sr['stat'] = 'Prog Stop'
-               elif 4 == status:
-                  sr['stat'] = 'Prog End'
-               elif 5 == status:
-                  sr['stat'] = 'Run'
-               elif 6 == status:
-                  sr['stat'] = 'Hold'
-               elif 7 == status:
-                  sr['stat'] = 'Probe'
-               elif 8 == status:
-                  sr['stat'] = 'Run'
-               elif 9 == status:
-                  sr['stat'] = 'Homeming'
-               elif 10 == status:
-                  sr['stat'] = 'Jog'
-               elif 11 == status:
-                  sr['stat'] = 'InterLock'
-               elif 12 == status:
-                  sr['stat'] = 'Shutdown'
-               elif 13 == status:
-                  sr['stat'] = 'Panic'
+               sr['stat'] = self.stat_dict.get(status,"Uknown")
 
             # deal with old versions of g2core
             if 'mpox' in sr:
@@ -127,9 +119,29 @@ class MachIf_g2core(mi.MachIf_Base):
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
       except:
-         ack = self.reG2CoreMachineAck.match(data)
+         ack = self.reMachineAck.match(data)
+         pos = self.reMachinePos.match(data)
+         vel = self.reMachineVel.match(data)
+         stat = self.reMachineStat.match(data)
+
          if ack is not None:
             dataDict['r'] = {"f":[1,0,0]}
+            dataDict['f'] = [1,0,0]
+         elif pos is not None:
+            if 'sr' not in dataDict:
+               dataDict['sr'] = {}
+
+            dataDict['sr']["".join(["pos", pos.group(1).lower()])] = float(pos.group(2))
+         elif vel is not None:
+            if 'sr' not in dataDict:
+               dataDict['sr'] = {}
+
+            dataDict['sr']['vel'] = float(vel.group(1))
+         elif stat is not None:
+            if 'sr' not in dataDict:
+               dataDict['sr'] = {}
+
+            dataDict['sr']['stat'] = stat.group(1)
          else:
             if self.cmdLineOptions.vverbose:
                print "** MachIf_g2core cannot decode data!! [%s]." % data

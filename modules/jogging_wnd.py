@@ -981,7 +981,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          fAxisPos = -1 * self.stepSpinCtrl.GetValue()
 
       fAxisStrPos = gc.gNumberFormatString % (fAxisPos)
-      staticControl.SetValue(fAxisStrPos)
+      #staticControl.SetValue(fAxisStrPos)
 
       cmd = "".join([gc.gDEVICE_CMD_INCREMENTAL, " ", gc.gDEVICE_CMD_RAPID_LINEAR_MOVE,
          " ", axis, str(fAxisStrPos), "\n  ", gc.gDEVICE_CMD_ABSOLUTE, "\n"])
@@ -1148,15 +1148,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       cmdz = ""
 
       if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
-         self.jX.SetValue(xval)
+         #self.jX.SetValue(xval)
          cmdx = " X%s" % xval
 
       if self.yCheckBox.GetValue() or self.allCheckBox.GetValue():
-         self.jY.SetValue(yval)
+         #self.jY.SetValue(yval)
          cmdy = " Y%s" % yval
 
       if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
-         self.jZ.SetValue(zval)
+         #self.jZ.SetValue(zval)
          cmdz = " Z%s" % zval
 
       if (self.configZJogMovesLast):

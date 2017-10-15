@@ -40,7 +40,7 @@ import modules.machif as mi
    ID = 1100
    Name = "TinyG"
    input buffer max size = 255
-   input buffer init size = -1
+   input buffer init size = 0
    input buffer watermark = 90%
 
    Init buffer to (-1) when connecting it needs a initial '\n' that
@@ -49,11 +49,35 @@ import modules.machif as mi
 ----------------------------------------------------------------------------"""
 class MachIf_TinyG(mi.MachIf_Base):
    inputBufferMaxSize = 255
-   inputBufferInitVal = -1
+   inputBufferInitVal = 0
    inputBufferWatermarkPrcnt = 0.90
 
-   # TinyG text ack, example  "ok>"
-   reTinyGMachineAck = re.compile(r'.+ok>\s$')
+   # text mode re expressions
+   reMachineAck = re.compile(r'.+\s+ok>\s$')
+   reMachineErr = re.compile(r'.+\s+err:\s$')
+   reMachinePosX = re.compile(r'.*(posx):([+-]{0,1}\d+\.\d+)')
+   reMachinePosY = re.compile(r'.*(posy):([+-]{0,1}\d+\.\d+)')
+   reMachinePosZ = re.compile(r'.*(posz):([+-]{0,1}\d+\.\d+)')
+   reMachinePosA = re.compile(r'.*(posa):([+-]{0,1}\d+\.\d+)')
+   reMachineVel = re.compile(r'.*vel:(\d+\.\d+),{0,1}')
+   reMachineStat = re.compile(r'.*stat:(\d+),{0,1}')
+
+   stat_dict ={
+      0:'Init',
+      1:'Ready',
+      2:'Alarm',
+      3:'Stop',
+      4:'End',
+      5:'Run',
+      6:'Hold',
+      7:'Probe',
+      8:'Cycle',
+      9:'Homeming',
+      10:'Jog',
+      11:'InterLock',
+      12:'Shutdown',
+      13:'Panic',
+      }
 
    def __init__(self, cmd_line_options):
       super(MachIf_TinyG, self).__init__(cmd_line_options, 1100,
@@ -96,29 +120,9 @@ class MachIf_TinyG(mi.MachIf_Base):
 
             if 'stat' in sr:
                status = sr['stat']
+               sr['stat'] = self.stat_dict.get(status,"Uknown")
 
-               if 0 == status:
-                  sr['stat'] = 'Init'
-               elif 1 == status:
-                  sr['stat'] = 'Ready'
-               elif 2 == status:
-                  sr['stat'] = 'Alarm'
-               elif 3 == status:
-                  sr['stat'] = 'Stop'
-               elif 4 == status:
-                  sr['stat'] = 'End'
-               elif 5 == status:
-                  sr['stat'] = 'Run'
-               elif 6 == status:
-                  sr['stat'] = 'Hold'
-               elif 7 == status:
-                  sr['stat'] = 'Probe'
-               elif 8 == status:
-                  sr['stat'] = 'Run'
-               elif 9 == status:
-                  sr['stat'] = 'Home'
-
-            # deal with old versions of g2core
+            # deal with old versions of tinyG
             if 'mpox' in sr:
                sr['posx'] = sr['mpox']
             if 'mpoy' in sr:
@@ -128,30 +132,66 @@ class MachIf_TinyG(mi.MachIf_Base):
             if 'mpoa' in sr:
                sr['posa'] = sr['mpoa']
 
-         if 'f' in dataDict:
-            f = dataDict['f']
+         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
-            # remove buffer part freed from acked command
-            bufferPart = f[2]
+      except:
+         match = False
+         ack = self.reMachineAck.match(data)
+         posx = self.reMachinePosX.match(data)
+         posy = self.reMachinePosY.match(data)
+         posz = self.reMachinePosZ.match(data)
+         posa = self.reMachinePosA.match(data)
+         vel = self.reMachineVel.match(data)
+         stat = self.reMachineStat.match(data)
+
+         if ack is not None:
+            dataDict['r'] = {"f":[1,0,0]}
+            dataDict['f'] = [1,0,0]
+            match = True
+
+         for pos in [posx,posy,posz,posa]:
+            if pos is not None:
+               if 'sr' not in dataDict:
+                  dataDict['sr'] = {}
+
+               dataDict['sr'][pos.group(1)]= float(pos.group(2))
+               match = True
+
+         if vel is not None:
+            if 'sr' not in dataDict:
+               dataDict['sr'] = {}
+
+            dataDict['sr']['vel'] = float(vel.group(1))
+            match = True
+
+         if stat is not None:
+            if 'sr' not in dataDict:
+               dataDict['sr'] = {}
+
+            dataDict['sr']['stat'] = self.stat_dict.get(int(stat.group(1)),"Uknown")
+            match = True
+
+         if match == False:
+            if self.cmdLineOptions.vverbose:
+               print "** MachIf_TinyG cannot decode data!! [%s]." % data
+
+      if 'r' in dataDict:
+         # checking for count in "f" response doesn't always work as expected and broke on edge branch
+         # it was never specify that this was the functionality so abandoning that solution
+
+         if len(self.inputBufferPart) > 0:
+            bufferPart = self.inputBufferPart.pop(0)
+
             self.inputBufferSize = self.inputBufferSize - bufferPart
-
-            if (self.inputBufferSize < 0):
-               self.inputBufferSize = 0
 
             if self.cmdLineOptions.vverbose:
                print "** MachIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                   (bufferPart, self.inputBufferSize, \
                   (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
-
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
-
-      except:
-         ack = self.reTinyGMachineAck.match(data)
-         if ack is not None:
-            dataDict['r'] = {"f":[1,0,0]}
          else:
-            if self.cmdLineOptions.vverbose:
-               print "** MachIf_TinyG cannot decode data!! [%s]." % data
+            pass
+            #print "hmmm this could be a problem"
+            #print dataDict
 
       return dataDict
 
@@ -163,6 +203,8 @@ class MachIf_TinyG(mi.MachIf_Base):
       elif bookeeping:
          dataLen = len(data)
          self.inputBufferSize = self.inputBufferSize + dataLen
+
+         self.inputBufferPart.append(dataLen)
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
