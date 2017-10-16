@@ -429,6 +429,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.Layout()
 
       self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+      self.jX.Bind(wx.EVT_TEXT_PASTE, self.onJogEditPaste)
+      self.jY.Bind(wx.EVT_TEXT_PASTE, self.onJogEditPaste)
+      self.jZ.Bind(wx.EVT_TEXT_PASTE, self.onJogEditPaste)
 
    def UpdateUI(self, stateData, statusData=None):
       self.stateData = stateData
@@ -1495,3 +1498,25 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             print key
 
             e.Skip()
+
+   def onJogEditPaste(self, e):
+      if not wx.TheClipboard.IsOpened():
+         if wx.TheClipboard.Open():
+            if wx.TheClipboard.IsSupported(wx.DataFormat(wx.DF_TEXT)):
+               data = wx.TextDataObject()
+               wx.TheClipboard.GetData(data)
+               data = data.GetText()
+
+               reVal = re.search(r'X([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
+               if reVal is not None:
+                  self.jX.SetValue(reVal.group(1))
+
+               reVal = re.search(r'Y([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
+               if reVal is not None:
+                  self.jY.SetValue(reVal.group(1))
+
+               reVal = re.search(r'Z([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
+               if reVal is not None:
+                  self.jZ.SetValue(reVal.group(1))
+
+            wx.TheClipboard.Close()
