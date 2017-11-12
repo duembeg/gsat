@@ -28,6 +28,7 @@ import modules.machif as mi
 import modules.g2core_machif as mi_g2core
 import modules.tinyg_machif as mi_tinyg
 import modules.grbl_machif as mi_grbl
+import modules.smoothie_machif as mi_smoothie
 
 # --------------------------------------------------------------------------
 # device commands
@@ -46,12 +47,15 @@ gMACHIF_NONE            = None
 #gMACHIF_GRBL            = 1000
 #gMACHIF_TINYG           = 1100
 #gMACHIF_G2CORE          = 1200
+#gMACHIF_SMOOTHIE        = 1300
 
 gMachIf_GRBL = mi_grbl.MachIf_GRBL(gc.gCmdLineOptions)
 gMachIf_TinyG = mi_tinyg.MachIf_TinyG(gc.gCmdLineOptions)
 gMachIf_g2core = mi_g2core.MachIf_g2core(gc.gCmdLineOptions)
+gMachIf_Smoothie = mi_smoothie.MachIf_Smoothie(gc.gCmdLineOptions)
 
-gMachIfList = [gMachIf_GRBL.getName(), gMachIf_TinyG.getName(), gMachIf_g2core.getName()]
+gMachIfClsList = [gMachIf_GRBL, gMachIf_TinyG, gMachIf_g2core, gMachIf_Smoothie]
+gMachIfList = [mach_if.getName() for mach_if in gMachIfClsList]
 
 """----------------------------------------------------------------------------
    GetMachIfName:
@@ -60,14 +64,10 @@ gMachIfList = [gMachIf_GRBL.getName(), gMachIf_TinyG.getName(), gMachIf_g2core.g
 def GetMachIfName(machIfId):
    machIfName = "None"
 
-   if machIfId == gMachIf_GRBL.getId():
-      machIfName = gMachIf_GRBL.getName()
-
-   elif machIfId == gMachIf_TinyG.getId():
-      machIfName = gMachIf_TinyG.getName()
-
-   elif machIfId == gMachIf_g2core.getId():
-      machIfName = gMachIf_g2core.getName()
+   for mach_if in gMachIfClsList:
+      if machIfId == mach_if.getId():
+         machIfName = mach_if.getName()
+         break
 
    return machIfName
 
@@ -78,14 +78,18 @@ def GetMachIfName(machIfId):
 def GetMachIfId(deviceStr):
    machIfId = gMACHIF_NONE
 
-   if deviceStr in [gMachIf_g2core.getName(), "TinyG2"]:
-      machIfId = gMachIf_g2core.getId()
+   for mach_if in gMachIfClsList:
+      if deviceStr == mach_if.getName():
+         machIfId = mach_if.getId()
+         break
 
-   elif deviceStr in [gMachIf_GRBL.getName(), "Grbl", "GRBL"]:
-      machIfId = gMachIf_GRBL.getId()
+   # special backward compatibility
+   if machIfId == gMACHIF_NONE:
+      if deviceStr in ["TinyG2"]:
+         machIfId = gMachIf_g2core.getId()
 
-   elif deviceStr in [gMachIf_TinyG.getName()]:
-      machIfId = gMachIf_TinyG.getId()
+      elif deviceStr in ["Grbl", "GRBL"]:
+         machIfId = gMachIf_GRBL.getId()
 
    return machIfId
 
@@ -96,13 +100,9 @@ def GetMachIfId(deviceStr):
 def GetMachIfModule(machIfId):
    machIfModule = None
 
-   if machIfId == gMachIf_GRBL.getId():
-      machIfModule = mi_grbl.MachIf_GRBL(gc.gCmdLineOptions)
-
-   elif machIfId == gMachIf_TinyG.getId():
-      machIfModule = mi_tinyg.MachIf_TinyG(gc.gCmdLineOptions)
-
-   elif machIfId == gMachIf_g2core.getId():
-      machIfModule = mi_g2core.MachIf_g2core(gc.gCmdLineOptions)
+   for mach_if in gMachIfClsList:
+      if machIfId == mach_if.getId():
+         machIfModule = mach_if.factory(gc.gCmdLineOptions)
+         break
 
    return machIfModule

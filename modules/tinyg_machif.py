@@ -213,6 +213,9 @@ class MachIf_TinyG(mi.MachIf_Base):
 
       return data
 
+   def factory(self, cmd_line_options):
+      return MachIf_TinyG(cmd_line_options)
+
    def getInitCommCmd (self):
       return '\n{"sys":null}\n'
 

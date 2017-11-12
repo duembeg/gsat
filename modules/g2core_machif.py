@@ -184,6 +184,9 @@ class MachIf_g2core(mi.MachIf_Base):
 
       return data
 
+   def factory(self, cmd_line_options):
+      return MachIf_g2core(cmd_line_options)
+
    def getQueueFlushCmd (self):
       return "%\n"
 

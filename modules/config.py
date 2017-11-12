@@ -263,6 +263,7 @@ class gsatConfigData():
          '/machine/AutoStatus'               :(True , False),
          '/machine/AutoRefresh'              :(True , True),
          '/machine/AutoRefreshPeriod'        :(True , 200),
+         '/machine/InitScriptEnable'         :(True , True),
          '/machine/InitScript'               :(False, ""),
 
       # jogging keys

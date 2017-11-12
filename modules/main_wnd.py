@@ -2258,25 +2258,28 @@ class gsatMainWindow(wx.Frame):
       #self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
 
    def RunDeviceInitScript (self):
-      # comments example "( comment string )" or "; comment string"
-      reGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
+      initScriptEn = self.configData.Get('/machine/InitScriptEnable')
 
-      # run init script
-      initScript = str(self.configData.Get('/machine/InitScript')).splitlines()
+      if initScriptEn:
+         # comments example "( comment string )" or "; comment string"
+         reGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
 
-      if len(initScript) > 0:
-         if self.cmdLineOptions.verbose:
-            print "gsatMainWindow queuing machine init script..."
+         # run init script
+         initScript = str(self.configData.Get('/machine/InitScript')).splitlines()
 
-         self.outputText.AppendText("Queuing machine init script...\n")
-         for initLine in initScript:
+         if len(initScript) > 0:
+            if self.cmdLineOptions.verbose:
+               print "gsatMainWindow queuing machine init script..."
 
-            for reComments in reGcodeComments:
-               initLine = reComments.sub("", initLine)
+            self.outputText.AppendText("Queuing machine init script...\n")
+            for initLine in initScript:
 
-            initLine = "".join([initLine, "\n"])
+               for reComments in reGcodeComments:
+                  initLine = reComments.sub("", initLine)
 
-            if len(initLine.strip()) > 0:
-               #self.SerialWrite(initLine)
-               self.SerialWriteWaitForAck(initLine)
-               self.outputText.AppendText(initLine)
+               initLine = "".join([initLine, "\n"])
+
+               if len(initLine.strip()) > 0:
+                  #self.SerialWrite(initLine)
+                  self.SerialWriteWaitForAck(initLine)
+                  self.outputText.AppendText(initLine)

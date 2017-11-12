@@ -81,18 +81,21 @@ class MachIf_Base(object):
       self.inputBufferWatermark = float(self.inputBufferMaxSize) * input_buffer_watermark_prcnt
       self.inputBufferSize = input_buffer_init_val
 
-
    def close(self):
       if self.serialTxRxThread is not None:
          self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+
+   @abstractmethod
+   def decode(self, data):
+      return data
 
    @abstractmethod
    def encode(self, data):
       return data
 
    @abstractmethod
-   def decode(self, data):
-      return data
+   def factory(self, cmd_line_options):
+      return None
 
    def getCycleStartCmd (self):
       return "~"

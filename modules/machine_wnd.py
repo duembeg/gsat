@@ -89,8 +89,10 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       # add edit control for init script
       vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-      st = wx.StaticText(self, wx.ID_ANY, "Initialization script")
-      vBoxSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.cbInitScript = wx.CheckBox(self, wx.ID_ANY, "Initialization script")
+      self.cbInitScript.SetValue(self.configData.Get('/machine/InitScriptEnable'))
+      self.cbInitScript.SetToolTip(wx.ToolTip("Enable initialization script"))
+      vBoxSizer.Add(self.cbInitScript, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
       self.tcInitScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
       self.tcInitScript.SetValue(self.configData.Get('/machine/InitScript'))
@@ -135,6 +137,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.configData.Set('/machine/Device', self.deviceComboBox.GetValue())
       self.configData.Set('/machine/Port', self.spComboBox.GetValue())
       self.configData.Set('/machine/Baud', self.sbrComboBox.GetValue())
+      self.configData.Set('/machine/InitScriptEnable', self.cbInitScript.GetValue())
       self.configData.Set('/machine/InitScript', self.tcInitScript.GetValue())
       self.configData.Set('/machine/AutoStatus', self.cbAutoStatus.GetValue())
       self.configData.Set('/machine/AutoRefresh', self.cbAutoRefresh.GetValue())

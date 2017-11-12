@@ -1495,7 +1495,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             pass
 
          else:
-            print key
+            pass
+            #print key
 
             e.Skip()
 
