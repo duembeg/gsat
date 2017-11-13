@@ -138,12 +138,18 @@ class MachIf_Base(object):
       return self.serialPortOpen
 
    def okToSend(self, data):
+
       bufferHasRoom = True
 
-      data = self.encode(data, bookeeping=False)
+      # split lines
+      lines = data.splitlines(True)
 
-      if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
-         bufferHasRoom = False
+      for line in lines:
+         data = self.encode(line, bookeeping=False)
+
+         if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
+            bufferHasRoom = False
+            break
 
       return bufferHasRoom
 
@@ -194,18 +200,28 @@ class MachIf_Base(object):
 
       if self.serialTxRxThread is not None:
 
-         if not raw_write:
-            txData = self.encode(txData)
+         if raw_write:
+            # self.serialTxRxThread.serialWrite(txData)
+            self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+                  txData))
+         else:
+            lines = txData.splitlines(True)
 
-         # in current design there is only one thread writing, bypass queue
-         # to improve jogging. This should be safe as there is only one thread
-         # writing and one reading. If issues start happening go back to queuing
-         # solution, UPDATE: there was no observable benefit.
-         # self.serialTxRxThread.serialWrite(txData)
+            for line in lines:
+               line = self.encode(line)
 
-         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
-               txData))
+               ''' in current design there is only one thread writing, will
+                   bypass queue to improve jogging. This should be safe as
+                   there is only one thread writing and one reading. If
+                   issues start happening go back to queuing solution,
 
-         bytesSent = len(txData)
+                   *** UPDATE: there was no observable benefit nor issues
+                   Leaving this here to revisit in future .'''
+               # self.serialTxRxThread.serialWrite(line)
+
+               self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+                     line))
+
+               bytesSent = bytesSent + len(line)
 
       return bytesSent

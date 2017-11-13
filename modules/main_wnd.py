@@ -2280,6 +2280,6 @@ class gsatMainWindow(wx.Frame):
                initLine = "".join([initLine, "\n"])
 
                if len(initLine.strip()) > 0:
-                  #self.SerialWrite(initLine)
-                  self.SerialWriteWaitForAck(initLine)
+                  self.SerialWrite(initLine)
+                  #self.SerialWriteWaitForAck(initLine)
                   self.outputText.AppendText(initLine)

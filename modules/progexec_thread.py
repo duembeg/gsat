@@ -265,11 +265,18 @@ class programExecuteThread(threading.Thread):
       return rxData
 
    def SerialWrite(self, serialData):
-      bytesSent = self.machIfModule.write(serialData)
+      bytesSent = 0
 
-      # sent data to UI
-      if bytesSent > 0:
-         self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, serialData))
+      lines = serialData.splitlines(True)
+
+      for line in lines:
+         bytes_sent = self.machIfModule.write(line)
+
+         # sent data to UI
+         if bytes_sent > 0:
+            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_DATA_OUT, line))
+
+         bytesSent = bytesSent + bytes_sent
 
       return bytesSent
 
@@ -351,8 +358,13 @@ class programExecuteThread(threading.Thread):
             # write data
             self.SerialWrite(gcode)
 
+            ''' Wait for acknowledge might no longer needed, the
+                machine IF object will track the device queue
+                all will manage whether or not we can send more
+                commands to the IF'''
             # wait for response
             self.WaitForAcknowledge()
+            #self.SerialRead()
 
             if self.machineAutoStatus:
                self.SerialWrite(self.machIfModule.getStatusCmd())
