@@ -25,7 +25,6 @@
 
 import os
 import re
-import serial.tools.list_ports
 import wx
 from wx.lib import scrolledpanel as scrolled
 from wx.lib.agw import floatspin as fs
@@ -70,12 +69,17 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       # Add serial port controls
       st = wx.StaticText(self, label="Serial Port")
       self.spComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Port'),
-         choices=spList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+         choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
       flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
 
       self.Bind(wx.EVT_COMBOBOX, self.OnSpComboBoxSelect)
-      self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown)
+
+      # older version of wx *12.04, 14.04) doesn't support EVT_COMBOBOX_DROPDOWN
+      try:
+         self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown)
+      except:
+         self.OnSpComboBoxDropDown(None)
 
       # Add baud rate controls
       st = wx.StaticText(self, label="Baud Rate")
@@ -149,12 +153,49 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
       self.spComboBox.SetValue(port)
 
    def OnSpComboBoxDropDown(self, event):
-      serListInfo = serial.tools.list_ports.comports()
-      serList = ["%s, %s" % (i.device, i.description) for i in serListInfo]
-      serList.sort()
+      serList = ['None']
+      portSearchFailSafe = False
 
-      self.spComboBox.Set(serList)
+      try:
+         import glob
+         import serial.tools.list_ports
 
+         serListInfo = serial.tools.list_ports.comports()
+
+         if len(serListInfo) > 0:
+            if type(serListInfo[0]) == tuple:
+               serList = ["%s, %s, %s" % (i[0], i[1], i[2]) for i in serListInfo]
+            else:
+               serList = ["%s, %s" % (i.device, i.description) for i in serListInfo]
+
+            serList.sort()
+
+      except ImportError:
+         portSearchFailSafe = True
+
+      if portSearchFailSafe:
+         serList = []
+
+         if os.name == 'nt':
+            # Scan for available ports.
+            for i in range(256):
+               try:
+                  s = serial.Serial(i)
+                  serList.append('COM'+str(i + 1))
+                  #s.close()
+               except serial.SerialException, e:
+                   pass
+               except OSError, e:
+                  pass
+         else:
+            serList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob('/dev/cu*')
+
+         if len(serList) < 1:
+            serList = ['None']
+
+      #import pdb;pdb.set_trace()
+      #self.spComboBox.Set(serList)
+      self.spComboBox.SetItems(serList)
 
 
 """----------------------------------------------------------------------------

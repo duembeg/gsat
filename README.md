@@ -33,6 +33,17 @@ Development Environment
 * Other CNC machines that use the above devices.
 
 ### OSes:
+* [Ubuntu 16.04](http://www.ubuntu.com/)
+   * Installing dependencies:
+   ```
+   sudo apt-get install python-wxgtk3.0 python-wxtools wx3.0-i18n python-pip
+   sudo pip install pyserial
+   ```
+   * Optional dependecies for OpenCV
+   ```
+   sudo apt-get install python-numpy python-opencv
+   ```
+
 * [Ubuntu 12.04, 12.10, 13.04, 13.10, 14.04](http://www.ubuntu.com/)
    * Installing dependencies:
    ```
