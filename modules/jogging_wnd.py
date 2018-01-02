@@ -1499,15 +1499,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                wx.TheClipboard.GetData(data)
                data = data.GetText()
 
-               reVal = re.search(r'X([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
+               reVal = re.search(r'X\s*([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
                if reVal is not None:
                   self.jX.SetValue(reVal.group(1))
 
-               reVal = re.search(r'Y([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
+               reVal = re.search(r'Y\s*([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
                if reVal is not None:
                   self.jY.SetValue(reVal.group(1))
 
-               reVal = re.search(r'Z([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
+               reVal = re.search(r'Z\s*([+-]{0,1}\d+\.\d+)', data, re.I|re.M)
                if reVal is not None:
                   self.jZ.SetValue(reVal.group(1))
 
