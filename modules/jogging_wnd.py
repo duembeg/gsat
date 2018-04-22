@@ -1366,10 +1366,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             #self.OnXPos(e)
 
          elif (key == wx.WXK_HOME) or (key == wx.WXK_NUMPAD_HOME):
-            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeButton.GetId())
-            self.homeButton.SetFocus()
-            wx.PostEvent(self, evt)
+            #evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeButton.GetId())
+            #self.homeButton.SetFocus()
+            #wx.PostEvent(self, evt)
             #self.OnHome(e)
+            pass
 
          elif (key == wx.WXK_PAGEUP) or (key == wx.WXK_NUMPAD_PAGEUP):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.positiveZButton.GetId())
@@ -1408,7 +1409,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             #self.OnSetToZero(e)
 
          elif (key == wx.WXK_NUMPAD_DIVIDE):
-            print "DIVIDE Key Pressed"
+            evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeButton.GetId())
+            self.homeButton.SetFocus()
+            wx.PostEvent(self, evt)
+            #self.OnHome(e)
 
          elif (key == wx.WXK_NUMPAD_MULTIPLY):
             canRun = self.mainWindow.OnRunHelper()
@@ -1487,7 +1491,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
          else:
             pass
-            #print key
+            print key
 
             e.Skip()
 
