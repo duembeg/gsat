@@ -570,6 +570,40 @@ imgPauseDisabled = PyEmbeddedImage(
 #------------------------------------------------------------------------------
 imgMachineReset = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4gYcCxgB+55KgAAAAtBJREFUOMt9021IU1EY"
+    "B/D/dq/apmvXQkcuNWeR1jBtriSJMisjCBJLCqToRWZQLPseGEj0pcCEqC8V9P7ywYgYlJnZ"
+    "i1RaWYo4tDTN5ezqEPOec+65u32oSUPt/+k8nMOP54HnGDBHNl4euQTABaC9+aDNM9c741wX"
+    "nHPXrk3JLs65C/+JGDm463rNgiB4dV1Pf3PMUcUZAyE6OGMAgLX1Xy4aDIYBTdPq3nmXTs3o"
+    "IMy5d1mq2cMZywcAlVIwFoZK6Z+OGMt32E2eMOfeGSM4az+4Ey1CRZotwc4IAQAwQkApx791"
+    "alKC3RpvrHDWfnBHASqle7IypJRPXSMyI8Q3DZAowNfVE5QddmuKSumeKIARkj3fHCsFe94r"
+    "mX1X1LKysnxGCIwGbRpQKb02OBQcT4gTJEZIdhTg0jvyjJ1PwEf8wsNrF04xxtZsMXea/A1X"
+    "g4zSdgAgijIwNj6hTIYmQQlZGAXEQlVP7C7C8R05tkAggKoqT3WNp3RF1rzRB9/Pl3gAgCpK"
+    "uqhzE2UETFHkCCAUFBSs+zoRs9pqQtq63GxR13VYrdKC1tbWvrt37/nsdrshtP7MsK7r3iSb"
+    "VMjDOh8a+vmEfrr/GACMhJD1N097Njgdi42CYEJOWXVIEExIT1+SWV9ff3ZCiyvVNK0mTrLs"
+    "tTpSbd3+oWHO2O3pERRFeV1eXn7y1duOccY09PpuSYxpaH7bqZYcPRcIpG0vNzmzKxML3Zm9"
+    "3f0D8g/5+tSdfe+mR5Bl+Vtx8dYjB/Yfcvsan4Yki2lew7MX4Z3FRWJbaNIyVlIZj3A4PPry"
+    "zZeJr4NX4H9Up8t+NQIYAKCoaPMNszne0tLSNNLW5j+ct6304yrnykWTChM/x7jboYx/Q39T"
+    "I/qf9wAYBRAEoEaAWAAZAJJFUcwVRXE559zPOfcDYAAGAfyKbDyAqb+1FgEEABKAuNk+JYDQ"
+    "X2jW/AaVR2qhIrtnHgAAAABJRU5ErkJggg==")
+
+imgMachineResetDisabled = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAAJcEhZ"
+    "cwAACxMAAAsTAQCanBgAAAAHdElNRQfiBhwLIRZ2yUL9AAABqElEQVQoz1WRPWhTYRiFn/tD"
+    "mqRcjRVbTQyhtiIpFCz5oRREJIOTgrpUqdChkIhD6NRBChURRBApLrrYQQrqJggRFSzuFxxE"
+    "21Ajqam20ZA4pPd+3725dWhs07O8nJeHc4aj0KGHT0hgTmc7f2qncROZhJtgn3SAO0Etvx27"
+    "lXMQOMDdx0q5NT+7tZvg5qNZmQSBRAAyGcm6+d2KmZQxcTQiAIFg5/ZGuidmUm1AjJ8If6nZ"
+    "BbAR2IBdWKkdD4vx/0A8GFq1NpwrSYGyU/Fsve4PiXgb8I2s8kdbvC3TPYFCVZhglevWX+zD"
+    "bUBxrnG57xe56ZtDxqunWbBiBCRWDUAdHftceu0N+wQDg0vfPiyPjl3U5HXj0GZDfgVQ7TP3"
+    "zw6qGhcaGrGBRw+cS60542q0r/hTPgfQDqovS+GR/kDO32TJuVc9Ej+ZHooulysLb14AaLW1"
+    "zI3J1NvGAf8777y+YaS7tz2zVFn4Pl93ABQ4txg0Pm6aU5lPw8cs3TPttcr79RV+U8UBBR/9"
+    "9Oqn9VNu0S0i+UET8NiiSQsUNEJ07Q1KA9m55j8cqqZtBPCIMQAAAABJRU5ErkJggg==")
+
+
+#------------------------------------------------------------------------------
+# imgMachineRefresh
+#------------------------------------------------------------------------------
+imgMachineRefresh = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA"
     "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4QcVEzMIIPvpEQAAAz9JREFUOMulkF9oW2UY"
     "xp/vnJM0SZNS+ydb07RZTSmd1tU0cZhInG66UUOh1j8o1ospuF4I2xD0QtjFQASpNytuiJfK"
     "EGHDPwzWOdfIJDBtQd3somkzsiQNLkm7Jk1zzne+fK832zp263P3vrzPj+d5GRHh/0gDgN0n"
@@ -588,7 +622,7 @@ imgMachineReset = PyEmbeddedImage(
     "Nucu8dCATXbtdsHm8qDZvcaYMo/S9T9o6UKS1m5UARQBlIhIMAAqgDYArQDsd+a7agBYB2A+"
     "sKsB2CQi+R8GrIocunSMSAAAAABJRU5ErkJggg==")
 
-imgMachineResetDisabled = PyEmbeddedImage(
+imgMachineRefreshDisabled = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAAJcEhZ"
     "cwAACxMAAAsTAQCanBgAAAAHdElNRQfhBxUTNxBX+7RDAAABzUlEQVQoz32Oz2uScQDGP9/3"
     "1TnfYdtEk3StUhsVOVi6KIeHoh8QSLGRh/DUoR+3+gPqsOoS1CVYh+5dBqMg2uhQ0WIUzUPQ"
@@ -600,7 +634,6 @@ imgMachineResetDisabled = PyEmbeddedImage(
     "KF+SGrxv3l/tD+6PjPYb1e7qYqGVTRlSdj4yeKprtpljlhP2o/70vqEBTZKZq219M3SwQcW4"
     "Nf2B5MXp+hfFlOvUtHztV2l1frlYAQRdBNktxxzDO7p3uhx+Z1UsVj/nspt1yqxbLYGMmz6c"
     "yAAYbNLstAZblvkPcw20XZHI1vwAAAAASUVORK5CYII=")
-
 
 #------------------------------------------------------------------------------
 # imgCycleStart

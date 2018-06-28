@@ -313,6 +313,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
       self.configData = config_data
       self.stateData = state_data
+      self.machStat = "None"
 
       self.memoX = gc.gZeroString
       self.memoY = gc.gZeroString
@@ -333,6 +334,35 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       self.LoadCli()
 
       self.SavedJogPos = None
+
+      self.numKeypadPendantKeys = [
+         wx.WXK_NUMPAD_UP,
+         wx.WXK_NUMPAD_DOWN,
+         wx.WXK_NUMPAD_LEFT,
+         wx.WXK_NUMPAD_RIGHT,
+         wx.WXK_NUMPAD_HOME,
+         wx.WXK_NUMPAD_PAGEUP,
+         wx.WXK_NUMPAD_PAGEDOWN,
+         wx.WXK_NUMPAD_END,
+         wx.WXK_NUMPAD_BEGIN,
+         wx.WXK_NUMPAD_INSERT,
+         wx.WXK_NUMPAD_DELETE,
+         wx.WXK_NUMPAD_DIVIDE,
+         wx.WXK_NUMPAD_MULTIPLY,
+         wx.WXK_NUMPAD_SUBTRACT,
+         wx.WXK_NUMPAD_ADD,
+         wx.WXK_NUMPAD_ENTER,
+         wx.WXK_NUMPAD0,
+         wx.WXK_NUMPAD1,
+         wx.WXK_NUMPAD2,
+         wx.WXK_NUMPAD3,
+         wx.WXK_NUMPAD4,
+         wx.WXK_NUMPAD5,
+         wx.WXK_NUMPAD6,
+         wx.WXK_NUMPAD7,
+         wx.WXK_NUMPAD8,
+         wx.WXK_NUMPAD9
+      ]
 
    def InitConfig(self):
       # jogging data
@@ -448,6 +478,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          z = statusData.get('posz')
          if z is not None:
             self.jZ.SetValue("{:.3f}".format(z))
+
+         stat = statusData.get('stat')
+         if stat is not None:
+            self.machStat = stat
 
       if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
          self.keybaordJoggingEnable = True
@@ -1284,14 +1318,16 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       keyCode = e.GetKeyCode()
       cliItems = self.cliComboBox.GetItems()
 
-      if wx.WXK_UP == keyCode or wx.WXK_NUMPAD_UP == keyCode:
+      if wx.WXK_UP == keyCode:
          if  self.cliIndex > 0:
             self.cliIndex = self.cliIndex - 1
             self.cliComboBox.SetValue(cliItems[self.cliIndex])
-      elif wx.WXK_DOWN == keyCode or wx.WXK_NUMPAD_DOWN == keyCode:
+      elif wx.WXK_DOWN == keyCode:
          if  len(cliItems) > self.cliIndex + 1:
             self.cliIndex = self.cliIndex + 1
             self.cliComboBox.SetValue(cliItems[self.cliIndex])
+      elif keyCode in self.numKeypadPendantKeys:
+            self.OnKeyPress(e)
       else:
          e.Skip()
 
@@ -1331,9 +1367,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
       evObj = e.GetEventObject()
 
       #if (not self.keybaordJoggingEnable) or (self.cliComboBox == evObj):
-      if evObj in [self.cliComboBox, self.stepSpinCtrl.GetTextCtrl(),
-         self.spindleSpeedSpinCtrl.GetTextCtrl(), self.jX, self.jY, self.jZ]:
-         e.Skip()
+      #if evObj in [self.cliComboBox, self.stepSpinCtrl.GetTextCtrl(),
+      #   self.spindleSpeedSpinCtrl.GetTextCtrl(), self.jX, self.jY, self.jZ]:
+      #   e.Skip()
+      if False:
+         pass
       else:
 
          key = e.GetKeyCode()
@@ -1341,50 +1379,51 @@ class gsatJoggingPanel(wx.ScrolledWindow):
          #print dir(e)
          #print e.GetModifiers()
 
-         if (key == wx.WXK_UP) or (key == wx.WXK_NUMPAD_UP):
+         if (key == wx.WXK_NUMPAD_UP):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.positiveYButton.GetId())
             self.positiveYButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnYPos(e)
 
-         elif (key == wx.WXK_DOWN) or (key == wx.WXK_NUMPAD_DOWN):
+         elif (key == wx.WXK_NUMPAD_DOWN):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.negativeYButton.GetId())
             self.negativeYButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnYNeg(e)
 
-         elif (key == wx.WXK_LEFT) or (key == wx.WXK_NUMPAD_LEFT):
+         elif (key == wx.WXK_NUMPAD_LEFT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.negativeXButton.GetId())
             self.negativeXButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnXNeg(e)
 
-         elif (key == wx.WXK_RIGHT) or (key == wx.WXK_NUMPAD_RIGHT):
+         elif (key == wx.WXK_NUMPAD_RIGHT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.positiveXButton.GetId())
             self.positiveXButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnXPos(e)
 
-         elif (key == wx.WXK_HOME) or (key == wx.WXK_NUMPAD_HOME):
+         elif (key == wx.WXK_NUMPAD_HOME):
             #evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeButton.GetId())
             #self.homeButton.SetFocus()
             #wx.PostEvent(self, evt)
             #self.OnHome(e)
-            pass
+            #pass
+            self.mainWindow.OnMachineCycleStart(e)
 
-         elif (key == wx.WXK_PAGEUP) or (key == wx.WXK_NUMPAD_PAGEUP):
+         elif (key == wx.WXK_NUMPAD_PAGEUP):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.positiveZButton.GetId())
             self.positiveZButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnZPos(e)
 
-         elif (key == wx.WXK_PAGEDOWN) or (key == wx.WXK_NUMPAD_PAGEDOWN):
+         elif (key == wx.WXK_NUMPAD_PAGEDOWN):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.negativeZButton.GetId())
             self.negativeZButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnZNeg(e)
 
-         elif (key == wx.WXK_END) or (key == wx.WXK_NUMPAD_END):
+         elif (key == wx.WXK_NUMPAD_END):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroXYButton.GetId())
             self.SetToZeroXYButton.SetFocus()
             wx.PostEvent(self, evt)
@@ -1396,13 +1435,13 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             wx.PostEvent(self, evt)
             #self.OnGoToZeroXY(e)
 
-         elif (key == wx.WXK_INSERT) or (key == wx.WXK_NUMPAD_INSERT):
+         elif (key == wx.WXK_NUMPAD_INSERT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroButton.GetId())
             self.SetToZeroButton.SetFocus()
             wx.PostEvent(self, evt)
             #self.OnSetToZero(e)
 
-         elif (key == wx.WXK_DELETE) or (key == wx.WXK_NUMPAD_DELETE):
+         elif (key == wx.WXK_NUMPAD_DELETE):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.SetToZeroZButton.GetId())
             self.SetToZeroZButton.SetFocus()
             wx.PostEvent(self, evt)
@@ -1418,7 +1457,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             canRun = self.mainWindow.OnRunHelper()
 
             if canRun:
-               self.mainWindow.OnRun(e)
+               self.mainWindow.OnRun()
 
          elif (key == wx.WXK_NUMPAD_SUBTRACT):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.homeZButton.GetId())
@@ -1434,6 +1473,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
          elif (key == wx.WXK_NUMPAD_ENTER):
             self.mainWindow.OnMachineFeedHold(e)
+
+         elif (key == wx.WXK_NUMPAD_DECIMAL):
+            self.mainWindow.OnMachineCycleStart(e)
+            pass
 
          elif (key == wx.WXK_NUMPAD0):
             evt = wx.PyCommandEvent(wx.EVT_BUTTON.typeId, self.stepSize0p05.GetId())
@@ -1491,7 +1534,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
          else:
             pass
-            print key
+            #print key
 
             e.Skip()
 

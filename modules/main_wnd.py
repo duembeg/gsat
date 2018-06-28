@@ -119,6 +119,7 @@ gID_MENU_BREAK_REMOVE_ALL = wx.NewId()
 gID_MENU_SET_PC = wx.NewId()
 gID_MENU_RESET_PC = wx.NewId()
 gID_MENU_GOTO_PC = wx.NewId()
+gID_MENU_MACHINE_REFRESH = wx.NewId()
 gID_MENU_MACHINE_CYCLE_START = wx.NewId()
 gID_MENU_MACHINE_FEED_HOLD = wx.NewId()
 gID_MENU_MACHINE_QUEUE_FLUSH = wx.NewId()
@@ -579,6 +580,8 @@ class gsatMainWindow(wx.Frame):
         wx.CallAfter(self.UpdateUI)
         self.SetPC(0)
 
+        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+
     def CreateMenu(self):
 
         # Create the menubar
@@ -715,6 +718,12 @@ class gsatMainWindow(wx.Frame):
 
         runMenu.AppendSeparator()
 
+        machineRefresh = wx.MenuItem(
+            runMenu, gID_MENU_MACHINE_REFRESH, "Machine &Refresh\tCtrl+R")
+        if os.name != 'nt':
+            machineRefresh.SetBitmap(ico.imgMachineRefresh.GetBitmap())
+        runMenu.AppendItem(machineRefresh)
+
         machineCycleStart = wx.MenuItem(
             runMenu, gID_MENU_MACHINE_CYCLE_START, "Machine &Cycle Start")
         if os.name != 'nt':
@@ -849,6 +858,8 @@ class gsatMainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnResetPC,
                   id=gID_MENU_RESET_PC)
         self.Bind(wx.EVT_MENU, self.OnGoToPC,              id=gID_MENU_GOTO_PC)
+        self.Bind(wx.EVT_MENU, self.OnMachineRefresh,
+                  id=gID_MENU_MACHINE_REFRESH)
         self.Bind(wx.EVT_MENU, self.OnMachineCycleStart,
                   id=gID_MENU_MACHINE_CYCLE_START)
         self.Bind(wx.EVT_MENU, self.OnMachineFeedHold,
@@ -869,6 +880,8 @@ class gsatMainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnResetPC,
                   id=gID_MENU_RESET_PC)
         self.Bind(wx.EVT_BUTTON, self.OnGoToPC,            id=gID_MENU_GOTO_PC)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineRefresh,
+                  id=gID_MENU_MACHINE_REFRESH)
         self.Bind(wx.EVT_BUTTON, self.OnMachineCycleStart,
                   id=gID_MENU_MACHINE_CYCLE_START)
         self.Bind(wx.EVT_BUTTON, self.OnMachineFeedHold,
@@ -891,6 +904,8 @@ class gsatMainWindow(wx.Frame):
         self.Bind(wx.EVT_UPDATE_UI, self.OnResetPCUpdate,
                   id=gID_MENU_RESET_PC)
         self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate,   id=gID_MENU_GOTO_PC)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineRefreshUpdate,
+                  id=gID_MENU_MACHINE_REFRESH)
         self.Bind(wx.EVT_UPDATE_UI, self.OnMachineCycleStartUpdate,
                   id=gID_MENU_MACHINE_CYCLE_START)
         self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHoldUpdate,
@@ -1062,6 +1077,11 @@ class gsatMainWindow(wx.Frame):
             gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
 
         self.gcodeToolBar.AddSeparator()
+
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_REFRESH, "Machine Refresh", ico.imgMachineRefresh.GetBitmap(),
+                                        "Machine Refresh")
+        self.gcodeToolBar.SetToolDisabledBitmap(
+            gID_MENU_MACHINE_REFRESH, ico.imgMachineRefreshDisabled.GetBitmap())
 
         self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_CYCLE_START, "Cycle Start", ico.imgCycleStart.GetBitmap(),
                                         "Machine Cycle Start")
@@ -1473,6 +1493,7 @@ class gsatMainWindow(wx.Frame):
         self.OnSetPCUpdate()
         self.OnResetPCUpdate()
         self.OnGoToPCUpdate()
+        self.OnMachineRefreshUpdate()
         self.OnMachineCycleStartUpdate()
         self.OnMachineFeedHoldUpdate()
         self.OnMachineQueueFlushUpdate()
@@ -1656,6 +1677,19 @@ class gsatMainWindow(wx.Frame):
 
         self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
 
+    def OnMachineRefresh(self, e):
+        self.GetMachineStatus()
+
+    def OnMachineRefreshUpdate(self, e=None):
+        state = False
+        if self.stateData.serialPortIsOpen:
+            state = True
+
+        if e is not None:
+            e.Enable(state)
+
+        self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_REFRESH, state)
+
     def OnMachineCycleStart(self, e):
         if self.progExecThread is not None:
             self.mainWndOutQueue.put(
@@ -1667,7 +1701,6 @@ class gsatMainWindow(wx.Frame):
     def OnMachineCycleStartUpdate(self, e=None):
         state = False
         if self.stateData.serialPortIsOpen:
-
             state = True
 
         if e is not None:
@@ -1921,6 +1954,14 @@ class gsatMainWindow(wx.Frame):
 
         self.Destroy()
         e.Skip()
+
+    def OnKeyPress(self, e):
+        keyCode = e.GetKeyCode()
+
+        if keyCode in self.machineJoggingPanel.numKeypadPendantKeys:
+            self.machineJoggingPanel.OnKeyPress(e)
+        else:
+            e.Skip()
 
     """-------------------------------------------------------------------------
    gsatMainWindow: General Functions

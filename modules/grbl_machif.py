@@ -51,7 +51,13 @@ gReMachineStatus = re.compile(r'pos', re.I)
 #   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
 #   "<Hold:29|WPos:20.163,0.000,20.000>"
 #gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
-gReGRBLMachineStatus = re.compile(r'<(\w+)[:]{0,1}[\d]*[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
+gReGRBLMachineStatus = re.compile(r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
+
+"""
+      To be able to track working position changet GRBL settigs to display work position as oppose to machine position
+      from 1.1f use $10=0 to configure this...
+
+"""
 
 # grbl ack, example  "ok"
 gReGRBLMachineAck = re.compile(r'^ok\s$')
