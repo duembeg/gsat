@@ -293,8 +293,10 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
       machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
       self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
+      '''
       self.machinePort.SetLabel(stateData.serialPort)
       self.machineBaud.SetLabel(stateData.serialPortBaud)
+      '''
 
       self.Update()
 
@@ -390,6 +392,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       flexGridSizer.Add(self.version, 0, flag=wx.ALIGN_LEFT)
 
       # Add Connected Status
+      '''
       st = wx.StaticText(self, label="Device port")
       st.SetFont(font)
       self.machinePort = wx.StaticText(self, label="None")
@@ -405,6 +408,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       self.machineBaud.SetFont(font)
       flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
       flexGridSizer.Add(self.machineBaud, 0, flag=wx.ALIGN_LEFT)
+      '''
 
       # Add Percent sent status
       st = wx.StaticText(self, label="PC in file pos")
