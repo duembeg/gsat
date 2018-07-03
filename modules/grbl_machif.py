@@ -40,8 +40,11 @@ import modules.machif as mi
 # -------------
 # Grbl
 
-# grbl version, example "Grbl 0.8c ['$' for help]"
-gReGrblVersion = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
+# grbl version, example "[VER:x.x.x:]"
+gReGrblVersion = re.compile(r'\[VER:(.*):\]')
+
+# grbl init, example "Grbl 0.8c ['$' for help]"
+gReGrblInitStr = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
 # status,
 # quick re check to avoid multiple checks, speeds things up
@@ -116,6 +119,7 @@ class MachIf_GRBL(mi.MachIf_Base):
    currentStatus = GRBL_STATE_UKNOWN
    autoStatusNextMicro = None
    machineAutoRefresh = False
+   initStringDetect = False
 
    def __init__(self, cmd_line_options):
       super(MachIf_GRBL, self).__init__(cmd_line_options, 1000, "grbl",
@@ -242,6 +246,13 @@ class MachIf_GRBL(mi.MachIf_Base):
          dataDict['f'] = [0,0,0]
          dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
 
+      initStr = gReGrblInitStr.match(data)
+      if initStr is not None:
+         if self.cmdLineOptions.vverbose:
+            print "** MachIf_GRBL found device init string [%s]" % initStr.group(1).strip()
+
+         self.initStringDetect = True
+
       return dataDict
 
    def encode(self, data, bookeeping=True):
@@ -293,6 +304,9 @@ class MachIf_GRBL(mi.MachIf_Base):
       super(MachIf_GRBL, self).init(state_data)
       self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
+   def getInitCommCmd (self):
+      return '\n$I\n'
+
    def getQueueFlushCmd (self):
       return "\x18"
 
@@ -329,6 +343,11 @@ class MachIf_GRBL(mi.MachIf_Base):
 
          # finally update local variable
          self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
+
+      # check for init condition, take action, and reset init condition
+      if (self.initStringDetect):
+         self.initStringDetect = False
+         super(MachIf_GRBL, self).write(self.getInitCommCmd())
 
    def reset(self):
       super(MachIf_GRBL, self)._reset(gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)

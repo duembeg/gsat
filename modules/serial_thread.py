@@ -320,8 +320,9 @@ class SerialPortThread(threading.Thread):
                # do nothing, wait to be terminated
                pass
             else:
+               exMsg = "** SerialPortThread unexpected state [%d], Aborting..." % (self.swState)
                if self.cmdLineOptions.verbose:
-                  print "** SerialPortThread unexpected state [%d], Aborting..." % (self.swState)
+                  print exMsg
 
                self.serialThreadOutQueue.put(gc.threadEvent(gc.gEV_ABORT, exMsg))
                break
