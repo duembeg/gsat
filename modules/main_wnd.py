@@ -513,6 +513,10 @@ class gsatMainWindow(wx.Frame):
         # notify AUI which frame to use
         self.aui_mgr.SetManagedWindow(self)
 
+        # experiment with status bar
+        self.statusbar = self.CreateStatusBar(1)
+        self.statusbar.SetStatusText('')
+
         #self.connectionPanel = gsatConnectionPanel(self)
         self.machineStatusPanel = mc.gsatMachineStatusPanel(
             self, self.configData, self.stateData,)
@@ -1276,6 +1280,8 @@ class gsatMainWindow(wx.Frame):
             self.SetPC(0)
             self.gcText.GoToPC()
             self.UpdateUI()
+
+            self.statusbar.SetStatusText(os.path.basename(fileName))
         else:
             dlg = wx.MessageDialog(self,
                                    "The file doesn't exits.\n"

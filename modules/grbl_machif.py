@@ -46,6 +46,9 @@ gReGrblVersion = re.compile(r'\[VER:(.*):\]')
 # grbl init, example "Grbl 0.8c ['$' for help]"
 gReGrblInitStr = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
 
+# grbl init, example "ALARM:x"
+gReGrblAlarm = re.compile(r'ALARM:.*')
+
 # status,
 # quick re check to avoid multiple checks, speeds things up
 gReMachineStatus = re.compile(r'pos', re.I)
@@ -202,6 +205,18 @@ class MachIf_GRBL(mi.MachIf_Base):
             print "** MachIf_GRBL input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
                (bufferPart, self.inputBufferSize, \
                (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+
+      alarm = gReGrblAlarm.search(data)
+      if alarm is not None:
+         if 'sr' in dataDict:
+            sr = dataDict.get('sr')
+         else:
+            sr = {}
+
+         sr['stat'] = "Alarm"
+         decodedStatus = gGrblStateDict.get(sr['stat'], GRBL_STATE_UKNOWN)
+
+         dataDict['sr'] = sr
 
       error = gReGRBLMachineError.search(data)
       if error is not None:
