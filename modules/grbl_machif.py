@@ -122,7 +122,8 @@ class MachIf_GRBL(mi.MachIf_Base):
    currentStatus = GRBL_STATE_UKNOWN
    autoStatusNextMicro = None
    machineAutoRefresh = False
-   initStringDetect = False
+   initStringDetectFlag = False
+   clearAlarmFlag = False
 
    def __init__(self, cmd_line_options):
       super(MachIf_GRBL, self).__init__(cmd_line_options, 1000, "grbl",
@@ -266,11 +267,20 @@ class MachIf_GRBL(mi.MachIf_Base):
          if self.cmdLineOptions.vverbose:
             print "** MachIf_GRBL found device init string [%s]" % initStr.group(1).strip()
 
-         self.initStringDetect = True
+         self.initStringDetectFlag = True
 
       return dataDict
 
+   def doClearAlarm(self):
+      """ Clears alarm condition in grbl
+      """
+      self.write(self.getResetCmd())
+      self.reset()
+      self.clearAlarmFlag = True
+
    def encode(self, data, bookeeping=True):
+      """ Encodes data properly to be sent to controller
+      """
       if len(data) == 0:
          return data
 
@@ -360,9 +370,14 @@ class MachIf_GRBL(mi.MachIf_Base):
          self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
       # check for init condition, take action, and reset init condition
-      if (self.initStringDetect):
-         self.initStringDetect = False
+      if (self.initStringDetectFlag):
+         self.initStringDetectFlag = False
          super(MachIf_GRBL, self).write(self.getInitCommCmd())
+
+      # check for clear alarm condition
+      if (self.clearAlarmFlag):
+         self.clearAlarmFlag = False
+         #super(MachIf_GRBL, self).write(self.getInitCommCmd())
 
    def reset(self):
       super(MachIf_GRBL, self)._reset(gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)

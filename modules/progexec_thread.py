@@ -204,6 +204,12 @@ class programExecuteThread(threading.Thread):
             time.sleep(2)
             self.machIfModule.reset()
 
+         elif e.event_id == gc.gEV_CMD_CLEAR_ALARM:
+            if self.cmdLineOptions.vverbose:
+               print "** programExecuteThread got event gc.gEV_CMD_CLEAR_ALARM."
+
+            self.machIfModule.doClearAlarm()
+
          else:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got unknown event!! [%s]." % str(e.event_id)
@@ -221,7 +227,7 @@ class programExecuteThread(threading.Thread):
 
    def SerialRead(self):
       rxData = self.machIfModule.read()
-      mainWndEvent = False;
+      mainWndEvent = False
 
       if 'event' in rxData:
          forwardEvent = True

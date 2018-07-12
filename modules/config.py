@@ -93,7 +93,7 @@ USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    
 
 ------------------------------------------------------------------------ """
 
-gSTATE_ABORT  = 001
+gSTATE_ABORT  = 1
 gSTATE_IDLE  =  100
 gSTATE_RUN   =  200
 gSTATE_STEP  =  300
@@ -111,39 +111,42 @@ open again and will start in IDLE state.
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
 # EVENT ID             EVENT CODE
-gEV_CMD_NULL         =  100
-gEV_CMD_EXIT         =  200
-gEV_CMD_RUN          = 1000
-gEV_CMD_STEP         = 1010
-gEV_CMD_STOP         = 1020
-gEV_CMD_SEND         = 1030
-gEV_CMD_SEND_W_ACK   = 1040
-gEV_CMD_AUTO_STATUS  = 1050
-gEV_CMD_OK_TO_POST   = 1060
-gEV_CMD_GET_STATUS   = 1070
-gEV_CMD_SER_TXDATA   = 1080
-gEV_CMD_CYCLE_START  = 1090
-gEV_CMD_FEED_HOLD    = 1100
-gEV_CMD_QUEUE_FLUSH  = 1110
-gEV_CMD_RESET        = 1120
+gEV_CMD_NULL            =  100
+gEV_CMD_EXIT            =  200
+gEV_CMD_RUN             = 1000
+gEV_CMD_STEP            = 1010
+gEV_CMD_STOP            = 1020
+gEV_CMD_SEND            = 1030
+gEV_CMD_SEND_W_ACK      = 1040
+gEV_CMD_AUTO_STATUS     = 1050
+gEV_CMD_OK_TO_POST      = 1060
+gEV_CMD_GET_STATUS      = 1070
+gEV_CMD_SER_TXDATA      = 1080
+gEV_CMD_CYCLE_START     = 1090
+gEV_CMD_FEED_HOLD       = 1100
+gEV_CMD_QUEUE_FLUSH     = 1110
+gEV_CMD_RESET           = 1120
+gEV_CMD_MOVE            = 1130
+gEV_CMD_RELATIVE_MOVE   = 1140
+gEV_CMD_CLEAR_ALARM     = 1150
 
 
-gEV_NULL             =  100
-gEV_EXIT             =  200
-gEV_ABORT            = 2000
-gEV_RUN_END          = 2010
-gEV_STEP_END         = 2020
-gEV_DATA_OUT         = 2030
-gEV_DATA_IN          = 2040
-gEV_HIT_BRK_PT       = 2050
-gEV_PC_UPDATE        = 2060
-gEV_HIT_MSG          = 2070
-gEV_SER_RXDATA       = 2080
-gEV_SER_PORT_OPEN    = 2090
-gEV_SER_PORT_CLOSE   = 2100
-gEV_TIMER            = 2110
-gEV_DATA_STATUS      = 2120
-gEV_DEVICE_DETECTED  = 2130
+gEV_NULL                =  100
+gEV_EXIT                =  200
+gEV_ABORT               = 2000
+gEV_RUN_END             = 2010
+gEV_STEP_END            = 2020
+gEV_DATA_OUT            = 2030
+gEV_DATA_IN             = 2040
+gEV_HIT_BRK_PT          = 2050
+gEV_PC_UPDATE           = 2060
+gEV_HIT_MSG             = 2070
+gEV_SER_RXDATA          = 2080
+gEV_SER_PORT_OPEN       = 2090
+gEV_SER_PORT_CLOSE      = 2100
+gEV_TIMER               = 2110
+gEV_DATA_STATUS         = 2120
+gEV_DEVICE_DETECTED     = 2130
 
 
 """----------------------------------------------------------------------------

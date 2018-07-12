@@ -89,8 +89,12 @@ class MachIf_Base(object):
    def decode(self, data):
       return data
 
+   #@abstractmethod
+   def doClearAlarm(self):
+      pass
+
    @abstractmethod
-   def encode(self, data):
+   def encode(self, data, bookeeping=True):
       return data
 
    @abstractmethod

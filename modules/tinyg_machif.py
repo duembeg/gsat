@@ -195,7 +195,15 @@ class MachIf_TinyG(mi.MachIf_Base):
 
       return dataDict
 
+   def doClearAlarm(self):
+      """ Clears alarm condition in grbl
+      """
+      self.write('{"clear":true}\n')
+      self.write(self.getStatusCmd())
+
    def encode(self, data, bookeeping=True):
+      """ Encodes data properly to be sent to controller
+      """
       data = data.encode('ascii')
 
       if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:

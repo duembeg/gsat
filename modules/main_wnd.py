@@ -124,6 +124,7 @@ gID_MENU_MACHINE_CYCLE_START = wx.NewId()
 gID_MENU_MACHINE_FEED_HOLD = wx.NewId()
 gID_MENU_MACHINE_QUEUE_FLUSH = wx.NewId()
 gID_MENU_MACHINE_RESET = wx.NewId()
+gID_MENU_MACHINE_CLEAR_ALARM = wx.NewId()
 gID_MENU_ABORT = wx.NewId()
 gID_MENU_IN2MM = wx.NewId()
 gID_MENU_MM2IN = wx.NewId()
@@ -574,7 +575,7 @@ class gsatMainWindow(wx.Frame):
             self.aui_mgr.GetAGWFlags() | aui.AUI_MGR_ALLOW_ACTIVE_PANE)
 
         # load default layout
-        perspectiveDefault = self.aui_mgr.SavePerspective()
+        self.aui_mgr.SavePerspective()
         self.SaveLayoutData('/mainApp/ResetLayout')
 
         self.LoadLayoutData('/mainApp/DefaultLayout', False)
@@ -752,6 +753,12 @@ class gsatMainWindow(wx.Frame):
             machineReset.SetBitmap(ico.imgMachineReset.GetBitmap())
         runMenu.AppendItem(machineReset)
 
+        machineClearAlarm = wx.MenuItem(
+            runMenu, gID_MENU_MACHINE_CLEAR_ALARM, "Machine Clear Alarm")
+        if os.name != 'nt':
+            machineReset.SetBitmap(ico.imgClearAlarm.GetBitmap())
+        runMenu.AppendItem(machineClearAlarm)
+
         runMenu.AppendSeparator()
 
         abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT, "&Abort")
@@ -872,6 +879,8 @@ class gsatMainWindow(wx.Frame):
                   id=gID_MENU_MACHINE_QUEUE_FLUSH)
         self.Bind(wx.EVT_MENU, self.OnMachineReset,
                   id=gID_MENU_MACHINE_RESET)
+        self.Bind(wx.EVT_MENU, self.OnMachineClearAlarm,
+                  id=gID_MENU_MACHINE_CLEAR_ALARM)
         self.Bind(wx.EVT_MENU, self.OnAbort,               id=gID_MENU_ABORT)
 
         self.Bind(wx.EVT_BUTTON, self.OnRun,               id=gID_MENU_RUN)
@@ -894,6 +903,8 @@ class gsatMainWindow(wx.Frame):
                   id=gID_MENU_MACHINE_QUEUE_FLUSH)
         self.Bind(wx.EVT_BUTTON, self.OnMachineReset,
                   id=gID_MENU_MACHINE_RESET)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineClearAlarm,
+                  id=gID_MENU_MACHINE_CLEAR_ALARM)
         self.Bind(wx.EVT_BUTTON, self.OnAbort,             id=gID_MENU_ABORT)
 
         self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate,      id=gID_MENU_RUN)
@@ -918,6 +929,8 @@ class gsatMainWindow(wx.Frame):
                   id=gID_MENU_MACHINE_QUEUE_FLUSH)
         self.Bind(wx.EVT_UPDATE_UI, self.OnMachineResetUpdate,
                   id=gID_MENU_MACHINE_RESET)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineClearAlarmUpdate,
+                  id=gID_MENU_MACHINE_CLEAR_ALARM)
         self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate,    id=gID_MENU_ABORT)
 
         #------------------------------------------------------------------------
@@ -1107,6 +1120,11 @@ class gsatMainWindow(wx.Frame):
         self.gcodeToolBar.SetToolDisabledBitmap(
             gID_MENU_MACHINE_RESET, ico.imgMachineResetDisabled.GetBitmap())
 
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_CLEAR_ALARM, "Clear Alarm", ico.imgClearAlarm.GetBitmap(),
+                                        "Machine Clear Alarm")
+        self.gcodeToolBar.SetToolDisabledBitmap(
+            gID_MENU_MACHINE_CLEAR_ALARM, ico.imgClearAlarmDisabled.GetBitmap())
+
         self.gcodeToolBar.AddSeparator()
 
         self.gcodeToolBar.AddSimpleTool(gID_MENU_ABORT, "Abort", ico.imgAbort.GetBitmap(),
@@ -1288,7 +1306,7 @@ class gsatMainWindow(wx.Frame):
                                    "File: %s\n\n"
                                    "Please check the path and try again." % fileName, "",
                                    wx.OK | wx.ICON_STOP)
-            result = dlg.ShowModal()
+            dlg.ShowModal()
             dlg.Destroy()
 
         # self.gcText.SetReadOnly(True)
@@ -1504,6 +1522,7 @@ class gsatMainWindow(wx.Frame):
         self.OnMachineFeedHoldUpdate()
         self.OnMachineQueueFlushUpdate()
         self.OnMachineResetUpdate()
+        self.OnMachineClearAlarmUpdate()
         self.OnAbortUpdate()
         self.gcodeToolBar.Refresh()
 
@@ -1763,6 +1782,21 @@ class gsatMainWindow(wx.Frame):
             e.Enable(state)
 
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_RESET, state)
+
+    def OnMachineClearAlarm(self, e):
+        if self.progExecThread is not None:
+            self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_CLEAR_ALARM, None))
+
+    def OnMachineClearAlarmUpdate(self, e=None):
+        state = False
+        if self.stateData.serialPortIsOpen:
+
+            state = True
+
+        if e is not None:
+            e.Enable(state)
+
+        self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_CLEAR_ALARM, state)
 
     def OnAbort(self, e):
         self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_FEED_HOLD, None))
@@ -2339,10 +2373,10 @@ class gsatMainWindow(wx.Frame):
                     if sys.platform in 'darwin':
                         # because dialog icons where not working correctly in Mac OS X
                         gmd.GenericMessageDialog(msgText, "G-Code Program",
-                                                 wx.OK | wx.ICON_INFORMATION)
+                            gmd.GMD_DEFAULT, wx.OK | wx.ICON_INFORMATION)
                     else:
                         wx.MessageBox(msgText, "G-Code Program",
-                                      wx.OK | wx.ICON_INFORMATION)
+                            wx.OK | wx.ICON_INFORMATION)
 
                 self.SetPC(0)
                 self.machineStatusPanel.UpdateUI(
