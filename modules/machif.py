@@ -22,232 +22,228 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import serial
-import threading
 import Queue
 from abc import ABCMeta, abstractmethod
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
 
 import modules.config as gc
 import modules.serial_thread as st
 
-"""----------------------------------------------------------------------------
-   machIf_Base:
 
-   Machine interface base class to provide a unified API for specific devices
-   (g2core, TinyG, grbl, etc).
-
-----------------------------------------------------------------------------"""
 class MachIf_Base(object):
-   __metaclass__ = ABCMeta
+    """----------------------------------------------------------------------------
+    machIf_Base:
 
-   def __init__(self, cmd_line_options, id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
-      self.id = id
-      self.name = name
-      self._inputBufferMaxSize = input_buffer_max_size
-      self._inputBufferWatermarkPrcnt = input_buffer_watermark_prcnt
-      self._inputBufferWatermark = float(self._inputBufferMaxSize) * self._inputBufferWatermarkPrcnt
-      self._inputBufferInitVal = input_buffer_init_val
-      self._inputBufferSize = self._inputBufferInitVal
+    Machine interface base class to provide a unified API for specific devices
+    (g2core, TinyG, grbl, etc).
 
-      self.cmdLineOptions = cmd_line_options
+    ----------------------------------------------------------------------------"""
+    __metaclass__ = ABCMeta
 
-      self._serialPortOpen = False
-      self._serialTxRxThread = None
-      self._serialTxRxInQueue = Queue.Queue()
-      self._serialTxRxOutQueue = Queue.Queue()
-      self.stateData = None
+    def __init__(self, cmd_line_options, if_id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
+        self.id = if_id
+        self.name = name
+        self._inputBufferMaxSize = input_buffer_max_size
+        self._inputBufferWatermarkPrcnt = input_buffer_watermark_prcnt
+        self._inputBufferWatermark = float(
+            self._inputBufferMaxSize) * self._inputBufferWatermarkPrcnt
+        self._inputBufferInitVal = input_buffer_init_val
+        self._inputBufferSize = self._inputBufferInitVal
 
-      # cmds
-      self.cmdCycleStart = '~'
-      self.cmdFeedHold = '!'
-      self.cmdInitComm = ''
-      self.cmdQueueFlush = ''
-      self.cmdProbeAxis = '"G38.2'
-      self.cmdReset = '\x18'
-      self.cmdSetAxis = 'G92'
-      self.cmdStatus = ''
+        self.cmdLineOptions = cmd_line_options
 
-   @abstractmethod
-   def _init(self):
-      pass
+        self._serialPortOpen = False
+        self._serialTxRxThread = None
+        self._serialTxRxInQueue = Queue.Queue()
+        self._serialTxRxOutQueue = Queue.Queue()
+        self.stateData = None
 
-   def _reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
-      self._inputBufferMaxSize = input_buffer_max_size
-      self._inputBufferWatermark = float(self._inputBufferMaxSize) * input_buffer_watermark_prcnt
-      self._inputBufferSize = input_buffer_init_val
+        # cmds
+        self.cmdCycleStart = '~'
+        self.cmdFeedHold = '!'
+        self.cmdInitComm = ''
+        self.cmdQueueFlush = ''
+        self.cmdProbeAxis = '"G38.2'
+        self.cmdReset = '\x18'
+        self.cmdSetAxis = 'G92'
+        self.cmdStatus = ''
 
-   def close(self):
-      if self._serialTxRxThread is not None:
-         self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+    @abstractmethod
+    def _init(self):
+        pass
 
-   @abstractmethod
-   def decode(self, data):
-      return data
+    def _reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
+        self._inputBufferMaxSize = input_buffer_max_size
+        self._inputBufferWatermark = float(
+            self._inputBufferMaxSize) * input_buffer_watermark_prcnt
+        self._inputBufferSize = input_buffer_init_val
 
-   def doClearAlarm(self):
-      pass
+    def close(self):
+        if self._serialTxRxThread is not None:
+            self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
 
-   def doCycleStartResume(self):
-      self.write(self.getCycleStartCmd())
+    @abstractmethod
+    def decode(self, data):
+        return data
 
-   def doFastMove(self, dirAxisCoor):
-      pass
+    def doClearAlarm(self):
+        pass
 
-   def doFastMoveRelative(self, dirAxisCoor):
-      pass
+    def doCycleStartResume(self):
+        self.write(self.getCycleStartCmd())
 
-   def doFeedHold(self):
-      self.write(self.getFeedHoldCmd())
+    def doFastMove(self, dirAxisCoor):
+        pass
 
-   def doGetStatus(self):
-      if self.okToSend(self.getStatusCmd()):
-         self.write(self.getStatusCmd())
+    def doFastMoveRelative(self, dirAxisCoor):
+        pass
 
-   def doMove(self, dirAxisCoor):
-      pass
+    def doFeedHold(self):
+        self.write(self.getFeedHoldCmd())
 
-   def doMoveRelative(self, dirAxisCoor):
-      pass
+    def doGetStatus(self):
+        if self.okToSend(self.getStatusCmd()):
+            self.write(self.getStatusCmd())
 
-   def doReset(self):
-      self.write(self.getResetCmd())
-      self._init()
+    def doMove(self, dirAxisCoor):
+        pass
 
-   def doQueueFlush(self):
-      self.write(self.getQueueFlushCmd())
-      self._init()
+    def doMoveRelative(self, dirAxisCoor):
+        pass
 
-   @abstractmethod
-   def encode(self, data, bookeeping=True):
-      return data
+    def doReset(self):
+        self.write(self.getResetCmd())
+        self._init()
 
-   @abstractmethod
-   def factory(self, cmd_line_options):
-      return None
+    def doQueueFlush(self):
+        self.write(self.getQueueFlushCmd())
+        self._init()
 
-   def getCycleStartCmd (self):
-      return self.cmdCycleStart
+    @abstractmethod
+    def encode(self, data, bookeeping=True):
+        return data
 
-   def getId(self):
-      return self.id
+    @abstractmethod
+    def factory(self, cmd_line_options):
+        return None
 
-   def getFeedHoldCmd (self):
-      return self.cmdFeedHold
+    def getCycleStartCmd(self):
+        return self.cmdCycleStart
 
-   def getInitCommCmd (self):
-      return self.cmdInitComm
+    def getId(self):
+        return self.id
 
-   def getName(self):
-      return self.name
+    def getFeedHoldCmd(self):
+        return self.cmdFeedHold
 
-   def getQueueFlushCmd (self):
-      return self.cmdQueueFlush
+    def getInitCommCmd(self):
+        return self.cmdInitComm
 
-   def getProbeAxisCmd (self):
-      return self.cmdProbeAxis
+    def getName(self):
+        return self.name
 
-   def getResetCmd (self):
-      return self.cmdReset
+    def getQueueFlushCmd(self):
+        return self.cmdQueueFlush
 
-   def getSetAxisCmd (self):
-      return self.cmdSetAxis
+    def getProbeAxisCmd(self):
+        return self.cmdProbeAxis
 
-   def getStatusCmd(self):
-      return self.cmdStatus
+    def getResetCmd(self):
+        return self.cmdReset
 
-   def init(self, state_data):
-      self.stateData = state_data
+    def getSetAxisCmd(self):
+        return self.cmdSetAxis
 
-   def isSerialPortOpen(self):
-      return self._serialPortOpen
+    def getStatusCmd(self):
+        return self.cmdStatus
 
-   def okToSend(self, data):
+    def init(self, state_data):
+        self.stateData = state_data
 
-      bufferHasRoom = True
+    def isSerialPortOpen(self):
+        return self._serialPortOpen
 
-      # split lines
-      lines = data.splitlines(True)
+    def okToSend(self, data):
 
-      for line in lines:
-         data = self.encode(line, bookeeping=False)
+        bufferHasRoom = True
 
-         if (self._inputBufferSize + len(data)) > self._inputBufferWatermark:
-            bufferHasRoom = False
-            break
+        # split lines
+        lines = data.splitlines(True)
 
-      return bufferHasRoom
+        for line in lines:
+            data = self.encode(line, bookeeping=False)
 
-   def open(self):
-      if self.stateData is not None:
-         # inti serial RX thread
-         self._serialTxRxThread = st.SerialPortThread(self, self.stateData, self._serialTxRxOutQueue,
-         self._serialTxRxInQueue, self.cmdLineOptions)
-         self.write(self.getInitCommCmd())
+            if (self._inputBufferSize + len(data)) > self._inputBufferWatermark:
+                bufferHasRoom = False
+                break
 
-   def read(self):
-      rxData = {}
+        return bufferHasRoom
 
-      if self._serialTxRxThread is not None:
+    def open(self):
+        if self.stateData is not None:
+            # inti serial RX thread
+            self._serialTxRxThread = st.SerialPortThread(self, self.stateData, self._serialTxRxOutQueue,
+                                                         self._serialTxRxInQueue, self.cmdLineOptions)
+            self.write(self.getInitCommCmd())
 
-         if not self._serialTxRxInQueue.empty():
-            # get item from queue
-            e = self._serialTxRxInQueue.get()
+    def read(self):
+        rxData = {}
 
-            if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN,
-               gc.gEV_SER_PORT_CLOSE]:
-               rxData['event'] = {}
-               rxData['event']['id'] = e.event_id
-               rxData['event']['data'] = e.data
+        if self._serialTxRxThread is not None:
 
-               if e.event_id == gc.gEV_SER_PORT_OPEN:
-                  self._serialPortOpen = True
+            if not self._serialTxRxInQueue.empty():
+                # get item from queue
+                e = self._serialTxRxInQueue.get()
 
-               elif e.event_id == gc.gEV_SER_PORT_CLOSE:
-                  self._serialPortOpen = False
+                if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN,
+                                  gc.gEV_SER_PORT_CLOSE]:
+                    rxData['event'] = {}
+                    rxData['event']['id'] = e.event_id
+                    rxData['event']['data'] = e.data
 
-            elif e.event_id == gc.gEV_SER_RXDATA:
+                    if e.event_id == gc.gEV_SER_PORT_OPEN:
+                        self._serialPortOpen = True
 
-               if len(e.data) > 0:
-                  rxData = self.decode(e.data)
-                  rxData['raw_data'] = e.data
+                    elif e.event_id == gc.gEV_SER_PORT_CLOSE:
+                        self._serialPortOpen = False
 
-      return rxData
+                elif e.event_id == gc.gEV_SER_RXDATA:
 
-   def tick(self):
-      pass
+                    if len(e.data) > 0:
+                        rxData = self.decode(e.data)
+                        rxData['raw_data'] = e.data
 
-   def write(self, txData, raw_write=False):
-      bytesSent = 0
+        return rxData
 
-      if self._serialTxRxThread is not None:
+    def tick(self):
+        pass
 
-         if raw_write:
-            # self._serialTxRxThread.serialWrite(txData)
-            self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
-                  txData))
-         else:
-            lines = txData.splitlines(True)
+    def write(self, txData, raw_write=False):
+        bytesSent = 0
 
-            for line in lines:
-               line = self.encode(line)
+        if self._serialTxRxThread is not None:
 
-               ''' in current design there is only one thread writing, will
-                   bypass queue to improve jogging. This should be safe as
-                   there is only one thread writing and one reading. If
-                   issues start happening go back to queuing solution,
+            if raw_write:
+                # self._serialTxRxThread.serialWrite(txData)
+                self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+                                                            txData))
+            else:
+                lines = txData.splitlines(True)
 
-                   *** UPDATE: there was no observable benefit nor issues
-                   Leaving this here to revisit in future .'''
-               # self._serialTxRxThread.serialWrite(line)
+                for line in lines:
+                    line = self.encode(line)
 
-               self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
-                     line))
+                    """ in current design there is only one thread writing, will
+                    bypass queue to improve jogging. This should be safe as
+                    there is only one thread writing and one reading. If
+                    issues start happening go back to queuing solution,
 
-               bytesSent = bytesSent + len(line)
+                    *** UPDATE: there was no observable benefit nor issues
+                    Leaving this here to revisit in future ."""
+                    # self._serialTxRxThread.serialWrite(line)
 
-      return bytesSent
+                    self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+                                                                line))
+
+                    bytesSent = bytesSent + len(line)
+
+        return bytesSent

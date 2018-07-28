@@ -36,183 +36,182 @@ import modules.machif as mi
 """
 # This values are only use to initialize or reset base class.
 # base class has internal variables tor track these
-gID = 1200
-gName = "g2core"
-gInputBufferMaxSize = 255
-gInputBufferInitVal = 0
-gInputBufferWatermarkPrcnt = 0.90
+ID = 1200
+NAME = "g2core"
+BUFFER_MAX_SIZE = 255
+BUFFER_INIT_VAL = 0
+BUFFER_WATERMARK_PRCNT = 0.90
 
 class MachIf_g2core(mi.MachIf_Base):
-   """--------------------------------------------------------------------------
-   MachIf_g2core:
+    """-------------------------------------------------------------------------
+    g2core machine interface
 
-   g2core machine interface
+    ID = 1200
+    Name = "g2core"
 
-   ID = 1200
-   Name = "g2core"
+    -------------------------------------------------------------------------"""
 
-   --------------------------------------------------------------------------"""
+    """-------------------------------------------------------------------------
+    Notes:
 
-   """--------------------------------------------------------------------------
-   Notes:
+    input buffer max size = 255
+    input buffer init size = 0
+    input buffer watermark = 90%
 
-   input buffer max size = 255
-   input buffer init size = 0
-   input buffer watermark = 90%
+    Init buffer to (1) when connecting it counts that as one char on response
+    initial msg looks like
+    {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
 
-   Init buffer to (1) when connecting it counts that as one char on response
-   initial msg looks like
-   {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
+    !!notice f[1,0,1]
+    -------------------------------------------------------------------------"""
 
-   !!notice f[1,0,1]
-   """
+    # text mode re expressions
+    reMachineAck = re.compile(r'.+ok>\s$')
+    reMachinePos = re.compile(r'(\w)\s+position:\s+([+-]{0,1}\d+\.\d+)')
+    reMachineVel = re.compile(r'Velocity:\s+(\d+\.\d+)')
+    reMachineStat = re.compile(r'Machine state:\s+(\w+)')
 
-   # text mode re expressions
-   reMachineAck = re.compile(r'.+ok>\s$')
-   reMachinePos = re.compile(r'(\w)\s+position:\s+([+-]{0,1}\d+\.\d+)')
-   reMachineVel = re.compile(r'Velocity:\s+(\d+\.\d+)')
-   reMachineStat = re.compile(r'Machine state:\s+(\w+)')
+    stat_dict = {
+        0: 'Init',
+        1: 'Ready',
+        2: 'Alarm',
+        3: 'Stop',
+        4: 'End',
+        5: 'Run',
+        6: 'Hold',
+        7: 'Probe',
+        8: 'Cycle',
+        9: 'Homeming',
+        10: 'Jog',
+        11: 'InterLock',
+        12: 'Shutdown',
+        13: 'Panic',
+    }
 
-   stat_dict = {
-      0:'Init',
-      1:'Ready',
-      2:'Alarm',
-      3:'Stop',
-      4:'End',
-      5:'Run',
-      6:'Hold',
-      7:'Probe',
-      8:'Cycle',
-      9:'Homeming',
-      10:'Jog',
-      11:'InterLock',
-      12:'Shutdown',
-      13:'Panic',
-      }
+    def __init__(self, cmd_line_options):
+        super(MachIf_g2core, self).__init__(cmd_line_options, ID,
+                                            NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
+                                            BUFFER_WATERMARK_PRCNT)
 
-   def __init__(self, cmd_line_options):
-      super(MachIf_g2core, self).__init__(cmd_line_options, gID,
-         gName, gInputBufferMaxSize, gInputBufferInitVal,
-         gInputBufferWatermarkPrcnt)
+        self._inputBufferPart = list()
 
-      self._inputBufferPart = list()
+        # list of commads
+        self.cmdQueueFlush = '%\n'
+        self.cmdStatus = '{"sr":null}\n'
 
-      # list of commads
-      self.cmdQueueFlush = '%\n'
-      self.cmdStatus = '{"sr":null}\n'
+    def _init(self):
+        super(MachIf_g2core, self)._reset(BUFFER_MAX_SIZE,
+                                          BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
-   def _init(self):
-      super(MachIf_g2core, self)._reset(gInputBufferMaxSize,
-         gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+        self._inputBufferPart = list()
 
-      self._inputBufferPart = list()
+    def decode(self, data):
+        dataDict = {}
 
-   def decode(self, data):
-      dataDict = {}
+        try:
+            dataDict = json.loads(data)
 
-      try:
-         dataDict = json.loads(data)
+            if 'r' in dataDict:
+                r = dataDict['r']
 
-         if 'r' in dataDict:
-            r = dataDict['r']
+                # get status response out to avoid digging out later
+                if 'sr' in r:
+                    sr = r['sr']
+                    dataDict['sr'] = sr
 
-            # get status response out to avoid digging out later
-            if 'sr' in r:
-               sr = r['sr']
-               dataDict['sr'] = sr
+            if 'sr' in dataDict:
+                sr = dataDict['sr']
 
-         if 'sr' in dataDict:
-            sr = dataDict['sr']
+                if 'stat' in sr:
+                    status = sr['stat']
+                    sr['stat'] = self.stat_dict.get(status, "Uknown")
 
-            if 'stat' in sr:
-               status = sr['stat']
-               sr['stat'] = self.stat_dict.get(status,"Uknown")
+                # deal with old versions of g2core
+                if 'mpox' in sr:
+                    sr['posx'] = sr['mpox']
+                if 'mpoy' in sr:
+                    sr['posy'] = sr['mpoy']
+                if 'mpoz' in sr:
+                    sr['posz'] = sr['mpoz']
+                if 'mpoa' in sr:
+                    sr['posa'] = sr['mpoa']
 
-            # deal with old versions of g2core
-            if 'mpox' in sr:
-               sr['posx'] = sr['mpox']
-            if 'mpoy' in sr:
-               sr['posy'] = sr['mpoy']
-            if 'mpoz' in sr:
-               sr['posz'] = sr['mpoz']
-            if 'mpoa' in sr:
-               sr['posa'] = sr['mpoa']
+            dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-         dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
+        except:
+            ack = self.reMachineAck.match(data)
+            pos = self.reMachinePos.match(data)
+            vel = self.reMachineVel.match(data)
+            stat = self.reMachineStat.match(data)
 
-      except:
-         ack = self.reMachineAck.match(data)
-         pos = self.reMachinePos.match(data)
-         vel = self.reMachineVel.match(data)
-         stat = self.reMachineStat.match(data)
+            if ack is not None:
+                dataDict['r'] = {"f": [1, 0, 0]}
+                dataDict['f'] = [1, 0, 0]
+            elif pos is not None:
+                if 'sr' not in dataDict:
+                    dataDict['sr'] = {}
 
-         if ack is not None:
-            dataDict['r'] = {"f":[1,0,0]}
-            dataDict['f'] = [1,0,0]
-         elif pos is not None:
-            if 'sr' not in dataDict:
-               dataDict['sr'] = {}
+                dataDict['sr']["".join(["pos", pos.group(1).lower()])] = float(
+                    pos.group(2))
+            elif vel is not None:
+                if 'sr' not in dataDict:
+                    dataDict['sr'] = {}
 
-            dataDict['sr']["".join(["pos", pos.group(1).lower()])] = float(pos.group(2))
-         elif vel is not None:
-            if 'sr' not in dataDict:
-               dataDict['sr'] = {}
+                dataDict['sr']['vel'] = float(vel.group(1))
+            elif stat is not None:
+                if 'sr' not in dataDict:
+                    dataDict['sr'] = {}
 
-            dataDict['sr']['vel'] = float(vel.group(1))
-         elif stat is not None:
-            if 'sr' not in dataDict:
-               dataDict['sr'] = {}
+                dataDict['sr']['stat'] = stat.group(1)
+            else:
+                if self.cmdLineOptions.vverbose:
+                    print "** MachIf_g2core cannot decode data!! [%s]." % data
 
-            dataDict['sr']['stat'] = stat.group(1)
-         else:
-            if self.cmdLineOptions.vverbose:
-               print "** MachIf_g2core cannot decode data!! [%s]." % data
+        if 'r' in dataDict:
+            # checking for count in "f" response doesn't always work as expected and broke on edge branch
+            # it was never specify that this was the functionality so abandoning that solution
 
-      if 'r' in dataDict:
-         # checking for count in "f" response doesn't always work as expected and broke on edge branch
-         # it was never specify that this was the functionality so abandoning that solution
+            if len(self._inputBufferPart) > 0:
+                bufferPart = self._inputBufferPart.pop(0)
 
-         if len(self._inputBufferPart) > 0:
-            bufferPart = self._inputBufferPart.pop(0)
+                self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            self._inputBufferSize = self._inputBufferSize - bufferPart
+                if self.cmdLineOptions.vverbose:
+                    print "** MachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+                        (bufferPart, self._inputBufferSize,
+                         (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+            else:
+                pass
+                #print "hmmm this could be a problem"
+                #print dataDict
 
-            if self.cmdLineOptions.vverbose:
-               print "** MachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                  (bufferPart, self._inputBufferSize, \
-                  (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
-         else:
+        return dataDict
+
+    def doClearAlarm(self):
+        """ Clears alarm condition in grbl
+        """
+        self.write('{"clr":null}\n')
+        self.write(self.getStatusCmd())
+
+    def encode(self, data, bookeeping=True):
+        """ Encodes data properly to be sent to controller
+        """
+        data = data.encode('ascii')
+
+        if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
-            #print "hmmm this could be a problem"
-            #print dataDict
+        elif bookeeping:
+            dataLen = len(data)
+            self._inputBufferSize = self._inputBufferSize + dataLen
 
-      return dataDict
+            self._inputBufferPart.append(dataLen)
 
-   def doClearAlarm(self):
-      """ Clears alarm condition in grbl
-      """
-      self.write('{"clr":null}\n')
-      self.write(self.getStatusCmd())
+            if self.cmdLineOptions.vverbose:
+                print "** MachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
+                    (dataLen, self._inputBufferSize,
+                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
-   def encode(self, data, bookeeping=True):
-      """ Encodes data properly to be sent to controller
-      """
-      data = data.encode('ascii')
+        return data
 
-      if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
-         pass
-      elif bookeeping:
-         dataLen = len(data)
-         self._inputBufferSize = self._inputBufferSize + dataLen
-
-         self._inputBufferPart.append(dataLen)
-
-         if self.cmdLineOptions.vverbose:
-            print "** MachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-               (dataLen, self._inputBufferSize, \
-               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
-
-      return data
-
-   def factory(self, cmd_line_options):
-      return MachIf_g2core(cmd_line_options)
+    def factory(self, cmd_line_options):
+        return MachIf_g2core(cmd_line_options)

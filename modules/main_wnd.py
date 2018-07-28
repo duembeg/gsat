@@ -142,13 +142,10 @@ gID_TIMER_RUN = wx.NewId()
 gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
 
-"""----------------------------------------------------------------------------
-   gsatLog:
-   custom wxLog
-----------------------------------------------------------------------------"""
-
-
 class gsatLog(wx.PyLog):
+    """ custom wxLog
+    """
+
     def __init__(self, textCtrl, logTime=0):
         wx.PyLog.__init__(self)
         self.tc = textCtrl
@@ -163,13 +160,10 @@ class gsatLog(wx.PyLog):
             self.tc.AppendText(message + '\n')
 
 
-"""----------------------------------------------------------------------------
-   gsatGeneralSettingsPanel:
-   General settings panel.
-----------------------------------------------------------------------------"""
-
-
 class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
+    """ General panel settings
+    """
+
     def __init__(self, parent, configData, **args):
         scrolled.ScrolledPanel.__init__(
             self, parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
@@ -272,13 +266,10 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
                             self.scMM2INRound.GetValue())
 
 
-"""----------------------------------------------------------------------------
-   gsatSettingsDialog:
-   Dialog to control program settings
-----------------------------------------------------------------------------"""
-
-
 class gsatSettingsDialog(wx.Dialog):
+    """ Dialog to control program settings
+    """
+
     def __init__(self, parent, configData, id=wx.ID_ANY, title="Settings",
                  style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER):
 
@@ -395,17 +386,10 @@ class gsatSettingsDialog(wx.Dialog):
         self.CV2Page.UpdatConfigData()
 
 
-"""----------------------------------------------------------------------------
--------------------------------------------------------------------------------
--------------------------------------------------------------------------------
-   gsatMainWindow:
-   Main Window Inits the UI and other panels, it also controls the worker
-   threads and resources such as serial port.
--------------------------------------------------------------------------------
-----------------------------------------------------------------------------"""
-
-
 class gsatMainWindow(wx.Frame):
+    """ Main Window Inits the UI and other panels, it also controls the worker
+    threads and resources such as serial port.
+    """
 
     def __init__(self, parent, id=wx.ID_ANY, title="", cmd_line_options=None,
                  pos=wx.DefaultPosition, size=(800, 600), style=wx.DEFAULT_FRAME_STYLE):
@@ -559,12 +543,14 @@ class gsatMainWindow(wx.Frame):
 
         self.aui_mgr.AddPane(
             self.machineJoggingPanel,
-            aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging")
+            aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(
+                1).Caption("Machine Jogging")
             .CloseButton(True).MaximizeButton(True).BestSize(400, 600).Layer(1))
 
         self.aui_mgr.AddPane(
             self.machineStatusPanel,
-            aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status")
+            aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(
+                1).Caption("Machine Status")
             .CloseButton(True).MaximizeButton(True).BestSize(360, 400).Layer(1))
 
         self.CreateMenu()
@@ -590,7 +576,7 @@ class gsatMainWindow(wx.Frame):
     def CreateMenu(self):
 
         # Create the menubar
-        #self.menuBar = FM.FlatMenuBar(self, wx.ID_ANY, 32, 5,
+        # self.menuBar = FM.FlatMenuBar(self, wx.ID_ANY, 32, 5,
         #   options = FM_OPT_SHOW_TOOLBAR | FM_OPT_SHOW_CUSTOMIZE)
         #self.menuBar = fm.FlatMenuBar(self, wx.ID_ANY, options=fm.FM_OPT_SHOW_TOOLBAR)
         self.menuBar = wx.MenuBar()
@@ -1215,7 +1201,7 @@ class gsatMainWindow(wx.Frame):
             self, message="Choose a file",
             defaultDir=currentDir,
             defaultFile=currentFile,
-            wildcard=gc.gWILDCARD,
+            wildcard=gc.FILE_WILDCARD,
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         )
 
@@ -1337,7 +1323,7 @@ class gsatMainWindow(wx.Frame):
             self, message="Create a file",
             defaultDir=currentDir,
             defaultFile=currentFile,
-            wildcard=gc.gWILDCARD,
+            wildcard=gc.FILE_WILDCARD,
             style=wx.SAVE
         )
 
@@ -1785,7 +1771,8 @@ class gsatMainWindow(wx.Frame):
 
     def OnMachineClearAlarm(self, e):
         if self.progExecThread is not None:
-            self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_CLEAR_ALARM, None))
+            self.mainWndOutQueue.put(
+                gc.threadEvent(gc.gEV_CMD_CLEAR_ALARM, None))
 
     def OnMachineClearAlarmUpdate(self, e=None):
         state = False
@@ -2085,7 +2072,7 @@ class gsatMainWindow(wx.Frame):
         self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
         self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
 
-        self.progExecThread = progexec.programExecuteThread(self, self.stateData, self.mainWndOutQueue,
+        self.progExecThread = progexec.MachIfExecuteThread(self, self.stateData, self.mainWndOutQueue,
                                                             self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
 
         self.UpdateUI()
@@ -2268,12 +2255,10 @@ class gsatMainWindow(wx.Frame):
 
         return ret_lienes
 
-    """-------------------------------------------------------------------------
-   gsatMainWindow: program execution thread Event Handlers
-   Handle events coming from serial port thread
-   -------------------------------------------------------------------------"""
-
     def OnThreadEvent(self, e):
+        """ program execution thread event handlers handle events coming from
+        serial port thread
+        """
         if not self.mainWndInQueue.empty():
             # get dat from queue
             te = self.mainWndInQueue.get()
@@ -2373,10 +2358,10 @@ class gsatMainWindow(wx.Frame):
                     if sys.platform in 'darwin':
                         # because dialog icons where not working correctly in Mac OS X
                         gmd.GenericMessageDialog(msgText, "G-Code Program",
-                            gmd.GMD_DEFAULT, wx.OK | wx.ICON_INFORMATION)
+                                                 gmd.GMD_DEFAULT, wx.OK | wx.ICON_INFORMATION)
                     else:
                         wx.MessageBox(msgText, "G-Code Program",
-                            wx.OK | wx.ICON_INFORMATION)
+                                      wx.OK | wx.ICON_INFORMATION)
 
                 self.SetPC(0)
                 self.machineStatusPanel.UpdateUI(
