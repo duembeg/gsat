@@ -127,8 +127,12 @@ gEV_CMD_FEED_HOLD       = 1100
 gEV_CMD_QUEUE_FLUSH     = 1110
 gEV_CMD_RESET           = 1120
 gEV_CMD_MOVE            = 1130
-gEV_CMD_RELATIVE_MOVE   = 1140
-gEV_CMD_CLEAR_ALARM     = 1150
+gEV_CMD_MOVE_RELATIVE   = 1140
+gEV_CMD_RELATIVE_MOVE   = 1150
+gEV_CMD_FAST_MOVE       = 1160
+gEV_CMD_FAST_MOVE_RELATIVE = 1170
+gEV_CMD_CLEAR_ALARM     = 1180
+gEV_CMD_PROBE           = 1190
 
 
 gEV_NULL                =  100
@@ -299,7 +303,6 @@ class gsatConfigData():
       }
 
    def Add(self, key, val, canEval=True):
-      configEntry = self.config.get(key)
       self.config[key] = (canEval, val)
 
    def Get(self, key):

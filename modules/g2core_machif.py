@@ -32,13 +32,30 @@ except ImportError:
 import modules.machif as mi
 
 
-"""----------------------------------------------------------------------------
+""" Global values for this module
+"""
+# This values are only use to initialize or reset base class.
+# base class has internal variables tor track these
+gID = 1200
+gName = "g2core"
+gInputBufferMaxSize = 255
+gInputBufferInitVal = 0
+gInputBufferWatermarkPrcnt = 0.90
+
+class MachIf_g2core(mi.MachIf_Base):
+   """--------------------------------------------------------------------------
    MachIf_g2core:
 
-   Machine Interface g2core class.
+   g2core machine interface
 
    ID = 1200
    Name = "g2core"
+
+   --------------------------------------------------------------------------"""
+
+   """--------------------------------------------------------------------------
+   Notes:
+
    input buffer max size = 255
    input buffer init size = 0
    input buffer watermark = 90%
@@ -48,12 +65,7 @@ import modules.machif as mi
    {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
 
    !!notice f[1,0,1]
-
-----------------------------------------------------------------------------"""
-class MachIf_g2core(mi.MachIf_Base):
-   inputBufferMaxSize = 255
-   inputBufferInitVal = 0
-   inputBufferWatermarkPrcnt = 0.90
+   """
 
    # text mode re expressions
    reMachineAck = re.compile(r'.+ok>\s$')
@@ -61,7 +73,7 @@ class MachIf_g2core(mi.MachIf_Base):
    reMachineVel = re.compile(r'Velocity:\s+(\d+\.\d+)')
    reMachineStat = re.compile(r'Machine state:\s+(\w+)')
 
-   stat_dict ={
+   stat_dict = {
       0:'Init',
       1:'Ready',
       2:'Alarm',
@@ -79,11 +91,21 @@ class MachIf_g2core(mi.MachIf_Base):
       }
 
    def __init__(self, cmd_line_options):
-      super(MachIf_g2core, self).__init__(cmd_line_options, 1200,
-         "g2core", self.inputBufferMaxSize, self.inputBufferInitVal,
-         self.inputBufferWatermarkPrcnt)
+      super(MachIf_g2core, self).__init__(cmd_line_options, gID,
+         gName, gInputBufferMaxSize, gInputBufferInitVal,
+         gInputBufferWatermarkPrcnt)
 
-      self.inputBufferPart = list()
+      self._inputBufferPart = list()
+
+      # list of commads
+      self.cmdQueueFlush = '%\n'
+      self.cmdStatus = '{"sr":null}\n'
+
+   def _init(self):
+      super(MachIf_g2core, self)._reset(gInputBufferMaxSize,
+         gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+
+      self._inputBufferPart = list()
 
    def decode(self, data):
       dataDict = {}
@@ -116,7 +138,7 @@ class MachIf_g2core(mi.MachIf_Base):
             if 'mpoa' in sr:
                sr['posa'] = sr['mpoa']
 
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
       except:
          ack = self.reMachineAck.match(data)
@@ -150,15 +172,15 @@ class MachIf_g2core(mi.MachIf_Base):
          # checking for count in "f" response doesn't always work as expected and broke on edge branch
          # it was never specify that this was the functionality so abandoning that solution
 
-         if len(self.inputBufferPart) > 0:
-            bufferPart = self.inputBufferPart.pop(0)
+         if len(self._inputBufferPart) > 0:
+            bufferPart = self._inputBufferPart.pop(0)
 
-            self.inputBufferSize = self.inputBufferSize - bufferPart
+            self._inputBufferSize = self._inputBufferSize - bufferPart
 
             if self.cmdLineOptions.vverbose:
                print "** MachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                  (bufferPart, self.inputBufferSize, \
-                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+                  (bufferPart, self._inputBufferSize, \
+                  (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
          else:
             pass
             #print "hmmm this could be a problem"
@@ -181,32 +203,16 @@ class MachIf_g2core(mi.MachIf_Base):
          pass
       elif bookeeping:
          dataLen = len(data)
-         self.inputBufferSize = self.inputBufferSize + dataLen
+         self._inputBufferSize = self._inputBufferSize + dataLen
 
-         self.inputBufferPart.append(dataLen)
+         self._inputBufferPart.append(dataLen)
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-               (dataLen, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (dataLen, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
       return data
 
    def factory(self, cmd_line_options):
       return MachIf_g2core(cmd_line_options)
-
-   def getQueueFlushCmd (self):
-      return "%\n"
-
-   def getSetAxisCmd (self):
-      #return "G28.3"
-      return "G92"
-
-   def getStatusCmd(self):
-      return '{"sr":null}\n'
-
-   def reset(self):
-      super(MachIf_g2core, self)._reset(self.inputBufferMaxSize,
-         self.inputBufferInitVal, self.inputBufferWatermarkPrcnt)
-
-      self.inputBufferPart = list()

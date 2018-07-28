@@ -32,25 +32,38 @@ except ImportError:
 import modules.machif as mi
 
 
-"""----------------------------------------------------------------------------
+""" Global values for this module
+"""
+# This values are only use to initialize or reset base class.
+# base class has internal variables tor track these
+gID = 1100
+gName = "TinyG"
+gInputBufferMaxSize = 255
+gInputBufferInitVal = 0
+gInputBufferWatermarkPrcnt = 0.90
+
+
+class MachIf_TinyG(mi.MachIf_Base):
+   """--------------------------------------------------------------------------
    MachIf_TinyG:
 
-   Machine Interface TinyG class.
+   TinyG machine interface.
 
    ID = 1100
    Name = "TinyG"
+
+   --------------------------------------------------------------------------"""
+
+   """--------------------------------------------------------------------------
+   Notes:
+
    input buffer max size = 255
    input buffer init size = 0
    input buffer watermark = 90%
 
    Init buffer to (-1) when connecting it needs a initial '\n' that
    should not be counted
-
-----------------------------------------------------------------------------"""
-class MachIf_TinyG(mi.MachIf_Base):
-   inputBufferMaxSize = 255
-   inputBufferInitVal = 0
-   inputBufferWatermarkPrcnt = 0.90
+   --------------------------------------------------------------------------"""
 
    # text mode re expressions
    reMachineAck = re.compile(r'.+\s+ok>\s$')
@@ -80,11 +93,23 @@ class MachIf_TinyG(mi.MachIf_Base):
       }
 
    def __init__(self, cmd_line_options):
-      super(MachIf_TinyG, self).__init__(cmd_line_options, 1100,
-         "TinyG", self.inputBufferMaxSize, self.inputBufferInitVal,
-         self.inputBufferWatermarkPrcnt)
+      super(MachIf_TinyG, self).__init__(cmd_line_options, gID,
+         gName, gInputBufferMaxSize, gInputBufferInitVal,
+         gInputBufferWatermarkPrcnt)
 
-      self.inputBufferPart = list()
+      self._inputBufferPart = list()
+
+      # list of commands
+      self.cmdInitComm = '\n{"sys":null}\n'
+      self.cmdQueueFlushCmd = "%\n"
+      self.cmdSetAxisCmd = "G28.3"
+      self.cmdStatus = '{"sr":null}\n'
+
+   def _init(self):
+      super(MachIf_TinyG, self)._reset(gInputBufferMaxSize,
+         gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+
+      self._inputBufferPart = list()
 
    def decode(self, data):
       dataDict = {}
@@ -132,7 +157,7 @@ class MachIf_TinyG(mi.MachIf_Base):
             if 'mpoa' in sr:
                sr['posa'] = sr['mpoa']
 
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
       except:
          match = False
@@ -179,15 +204,15 @@ class MachIf_TinyG(mi.MachIf_Base):
          # checking for count in "f" response doesn't always work as expected and broke on edge branch
          # it was never specify that this was the functionality so abandoning that solution
 
-         if len(self.inputBufferPart) > 0:
-            bufferPart = self.inputBufferPart.pop(0)
+         if len(self._inputBufferPart) > 0:
+            bufferPart = self._inputBufferPart.pop(0)
 
-            self.inputBufferSize = self.inputBufferSize - bufferPart
+            self._inputBufferSize = self._inputBufferSize - bufferPart
 
             if self.cmdLineOptions.vverbose:
                print "** MachIf_TinyG input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                  (bufferPart, self.inputBufferSize, \
-                  (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+                  (bufferPart, self._inputBufferSize, \
+                  (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
          else:
             pass
             #print "hmmm this could be a problem"
@@ -210,34 +235,16 @@ class MachIf_TinyG(mi.MachIf_Base):
          pass
       elif bookeeping:
          dataLen = len(data)
-         self.inputBufferSize = self.inputBufferSize + dataLen
+         self._inputBufferSize = self._inputBufferSize + dataLen
 
-         self.inputBufferPart.append(dataLen)
+         self._inputBufferPart.append(dataLen)
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_TinyG input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-               (dataLen, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (dataLen, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
       return data
 
    def factory(self, cmd_line_options):
       return MachIf_TinyG(cmd_line_options)
-
-   def getInitCommCmd (self):
-      return '\n{"sys":null}\n'
-
-   def getQueueFlushCmd (self):
-      return "%\n"
-
-   def getSetAxisCmd (self):
-      return "G28.3"
-
-   def getStatusCmd(self):
-      return '{"sr":null}\n'
-
-   def reset(self):
-      super(MachIf_TinyG, self)._reset(self.inputBufferMaxSize,
-         self.inputBufferInitVal, self.inputBufferWatermarkPrcnt)
-
-      self.inputBufferPart = list()

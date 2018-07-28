@@ -34,11 +34,8 @@ import re
 
 import modules.machif as mi
 
-# -----------------------------------------------------------------------------
-# regular expressions
-# -----------------------------------------------------------------------------
-# -------------
-# Smoothie
+""" Global values for this module
+"""
 
 # Smoothie version, example "Grbl 0.8c ['$' for help]"
 gReGrblVersion = re.compile(r'Build version:\s*(.*), Build date:.*')
@@ -59,6 +56,9 @@ gReGRBLMachineAck = re.compile(r'^ok\s$')
 # grbl error, example  "error:20", "error: Unsupported command"
 gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
 
+# -----------------------------------------------------------------------------
+# global values
+# -----------------------------------------------------------------------------
 # Numeric reperecentation of state, cehcking strings all the time is not
 # fastest way...
 GRBL_STATE_UKNOWN    = 1000
@@ -73,54 +73,71 @@ GRBL_STATE_HOME      = 1080
 GRBL_STATE_SLEEP     = 1090
 GRBL_STATE_STOP      = 1100
 
-gGrblStateDict = {
-   "Idle"   : GRBL_STATE_IDLE,
-   "Run"    : GRBL_STATE_RUN,
-   "Hold"   : GRBL_STATE_HOLD,
-   "Jog"    : GRBL_STATE_JOG,
-   "Alarm"  : GRBL_STATE_ALRARM,
-   "Door"   : GRBL_STATE_DOOR,
-   "Check"  : GRBL_STATE_CHECK,
-   "Home"   : GRBL_STATE_HOME,
-   "Sleep"  : GRBL_STATE_SLEEP,
-   "Stop"   : GRBL_STATE_STOP
-   }
-
+# This values are only use to initialize or reset base class.
+# base class has internal variables tor track these
+gID = 1300
+gName = "Smoothie"
 gInputBufferMaxSize = 127
 gInputBufferInitVal = 0
 gInputBufferWatermarkPrcnt = 0.90
 
-"""----------------------------------------------------------------------------
+class MachIf_Smoothie(mi.MachIf_Base):
+   """----------------------------------------------------------------------------
    MachIf_Smoothie:
 
-   Machine Interface GRBL class.
+   Smoothie machine interface
 
-   ID = 1000
-   Name = "GRBL"
+   ID = 1300
+   Name = "Smoothie"
+
+   --------------------------------------------------------------------------"""
+
+   """--------------------------------------------------------------------------
+   Notes:
+
    Input buffer max size = 127
    Input buffer init size = 0
    Input buffer watermark = 90%
 
    per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer includes
    all characters including nulls and new line)
+   --------------------------------------------------------------------------"""
 
-----------------------------------------------------------------------------"""
-class MachIf_Smoothie(mi.MachIf_Base):
-   statusCmd = '?'
-   currentStatus = GRBL_STATE_UKNOWN
-   autoStatusNextMicro = None
-   machineAutoRefresh = False
+   stat_dict = {
+      "Idle"   : GRBL_STATE_IDLE,
+      "Run"    : GRBL_STATE_RUN,
+      "Hold"   : GRBL_STATE_HOLD,
+      "Jog"    : GRBL_STATE_JOG,
+      "Alarm"  : GRBL_STATE_ALRARM,
+      "Door"   : GRBL_STATE_DOOR,
+      "Check"  : GRBL_STATE_CHECK,
+      "Home"   : GRBL_STATE_HOME,
+      "Sleep"  : GRBL_STATE_SLEEP,
+      "Stop"   : GRBL_STATE_STOP
+      }
 
    def __init__(self, cmd_line_options):
       super(MachIf_Smoothie, self).__init__(cmd_line_options, 1300, "Smoothie",
          gInputBufferMaxSize, gInputBufferInitVal,
          gInputBufferWatermarkPrcnt)
 
-      self.inputBufferPart = list()
+      self._inputBufferPart = list()
 
       self.currentStatus = GRBL_STATE_UKNOWN
       self.autoStatusNextMicro = None
       self.machineAutoRefresh = False
+
+      # list of commads
+      self.cmdStatus = '?'
+      self.cmdInitComm = '\nversion\n'
+
+      # no way to clean quque, this will do soft reset
+      # *stoping coolean and spindle with it.
+      self.cmdQueueFlush = self.cmdReset
+
+   def _init(self):
+      super(MachIf_Smoothie, self)._reset(gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
+      self.inputBufferPart = list()
 
    def decode(self, data):
       dataDict = {}
@@ -143,8 +160,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
          # remove the "?" used to get status notice no "\n"
          bufferPart = 1
 
-         if (self.inputBufferSize >= bufferPart):
-            self.inputBufferSize = self.inputBufferSize - bufferPart
+         if (self._inputBufferSize >= bufferPart):
+            self._inputBufferSize = self._inputBufferSize - bufferPart
          else:
             bufferPart = 0
 
@@ -160,11 +177,11 @@ class MachIf_Smoothie(mi.MachIf_Base):
             print "** MachIf_Smoothie re GRBL status match %s" % str(statusData)
             print "** MachIf_Smoothie str match from %s" % str(data.strip())
             print "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-               (bufferPart, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (bufferPart, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
          # check on status change
-         decodedStatus = gGrblStateDict.get(statusData[0], GRBL_STATE_UKNOWN)
+         decodedStatus = self.stat_dict.get(statusData[0], GRBL_STATE_UKNOWN)
          if self.currentStatus != decodedStatus:
             if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
                self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds= self.stateData.machineStatusAutoRefreshPeriod * 1000)
@@ -175,10 +192,10 @@ class MachIf_Smoothie(mi.MachIf_Base):
       if ack is not None:
          bufferPart = 0
 
-         if len(self.inputBufferPart) > 0:
-            bufferPart = self.inputBufferPart.pop(0)
+         if len(self._inputBufferPart) > 0:
+            bufferPart = self._inputBufferPart.pop(0)
 
-         self.inputBufferSize = self.inputBufferSize - bufferPart
+         self._inputBufferSize = self._inputBufferSize - bufferPart
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_Smoothie found acknowledgement [%s]" % data.strip()
@@ -186,21 +203,21 @@ class MachIf_Smoothie(mi.MachIf_Base):
          r = {}
          dataDict['r'] = r
          dataDict['f'] = [0,0,bufferPart]
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-               (bufferPart, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (bufferPart, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
       error = gReGRBLMachineError.search(data)
       if error is not None:
          bufferPart = 0
 
-         if len(self.inputBufferPart) > 0:
-            bufferPart = self.inputBufferPart.pop(0)
+         if len(self._inputBufferPart) > 0:
+            bufferPart = self._inputBufferPart.pop(0)
 
-         self.inputBufferSize = self.inputBufferSize - bufferPart
+         self._inputBufferSize = self._inputBufferSize - bufferPart
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_Smoothie found error [%s]" % data.strip()
@@ -216,12 +233,12 @@ class MachIf_Smoothie(mi.MachIf_Base):
             error_code = -1
 
          dataDict['f'] = [0,error_code,bufferPart, error.group(1).strip()]
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-               (bufferPart, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (bufferPart, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
       version = gReGrblVersion.match(data)
       if version is not None:
@@ -234,17 +251,26 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
          dataDict['r']['fb'] = version.group(1)
          dataDict['f'] = [0,0,0]
-         dataDict['ib'] = [self.inputBufferMaxSize, self.inputBufferSize]
+         dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
       return dataDict
 
+   def doClearAlarm(self):
+      """ Clears alarm condition in grbl
+      """
+      self.write("$X\n")
+      #self.reset()
+      self.clearAlarmFlag = True
+
    def encode(self, data, bookeeping=True):
+      """ Encodes data properly to be sent to controller
+      """
       if len(data) == 0:
          return data
 
       data = data.encode('ascii')
 
-     # handle special cases due to status in cmd line and how GRBL
+      # handle special cases due to status in cmd line and how GRBL
       # reports deals with this. if not careful we might get two status
       # from a single line but is not consistence on host this works.
       # for this reason if we find "?" on the line will remove all but one
@@ -252,31 +278,31 @@ class MachIf_Smoothie(mi.MachIf_Base):
       # the acknowledged will remove the length of the line. If this is
       # not done the "?" will be counted twice when removing from
       # input buffer usage.
-      if data.find(self.statusCmd) != -1:
-         data = data.replace(self.statusCmd, "") # maybe more then one, replace all by ""
-         data = "".join([data, self.statusCmd])  # only allow one
+      if data.find(self.cmdStatus) != -1:
+         data = data.replace(self.cmdStatus, "") # maybe more then one, replace all by ""
+         data = "".join([data, self.cmdStatus])  # only allow one
 
          if bookeeping:
-            self.inputBufferSize = self.inputBufferSize + 1
+            self._inputBufferSize = self._inputBufferSize + 1
 
-      if data == self.statusCmd and bookeeping:
+      if data == self.cmdStatus and bookeeping:
          if self.cmdLineOptions.vverbose:
             print "** MachIf_Smoothie input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-               (1, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (1, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
       elif data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
          pass
       elif bookeeping:
          dataLen = len(data)
-         self.inputBufferSize = self.inputBufferSize + dataLen
+         self._inputBufferSize = self._inputBufferSize + dataLen
 
-         self.inputBufferPart.append(dataLen)
+         self._inputBufferPart.append(dataLen)
 
          if self.cmdLineOptions.vverbose:
             print "** MachIf_Smoothie input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-               (dataLen, self.inputBufferSize, \
-               (100 * (float(self.inputBufferSize)/self.inputBufferMaxSize)))
+               (dataLen, self._inputBufferSize, \
+               (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
       return data
 
@@ -287,18 +313,6 @@ class MachIf_Smoothie(mi.MachIf_Base):
       super(MachIf_Smoothie, self).init(state_data)
       self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
 
-   def getInitCommCmd (self):
-      return "\nversion\n"
-
-   def getQueueFlushCmd (self):
-      return "\x18"
-
-   def getSetAxisCmd(self):
-      return "G92"
-
-   def getStatusCmd(self):
-      return self.statusCmd
-
    def tick (self):
       # check if is time for autorefresh and send get status cmd and prepare next refresh time
       if (self.autoStatusNextMicro != None) and (self.currentStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]):
@@ -306,8 +320,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
          tnowMilli = tnow.second*1000 + tnow.microsecond/1000
          tdeltaMilli = self.autoStatusNextMicro.second*1000 +  self.autoStatusNextMicro.microsecond/1000
          if  long(tnowMilli - tdeltaMilli) >= 0:
-            if self.okToSend(self.statusCmd):
-               super(MachIf_Smoothie, self).write(self.statusCmd)
+            if self.okToSend(self.cmdStatus):
+               super(MachIf_Smoothie, self).write(self.cmdStatus)
 
             self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
@@ -317,8 +331,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
       if self.machineAutoRefresh != self.stateData.machineStatusAutoRefresh:
          # depending on current state do appropriate action
          if self.machineAutoRefresh == False:
-            if self.okToSend(self.statusCmd):
-               super(MachIf_Smoothie, self).write(self.statusCmd)
+            if self.okToSend(self.cmdStatus):
+               super(MachIf_Smoothie, self).write(self.cmdStatus)
 
             self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
          else:
@@ -326,10 +340,6 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
          # finally update local variable
          self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
-
-   def reset(self):
-      super(MachIf_Smoothie, self)._reset(gInputBufferMaxSize, gInputBufferInitVal, gInputBufferWatermarkPrcnt)
-      self.inputBufferPart = list()
 
    def write(self, txData, raw_write=False):
       askForStatus = False
@@ -342,8 +352,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
       bytesSent = super(MachIf_Smoothie, self).write(txData, raw_write)
 
       if askForStatus and self.machineAutoRefresh:
-         if self.okToSend(self.statusCmd):
-            super(MachIf_Smoothie, self).write(self.statusCmd)
+         if self.okToSend(self.cmdStatus):
+            super(MachIf_Smoothie, self).write(self.cmdStatus)
 
          self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(microseconds = self.stateData.machineStatusAutoRefreshPeriod * 1000)
 

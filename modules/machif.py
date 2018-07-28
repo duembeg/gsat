@@ -45,53 +45,82 @@ import modules.serial_thread as st
 class MachIf_Base(object):
    __metaclass__ = ABCMeta
 
-   id = 0
-   name = ""
-   inputBufferMaxSize = 100
-   inputBufferWatermark = 90 #float(self.inputBufferMaxSize) * 0.9
-   inputBufferWatermarkPrcnt = 0.9
-   inputBufferSize = 0
-   inputBufferInitVal = 0
-   cmdLineOptions = None
-   serialPortOpen = False
-   serialTxRxThread = None
-   serialTxRxInQueue = None
-   serialTxRxOutQueue = None
-   stateData = None
-
    def __init__(self, cmd_line_options, id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
       self.id = id
       self.name = name
-      self.inputBufferMaxSize = input_buffer_max_size
-      self.inputBufferWatermarkPrcnt = input_buffer_watermark_prcnt
-      self.inputBufferWatermark = float(self.inputBufferMaxSize) * self.inputBufferWatermarkPrcnt
-      self.inputBufferInitVal = input_buffer_init_val
-      self.inputBufferSize = self.inputBufferInitVal
+      self._inputBufferMaxSize = input_buffer_max_size
+      self._inputBufferWatermarkPrcnt = input_buffer_watermark_prcnt
+      self._inputBufferWatermark = float(self._inputBufferMaxSize) * self._inputBufferWatermarkPrcnt
+      self._inputBufferInitVal = input_buffer_init_val
+      self._inputBufferSize = self._inputBufferInitVal
 
       self.cmdLineOptions = cmd_line_options
 
-      self.serialPortOpen = False
-      self.serialTxRxThread = None
-      self.serialTxRxInQueue = Queue.Queue()
-      self.serialTxRxOutQueue = Queue.Queue()
+      self._serialPortOpen = False
+      self._serialTxRxThread = None
+      self._serialTxRxInQueue = Queue.Queue()
+      self._serialTxRxOutQueue = Queue.Queue()
       self.stateData = None
 
+      # cmds
+      self.cmdCycleStart = '~'
+      self.cmdFeedHold = '!'
+      self.cmdInitComm = ''
+      self.cmdQueueFlush = ''
+      self.cmdProbeAxis = '"G38.2'
+      self.cmdReset = '\x18'
+      self.cmdSetAxis = 'G92'
+      self.cmdStatus = ''
+
+   @abstractmethod
+   def _init(self):
+      pass
+
    def _reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
-      self.inputBufferMaxSize = input_buffer_max_size
-      self.inputBufferWatermark = float(self.inputBufferMaxSize) * input_buffer_watermark_prcnt
-      self.inputBufferSize = input_buffer_init_val
+      self._inputBufferMaxSize = input_buffer_max_size
+      self._inputBufferWatermark = float(self._inputBufferMaxSize) * input_buffer_watermark_prcnt
+      self._inputBufferSize = input_buffer_init_val
 
    def close(self):
-      if self.serialTxRxThread is not None:
-         self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+      if self._serialTxRxThread is not None:
+         self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
 
    @abstractmethod
    def decode(self, data):
       return data
 
-   #@abstractmethod
    def doClearAlarm(self):
       pass
+
+   def doCycleStartResume(self):
+      self.write(self.getCycleStartCmd())
+
+   def doFastMove(self, dirAxisCoor):
+      pass
+
+   def doFastMoveRelative(self, dirAxisCoor):
+      pass
+
+   def doFeedHold(self):
+      self.write(self.getFeedHoldCmd())
+
+   def doGetStatus(self):
+      if self.okToSend(self.getStatusCmd()):
+         self.write(self.getStatusCmd())
+
+   def doMove(self, dirAxisCoor):
+      pass
+
+   def doMoveRelative(self, dirAxisCoor):
+      pass
+
+   def doReset(self):
+      self.write(self.getResetCmd())
+      self._init()
+
+   def doQueueFlush(self):
+      self.write(self.getQueueFlushCmd())
+      self._init()
 
    @abstractmethod
    def encode(self, data, bookeeping=True):
@@ -102,44 +131,40 @@ class MachIf_Base(object):
       return None
 
    def getCycleStartCmd (self):
-      return "~"
+      return self.cmdCycleStart
 
    def getId(self):
       return self.id
 
    def getFeedHoldCmd (self):
-      return "!"
+      return self.cmdFeedHold
 
    def getInitCommCmd (self):
-      return ""
+      return self.cmdInitComm
 
    def getName(self):
       return self.name
 
    def getQueueFlushCmd (self):
-      return ""
+      return self.cmdQueueFlush
 
    def getProbeAxisCmd (self):
-      return "G38.2"
+      return self.cmdProbeAxis
 
    def getResetCmd (self):
-      return "\x18"
+      return self.cmdReset
 
    def getSetAxisCmd (self):
-      return "G92"
+      return self.cmdSetAxis
 
    def getStatusCmd(self):
-      return ""
-
-   def getStatus(self):
-      if self.okToSend(self.getStatusCmd()):
-         self.write(self.getStatusCmd())
+      return self.cmdStatus
 
    def init(self, state_data):
       self.stateData = state_data
 
    def isSerialPortOpen(self):
-      return self.serialPortOpen
+      return self._serialPortOpen
 
    def okToSend(self, data):
 
@@ -151,7 +176,7 @@ class MachIf_Base(object):
       for line in lines:
          data = self.encode(line, bookeeping=False)
 
-         if (self.inputBufferSize + len(data)) > self.inputBufferWatermark:
+         if (self._inputBufferSize + len(data)) > self._inputBufferWatermark:
             bufferHasRoom = False
             break
 
@@ -160,18 +185,18 @@ class MachIf_Base(object):
    def open(self):
       if self.stateData is not None:
          # inti serial RX thread
-         self.serialTxRxThread = st.SerialPortThread(self, self.stateData, self.serialTxRxOutQueue,
-         self.serialTxRxInQueue, self.cmdLineOptions)
+         self._serialTxRxThread = st.SerialPortThread(self, self.stateData, self._serialTxRxOutQueue,
+         self._serialTxRxInQueue, self.cmdLineOptions)
          self.write(self.getInitCommCmd())
 
    def read(self):
       rxData = {}
 
-      if self.serialTxRxThread is not None:
+      if self._serialTxRxThread is not None:
 
-         if not self.serialTxRxInQueue.empty():
+         if not self._serialTxRxInQueue.empty():
             # get item from queue
-            e = self.serialTxRxInQueue.get()
+            e = self._serialTxRxInQueue.get()
 
             if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN,
                gc.gEV_SER_PORT_CLOSE]:
@@ -180,10 +205,10 @@ class MachIf_Base(object):
                rxData['event']['data'] = e.data
 
                if e.event_id == gc.gEV_SER_PORT_OPEN:
-                  self.serialPortOpen = True
+                  self._serialPortOpen = True
 
                elif e.event_id == gc.gEV_SER_PORT_CLOSE:
-                  self.serialPortOpen = False
+                  self._serialPortOpen = False
 
             elif e.event_id == gc.gEV_SER_RXDATA:
 
@@ -193,20 +218,17 @@ class MachIf_Base(object):
 
       return rxData
 
-   def reset(self):
-      pass
-
    def tick(self):
       pass
 
    def write(self, txData, raw_write=False):
       bytesSent = 0
 
-      if self.serialTxRxThread is not None:
+      if self._serialTxRxThread is not None:
 
          if raw_write:
-            # self.serialTxRxThread.serialWrite(txData)
-            self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+            # self._serialTxRxThread.serialWrite(txData)
+            self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
                   txData))
          else:
             lines = txData.splitlines(True)
@@ -221,9 +243,9 @@ class MachIf_Base(object):
 
                    *** UPDATE: there was no observable benefit nor issues
                    Leaving this here to revisit in future .'''
-               # self.serialTxRxThread.serialWrite(line)
+               # self._serialTxRxThread.serialWrite(line)
 
-               self.serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+               self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
                      line))
 
                bytesSent = bytesSent + len(line)

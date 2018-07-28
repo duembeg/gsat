@@ -168,10 +168,7 @@ class programExecuteThread(threading.Thread):
          elif e.event_id == gc.gEV_CMD_GET_STATUS:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_GET_STATUS."
-            #self.serialWriteQueue.append((self.machIfModule.getStatus(), False))
-            # should not hold status request for waiting for ack to block
-            if self.machIfModule.okToSend(self.machIfModule.getStatusCmd()):
-               self.SerialWrite(self.machIfModule.getStatusCmd())
+            self.machIfModule.doGetStatus()
 
          elif e.event_id == gc.gEV_CMD_CYCLE_START:
             if self.cmdLineOptions.vverbose:
@@ -179,7 +176,7 @@ class programExecuteThread(threading.Thread):
 
             # this command is usually use for resume after a machine stop
             # thus, queues most probably full send without checking if ok...
-            self.SerialWrite(self.machIfModule.getCycleStartCmd())
+            self.machIfModule.doCycleStartResume()
 
          elif e.event_id == gc.gEV_CMD_FEED_HOLD:
             if self.cmdLineOptions.vverbose:
@@ -187,22 +184,19 @@ class programExecuteThread(threading.Thread):
 
             # this command is usually use for abort and machine stop
             # we can't afford to skip this action, send without checking if ok...
-            self.SerialWrite(self.machIfModule.getFeedHoldCmd())
+            self.machIfModule.doFeedHold()
 
          elif e.event_id == gc.gEV_CMD_QUEUE_FLUSH:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_QUEUE_FLUSH."
 
-            self.SerialWrite(self.machIfModule.getQueueFlushCmd())
-            self.machIfModule.reset()
+            self.machIfModule.doQueueFlush()
 
          elif e.event_id == gc.gEV_CMD_RESET:
             if self.cmdLineOptions.vverbose:
                print "** programExecuteThread got event gc.gEV_CMD_RESET."
 
-            self.SerialWrite(self.machIfModule.getResetCmd())
-            time.sleep(2)
-            self.machIfModule.reset()
+            self.machIfModule.doReset()
 
          elif e.event_id == gc.gEV_CMD_CLEAR_ALARM:
             if self.cmdLineOptions.vverbose:
@@ -373,7 +367,7 @@ class programExecuteThread(threading.Thread):
             #self.SerialRead()
 
             if self.machineAutoStatus:
-               self.SerialWrite(self.machIfModule.getStatusCmd())
+               self.machIfModule.doGetStatus()
          else:
             writeToDevice = False
             self.SerialRead()
