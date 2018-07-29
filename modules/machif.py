@@ -89,7 +89,7 @@ class MachIf_Base(object):
         pass
 
     def doCycleStartResume(self):
-        self.write(self.getCycleStartCmd())
+        self.write(self.cmdCycleStart)
 
     def doFastMove(self, dirAxisCoor):
         pass
@@ -98,11 +98,14 @@ class MachIf_Base(object):
         pass
 
     def doFeedHold(self):
-        self.write(self.getFeedHoldCmd())
+        self.write(self.cmdFeedHold)
 
     def doGetStatus(self):
-        if self.okToSend(self.getStatusCmd()):
-            self.write(self.getStatusCmd())
+        if self.okToSend(self.cmdStatus):
+            self.write(self.cmdStatus)
+
+    def doInitComm(self):
+        self.write(self.cmdInitComm)
 
     def doMove(self, dirAxisCoor):
         pass
@@ -111,11 +114,11 @@ class MachIf_Base(object):
         pass
 
     def doReset(self):
-        self.write(self.getResetCmd())
+        self.write(self.cmdReset)
         self._init()
 
     def doQueueFlush(self):
-        self.write(self.getQueueFlushCmd())
+        self.write(self.cmdQueueFlush)
         self._init()
 
     @abstractmethod
@@ -183,7 +186,7 @@ class MachIf_Base(object):
             # inti serial RX thread
             self._serialTxRxThread = st.SerialPortThread(self, self.stateData, self._serialTxRxOutQueue,
                                                          self._serialTxRxInQueue, self.cmdLineOptions)
-            self.write(self.getInitCommCmd())
+            self.doInitComm()
 
     def read(self):
         rxData = {}

@@ -136,17 +136,17 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         # list of commads
         self.cmdStatus = '?'
-        self.cmdInitComm = ''
+        self.cmdInitComm = self.cmdReset
 
         # no way to clean quque, this will do soft reset
         # *stoping coolean and spindle with it.
         self.cmdQueueFlush = self.cmdReset
 
-        self.cmdPostInit = '\n$I\n'
+        self.cmdPostInit = '$I\n'
 
     def _init(self):
         super(MachIf_GRBL, self)._reset(BUFFER_MAX_SIZE,
-                                        BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
+            BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -297,6 +297,13 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.write("$X\n")
         # self.reset()
         self.clearAlarmFlag = True
+
+    def doInitComm(self):
+        """ soft reset grbl to get it to talk to is iwht version info
+            not all arduino boards reset on connect.
+        """
+        self.write(self.cmdInitComm)
+        self._init()
 
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller
