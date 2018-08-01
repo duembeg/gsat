@@ -38,14 +38,14 @@ MACHIF_NONE = None
 # gMACHIF_G2CORE          = 1200
 # gMACHIF_SMOOTHIE        = 1300
 
-gMachIf_GRBL = mi_grbl.MachIf_GRBL(gc.CMD_LINE_OPTIONS)
-gMachIf_TinyG = mi_tinyg.MachIf_TinyG(gc.CMD_LINE_OPTIONS)
-gMachIf_g2core = mi_g2core.MachIf_g2core(gc.CMD_LINE_OPTIONS)
-gMachIf_Smoothie = mi_smoothie.MachIf_Smoothie(gc.CMD_LINE_OPTIONS)
+MACHIF_GRBL = mi_grbl.MachIf_GRBL(gc.CMD_LINE_OPTIONS)
+MACHIF_TINYG = mi_tinyg.MachIf_TinyG(gc.CMD_LINE_OPTIONS)
+MACHIF_G2CORE = mi_g2core.MachIf_g2core(gc.CMD_LINE_OPTIONS)
+MACHIF_SMOOTHIE = mi_smoothie.MachIf_Smoothie(gc.CMD_LINE_OPTIONS)
 
-gMachIfClsList = [gMachIf_GRBL, gMachIf_TinyG,
-                  gMachIf_g2core, gMachIf_Smoothie]
-gMachIfList = [mach_if_cls.getName() for mach_if_cls in gMachIfClsList]
+MACHIF_CLS_LIST = [MACHIF_GRBL, MACHIF_TINYG,
+                  MACHIF_G2CORE, MACHIF_SMOOTHIE]
+MACHIF_LIST = [mach_if_cls.getName() for mach_if_cls in MACHIF_CLS_LIST]
 
 
 def GetMachIfName(machIfId):
@@ -53,7 +53,7 @@ def GetMachIfName(machIfId):
     """
     machIfName = "None"
 
-    for mach_if in gMachIfClsList:
+    for mach_if in MACHIF_CLS_LIST:
         if machIfId == mach_if.getId():
             machIfName = mach_if.getName()
             break
@@ -66,7 +66,7 @@ def GetMachIfId(deviceStr):
     """
     machIfId = MACHIF_NONE
 
-    for mach_if in gMachIfClsList:
+    for mach_if in MACHIF_CLS_LIST:
         if deviceStr == mach_if.getName():
             machIfId = mach_if.getId()
             break
@@ -74,10 +74,10 @@ def GetMachIfId(deviceStr):
     # special backward compatibility
     if machIfId == MACHIF_NONE:
         if deviceStr in ["TinyG2"]:
-            machIfId = gMachIf_g2core.getId()
+            machIfId = MACHIF_G2CORE.getId()
 
         elif deviceStr in ["Grbl", "GRBL"]:
-            machIfId = gMachIf_GRBL.getId()
+            machIfId = MACHIF_GRBL.getId()
 
     return machIfId
 
@@ -87,7 +87,7 @@ def GetMachIfModule(machIfId):
     """
     machIfModule = None
 
-    for mach_if in gMachIfClsList:
+    for mach_if in MACHIF_CLS_LIST:
         if machIfId == mach_if.getId():
             machIfModule = mach_if.factory(gc.CMD_LINE_OPTIONS)
             break

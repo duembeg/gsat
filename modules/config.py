@@ -92,12 +92,12 @@ USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    
 
 ------------------------------------------------------------------------ """
 
-gSTATE_ABORT = 1
-gSTATE_IDLE = 100
-gSTATE_RUN = 200
-gSTATE_STEP = 300
-gSTATE_BREAK = 400
-gSTATE_PAUSE = 500
+STATE_ABORT = 1
+STATE_IDLE = 100
+STATE_RUN = 200
+STATE_STEP = 300
+STATE_BREAK = 400
+STATE_PAUSE = 500
 
 '''
 Notes:
@@ -110,49 +110,49 @@ open again and will start in IDLE state.
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
 # EVENT ID             EVENT CODE
-gEV_CMD_NULL = 100
-gEV_CMD_EXIT = 200
-gEV_CMD_RUN = 1000
-gEV_CMD_STEP = 1010
-gEV_CMD_STOP = 1020
-gEV_CMD_SEND = 1030
-gEV_CMD_SEND_W_ACK = 1040
-gEV_CMD_AUTO_STATUS = 1050
-gEV_CMD_OK_TO_POST = 1060
-gEV_CMD_GET_STATUS = 1070
-gEV_CMD_SER_TXDATA = 1080
-gEV_CMD_CYCLE_START = 1090
-gEV_CMD_FEED_HOLD = 1100
-gEV_CMD_QUEUE_FLUSH = 1110
-gEV_CMD_RESET = 1120
-gEV_CMD_MOVE = 1130
-gEV_CMD_MOVE_RELATIVE = 1140
-gEV_CMD_RELATIVE_MOVE = 1150
-gEV_CMD_FAST_MOVE = 1160
-gEV_CMD_FAST_MOVE_RELATIVE = 1170
-gEV_CMD_CLEAR_ALARM = 1180
-gEV_CMD_PROBE = 1190
+EV_CMD_NULL = 100
+EV_CMD_EXIT = 200
+EV_CMD_RUN = 1000
+EV_CMD_STEP = 1010
+EV_CMD_STOP = 1020
+EV_CMD_SEND = 1030
+EV_CMD_SEND_W_ACK = 1040
+EV_CMD_AUTO_STATUS = 1050
+EV_CMD_OK_TO_POST = 1060
+EV_CMD_GET_STATUS = 1070
+EV_CMD_SER_TXDATA = 1080
+EV_CMD_CYCLE_START = 1090
+EV_CMD_FEED_HOLD = 1100
+EV_CMD_QUEUE_FLUSH = 1110
+EV_CMD_RESET = 1120
+EV_CMD_MOVE = 1130
+EV_CMD_MOVE_RELATIVE = 1140
+EV_CMD_RELATIVE_MOVE = 1150
+EV_CMD_FAST_MOVE = 1160
+EV_CMD_FAST_MOVE_RELATIVE = 1170
+EV_CMD_CLEAR_ALARM = 1180
+EV_CMD_PROBE = 1190
 
 
-gEV_NULL = 100
-gEV_EXIT = 200
-gEV_ABORT = 2000
-gEV_RUN_END = 2010
-gEV_STEP_END = 2020
-gEV_DATA_OUT = 2030
-gEV_DATA_IN = 2040
-gEV_HIT_BRK_PT = 2050
-gEV_PC_UPDATE = 2060
-gEV_HIT_MSG = 2070
-gEV_SER_RXDATA = 2080
-gEV_SER_PORT_OPEN = 2090
-gEV_SER_PORT_CLOSE = 2100
-gEV_TIMER = 2110
-gEV_DATA_STATUS = 2120
-gEV_DEVICE_DETECTED = 2130
+EV_NULL = 100
+EV_EXIT = 200
+EV_ABORT = 2000
+EV_RUN_END = 2010
+EV_STEP_END = 2020
+EV_DATA_OUT = 2030
+EV_DATA_IN = 2040
+EV_HIT_BRK_PT = 2050
+EV_PC_UPDATE = 2060
+EV_HIT_MSG = 2070
+EV_SER_RXDATA = 2080
+EV_SER_PORT_OPEN = 2090
+EV_SER_PORT_CLOSE = 2100
+EV_TIMER = 2110
+EV_DATA_STATUS = 2120
+EV_DEVICE_DETECTED = 2130
 
 
-def InitConfig(cmd_line_options, config_data, state_data):
+def init_config(cmd_line_options, config_data, state_data):
     """ Initialize config vars
     """
     global CMD_LINE_OPTIONS
@@ -170,7 +170,7 @@ class gsatStateData():
     def __init__(self):
 
         # state status
-        self.swState = gSTATE_IDLE
+        self.swState = STATE_IDLE
 
         # link status
         self.grblDetected = False
@@ -300,10 +300,14 @@ class gsatConfigData():
             '/cv2/CaptureHeight': (True, 480),
         }
 
-    def Add(self, key, val, canEval=True):
+    def add(self, key, val, canEval=True):
+        """ Add new key value pair
+        """
         self.config[key] = (canEval, val)
 
-    def Get(self, key):
+    def get(self, key):
+        """ Get value for a given key
+        """
         retVal = None
         if key in self.config.keys():
             configEntry = self.config.get(key)
@@ -311,12 +315,16 @@ class gsatConfigData():
 
         return retVal
 
-    def Set(self, key, val):
+    def set(self, key, val):
+        """ Set value for a given key
+        """
         if key in self.config.keys():
             configEntry = self.config.get(key)
             self.config[key] = (configEntry[0], val)
 
-    def Load(self, configFile):
+    def load(self, configFile):
+        """ Load data from config file
+        """
         for key in self.config.keys():
             configEntry = self.config.get(key)
             configRawData = str(configFile.Read(key))
@@ -329,7 +337,9 @@ class gsatConfigData():
 
                 self.config[key] = (configEntry[0], configData)
 
-    def Save(self, configFile):
+    def save(self, configFile):
+        """ Save data to config file
+        """
         keys = sorted(self.config.keys())
         for key in keys:
             configEntry = self.config.get(key)
@@ -342,13 +352,13 @@ class gsatConfigData():
 EVT_THREAD_QUEQUE_EVENT_ID = 0x7ECAFE
 
 
-def EVT_THREAD_QUEUE_EVENT(win, func):
-    """ Define thread data event.
+def reg_thread_queue_data_event(win, func):
+    """ register for thread queue data event.
     """
     win.Connect(-1, -1, EVT_THREAD_QUEQUE_EVENT_ID, func)
 
 
-class threadQueueEvent(wx.PyEvent):
+class ThreadQueueEvent(wx.PyEvent):
     """ Simple event to carry arbitrary data.
     """
     def __init__(self, data):
@@ -358,7 +368,9 @@ class threadQueueEvent(wx.PyEvent):
         self.data = data
 
 
-class threadEvent():
+class SimpleEvent():
+    """ Simple event to carry arbitrary data.
+    """
     def __init__(self, event_id, data):
         self.event_id = event_id
         self.data = data

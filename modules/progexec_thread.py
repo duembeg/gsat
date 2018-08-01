@@ -74,8 +74,8 @@ class MachIfExecuteThread(threading.Thread):
         self.workingCounterWorking = 0
         self.lastWorkingCounterWorking = -1
 
-        self.swState = gc.gSTATE_IDLE
-        self.lastEventID = gc.gEV_CMD_NULL
+        self.swState = gc.STATE_IDLE
+        self.lastEventID = gc.EV_CMD_NULL
 
         self.machineAutoStatus = machine_auto_status
 
@@ -100,7 +100,7 @@ class MachIfExecuteThread(threading.Thread):
             # if self.okToPostEvents:
             #   self.okToPostEvents = False
             #   wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+            wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
 
         # process events from queue ---------------------------------------------
         if not self.progExecInQueue.empty():
@@ -109,7 +109,7 @@ class MachIfExecuteThread(threading.Thread):
 
             self.lastEventID = e.event_id
 
-            if e.event_id == gc.gEV_CMD_EXIT:
+            if e.event_id == gc.EV_CMD_EXIT:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_EXIT."
 
@@ -117,59 +117,59 @@ class MachIfExecuteThread(threading.Thread):
                     self.machIfModule.close()
                 else:
                     self.endThread = True
-                    self.swState = gc.gSTATE_IDLE
+                    self.swState = gc.STATE_IDLE
 
-            elif e.event_id == gc.gEV_CMD_RUN:
+            elif e.event_id == gc.EV_CMD_RUN:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_RUN, swState->gc.gSTATE_RUN"
                 self.gcodeDataLines = e.data[0]
                 self.initialProgramCounter = e.data[1]
                 self.workingProgramCounter = self.initialProgramCounter
                 self.breakPointSet = e.data[2]
-                self.swState = gc.gSTATE_RUN
+                self.swState = gc.STATE_RUN
 
-            elif e.event_id == gc.gEV_CMD_STEP:
+            elif e.event_id == gc.EV_CMD_STEP:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_STEP, swState->gc.gSTATE_STEP"
                 self.gcodeDataLines = e.data[0]
                 self.initialProgramCounter = e.data[1]
                 self.workingProgramCounter = self.initialProgramCounter
                 self.breakPointSet = e.data[2]
-                self.swState = gc.gSTATE_STEP
+                self.swState = gc.STATE_STEP
 
-            elif e.event_id == gc.gEV_CMD_STOP:
+            elif e.event_id == gc.EV_CMD_STOP:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE"
 
-                self.swState = gc.gSTATE_IDLE
+                self.swState = gc.STATE_IDLE
 
-            elif e.event_id == gc.gEV_CMD_SEND:
+            elif e.event_id == gc.EV_CMD_SEND:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_SEND."
                 self.serialWriteQueue.append((e.data, False))
 
-            elif e.event_id == gc.gEV_CMD_SEND_W_ACK:
+            elif e.event_id == gc.EV_CMD_SEND_W_ACK:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_SEND_W_ACK."
                 self.serialWriteQueue.append((e.data, True))
 
-            elif e.event_id == gc.gEV_CMD_AUTO_STATUS:
+            elif e.event_id == gc.EV_CMD_AUTO_STATUS:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_AUTO_STATUS."
                 self.machineAutoStatus = e.data
 
-            elif e.event_id == gc.gEV_CMD_OK_TO_POST:
+            elif e.event_id == gc.EV_CMD_OK_TO_POST:
                 # if self.cmdLineOptions.vverbose:
                 #   print "** programExecuteThread got event gc.gEV_CMD_OK_TO_POST."
                 #self.okToPostEvents = True
                 pass
 
-            elif e.event_id == gc.gEV_CMD_GET_STATUS:
+            elif e.event_id == gc.EV_CMD_GET_STATUS:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_GET_STATUS."
                 self.machIfModule.doGetStatus()
 
-            elif e.event_id == gc.gEV_CMD_CYCLE_START:
+            elif e.event_id == gc.EV_CMD_CYCLE_START:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_CYCLE_START."
 
@@ -177,7 +177,7 @@ class MachIfExecuteThread(threading.Thread):
                 # thus, queues most probably full send without checking if ok...
                 self.machIfModule.doCycleStartResume()
 
-            elif e.event_id == gc.gEV_CMD_FEED_HOLD:
+            elif e.event_id == gc.EV_CMD_FEED_HOLD:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_FEED_HOLD."
 
@@ -185,19 +185,19 @@ class MachIfExecuteThread(threading.Thread):
                 # we can't afford to skip this action, send without checking if ok...
                 self.machIfModule.doFeedHold()
 
-            elif e.event_id == gc.gEV_CMD_QUEUE_FLUSH:
+            elif e.event_id == gc.EV_CMD_QUEUE_FLUSH:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_QUEUE_FLUSH."
 
                 self.machIfModule.doQueueFlush()
 
-            elif e.event_id == gc.gEV_CMD_RESET:
+            elif e.event_id == gc.EV_CMD_RESET:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_RESET."
 
                 self.machIfModule.doReset()
 
-            elif e.event_id == gc.gEV_CMD_CLEAR_ALARM:
+            elif e.event_id == gc.EV_CMD_CLEAR_ALARM:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got event gc.gEV_CMD_CLEAR_ALARM."
 
@@ -228,18 +228,18 @@ class MachIfExecuteThread(threading.Thread):
         if 'event' in rxData:
             forwardEvent = True
             e = rxData['event']
-            if e['id'] == gc.gEV_ABORT:
+            if e['id'] == gc.EV_ABORT:
                 # make sure we stop processing any states...
-                self.swState = gc.gSTATE_ABORT
+                self.swState = gc.STATE_ABORT
 
-            if e['id'] == gc.gEV_EXIT:
+            if e['id'] == gc.EV_EXIT:
                 self.endThread = True
-                self.swState = gc.gSTATE_IDLE
+                self.swState = gc.STATE_IDLE
                 forwardEvent = False
 
             if forwardEvent:
                 # add data to queue and signal main window to consume
-                self.progExecOutQueue.put(gc.threadEvent(e['id'], e['data']))
+                self.progExecOutQueue.put(gc.SimpleEvent(e['id'], e['data']))
                 mainWndEvent = True
 
         else:
@@ -250,22 +250,22 @@ class MachIfExecuteThread(threading.Thread):
 
                     # add data to queue and signal main window to consume
                     self.progExecOutQueue.put(
-                        gc.threadEvent(gc.gEV_DATA_IN, raw_data))
+                        gc.SimpleEvent(gc.EV_DATA_IN, raw_data))
                     mainWndEvent = True
 
             if 'sr' in rxData:
-                self.progExecOutQueue.put(gc.threadEvent(
-                    gc.gEV_DATA_STATUS, rxData['sr']))
+                self.progExecOutQueue.put(gc.SimpleEvent(
+                    gc.EV_DATA_STATUS, rxData['sr']))
                 mainWndEvent = True
 
             if 'r' in rxData:
                 if 'fb' in rxData['r']:
-                    self.progExecOutQueue.put(gc.threadEvent(
-                        gc.gEV_DATA_STATUS, rxData['r']))
+                    self.progExecOutQueue.put(gc.SimpleEvent(
+                        gc.EV_DATA_STATUS, rxData['r']))
                     mainWndEvent = True
 
         if mainWndEvent:
-            wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+            wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
 
         return rxData
 
@@ -280,7 +280,7 @@ class MachIfExecuteThread(threading.Thread):
             # sent data to UI
             if bytes_sent > 0:
                 self.progExecOutQueue.put(
-                    gc.threadEvent(gc.gEV_DATA_OUT, line))
+                    gc.SimpleEvent(gc.EV_DATA_OUT, line))
 
             bytesSent = bytesSent + bytes_sent
 
@@ -296,10 +296,10 @@ class MachIfExecuteThread(threading.Thread):
         while (waitForAcknowlege):
             rxDataDict = self.WaitForResponse()
 
-            if self.swState == gc.gSTATE_ABORT:
+            if self.swState == gc.STATE_ABORT:
                 waitForAcknowlege = False
 
-            if self.lastEventID == gc.gEV_CMD_STOP:
+            if self.lastEventID == gc.EV_CMD_STOP:
                 waitForAcknowlege = False
 
             if self.endThread:
@@ -334,7 +334,7 @@ class MachIfExecuteThread(threading.Thread):
         while (waitForResponse):
             rxDataDict = self.SerialRead()
 
-            if self.swState == gc.gSTATE_ABORT:
+            if self.swState == gc.STATE_ABORT:
                 waitForResponse = False
 
             if 'raw_data' in rxDataDict:
@@ -346,7 +346,7 @@ class MachIfExecuteThread(threading.Thread):
             if self.endThread:
                 waitForResponse = False
 
-            if self.lastEventID == gc.gEV_CMD_STOP:
+            if self.lastEventID == gc.EV_CMD_STOP:
                 waitForResponse = False
 
             time.sleep(0.01)
@@ -383,32 +383,32 @@ class MachIfExecuteThread(threading.Thread):
             self.workingProgramCounter += 1
 
             # if we stop early make sure to update PC to main UI
-            if self.swState == gc.gSTATE_IDLE:
-                self.progExecOutQueue.put(gc.threadEvent(
-                    gc.gEV_PC_UPDATE, self.workingProgramCounter))
+            if self.swState == gc.STATE_IDLE:
+                self.progExecOutQueue.put(gc.SimpleEvent(
+                    gc.EV_PC_UPDATE, self.workingProgramCounter))
 
     def ProcessRunSate(self):
         # send data to serial port ----------------------------------------------
 
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
-            self.swState = gc.gSTATE_IDLE
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_RUN_END, None))
+            self.swState = gc.STATE_IDLE
+            self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_RUN_END, None))
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread reach last PC, swState->gc.gSTATE_IDLE"
             return
 
         # update PC
         if self.lastWorkingCounterWorking != self.workingProgramCounter:
-            self.progExecOutQueue.put(gc.threadEvent(
-                gc.gEV_PC_UPDATE, self.workingProgramCounter))
+            self.progExecOutQueue.put(gc.SimpleEvent(
+                gc.EV_PC_UPDATE, self.workingProgramCounter))
             self.lastWorkingCounterWorking = self.workingProgramCounter
 
         # check for break point hit
         if (self.workingProgramCounter in self.breakPointSet) and \
            (self.workingProgramCounter != self.initialProgramCounter):
-            self.swState = gc.gSTATE_BREAK
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_HIT_BRK_PT, None))
+            self.swState = gc.STATE_BREAK
+            self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_HIT_BRK_PT, None))
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread encounter breakpoint PC[%s], swState->gc.gSTATE_BREAK" % \
                     (self.workingProgramCounter)
@@ -421,9 +421,9 @@ class MachIfExecuteThread(threading.Thread):
         reMsgSearch = gReGcodeMsg.search(gcode)
         if (reMsgSearch is not None) and \
            (self.workingProgramCounter != self.initialProgramCounter):
-            self.swState = gc.gSTATE_BREAK
-            self.progExecOutQueue.put(gc.threadEvent(
-                gc.gEV_HIT_MSG, reMsgSearch.group(1)))
+            self.swState = gc.STATE_BREAK
+            self.progExecOutQueue.put(gc.SimpleEvent(
+                gc.EV_HIT_MSG, reMsgSearch.group(1)))
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread encounter MSG line PC[%s], swState->gc.gSTATE_BREAK, MSG[%s]" % \
                     (self.workingProgramCounter, reMsgSearch.group(1))
@@ -441,20 +441,20 @@ class MachIfExecuteThread(threading.Thread):
 
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
-            self.swState = gc.gSTATE_IDLE
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_STEP_END, None))
+            self.swState = gc.STATE_IDLE
+            self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_STEP_END, None))
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread reach last PC, swState->gc.gSTATE_IDLE"
             return
 
         # update PC
-        self.progExecOutQueue.put(gc.threadEvent(
-            gc.gEV_PC_UPDATE, self.workingProgramCounter))
+        self.progExecOutQueue.put(gc.SimpleEvent(
+            gc.EV_PC_UPDATE, self.workingProgramCounter))
 
         # end IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
-            self.swState = gc.gSTATE_IDLE
-            self.progExecOutQueue.put(gc.threadEvent(gc.gEV_STEP_END, None))
+            self.swState = gc.STATE_IDLE
+            self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_STEP_END, None))
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread finish STEP cmd, swState->gc.gSTATE_IDLE"
             return
@@ -505,15 +505,15 @@ class MachIfExecuteThread(threading.Thread):
             if self.endThread:
                 break
 
-            if self.swState == gc.gSTATE_RUN:
+            if self.swState == gc.STATE_RUN:
                 self.ProcessRunSate()
-            elif self.swState == gc.gSTATE_STEP:
+            elif self.swState == gc.STATE_STEP:
                 self.ProcessStepSate()
-            elif self.swState == gc.gSTATE_IDLE:
+            elif self.swState == gc.STATE_IDLE:
                 self.ProcessIdleSate()
-            elif self.swState == gc.gSTATE_BREAK:
+            elif self.swState == gc.STATE_BREAK:
                 self.ProcessIdleSate()
-            elif self.swState == gc.gSTATE_ABORT:
+            elif self.swState == gc.STATE_ABORT:
                 self.ProcessIdleSate()
                 break
             else:
@@ -522,12 +522,12 @@ class MachIfExecuteThread(threading.Thread):
                         ", swState->gc.gSTATE_IDLE " % (self.swState)
 
                 self.ProcessIdleSate()
-                self.swState = gc.gSTATE_IDLE
+                self.swState = gc.STATE_IDLE
 
             time.sleep(0.01)
 
         if self.cmdLineOptions.vverbose:
             print "** programExecuteThread exit."
 
-        self.progExecOutQueue.put(gc.threadEvent(gc.gEV_EXIT, ""))
-        wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+        self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_EXIT, ""))
+        wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))

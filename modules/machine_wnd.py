@@ -56,20 +56,20 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         flexGridSizer.AddGrowableCol(1)
 
         st = wx.StaticText(self, label="Device")
-        machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+        machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.deviceComboBox = wx.ComboBox(self, -1, value=mi.GetMachIfName(machIfId),
-                                          choices=sorted(mi.gMachIfList), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY)
+                                          choices=sorted(mi.MACHIF_LIST), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.deviceComboBox, 1,
                           flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         # get serial port list and baud rate speeds
-        spList = self.configData.Get('/machine/PortList')
-        brList = self.configData.Get('/machine/BaudList')
+        #spList = self.configData.get('/machine/PortList')
+        brList = self.configData.get('/machine/BaudList')
 
         # Add serial port controls
         st = wx.StaticText(self, label="Serial Port")
-        self.spComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Port'),
+        self.spComboBox = wx.ComboBox(self, -1, value=self.configData.get('/machine/Port'),
                                       choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND |
@@ -85,7 +85,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         # Add baud rate controls
         st = wx.StaticText(self, label="Baud Rate")
-        self.sbrComboBox = wx.ComboBox(self, -1, value=self.configData.Get('/machine/Baud'),
+        self.sbrComboBox = wx.ComboBox(self, -1, value=self.configData.get('/machine/Baud'),
                                        choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND |
@@ -100,14 +100,14 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.cbInitScript = wx.CheckBox(
             self, wx.ID_ANY, "Initialization script")
         self.cbInitScript.SetValue(
-            self.configData.Get('/machine/InitScriptEnable'))
+            self.configData.get('/machine/InitScriptEnable'))
         self.cbInitScript.SetToolTip(
             wx.ToolTip("Enable initialization script"))
         vBoxSizer.Add(self.cbInitScript, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
         self.tcInitScript = wx.TextCtrl(
             self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
-        self.tcInitScript.SetValue(self.configData.Get('/machine/InitScript'))
+        self.tcInitScript.SetValue(self.configData.get('/machine/InitScript'))
         self.tcInitScript.SetToolTip(wx.ToolTip(
             "This script is sent to device upon connect detect"))
         vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL |
@@ -123,7 +123,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         # Add auto status check box
         self.cbAutoStatus = wx.CheckBox(self, wx.ID_ANY, "Auto Status Request")
-        self.cbAutoStatus.SetValue(self.configData.Get('/machine/AutoStatus'))
+        self.cbAutoStatus.SetValue(self.configData.get('/machine/AutoStatus'))
         self.cbAutoStatus.SetToolTip(
             wx.ToolTip("Send \"STATUS\" request with every command sent (experimental)"))
 
@@ -135,7 +135,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.cbAutoRefresh = wx.CheckBox(
             self, wx.ID_ANY, "Auto Refresh Period")
         self.cbAutoRefresh.SetValue(
-            self.configData.Get('/machine/AutoRefresh'))
+            self.configData.get('/machine/AutoRefresh'))
         self.cbAutoRefresh.SetToolTip(
             wx.ToolTip("Send \"STATUS\" request on a time base (experimental, GRBL only)"))
         hBoxSizer.Add(self.cbAutoRefresh, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -143,7 +143,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         # Add spin ctrl
         self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.sc.SetRange(1, 1000000)
-        self.sc.SetValue(self.configData.Get('/machine/AutoRefreshPeriod'))
+        self.sc.SetValue(self.configData.get('/machine/AutoRefreshPeriod'))
         hBoxSizer.Add(self.sc, flag=wx.LEFT |
                       wx.ALIGN_CENTER_VERTICAL, border=10)
 
@@ -154,18 +154,18 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                           wx.LEFT | wx.EXPAND, border=20)
 
     def UpdatConfigData(self):
-        self.configData.Set('/machine/Device', self.deviceComboBox.GetValue())
-        self.configData.Set('/machine/Port', self.spComboBox.GetValue())
-        self.configData.Set('/machine/Baud', self.sbrComboBox.GetValue())
-        self.configData.Set('/machine/InitScriptEnable',
+        self.configData.set('/machine/Device', self.deviceComboBox.GetValue())
+        self.configData.set('/machine/Port', self.spComboBox.GetValue())
+        self.configData.set('/machine/Baud', self.sbrComboBox.GetValue())
+        self.configData.set('/machine/InitScriptEnable',
                             self.cbInitScript.GetValue())
-        self.configData.Set('/machine/InitScript',
+        self.configData.set('/machine/InitScript',
                             self.tcInitScript.GetValue())
-        self.configData.Set('/machine/AutoStatus',
+        self.configData.set('/machine/AutoStatus',
                             self.cbAutoStatus.GetValue())
-        self.configData.Set('/machine/AutoRefresh',
+        self.configData.set('/machine/AutoRefresh',
                             self.cbAutoRefresh.GetValue())
-        self.configData.Set('/machine/AutoRefreshPeriod', self.sc.GetValue())
+        self.configData.set('/machine/AutoRefreshPeriod', self.sc.GetValue())
 
     def OnSpComboBoxSelect(self, event):
         value = self.spComboBox.GetValue()
@@ -202,7 +202,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                 # Scan for available ports.
                 for i in range(256):
                     try:
-                        s = serial.Serial(i)
+                        #s = serial.Serial(i)
+                        serial.Serial(i)
                         serList.append('COM'+str(i + 1))
                         # s.close()
                     except serial.SerialException, e:
@@ -317,7 +318,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             self.version.SetLabel("uknown")
             self.runStatus.SetLabel("detach")
 
-        machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+        machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
         '''
       self.machinePort.SetLabel(stateData.serialPort)
@@ -404,7 +405,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         # Add MachIf name
         st = wx.StaticText(self, label="Device name")
         st.SetFont(font)
-        machIfId = mi.GetMachIfId(self.configData.Get('/machine/Device'))
+        machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.machIfStatus = wx.StaticText(
             self, label=mi.GetMachIfName(machIfId))
         self.machIfStatus.SetForegroundColour(self.machineDataColor)

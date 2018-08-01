@@ -37,12 +37,12 @@ import modules.config as gc
 # --------------------------------------------------------------------------
 # Thread/ComputerVisionWindow communication events
 # --------------------------------------------------------------------------
-gEV_CMD_CV_EXIT = 1000
-gEV_CMD_CV_IMAGE = 3000
+EV_CMD_CV_EXIT = 1000
+EV_CMD_CV_IMAGE = 3000
 
-gID_CV2_GOTO_CAM = wx.NewId()
-gID_CV2_GOTO_TOOL = wx.NewId()
-gID_CV2_CAPTURE_TIMER = wx.NewId()
+ID_CV2_GOTO_CAM = wx.NewId()
+ID_CV2_GOTO_TOOL = wx.NewId()
+ID_CV2_CAPTURE_TIMER = wx.NewId()
 
 
 """----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         # Add enable check box
         # , style=wx.ALIGN_RIGHT)
         self.cbEnable = wx.CheckBox(self, wx.ID_ANY, "Enable CV2")
-        self.cbEnable.SetValue(self.configData.Get('/cv2/Enable'))
+        self.cbEnable.SetValue(self.configData.get('/cv2/Enable'))
         flexGridSizer.Add(self.cbEnable,
                           flag=wx.ALL | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -83,7 +83,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         # Add crosshair check box
         # , style=wx.ALIGN_RIGHT)
         self.cbCrosshair = wx.CheckBox(self, wx.ID_ANY, "Enable Crosshair")
-        self.cbCrosshair.SetValue(self.configData.Get('/cv2/Crosshair'))
+        self.cbCrosshair.SetValue(self.configData.get('/cv2/Crosshair'))
         flexGridSizer.Add(self.cbCrosshair,
                           flag=wx.ALL | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -93,7 +93,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         # Add spin ctrl for capture device
         self.scDevice = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scDevice.SetRange(-1, 100)
-        self.scDevice.SetValue(self.configData.Get('/cv2/CaptureDevice'))
+        self.scDevice.SetValue(self.configData.get('/cv2/CaptureDevice'))
         flexGridSizer.Add(self.scDevice,
                           flag=wx.ALL | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -103,7 +103,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         # Add spin ctrl for capture period
         self.scPeriod = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scPeriod.SetRange(1, 1000000)
-        self.scPeriod.SetValue(self.configData.Get('/cv2/CapturePeriod'))
+        self.scPeriod.SetValue(self.configData.get('/cv2/CapturePeriod'))
         self.scPeriod.SetToolTip(
             wx.ToolTip("NOTE: UI may become unresponsive if this value is too short\n"
                        "Suggested value 100ms or grater"
@@ -118,7 +118,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         # Add spin ctrl for capture width
         self.scWidth = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scWidth.SetRange(1, 10000)
-        self.scWidth.SetValue(self.configData.Get('/cv2/CaptureWidth'))
+        self.scWidth.SetValue(self.configData.get('/cv2/CaptureWidth'))
         flexGridSizer.Add(self.scWidth,
                           flag=wx.ALL | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -128,7 +128,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         # Add spin ctrl for capture height
         self.scHeight = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scHeight.SetRange(1, 10000)
-        self.scHeight.SetValue(self.configData.Get('/cv2/CaptureHeight'))
+        self.scHeight.SetValue(self.configData.get('/cv2/CaptureHeight'))
         flexGridSizer.Add(self.scHeight,
                           flag=wx.ALL | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -139,12 +139,12 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         self.SetSizer(vBoxSizer)
 
     def UpdatConfigData(self):
-        self.configData.Set('/cv2/Enable', self.cbEnable.GetValue())
-        self.configData.Set('/cv2/Crosshair', self.cbCrosshair.GetValue())
-        self.configData.Set('/cv2/CaptureDevice', self.scDevice.GetValue())
-        self.configData.Set('/cv2/CapturePeriod', self.scPeriod.GetValue())
-        self.configData.Set('/cv2/CaptureWidth', self.scWidth.GetValue())
-        self.configData.Set('/cv2/CaptureHeight', self.scHeight.GetValue())
+        self.configData.set('/cv2/Enable', self.cbEnable.GetValue())
+        self.configData.set('/cv2/Crosshair', self.cbCrosshair.GetValue())
+        self.configData.set('/cv2/CaptureDevice', self.scDevice.GetValue())
+        self.configData.set('/cv2/CapturePeriod', self.scPeriod.GetValue())
+        self.configData.set('/cv2/CaptureWidth', self.scWidth.GetValue())
+        self.configData.set('/cv2/CaptureHeight', self.scHeight.GetValue())
 
 
 """----------------------------------------------------------------------------
@@ -172,27 +172,27 @@ class gsatCV2Panel(wx.ScrolledWindow):
         self.t2cvwQueue = Queue.Queue()
 
         self.visionThread = None
-        self.captureTimer = wx.Timer(self, gID_CV2_CAPTURE_TIMER)
+        self.captureTimer = wx.Timer(self, ID_CV2_CAPTURE_TIMER)
         self.bmp = None
 
         self.InitConfig()
         self.InitUI()
 
         # register for events
-        self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, id=gID_CV2_CAPTURE_TIMER)
+        self.Bind(wx.EVT_TIMER, self.OnCaptureTimer, id=ID_CV2_CAPTURE_TIMER)
         self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
         self.Bind(wx.EVT_SHOW, self.OnShow)
 
         # register for thread events
-        gc.EVT_THREAD_QUEUE_EVENT(self, self.OnThreadEvent)
+        gc.reg_thread_queue_data_event(self, self.OnThreadEvent)
 
     def InitConfig(self):
-        self.cv2Enable = self.configData.Get('/cv2/Enable')
-        self.cv2Crosshair = self.configData.Get('/cv2/Crosshair')
-        self.cv2CaptureDevice = self.configData.Get('/cv2/CaptureDevice')
-        self.cv2CapturePeriod = self.configData.Get('/cv2/CapturePeriod')
-        self.cv2CaptureWidth = self.configData.Get('/cv2/CaptureWidth')
-        self.cv2CaptureHeight = self.configData.Get('/cv2/CaptureHeight')
+        self.cv2Enable = self.configData.get('/cv2/Enable')
+        self.cv2Crosshair = self.configData.get('/cv2/Crosshair')
+        self.cv2CaptureDevice = self.configData.get('/cv2/CaptureDevice')
+        self.cv2CapturePeriod = self.configData.get('/cv2/CapturePeriod')
+        self.cv2CaptureWidth = self.configData.get('/cv2/CaptureWidth')
+        self.cv2CaptureHeight = self.configData.get('/cv2/CaptureHeight')
 
     def InitUI(self):
         vPanelBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -325,7 +325,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
             te = self.t2cvwQueue.get()
             goitem = True
 
-            if te.event_id == gEV_CMD_CV_IMAGE:
+            if te.event_id == EV_CMD_CV_IMAGE:
                 if self.cmdLineOptions.vverbose:
                     print "** gsatCV2Panel got event gEV_CMD_CV_IMAGE."
                 image = te.data
@@ -370,7 +370,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
                 self.captureTimer.Stop()
 
             if self.visionThread is not None:
-                self.cvw2tQueue.put(gc.threadEvent(gEV_CMD_CV_EXIT, None))
+                self.cvw2tQueue.put(gc.SimpleEvent(EV_CMD_CV_EXIT, None))
 
                 goitem = False
                 while (not self.t2cvwQueue.empty()):
@@ -414,12 +414,12 @@ class gsatComputerVisionThread(threading.Thread):
         self.start()
 
     def InitConfig(self):
-        self.cv2Enable = self.configData.Get('/cv2/Enable')
-        self.cv2Crosshair = self.configData.Get('/cv2/Crosshair')
-        self.cv2CaptureDevice = self.configData.Get('/cv2/CaptureDevice')
-        self.cv2CapturePeriod = self.configData.Get('/cv2/CapturePeriod')
-        self.cv2CaptureWidth = self.configData.Get('/cv2/CaptureWidth')
-        self.cv2CaptureHeight = self.configData.Get('/cv2/CaptureHeight')
+        self.cv2Enable = self.configData.get('/cv2/Enable')
+        self.cv2Crosshair = self.configData.get('/cv2/Crosshair')
+        self.cv2CaptureDevice = self.configData.get('/cv2/CaptureDevice')
+        self.cv2CapturePeriod = self.configData.get('/cv2/CapturePeriod')
+        self.cv2CaptureWidth = self.configData.get('/cv2/CaptureWidth')
+        self.cv2CaptureHeight = self.configData.get('/cv2/CaptureHeight')
 
     """-------------------------------------------------------------------------
    gsatcomputerVisionThread: Main Window Event Handlers
@@ -432,7 +432,7 @@ class gsatComputerVisionThread(threading.Thread):
             # get item from queue
             e = self.cvw2tQueue.get()
 
-            if e.event_id == gEV_CMD_CV_EXIT:
+            if e.event_id == EV_CMD_CV_EXIT:
                 if self.cmdLineOptions.vverbose:
                     print "** gsatcomputerVisionThread got event gEV_CMD_EXIT."
                 self.endThread = True
@@ -522,7 +522,7 @@ class gsatComputerVisionThread(threading.Thread):
 
             # sned frame to window, and wait...
             #wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-            self.t2cvwQueue.put(gc.threadEvent(gEV_CMD_CV_IMAGE, frame))
+            self.t2cvwQueue.put(gc.SimpleEvent(EV_CMD_CV_IMAGE, frame))
             self.t2cvwQueue.join()
 
             # sleep for a period

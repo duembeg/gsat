@@ -60,7 +60,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.cbXYZReadOnly = wx.CheckBox(
             self, wx.ID_ANY, "XYZ Read Only Status")
         self.cbXYZReadOnly.SetValue(
-            self.configData.Get('/jogging/XYZReadOnly'))
+            self.configData.get('/jogging/XYZReadOnly'))
         self.cbXYZReadOnly.SetToolTip(
             wx.ToolTip("If enabled the XYZ fields in jogging status become read only"))
         vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
@@ -68,7 +68,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         # Add update from machine pos check box
         self.cbAutoMPOS = wx.CheckBox(
             self, wx.ID_ANY, "Auto update from machine position")
-        self.cbAutoMPOS.SetValue(self.configData.Get('/jogging/AutoMPOS'))
+        self.cbAutoMPOS.SetValue(self.configData.get('/jogging/AutoMPOS'))
         self.cbAutoMPOS.SetToolTip(
             wx.ToolTip("Use Machine position to auto update Jogging position, "
                        "jogging operation use these values to operate. The JOG current "
@@ -80,7 +80,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.cbReqUpdateOnJogSetOp = wx.CheckBox(
             self, wx.ID_ANY, "Request update after JOG set operation")
         self.cbReqUpdateOnJogSetOp.SetValue(
-            self.configData.Get('/jogging/ReqUpdateOnJogSetOp'))
+            self.configData.get('/jogging/ReqUpdateOnJogSetOp'))
         self.cbReqUpdateOnJogSetOp.SetToolTip(
             wx.ToolTip("If enable after each JOG set operation (ie set to ZERO) a machine update request will be sent to device"))
         vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT, border=20)
@@ -89,7 +89,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.cbNumKeypadPendant = wx.CheckBox(
             self, wx.ID_ANY, "Numeric Keypad as cnc pendant")
         self.cbNumKeypadPendant.SetValue(
-            self.configData.Get('/jogging/NumKeypadPendant'))
+            self.configData.get('/jogging/NumKeypadPendant'))
         self.cbNumKeypadPendant.SetToolTip(
             wx.ToolTip("Probe Z axis"))
         vBoxSizer.Add(self.cbNumKeypadPendant, flag=wx.LEFT, border=20)
@@ -97,7 +97,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         # Add perform Z operation last check box
         self.cbZJogMovesLast = wx.CheckBox(self, wx.ID_ANY, "Z jog moves last")
         self.cbZJogMovesLast.SetValue(
-            self.configData.Get('/jogging/ZJogMovesLast'))
+            self.configData.get('/jogging/ZJogMovesLast'))
         self.cbZJogMovesLast.SetToolTip(
             wx.ToolTip("If enable, any XY jog moves are perform first and Z jog moves are last"))
 
@@ -114,7 +114,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.spindleSpeedSpinCtrl = fs.FloatSpin(self, -1,
                                                  min_val=0, max_val=99999, increment=100,
-                                                 value=self.configData.Get(
+                                                 value=self.configData.get(
                                                      '/jogging/SpindleSpeed'),
                                                  size=(-1, -1), agwStyle=fs.FS_LEFT)
         self.spindleSpeedSpinCtrl.SetFormat("%f")
@@ -142,7 +142,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.probeZDistanceSpinCtrl = fs.FloatSpin(self, -1,
                                                    min_val=-99999, max_val=99999, increment=0.1,
-                                                   value=self.configData.Get(
+                                                   value=self.configData.get(
                                                        '/jogging/ProbeDistance'),
                                                    size=(-1, -1), agwStyle=fs.FS_LEFT)
         self.probeZDistanceSpinCtrl.SetFormat("%f")
@@ -160,7 +160,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.probeZMaxDistanceSpinCtrl = fs.FloatSpin(self, -1,
                                                       min_val=-99999, max_val=99999, increment=0.1,
-                                                      value=self.configData.Get(
+                                                      value=self.configData.get(
                                                           '/jogging/ProbeMaxDistance'),
                                                       size=(-1, -1), agwStyle=fs.FS_LEFT)
         self.probeZMaxDistanceSpinCtrl.SetFormat("%f")
@@ -178,7 +178,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.probeZFeedRateSpinCtrl = fs.FloatSpin(self, -1,
                                                    min_val=-0, max_val=99999, increment=0.1,
-                                                   value=self.configData.Get(
+                                                   value=self.configData.get(
                                                        '/jogging/ProbeFeedRate'),
                                                    size=(-1, -1), agwStyle=fs.FS_LEFT)
         self.probeZFeedRateSpinCtrl.SetFormat("%f")
@@ -230,7 +230,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         hBoxSizer.Add(text, flag=wx.ALIGN_CENTER_VERTICAL |
                       wx.TOP | wx.RIGHT | wx.BOTTOM, border=5)
         tcLabel = wx.TextCtrl(self, -1,
-                              self.configData.Get('/jogging/Custom%dLabel' % cn), size=(125, -1))
+                              self.configData.get('/jogging/Custom%dLabel' % cn), size=(125, -1))
         hBoxSizer.Add(tcLabel, flag=wx.ALIGN_CENTER_VERTICAL)
 
         vBoxSizerRoot.Add(hBoxSizer, flag=wx.LEFT, border=20)
@@ -242,7 +242,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(text, flag=wx.ALIGN_CENTER_VERTICAL)
 
         tcScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
-        tcScript.SetValue(self.configData.Get('/jogging/Custom%dScript' % cn))
+        tcScript.SetValue(self.configData.get('/jogging/Custom%dScript' % cn))
         tcScript.SetToolTip(wx.ToolTip(
             "This script is sent to device when custom button is pressed"))
         vBoxSizer.Add(tcScript, proportion=1, flag=wx.EXPAND |
@@ -254,32 +254,32 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         return vBoxSizerRoot, [tcLabel, tcScript]
 
     def UpdatConfigData(self):
-        self.configData.Set('/jogging/XYZReadOnly',
+        self.configData.set('/jogging/XYZReadOnly',
                             self.cbXYZReadOnly.GetValue())
-        self.configData.Set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
-        self.configData.Set('/jogging/ReqUpdateOnJogSetOp',
+        self.configData.set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
+        self.configData.set('/jogging/ReqUpdateOnJogSetOp',
                             self.cbReqUpdateOnJogSetOp.GetValue())
-        self.configData.Set('/jogging/NumKeypadPendant',
+        self.configData.set('/jogging/NumKeypadPendant',
                             self.cbNumKeypadPendant.GetValue())
-        self.configData.Set('/jogging/ZJogMovesLast',
+        self.configData.set('/jogging/ZJogMovesLast',
                             self.cbZJogMovesLast.GetValue())
 
-        self.configData.Set('/jogging/SpindleSpeed',
+        self.configData.set('/jogging/SpindleSpeed',
                             self.spindleSpeedSpinCtrl.GetValue())
 
-        self.configData.Set('/jogging/ProbeDistance',
+        self.configData.set('/jogging/ProbeDistance',
                             self.probeZDistanceSpinCtrl.GetValue())
-        self.configData.Set('/jogging/ProbeMaxDistance',
+        self.configData.set('/jogging/ProbeMaxDistance',
                             self.probeZMaxDistanceSpinCtrl.GetValue())
-        self.configData.Set('/jogging/ProbeFeedRate',
+        self.configData.set('/jogging/ProbeFeedRate',
                             self.probeZFeedRateSpinCtrl.GetValue())
 
         for cn in range(4):
             cnp1 = cn+1
-            self.configData.Set('/jogging/Custom%dLabel' % cnp1,
+            self.configData.set('/jogging/Custom%dLabel' % cnp1,
                                 self.customCtrlArray[cn][0].GetValue())
 
-            self.configData.Set('/jogging/Custom%dScript' % cnp1,
+            self.configData.set('/jogging/Custom%dScript' % cnp1,
                                 self.customCtrlArray[cn][1].GetValue())
 
 
@@ -309,7 +309,7 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
         # Add cehck box
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.cb = wx.CheckBox(self, wx.ID_ANY, "Save Command History")
-        self.cb.SetValue(self.configData.Get('/cli/SaveCmdHistory'))
+        self.cb.SetValue(self.configData.get('/cli/SaveCmdHistory'))
         hBoxSizer.Add(self.cb, flag=wx.ALL |
                       wx.ALIGN_CENTER_VERTICAL, border=5)
         vBoxSizer.Add(hBoxSizer, flag=wx.TOP | wx.LEFT, border=20)
@@ -318,7 +318,7 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.sc = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.sc.SetRange(1, 1000)
-        self.sc.SetValue(self.configData.Get('/cli/CmdMaxHistory'))
+        self.sc.SetValue(self.configData.get('/cli/CmdMaxHistory'))
         hBoxSizer.Add(self.sc, flag=wx.ALL |
                       wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -329,8 +329,8 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
         self.SetSizer(vBoxSizer)
 
     def UpdatConfigData(self):
-        self.configData.Set('/cli/SaveCmdHistory', self.cb.GetValue())
-        self.configData.Set('/cli/CmdMaxHistory', self.sc.GetValue())
+        self.configData.set('/cli/SaveCmdHistory', self.cb.GetValue())
+        self.configData.set('/cli/CmdMaxHistory', self.sc.GetValue())
 
 
 """----------------------------------------------------------------------------
@@ -401,44 +401,44 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
     def InitConfig(self):
         # jogging data
-        self.configXYZReadOnly = self.configData.Get('/jogging/XYZReadOnly')
-        self.configAutoMPOS = self.configData.Get('/jogging/AutoMPOS')
-        self.configReqUpdateOnJogSetOp = self.configData.Get(
+        self.configXYZReadOnly = self.configData.get('/jogging/XYZReadOnly')
+        self.configAutoMPOS = self.configData.get('/jogging/AutoMPOS')
+        self.configReqUpdateOnJogSetOp = self.configData.get(
             '/jogging/ReqUpdateOnJogSetOp')
-        self.configNumKeypadPendant = self.configData.Get(
+        self.configNumKeypadPendant = self.configData.get(
             '/jogging/NumKeypadPendant')
-        self.configZJogMovesLast = self.configData.Get(
+        self.configZJogMovesLast = self.configData.get(
             '/jogging/ZJogMovesLast')
 
-        self.configSpindleSpeed = self.configData.Get('/jogging/SpindleSpeed')
+        self.configSpindleSpeed = self.configData.get('/jogging/SpindleSpeed')
 
-        self.configProbeDistance = self.configData.Get(
+        self.configProbeDistance = self.configData.get(
             '/jogging/ProbeDistance')
-        self.configProbeMaxDistance = self.configData.Get(
+        self.configProbeMaxDistance = self.configData.get(
             '/jogging/ProbeMaxDistance')
-        self.configProbeFeedRate = self.configData.Get(
+        self.configProbeFeedRate = self.configData.get(
             '/jogging/ProbeFeedRate')
 
-        self.configCustom1Label = self.configData.Get('/jogging/Custom1Label')
-        self.configCustom1Script = self.configData.Get(
+        self.configCustom1Label = self.configData.get('/jogging/Custom1Label')
+        self.configCustom1Script = self.configData.get(
             '/jogging/Custom1Script')
 
-        self.configCustom2Label = self.configData.Get('/jogging/Custom2Label')
-        self.configCustom2Script = self.configData.Get(
+        self.configCustom2Label = self.configData.get('/jogging/Custom2Label')
+        self.configCustom2Script = self.configData.get(
             '/jogging/Custom2Script')
 
-        self.configCustom3Label = self.configData.Get('/jogging/Custom3Label')
-        self.configCustom3Script = self.configData.Get(
+        self.configCustom3Label = self.configData.get('/jogging/Custom3Label')
+        self.configCustom3Script = self.configData.get(
             '/jogging/Custom3Script')
 
-        self.configCustom4Label = self.configData.Get('/jogging/Custom4Label')
-        self.configCustom4Script = self.configData.Get(
+        self.configCustom4Label = self.configData.get('/jogging/Custom4Label')
+        self.configCustom4Script = self.configData.get(
             '/jogging/Custom4Script')
 
         # cli data
-        self.cliSaveCmdHistory = self.configData.Get('/cli/SaveCmdHistory')
-        self.cliCmdMaxHistory = self.configData.Get('/cli/CmdMaxHistory')
-        self.cliCmdHistory = self.configData.Get('/cli/CmdHistory')
+        self.cliSaveCmdHistory = self.configData.get('/cli/SaveCmdHistory')
+        self.cliCmdMaxHistory = self.configData.get('/cli/CmdMaxHistory')
+        self.cliCmdHistory = self.configData.get('/cli/CmdHistory')
 
     def UpdateSettings(self, config_data):
         self.configData = config_data
@@ -529,7 +529,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             if stat is not None:
                 self.machStat = stat
 
-        if stateData.serialPortIsOpen and not stateData.swState == gc.gSTATE_RUN:
+        if stateData.serialPortIsOpen and not stateData.swState == gc.STATE_RUN:
             self.keybaordJoggingEnable = True
             self.resetToZeroButton.Enable()
             self.resetToJogButton.Enable()
@@ -609,8 +609,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         gbSpindleSpeedGridSizer = wx.GridBagSizer(0, 0)
 
         buttonSize = (50, 50)
-        buttonSizeLong = (50, 75)
-        buttonSizeWideLong = (60, 75)
+        #buttonSizeLong = (50, 75)
+        #buttonSizeWideLong = (60, 75)
 
         # X axis buttons
         self.positiveXButton = wx.BitmapButton(self, -1, ico.imgPosX.GetBitmap(),
@@ -1315,7 +1315,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.SavedJogPos = (xVal, yVal, zVal)
 
         if self.stateData is not None:
-            if self.stateData.serialPortIsOpen and not self.stateData.swState == gc.gSTATE_RUN:
+            if self.stateData.serialPortIsOpen and not self.stateData.swState == gc.STATE_RUN:
                 self.restorePositionButton.Enable()
 
     def OnRestoreJogPosition(self, e):
@@ -1424,7 +1424,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             cliCmdHistory = self.cliComboBox.GetItems()
             if len(cliCmdHistory) > 0:
                 cliCmdHistory = "|".join(cliCmdHistory)
-                self.configData.Set('/cli/CmdHistory', cliCmdHistory)
+                self.configData.set('/cli/CmdHistory', cliCmdHistory)
 
     def OnKeyPress(self, e):
         '''
@@ -1438,7 +1438,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             e.Skip()
             return
 
-        evObj = e.GetEventObject()
+        #evObj = e.GetEventObject()
 
         # if (not self.keybaordJoggingEnable) or (self.cliComboBox == evObj):
         # if evObj in [self.cliComboBox, self.stepSpinCtrl.GetTextCtrl(),

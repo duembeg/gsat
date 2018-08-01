@@ -145,6 +145,8 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.cmdPostInit = '$I\n'
 
     def _init(self):
+        """ Init object variables, ala soft-reset in hw
+        """
         super(MachIf_GRBL, self)._reset(BUFFER_MAX_SIZE,
             BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 

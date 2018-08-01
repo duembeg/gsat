@@ -100,6 +100,8 @@ class MachIf_g2core(mi.MachIf_Base):
         self.cmdStatus = '{"sr":null}\n'
 
     def _init(self):
+        """ Init object variables, ala soft-reset in hw
+        """
         super(MachIf_g2core, self)._reset(BUFFER_MAX_SIZE,
                                           BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 

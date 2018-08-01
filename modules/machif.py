@@ -79,7 +79,7 @@ class MachIf_Base(object):
 
     def close(self):
         if self._serialTxRxThread is not None:
-            self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_EXIT, None))
+            self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_EXIT, None))
 
     @abstractmethod
     def decode(self, data):
@@ -197,19 +197,19 @@ class MachIf_Base(object):
                 # get item from queue
                 e = self._serialTxRxInQueue.get()
 
-                if e.event_id in [gc.gEV_EXIT, gc.gEV_ABORT, gc.gEV_SER_PORT_OPEN,
-                                  gc.gEV_SER_PORT_CLOSE]:
+                if e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
+                                  gc.EV_SER_PORT_CLOSE]:
                     rxData['event'] = {}
                     rxData['event']['id'] = e.event_id
                     rxData['event']['data'] = e.data
 
-                    if e.event_id == gc.gEV_SER_PORT_OPEN:
+                    if e.event_id == gc.EV_SER_PORT_OPEN:
                         self._serialPortOpen = True
 
-                    elif e.event_id == gc.gEV_SER_PORT_CLOSE:
+                    elif e.event_id == gc.EV_SER_PORT_CLOSE:
                         self._serialPortOpen = False
 
-                elif e.event_id == gc.gEV_SER_RXDATA:
+                elif e.event_id == gc.EV_SER_RXDATA:
 
                     if len(e.data) > 0:
                         rxData = self.decode(e.data)
@@ -227,7 +227,7 @@ class MachIf_Base(object):
 
             if raw_write:
                 # self._serialTxRxThread.serialWrite(txData)
-                self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+                self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
                                                             txData))
             else:
                 lines = txData.splitlines(True)
@@ -244,7 +244,7 @@ class MachIf_Base(object):
                     Leaving this here to revisit in future ."""
                     # self._serialTxRxThread.serialWrite(line)
 
-                    self._serialTxRxOutQueue.put(gc.threadEvent(gc.gEV_CMD_SER_TXDATA,
+                    self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
                                                                 line))
 
                     bytesSent = bytesSent + len(line)

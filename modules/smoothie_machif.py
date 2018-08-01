@@ -129,6 +129,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
         self.cmdQueueFlush = self.cmdReset
 
     def _init(self):
+        """ Init object variables, ala soft-reset in hw
+        """
         super(MachIf_Smoothie, self)._reset(BUFFER_MAX_SIZE,
                                             BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
         self.inputBufferPart = list()
