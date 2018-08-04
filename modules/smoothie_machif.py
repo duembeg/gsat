@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   grbl_machif.py
+   smoothie_machif.py
 
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
@@ -29,42 +29,22 @@ import modules.machif as mi
 """ Global values for this module
 """
 
-# Smoothie version, example "Grbl 0.8c ['$' for help]"
-gReGrblVersion = re.compile(r'Build version:\s*(.*), Build date:.*')
-
-# status,
-# quick re check to avoid multiple checks, speeds things up
-gReMachineStatus = re.compile(r'pos', re.I)
-
-# GRBL example
-#   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-#   "<Hold:29|WPos:20.163,0.000,20.000>"
-#gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
-gReGRBLMachineStatus = re.compile(
-    r'<(\w+),.*,WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)>')
-
-# grbl ack, example  "ok"
-gReGRBLMachineAck = re.compile(r'^ok\s$')
-
-# grbl error, example  "error:20", "error: Unsupported command"
-gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
-
 # -----------------------------------------------------------------------------
 # global values
 # -----------------------------------------------------------------------------
 # Numeric reperecentation of state, cehcking strings all the time is not
 # fastest way...
-GRBL_STATE_UKNOWN = 1000
-GRBL_STATE_IDLE = 1010
-GRBL_STATE_RUN = 1020
-GRBL_STATE_HOLD = 1030
-GRBL_STATE_JOG = 1040
-GRBL_STATE_ALRARM = 1050
-GRBL_STATE_DOOR = 1060
-GRBL_STATE_CHECK = 1070
-GRBL_STATE_HOME = 1080
-GRBL_STATE_SLEEP = 1090
-GRBL_STATE_STOP = 1100
+SMOOTHIE_STATE_UKNOWN = 1000
+SMOOTHIE_STATE_IDLE = 1010
+SMOOTHIE_STATE_RUN = 1020
+SMOOTHIE_STATE_HOLD = 1030
+SMOOTHIE_STATE_JOG = 1040
+SMOOTHIE_STATE_ALRARM = 1050
+SMOOTHIE_STATE_DOOR = 1060
+SMOOTHIE_STATE_CHECK = 1070
+SMOOTHIE_STATE_HOME = 1080
+SMOOTHIE_STATE_SLEEP = 1090
+SMOOTHIE_STATE_STOP = 1100
 
 # This values are only use to initialize or reset base class.
 # base class has internal variables tor track these
@@ -97,17 +77,37 @@ class MachIf_Smoothie(mi.MachIf_Base):
     -------------------------------------------------------------------------"""
 
     stat_dict = {
-        "Idle": GRBL_STATE_IDLE,
-        "Run": GRBL_STATE_RUN,
-        "Hold": GRBL_STATE_HOLD,
-        "Jog": GRBL_STATE_JOG,
-        "Alarm": GRBL_STATE_ALRARM,
-        "Door": GRBL_STATE_DOOR,
-        "Check": GRBL_STATE_CHECK,
-        "Home": GRBL_STATE_HOME,
-        "Sleep": GRBL_STATE_SLEEP,
-        "Stop": GRBL_STATE_STOP
+        "Idle": SMOOTHIE_STATE_IDLE,
+        "Run": SMOOTHIE_STATE_RUN,
+        "Hold": SMOOTHIE_STATE_HOLD,
+        "Jog": SMOOTHIE_STATE_JOG,
+        "Alarm": SMOOTHIE_STATE_ALRARM,
+        "Door": SMOOTHIE_STATE_DOOR,
+        "Check": SMOOTHIE_STATE_CHECK,
+        "Home": SMOOTHIE_STATE_HOME,
+        "Sleep": SMOOTHIE_STATE_SLEEP,
+        "Stop": SMOOTHIE_STATE_STOP
     }
+
+    # Smoothie version, example "Grbl 0.8c ['$' for help]"
+    reSmoothieVersion = re.compile(r'Build version:\s*(.*), Build date:.*')
+
+    # status,
+    # quick re check to avoid multiple checks, speeds things up
+    reSmoothieOneMachineStatus = re.compile(r'pos', re.I)
+
+    # Smoothie example
+    #   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
+    #   "<Hold:29|WPos:20.163,0.000,20.000>"
+    #gReSmoothieMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
+    reSmoothieMachineStatus = re.compile(
+        r'<(\w+),.*,WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)>')
+
+    # grbl ack, example  "ok"
+    reSmoothieMachineAck = re.compile(r'^ok\s$')
+
+    # grbl error, example  "error:20", "error: Unsupported command"
+    reSmoothieMachineError = re.compile(r'^error:(.*)\s$')
 
     def __init__(self, cmd_line_options):
         super(MachIf_Smoothie, self).__init__(cmd_line_options, ID, "Smoothie",
@@ -116,7 +116,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
         self._inputBufferPart = list()
 
-        self.currentStatus = GRBL_STATE_UKNOWN
+        self.currentStatus = SMOOTHIE_STATE_UKNOWN
         self.autoStatusNextMicro = None
         self.machineAutoRefresh = False
 
@@ -148,7 +148,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
         # statusData[5] : Work Y
         # statusData[6] : Work Z
 
-        status = gReGRBLMachineStatus.match(data)
+        status = self.reSmoothieMachineStatus.match(data)
         if status is not None:
             statusData = status.groups()
             sr = {}
@@ -170,7 +170,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
             dataDict['sr'] = sr
 
             if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie re GRBL status match %s" % str(
+                print "** MachIf_Smoothie re Smoothie status match %s" % str(
                     statusData)
                 print "** MachIf_Smoothie str match from %s" % str(
                     data.strip())
@@ -180,16 +180,16 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             # check on status change
             decodedStatus = self.stat_dict.get(
-                statusData[0], GRBL_STATE_UKNOWN)
+                statusData[0], SMOOTHIE_STATE_UKNOWN)
             if self.currentStatus != decodedStatus:
-                if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
+                if decodedStatus in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]:
                     self.autoStatusNextMicro = dt.datetime.now() + \
                         dt.timedelta(
                             microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
                 self.currentStatus = decodedStatus
 
-        ack = gReGRBLMachineAck.search(data)
+        ack = self.reSmoothieMachineAck.search(data)
         if ack is not None:
             bufferPart = 0
 
@@ -212,7 +212,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
                     (bufferPart, self._inputBufferSize,
                      (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
-        error = gReGRBLMachineError.search(data)
+        error = self.reSmoothieMachineError.search(data)
         if error is not None:
             bufferPart = 0
 
@@ -242,7 +242,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
                     (bufferPart, self._inputBufferSize,
                      (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
-        version = gReGrblVersion.match(data)
+        version = self.reSmoothieVersion.match(data)
         if version is not None:
             if self.cmdLineOptions.vverbose:
                 print "** MachIf_Smoothie found device version [%s]" % version.group(
@@ -319,7 +319,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
     def tick(self):
         # check if is time for autorefresh and send get status cmd and prepare next refresh time
-        if (self.autoStatusNextMicro != None) and (self.currentStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]):
+        if (self.autoStatusNextMicro != None) and (self.currentStatus in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]):
             tnow = dt.datetime.now()
             tnowMilli = tnow.second*1000 + tnow.microsecond/1000
             tdeltaMilli = self.autoStatusNextMicro.second * \
@@ -332,7 +332,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
                     dt.timedelta(
                         microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
-        elif self.autoStatusNextMicro != None and self.currentStatus not in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
+        elif self.autoStatusNextMicro != None and self.currentStatus not in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]:
             self.autoStatusNextMicro = None
 
         if self.machineAutoRefresh != self.stateData.machineStatusAutoRefresh:
@@ -355,7 +355,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
         bytesSent = 0
 
         # moving to active state get at least one status msg
-        if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP, GRBL_STATE_HOLD]:
+        if self.currentStatus in [SMOOTHIE_STATE_IDLE, SMOOTHIE_STATE_STOP, SMOOTHIE_STATE_HOME, SMOOTHIE_STATE_SLEEP, SMOOTHIE_STATE_HOLD]:
             askForStatus = True
 
         bytesSent = super(MachIf_Smoothie, self).write(txData, raw_write)

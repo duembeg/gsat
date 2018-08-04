@@ -28,41 +28,6 @@ import modules.machif as mi
 
 """ Global values for this module
 """
-# grbl version, example "[VER:x.x.x:]"
-gReGrblVersion = re.compile(r'\[VER:(.*):\]')
-
-# grbl init, example "Grbl 0.8c ['$' for help]"
-gReGrblInitStr = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
-
-# grbl init, example "ALARM:x"
-gReGrblAlarm = re.compile(r'ALARM:.*')
-
-# status,
-# quick re check to avoid multiple checks, speeds things up
-gReMachineStatus = re.compile(r'pos', re.I)
-
-# GRBL example
-#   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
-#   "<Hold:29|WPos:20.163,0.000,20.000>"
-#gReGRBLMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
-gReGRBLMachineStatus = re.compile(
-    r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
-
-"""
-    To be able to track working position changet GRBL settigs to display work position as oppose to machine position
-    from 1.1f use $10=0 to configure this...
-
-"""
-
-# grbl ack, example  "ok"
-gReGRBLMachineAck = re.compile(r'^ok\s$')
-
-# grbl error, example  "error:20", "error: Unsupported command"
-gReGRBLMachineError = re.compile(r'^error:(.*)\s$')
-
-# -----------------------------------------------------------------------------
-# global values
-# -----------------------------------------------------------------------------
 # Numeric reperecentation of state, cehcking strings all the time is not
 # fastest way...
 GRBL_STATE_UKNOWN = 1000
@@ -120,6 +85,38 @@ class MachIf_GRBL(mi.MachIf_Base):
         "Stop": GRBL_STATE_STOP
     }
 
+    # grbl version, example "[VER:x.x.x:]"
+    reGrblVersion = re.compile(r'\[VER:(.*):\]')
+
+    # grbl init, example "Grbl 0.8c ['$' for help]"
+    reGrblInitStr = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
+
+    # grbl init, example "ALARM:x"
+    reGrblAlarm = re.compile(r'ALARM:.*')
+
+    # status,
+    # quick re check to avoid multiple checks, speeds things up
+    reGrblOneMachineStatus = re.compile(r'pos', re.I)
+
+    # GRBL example
+    #   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
+    #   "<Hold:29|WPos:20.163,0.000,20.000>"
+    #self.reGrblMachineStatus = re.compile(r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)')
+    reGrblMachineStatus = re.compile(
+        r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
+
+    """
+        To be able to track working position changet GRBL settigs to display work position as oppose to machine position
+        from 1.1f use $10=0 to configure this...
+
+    """
+
+    # grbl ack, example  "ok"
+    reGrblMachineAck = re.compile(r'^ok\s$')
+
+    # grbl error, example  "error:20", "error: Unsupported command"
+    reGrblMachineError = re.compile(r'^error:(.*)\s$')
+
     def __init__(self, cmd_line_options):
         super(MachIf_GRBL, self).__init__(cmd_line_options, ID, NAME,
                                           BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
@@ -165,7 +162,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         # statusData[5] : Work Y
         # statusData[6] : Work Z
 
-        status = gReGRBLMachineStatus.match(data)
+        status = self.reGrblMachineStatus.match(data)
         if status is not None:
             statusData = status.groups()
             sr = {}
@@ -205,7 +202,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
                 self.currentStatus = decodedStatus
 
-        ack = gReGRBLMachineAck.search(data)
+        ack = self.reGrblMachineAck.search(data)
         if ack is not None:
             bufferPart = 0
 
@@ -227,7 +224,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                     (bufferPart, self._inputBufferSize,
                      (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
-        alarm = gReGrblAlarm.search(data)
+        alarm = self.reGrblAlarm.search(data)
         if alarm is not None:
             if 'sr' in dataDict:
                 sr = dataDict.get('sr')
@@ -239,7 +236,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             dataDict['sr'] = sr
 
-        error = gReGRBLMachineError.search(data)
+        error = self.reGrblMachineError.search(data)
         if error is not None:
             bufferPart = 0
 
@@ -269,7 +266,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                     (bufferPart, self._inputBufferSize,
                      (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
-        version = gReGrblVersion.match(data)
+        version = self.reGrblVersion.match(data)
         if version is not None:
             if self.cmdLineOptions.vverbose:
                 print "** MachIf_GRBL found device version [%s]" % version.group(
@@ -283,7 +280,7 @@ class MachIf_GRBL(mi.MachIf_Base):
             dataDict['f'] = [0, 0, 0]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-        initStr = gReGrblInitStr.match(data)
+        initStr = self.reGrblInitStr.match(data)
         if initStr is not None:
             if self.cmdLineOptions.vverbose:
                 print "** MachIf_GRBL found device init string [%s]" % initStr.group(
