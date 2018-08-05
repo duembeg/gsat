@@ -57,9 +57,15 @@ class MachIf_Base(object):
         self._serialTxRxOutQueue = Queue.Queue()
         self.stateData = None
 
+        # machine
+        self.machinePositionMode = "G90"
+        self.machineStatus = -1
+
         # cmds
+        self.cmdClearAlarm = ''
         self.cmdCycleStart = '~'
         self.cmdFeedHold = '!'
+        self.cmdHome = 'G28.2'
         self.cmdInitComm = ''
         self.cmdQueueFlush = ''
         self.cmdProbeAxis = '"G38.2'
@@ -71,11 +77,70 @@ class MachIf_Base(object):
     def _init(self):
         pass
 
+    def _move(self, move_code, dictAxisCoor):
+        """ Move to a coordinate in opsolute or relative position mode
+        """
+        machine_current_position_mode = self.machinePositionMode
+
+        self._send_axis_cmd(move_code, dictAxisCoor)
+
+        self._serialTxRxInQueue.put(
+            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
+        )
+
+        self.write("".join([machine_current_position_mode,"\n"]))
+
     def _reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
         self._inputBufferMaxSize = input_buffer_max_size
         self._inputBufferWatermark = float(
             self._inputBufferMaxSize) * input_buffer_watermark_prcnt
         self._inputBufferSize = input_buffer_init_val
+
+    def _send_axis_cmd(self, code, dictAxisCoor):
+        """ sends axis cmd
+        """
+        machine_code = code
+
+        if 'x' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " X", str(dictAxisCoor.get('x'))
+                ])
+
+        if 'y' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " Y", str(dictAxisCoor.get('y'))
+                ])
+
+        if 'z' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " Z",str(dictAxisCoor.get('z'))
+                ])
+
+        if 'a' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " A",str(dictAxisCoor.get('a'))
+                ])
+
+        if 'b' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " B",str(dictAxisCoor.get('b'))
+                ])
+
+        if 'c' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " C",str(dictAxisCoor.get('c'))
+                ])
+
+        if 'feed' in dictAxisCoor:
+            machine_code = "".join([
+                machine_code, " F",str(dictAxisCoor.get('feed'))
+                ])
+
+        self._serialTxRxInQueue.put(
+            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % machine_code)
+        )
+
+        self.write("".join([machine_code,"\n"]))
 
     def close(self):
         if self._serialTxRxThread is not None:
@@ -86,40 +151,74 @@ class MachIf_Base(object):
         return data
 
     def doClearAlarm(self):
-        pass
+        self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdClearAlarm))
+        self.write(self.cmdClearAlarm)
 
     def doCycleStartResume(self):
+        """ send cycle resume command
+        """
+        self._serialTxRxInQueue.put(
+            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdCycleStart)
+        )
+
         self.write(self.cmdCycleStart)
 
-    def doFastMove(self, dirAxisCoor):
-        pass
+    def doFastMove(self, dict_axis_coor):
+        """ Fast (rapid) move to a coordinate in opsolute position mode
+        """
+        self._move("G90 G00", dict_axis_coor)
 
-    def doFastMoveRelative(self, dirAxisCoor):
-        pass
+
+    def doFastMoveRelative(self, dict_axis_coor):
+        """ Fast (rapid) move to a coordinate in relative position mode
+        """
+        self._move("G91 G00", dict_axis_coor)
 
     def doFeedHold(self):
+        """ send feed hold command
+        """
+        self._serialTxRxInQueue.put(
+            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdFeedHold)
+        )
+
         self.write(self.cmdFeedHold)
 
     def doGetStatus(self):
         if self.okToSend(self.cmdStatus):
+            self._serialTxRxInQueue.put(
+                gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdStatus)
+            )
+
             self.write(self.cmdStatus)
+
+    def doHome(self, dict_axis):
+        self._send_axis_cmd(self.cmdHome, dict_axis_coor)
 
     def doInitComm(self):
         self.write(self.cmdInitComm)
 
-    def doMove(self, dirAxisCoor):
-        pass
+    def doMove(self, dict_axis_coor):
+        """ Move to a coordinate in opsolute position mode
+        """
+        self._move("G90 G01", dict_axis_coor)
 
-    def doMoveRelative(self, dirAxisCoor):
-        pass
+    def doMoveRelative(self, dict_axis_coor):
+        """ Move to a coordinate in relative position mode
+        """
+        self._move("G91 G01", dict_axis_coor)
+
+    def doQueueFlush(self):
+        self.write(self.cmdQueueFlush)
+        self._init()
 
     def doReset(self):
         self.write(self.cmdReset)
         self._init()
 
-    def doQueueFlush(self):
-        self.write(self.cmdQueueFlush)
-        self._init()
+    def doSetAxis(self, dict_axis_coor):
+        """ Set axis coordinates
+        """
+        self._send_axis_cmd(self.cmdSetAxis, dict_axis_coor)
 
     @abstractmethod
     def encode(self, data, bookeeping=True):
@@ -189,7 +288,9 @@ class MachIf_Base(object):
             self.doInitComm()
 
     def read(self):
-        rxData = {}
+        """ Read and process data from txrx thread
+        """
+        dictData = {}
 
         if self._serialTxRxThread is not None:
 
@@ -199,9 +300,9 @@ class MachIf_Base(object):
 
                 if e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
                                   gc.EV_SER_PORT_CLOSE]:
-                    rxData['event'] = {}
-                    rxData['event']['id'] = e.event_id
-                    rxData['event']['data'] = e.data
+                    dictData['event'] = {}
+                    dictData['event']['id'] = e.event_id
+                    dictData['event']['data'] = e.data
 
                     if e.event_id == gc.EV_SER_PORT_OPEN:
                         self._serialPortOpen = True
@@ -212,15 +313,22 @@ class MachIf_Base(object):
                 elif e.event_id == gc.EV_SER_RXDATA:
 
                     if len(e.data) > 0:
-                        rxData = self.decode(e.data)
-                        rxData['raw_data'] = e.data
+                        dictData = self.decode(e.data)
+                        dictData['rx_data'] = e.data
 
-        return rxData
+                elif e.event_id == gc.EV_SER_TXDATA:
+
+                    if len(e.data) > 0:
+                        dictData['tx_data'] = e.data
+
+        return dictData
 
     def tick(self):
         pass
 
     def write(self, txData, raw_write=False):
+        """ process and write data to txrx thread
+        """
         bytesSent = 0
 
         if self._serialTxRxThread is not None:

@@ -84,7 +84,7 @@ class MachIf_TinyG(mi.MachIf_Base):
         6: 'Hold',
         7: 'Probe',
         8: 'Cycle',
-        9: 'Homeming',
+        9: 'Homing',
         10: 'Jog',
         11: 'InterLock',
         12: 'Shutdown',
@@ -206,7 +206,7 @@ class MachIf_TinyG(mi.MachIf_Base):
             # checking for count in "f" response doesn't always work as expected and broke on edge branch
             # it was never specify that this was the functionality so abandoning that solution
 
-            if len(self._inputBufferPart) > 0:
+            if self._inputBufferPart:
                 bufferPart = self._inputBufferPart.pop(0)
 
                 self._inputBufferSize = self._inputBufferSize - bufferPart

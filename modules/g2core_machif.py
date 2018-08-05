@@ -81,7 +81,7 @@ class MachIf_g2core(mi.MachIf_Base):
         6: 'Hold',
         7: 'Probe',
         8: 'Cycle',
-        9: 'Homeming',
+        9: 'Homing',
         10: 'Jog',
         11: 'InterLock',
         12: 'Shutdown',
@@ -96,6 +96,7 @@ class MachIf_g2core(mi.MachIf_Base):
         self._inputBufferPart = list()
 
         # list of commads
+        self.cmdClearAlarm = '{"clr":null}\n'
         self.cmdQueueFlush = '%\n'
         self.cmdStatus = '{"sr":null}\n'
 
@@ -173,7 +174,7 @@ class MachIf_g2core(mi.MachIf_Base):
             # checking for count in "f" response doesn't always work as expected and broke on edge branch
             # it was never specify that this was the functionality so abandoning that solution
 
-            if len(self._inputBufferPart) > 0:
+            if self._inputBufferPart:
                 bufferPart = self._inputBufferPart.pop(0)
 
                 self._inputBufferSize = self._inputBufferSize - bufferPart
@@ -192,7 +193,8 @@ class MachIf_g2core(mi.MachIf_Base):
     def doClearAlarm(self):
         """ Clears alarm condition in grbl
         """
-        self.write('{"clr":null}\n')
+        self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdClearAlarm))
+        self.write(self.cmdClearAlarm)
         self.write(self.getStatusCmd())
 
     def encode(self, data, bookeeping=True):

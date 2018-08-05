@@ -24,6 +24,7 @@
 ----------------------------------------------------------------------------"""
 import datetime as dt
 import re
+import modules.config as gc
 import modules.machif as mi
 
 """ Global values for this module
@@ -50,6 +51,7 @@ BUFFER_MAX_SIZE = 127
 BUFFER_INIT_VAL = 0
 BUFFER_WATERMARK_PRCNT = 0.90
 
+
 class MachIf_GRBL(mi.MachIf_Base):
     """-------------------------------------------------------------------------
     MachIf_GRBL:
@@ -70,6 +72,10 @@ class MachIf_GRBL(mi.MachIf_Base):
 
     per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer includes
     all characters including nulls and new line)
+
+    To be able to track working position changet GRBL settigs to display work
+    position as oppose to machine position from 1.1f use $10=0 to configure...
+
     -------------------------------------------------------------------------"""
 
     stat_dict = {
@@ -106,9 +112,9 @@ class MachIf_GRBL(mi.MachIf_Base):
         r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
 
     """
-        To be able to track working position changet GRBL settigs to display work position as oppose to machine position
-        from 1.1f use $10=0 to configure this...
-
+        To be able to track working position changet GRBL settigs to display
+        work position as oppose to machine position from 1.1f use $10=0 to
+        configure...
     """
 
     # grbl ack, example  "ok"
@@ -117,6 +123,8 @@ class MachIf_GRBL(mi.MachIf_Base):
     # grbl error, example  "error:20", "error: Unsupported command"
     reGrblMachineError = re.compile(r'^error:(.*)\s$')
 
+    reGrblMachiePositionMode = re.compile(r'.*(G9[0|1]).*')
+
     def __init__(self, cmd_line_options):
         super(MachIf_GRBL, self).__init__(cmd_line_options, ID, NAME,
                                           BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
@@ -124,15 +132,17 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         self._inputBufferPart = list()
 
-        self.currentStatus = GRBL_STATE_UKNOWN
-        self.autoStatusNextMicro = None
         self.machineAutoRefresh = False
+        self.machineStatus = GRBL_STATE_UKNOWN
+
+        self.autoStatusNextMicro = None
 
         self.initStringDetectFlag = False
         self.clearAlarmFlag = False
 
         # list of commads
-        self.cmdStatus = '?'
+        self.cmdClearAlarm = '$X\n'
+        self.cmdHome = '$H\n'
         self.cmdInitComm = self.cmdReset
 
         # no way to clean quque, this will do soft reset
@@ -140,12 +150,13 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.cmdQueueFlush = self.cmdReset
 
         self.cmdPostInit = '$I\n'
+        self.cmdStatus = '?'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw
         """
         super(MachIf_GRBL, self)._reset(BUFFER_MAX_SIZE,
-            BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
+                                        BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -194,13 +205,13 @@ class MachIf_GRBL(mi.MachIf_Base):
             # check on status change
             decodedStatus = self.stat_dict.get(
                 statusData[0], GRBL_STATE_UKNOWN)
-            if self.currentStatus != decodedStatus:
+            if self.machineStatus != decodedStatus:
                 if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
                     self.autoStatusNextMicro = dt.datetime.now() + \
                         dt.timedelta(
                             microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
-                self.currentStatus = decodedStatus
+                self.machineStatus = decodedStatus
 
         ack = self.reGrblMachineAck.search(data)
         if ack is not None:
@@ -212,7 +223,8 @@ class MachIf_GRBL(mi.MachIf_Base):
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
             if self.cmdLineOptions.vverbose:
-                print "** MachIf_GRBL found acknowledgement [%s]" % data.strip()
+                print "** MachIf_GRBL found acknowledgement [%s]" % data.strip(
+                )
 
             r = {}
             dataDict['r'] = r
@@ -293,9 +305,18 @@ class MachIf_GRBL(mi.MachIf_Base):
     def doClearAlarm(self):
         """ Clears alarm condition in grbl
         """
-        self.write("$X\n")
+        self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdClearAlarm))
+        self.write(self.cmdClearAlarm)
         # self.reset()
         self.clearAlarmFlag = True
+
+    def doHome(self, dict_axis):
+        if 'x' in dict_axis and 'y' in dict_axis and 'z' in dict_axis:
+            self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdHome))
+            self.write(self.cmdHome)
+        else:
+            msg = "!! grbl dosen't support single/partial axis homming."
+            self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, msg))
 
     def doInitComm(self):
         """ soft reset grbl to get it to talk to is iwht version info
@@ -347,6 +368,11 @@ class MachIf_GRBL(mi.MachIf_Base):
                     (dataLen, self._inputBufferSize,
                      (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
 
+            # check positioning mode change
+            position_mode = self.reGrblMachiePositionMode.match(data)
+            if position_mode is not None:
+                self.machinePositionMode = position_mode.group(1)
+
         return data
 
     def factory(self, cmd_line_options):
@@ -358,7 +384,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
     def tick(self):
         # check if is time for autorefresh and send get status cmd and prepare next refresh time
-        if (self.autoStatusNextMicro != None) and (self.currentStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]):
+        if (self.autoStatusNextMicro != None) and (self.machineStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]):
             tnow = dt.datetime.now()
             tnowMilli = tnow.second*1000 + tnow.microsecond/1000
             tdeltaMilli = self.autoStatusNextMicro.second * \
@@ -371,7 +397,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                     dt.timedelta(
                         microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
 
-        elif self.autoStatusNextMicro != None and self.currentStatus not in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
+        elif self.autoStatusNextMicro != None and self.machineStatus not in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
             self.autoStatusNextMicro = None
 
         if self.machineAutoRefresh != self.stateData.machineStatusAutoRefresh:
@@ -404,7 +430,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         bytesSent = 0
 
         # moving to active state get at least one status msg
-        if self.currentStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP, GRBL_STATE_HOLD]:
+        if self.machineStatus in [GRBL_STATE_IDLE, GRBL_STATE_STOP, GRBL_STATE_HOME, GRBL_STATE_SLEEP, GRBL_STATE_HOLD]:
             askForStatus = True
 
         bytesSent = super(MachIf_GRBL, self).write(txData, raw_write)

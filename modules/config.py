@@ -128,10 +128,12 @@ EV_CMD_RESET = 1120
 EV_CMD_MOVE = 1130
 EV_CMD_MOVE_RELATIVE = 1140
 EV_CMD_RELATIVE_MOVE = 1150
-EV_CMD_FAST_MOVE = 1160
-EV_CMD_FAST_MOVE_RELATIVE = 1170
+EV_CMD_RAPID_MOVE = 1160
+EV_CMD_RAPID_MOVE_RELATIVE = 1170
 EV_CMD_CLEAR_ALARM = 1180
 EV_CMD_PROBE = 1190
+EV_CMD_SET_AXIS = 1200
+EV_CMD_HOME = 1210
 
 
 EV_NULL = 100
@@ -145,11 +147,12 @@ EV_HIT_BRK_PT = 2050
 EV_PC_UPDATE = 2060
 EV_HIT_MSG = 2070
 EV_SER_RXDATA = 2080
-EV_SER_PORT_OPEN = 2090
-EV_SER_PORT_CLOSE = 2100
-EV_TIMER = 2110
-EV_DATA_STATUS = 2120
-EV_DEVICE_DETECTED = 2130
+EV_SER_TXDATA = 2090
+EV_SER_PORT_OPEN = 2100
+EV_SER_PORT_CLOSE = 2110
+EV_TIMER = 2120
+EV_DATA_STATUS = 2130
+EV_DEVICE_DETECTED = 2140
 
 
 def init_config(cmd_line_options, config_data, state_data):
@@ -289,7 +292,8 @@ class gsatConfigData():
             '/jogging/ProbeDistance': (True, 19.6000),
             '/jogging/ProbeMaxDistance': (True, -40.0000),
             '/jogging/ProbeFeedRate': (True, 100.0000),
-
+            '/jogging/JogFeedRate': (True, 1000),
+            '/jogging/RapidJog': (True, True),
 
             # CV2 keys
             '/cv2/Enable': (True, False),

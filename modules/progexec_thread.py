@@ -203,6 +203,42 @@ class MachIfExecuteThread(threading.Thread):
 
                 self.machIfModule.doClearAlarm()
 
+            elif e.event_id == gc.EV_CMD_MOVE:
+                if self.cmdLineOptions.vverbose:
+                    print "** programExecuteThread got event gc.gEV_CMD_MOVE."
+
+                self.machIfModule.doMove(e.data)
+
+            elif e.event_id == gc.EV_CMD_MOVE_RELATIVE:
+                if self.cmdLineOptions.vverbose:
+                    print "** programExecuteThread got event gc.gEV_CMD_MOVE_RELATIVE."
+
+                self.machIfModule.doMoveRelative(e.data)
+
+            elif e.event_id == gc.EV_CMD_RAPID_MOVE:
+                if self.cmdLineOptions.vverbose:
+                    print "** programExecuteThread got event gc.gEV_CMD_RAPID_MOVE."
+
+                self.machIfModule.doFastMove(e.data)
+
+            elif e.event_id == gc.EV_CMD_RAPID_MOVE_RELATIVE:
+                if self.cmdLineOptions.vverbose:
+                    print "** programExecuteThread got event gc.gEV_CMD_RAPID_MOVE_RELATIVE."
+
+                self.machIfModule.doFastMoveRelative(e.data)
+
+            elif e.event_id == gc.EV_CMD_SET_AXIS:
+                if self.cmdLineOptions.vverbose:
+                    print "** programExecuteThread got event gc.gEV_CMD_SET_AXIS."
+
+                self.machIfModule.doSetAxis(e.data)
+
+            elif e.event_id == gc.EV_CMD_HOME:
+                if self.cmdLineOptions.vverbose:
+                    print "** programExecuteThread got event gc.gEV_CMD_HOME."
+
+                self.machIfModule.doHome(e.data)
+
             else:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread got unknown event!! [%s]." % str(
@@ -243,14 +279,24 @@ class MachIfExecuteThread(threading.Thread):
                 mainWndEvent = True
 
         else:
-            if 'raw_data' in rxData:
-                raw_data = rxData['raw_data']
+            if 'rx_data' in rxData:
+                rx_data = rxData['rx_data']
 
-                if len(raw_data) > 0:
+                if len(rx_data) > 0:
 
                     # add data to queue and signal main window to consume
                     self.progExecOutQueue.put(
-                        gc.SimpleEvent(gc.EV_DATA_IN, raw_data))
+                        gc.SimpleEvent(gc.EV_DATA_IN, rx_data))
+                    mainWndEvent = True
+
+            if 'tx_data' in rxData:
+                tx_data = rxData['tx_data']
+
+                if len(tx_data) > 0:
+
+                    # add data to queue and signal main window to consume
+                    self.progExecOutQueue.put(
+                        gc.SimpleEvent(gc.EV_DATA_OUT, tx_data))
                     mainWndEvent = True
 
             if 'sr' in rxData:
@@ -337,8 +383,8 @@ class MachIfExecuteThread(threading.Thread):
             if self.swState == gc.STATE_ABORT:
                 waitForResponse = False
 
-            if 'raw_data' in rxDataDict:
-                if len(rxDataDict['raw_data'].strip()) > 0:
+            if 'rx_data' in rxDataDict:
+                if len(rxDataDict['rx_data'].strip()) > 0:
                     waitForResponse = False
 
             self.Tick()

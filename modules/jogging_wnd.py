@@ -4,7 +4,7 @@
    Copyright (C) 2013-2017 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
+   grbl like GCODE interpreters. With features similar to software debuggers.
    Features such as breakpoint, change current program counter, inspection
    and modification of variables.
 
@@ -85,13 +85,13 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
             wx.ToolTip("If enable after each JOG set operation (ie set to ZERO) a machine update request will be sent to device"))
         vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT, border=20)
 
-        # Add perform Z operation last check box
+        # Add num keypad as pendant check box
         self.cbNumKeypadPendant = wx.CheckBox(
             self, wx.ID_ANY, "Numeric Keypad as cnc pendant")
         self.cbNumKeypadPendant.SetValue(
             self.configData.get('/jogging/NumKeypadPendant'))
         self.cbNumKeypadPendant.SetToolTip(
-            wx.ToolTip("Probe Z axis"))
+            wx.ToolTip(""))
         vBoxSizer.Add(self.cbNumKeypadPendant, flag=wx.LEFT, border=20)
 
         # Add perform Z operation last check box
@@ -100,8 +100,44 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
             self.configData.get('/jogging/ZJogMovesLast'))
         self.cbZJogMovesLast.SetToolTip(
             wx.ToolTip("If enable, any XY jog moves are perform first and Z jog moves are last"))
-
         vBoxSizer.Add(self.cbZJogMovesLast, flag=wx.LEFT, border=20)
+
+        # Add rapid jog
+        self.cbRapidJog = wx.CheckBox(
+            self, wx.ID_ANY, "Rapid Jog")
+        self.cbRapidJog.SetValue(
+            self.configData.get('/jogging/RapidJog'))
+        self.cbRapidJog.SetToolTip(
+            wx.ToolTip(""))
+        vBoxSizer.Add(self.cbRapidJog, flag=wx.LEFT, border=20)
+
+        vBoxSizer.AddSpacer(20)
+
+        # Jog feed rate
+        text = wx.StaticText(self, label="Jog Feed Rate Default Settings")
+        font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+        text.SetFont(font)
+        vBoxSizer.Add(text, flag=wx.ALL, border=5)
+
+        hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.jogFeedRateSpinCtrl = fs.FloatSpin(self, -1,
+                                                 min_val=0, max_val=999999, increment=100,
+                                                 value=self.configData.get(
+                                                     '/jogging/JogFeedRate'),
+                                                 size=(-1, -1), agwStyle=fs.FS_LEFT)
+        self.jogFeedRateSpinCtrl.SetFormat("%f")
+        self.jogFeedRateSpinCtrl.SetDigits(0)
+        self.jogFeedRateSpinCtrl.SetToolTip(wx.ToolTip(
+            "Shift + mouse wheel = 2 * increment\n"
+            "Ctrl + mouse wheel = 10 * increment\n"
+            "Alt + mouse wheel = 100 * increment"))
+        hBoxSizer.Add(self.jogFeedRateSpinCtrl, flag=wx.ALL |
+                      wx.ALIGN_CENTER_VERTICAL, border=5)
+
+        st = wx.StaticText(self, wx.ID_ANY, "units/min")
+        hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+
+        vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         vBoxSizer.AddSpacer(20)
 
@@ -274,6 +310,12 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/jogging/ProbeFeedRate',
                             self.probeZFeedRateSpinCtrl.GetValue())
 
+        self.configData.set('/jogging/RapidJog',
+                            self.cbRapidJog.GetValue())
+
+        self.configData.set('/jogging/JogFeedRate',
+                            self.jogFeedRateSpinCtrl.GetValue())
+
         for cn in range(4):
             cnp1 = cn+1
             self.configData.set('/jogging/Custom%dLabel' % cnp1,
@@ -283,13 +325,12 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
                                 self.customCtrlArray[cn][1].GetValue())
 
 
-"""----------------------------------------------------------------------------
-   gsatCliSettingsPanel:
-   CLI settings.
-----------------------------------------------------------------------------"""
-
-
 class gsatCliSettingsPanel(scrolled.ScrolledPanel):
+    """-------------------------------------------------------------------------
+    gsatCliSettingsPanel:
+    CLI settings.
+    -------------------------------------------------------------------------"""
+
     def __init__(self, parent, config_data, **args):
         scrolled.ScrolledPanel.__init__(self, parent,
                                         style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
@@ -434,6 +475,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.configCustom4Label = self.configData.get('/jogging/Custom4Label')
         self.configCustom4Script = self.configData.get(
             '/jogging/Custom4Script')
+
+        self.configRapidJog = self.configData.get('/jogging/RapidJog')
+        self.configJogFeedRate = self.configData.get('/jogging/JogFeedRate')
 
         # cli data
         self.cliSaveCmdHistory = self.configData.get('/cli/SaveCmdHistory')
@@ -606,7 +650,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         # Add Buttons -----------------------------------------------------------
         gbzJoggingGridSizer = wx.GridBagSizer(0, 0)
         gbStepSizeGridSizer = wx.GridBagSizer(0, 0)
-        gbSpindleSpeedGridSizer = wx.GridBagSizer(0, 0)
+        gbJogSpindleGridSizer = wx.GridBagSizer(0, 0)
 
         buttonSize = (50, 50)
         #buttonSizeLong = (50, 75)
@@ -791,48 +835,71 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         gbzJoggingGridSizer.Add(gbStepSizeGridSizer, pos=(3, 0), span=(4, 4))
 
-        # add spindle speed controls
-        spinText = wx.StaticText(self, -1, "Spindle speed")
-        gbSpindleSpeedGridSizer.Add(spinText, pos=(
+
+        # add rapid jog check box controls
+        self.rapidJogCheckBox = wx.CheckBox(self, label='Rapid/Feed rate')
+        self.rapidJogCheckBox.SetValue(self.configRapidJog)
+        self.rapidJogCheckBox.SetToolTip(
+            wx.ToolTip("Enables rapid jog positioning"))
+        self.Bind(wx.EVT_CHECKBOX, self.OnRapidJog, self.rapidJogCheckBox)
+
+        gbJogSpindleGridSizer.Add(self.rapidJogCheckBox, pos=(
             0, 0), span=(1, 2), flag=wx.TOP, border=5)
 
+        self.feedRateSpinCtrl = fs.FloatSpin(self, -1,
+            min_val=0, max_val=999999, increment=100, value=self.configJogFeedRate,
+            size=(stepButtonSize[0]*2, -1), agwStyle=fs.FS_LEFT)
+        self.feedRateSpinCtrl.SetFormat("%f")
+        self.feedRateSpinCtrl.SetDigits(0)
+        self.feedRateSpinCtrl.SetToolTip(wx.ToolTip(
+            "Shift + mouse wheel = 2 * increment\n"
+            "Ctrl + mouse wheel = 10 * increment\n"
+            "Alt + mouse wheel = 100 * increment"))
+        gbJogSpindleGridSizer.Add(self.feedRateSpinCtrl, pos=(
+            1, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
+
+        # add spindle speed controls
+        spinText = wx.StaticText(self, -1, "Spindle speed")
+        gbJogSpindleGridSizer.Add(spinText, pos=(
+            2, 0), span=(1, 2), flag=wx.TOP, border=5)
+
         self.spindleSpeedSpinCtrl = fs.FloatSpin(self, -1,
-                                                 min_val=0, max_val=99999, increment=100, value=self.configSpindleSpeed,
-                                                 size=(stepButtonSize[0]*2, -1), agwStyle=fs.FS_LEFT)
+            min_val=0, max_val=99999, increment=100, value=self.configSpindleSpeed,
+            size=(stepButtonSize[0]*2, -1), agwStyle=fs.FS_LEFT)
         self.spindleSpeedSpinCtrl.SetFormat("%f")
         self.spindleSpeedSpinCtrl.SetDigits(0)
         self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip(
             "Shift + mouse wheel = 2 * increment\n"
             "Ctrl + mouse wheel = 10 * increment\n"
             "Alt + mouse wheel = 100 * increment"))
-        gbSpindleSpeedGridSizer.Add(self.spindleSpeedSpinCtrl, pos=(
-            1, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
+        gbJogSpindleGridSizer.Add(self.spindleSpeedSpinCtrl, pos=(
+            3, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
 
-        gbzJoggingGridSizer.Add(gbSpindleSpeedGridSizer,
+        gbzJoggingGridSizer.Add(gbJogSpindleGridSizer,
                                 pos=(3, 4), span=(2, 2))
 
         # add Zero and go to Zero buttons
         self.SetToZeroButton = wx.BitmapButton(self, -1, ico.imgSetToZero.GetBitmap(),
-                                               size=buttonSize, style=wx.BORDER_NONE)
+            size=buttonSize, style=wx.BORDER_NONE)
         self.SetToZeroButton.SetToolTip(wx.ToolTip("Set all axis to zero"))
         self.Bind(wx.EVT_BUTTON, self.OnSetToZero, self.SetToZeroButton)
         gbzJoggingGridSizer.Add(self.SetToZeroButton, pos=(0, 4))
 
         self.SetToZeroXYButton = wx.BitmapButton(self, -1, ico.imgSetToZeroXY.GetBitmap(),
-                                                 size=buttonSize, style=wx.BORDER_NONE)
+            size=buttonSize, style=wx.BORDER_NONE)
         self.SetToZeroXYButton.SetToolTip(
             wx.ToolTip("Set X and Y axis to zero"))
         self.Bind(wx.EVT_BUTTON, self.OnSetToZeroXY, self.SetToZeroXYButton)
         gbzJoggingGridSizer.Add(self.SetToZeroXYButton, pos=(0, 5))
 
         self.SetToZeroZButton = wx.BitmapButton(self, -1, ico.imgSetToZeroZ.GetBitmap(),
-                                                size=buttonSize, style=wx.BORDER_NONE)
+            size=buttonSize, style=wx.BORDER_NONE)
         self.SetToZeroZButton.SetToolTip(wx.ToolTip("Set Z axis to zero"))
         self.Bind(wx.EVT_BUTTON, self.OnSetToZeroZ, self.SetToZeroZButton)
         gbzJoggingGridSizer.Add(self.SetToZeroZButton, pos=(0, 6))
 
         self.GoToZeroXYButton = wx.BitmapButton(self, -1, ico.imgGoToZeroXY.GetBitmap(),
-                                                size=buttonSize, style=wx.BORDER_NONE)
+            size=buttonSize, style=wx.BORDER_NONE)
         self.GoToZeroXYButton.SetToolTip(wx.ToolTip("Move XY axis to zero"))
         self.Bind(wx.EVT_BUTTON, self.OnGoToZeroXY, self.GoToZeroXYButton)
         gbzJoggingGridSizer.Add(self.GoToZeroXYButton, pos=(1, 1))
@@ -889,7 +956,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.jCoolant, 1, flag=wx.EXPAND)
 
-        # Add Checkbox for sync with work position
+        # Add check box for sync with work position
         self.useWorkPosCheckBox = wx.CheckBox(self, label="Auto MPOS")
         self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
         self.useWorkPosCheckBox.SetToolTip(
@@ -899,7 +966,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                   self.useWorkPosCheckBox)
         vBoxSizer.Add(self.useWorkPosCheckBox)
 
-        # Add Checkbox for numeric keypad pendant
+        # Add check box for numeric keypad pendant
         self.numKeypadPendantCheckBox = wx.CheckBox(
             self, label="NumKeypad pen")
         self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
@@ -909,7 +976,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                   self.numKeypadPendantCheckBox)
         vBoxSizer.Add(self.numKeypadPendantCheckBox)
 
-        # Add Checkbox for Z moves last
+        # Add check box for Z moves last
         self.zJogMovesLastCheckBox = wx.CheckBox(self, label="Z jog move last")
         self.zJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
         self.zJogMovesLastCheckBox.SetToolTip(
@@ -1081,6 +1148,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         return vBoxSizer
 
     def AxisJog(self, staticControl, axis, opAdd):
+        """ Jog given axis, by selected step
+        """
+        dictAxisCoor = {}
         fAxisPos = float(staticControl.GetValue())
 
         if opAdd:
@@ -1090,9 +1160,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         fAxisStrPos = gc.NUMBER_FORMAT_STRING % (fAxisPos)
 
-        cmd = "".join([gc.DEVICE_CMD_INCREMENTAL, " ", gc.DEVICE_CMD_RAPID_LINEAR_MOVE,
-                       " ", axis, str(fAxisStrPos), "\n", gc.DEVICE_CMD_ABSOLUTE, "\n"])
-        self.mainWindow.SerialWrite(cmd)
+        dictAxisCoor[str(axis).lower()] = fAxisStrPos
+
+        if self.configRapidJog:
+            gc_cmd = gc.EV_CMD_RAPID_MOVE_RELATIVE
+        else:
+            gc_cmd = gc.EV_CMD_MOVE_RELATIVE
+            dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
+
+        self.mainWindow.mainWndOutQueue.put(gc.SimpleEvent(gc_cmd, dictAxisCoor))
 
     def OnAllCheckBox(self, evt):
         self.xCheckBox.SetValue(evt.IsChecked())
@@ -1181,54 +1257,85 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                 "\n"]))
 
     def OnHomeX(self, e):
-        self.mainWindow.SerialWrite("".join(
-            [gc.DEVICE_CMD_HOME_AXIS, " X", gc.ZERO_STRING, "\n"]))
+        """ Home X axis
+        """
+        dictAxisCoor = {'x':0}
+
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
+        )
 
     def OnHomeY(self, e):
-        self.mainWindow.SerialWrite("".join(
-            [gc.DEVICE_CMD_HOME_AXIS, " Y", gc.ZERO_STRING, "\n"]))
+        """ Home Y axis
+        """
+        dictAxisCoor = {'y':0}
+
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
+        )
 
     def OnHomeZ(self, e):
-        self.mainWindow.SerialWrite("".join(
-            [gc.DEVICE_CMD_HOME_AXIS, " Z", gc.ZERO_STRING, "\n"]))
+        """ Home Z axis
+        """
+        dictAxisCoor = {'z':0}
+
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
+        )
 
     def OnHomeXY(self, e):
-        self.mainWindow.SerialWrite("".join(
-            [gc.DEVICE_CMD_HOME_AXIS, " X", gc.ZERO_STRING,
-             " Y", gc.ZERO_STRING, "\n"]))
+        """ Home X and Y axis
+        """
+        dictAxisCoor = {'x':0, 'y':0}
+
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
+        )
 
     def OnHome(self, e):
-        # on home operation don't use Z move last option
-        # home operation should move Z to a safe place first before
-        # moving X or Y axis
-        self.mainWindow.SerialWrite("".join(
-            [gc.DEVICE_CMD_HOME_AXIS, " X", gc.ZERO_STRING,
-             " Y", gc.ZERO_STRING, " Z", gc.ZERO_STRING, "\n"]))
+        """ Home machine
+        """
+        dictAxisCoor = {'x':0, 'y':0, 'z':0}
+
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
+        )
 
     def OnSetToZero(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
+        """ Sets axis X, Y and Z to 0
+        """
+        dictAxisCoor = {'x':0, 'y':0, 'z':0}
 
-        self.mainWindow.SerialWrite("".join(
-            [mim.getSetAxisCmd(), " X", gc.ZERO_STRING, " Y", gc.ZERO_STRING,
-             " Z", gc.ZERO_STRING, "\n"]))
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_SET_AXIS, dictAxisCoor)
+        )
 
     def OnSetToZeroXY(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
+        """ Sets axis X and Y to 0
+        """
+        dictAxisCoor = {'x':0, 'y':0}
 
-        self.mainWindow.SerialWrite("".join(
-            [mim.getSetAxisCmd(), " X", gc.ZERO_STRING,
-             " Y", gc.ZERO_STRING, "\n"]))
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_SET_AXIS, dictAxisCoor)
+        )
 
     def OnSetToZeroZ(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
+        """ Sets axis Z to 0
+        """
+        dictAxisCoor = {'z':0}
 
-        self.mainWindow.SerialWrite("".join(
-            [mim.getSetAxisCmd(), " Z", gc.ZERO_STRING, "\n"]))
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_SET_AXIS, dictAxisCoor)
+        )
 
     def OnGoToZeroXY(self, e):
-        self.mainWindow.SerialWrite("".join(
-            [gc.DEVICE_CMD_RAPID_LINEAR_MOVE, " X", gc.ZERO_STRING,
-             " Y", gc.ZERO_STRING, "\n"]))
+        """ Jogs axis X and Y to 0
+        """
+        dictAxisCoor = {'x':0, 'y':0}
+
+        self.mainWindow.mainWndOutQueue.put(
+            gc.SimpleEvent(gc.EV_CMD_RAPID_MOVE, dictAxisCoor)
+        )
 
     def OnSetStepSize(self, e):
         buttonById = self.FindWindowById(e.GetId())
@@ -1237,75 +1344,108 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     def OnUseMachineWorkPosition(self, e):
         self.configAutoMPOS = e.IsChecked()
 
+    def OnRapidJog(self, e):
+        self.configRapidJog = e.IsChecked()
+
     def OnNumKeypadPendant(self, e):
         self.configNumKeypadPendant = e.IsChecked()
 
     def OnZJogMovesLast(self, e):
         self.configZJogMovesLast = e.IsChecked()
 
-    def OnJogCmd(self, xval, yval, zval, gcode_cmd):
+    def OnJogCmd(self, xval, yval, zval, machif_cmd):
+        """ Utility function, for jog commands
+        """
         cmd = ""
         cmdx = ""
         cmdy = ""
         cmdz = ""
+        dictAxisCoor = {}
 
         if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
-            # self.jX.SetValue(xval)
-            cmdx = " X%s" % xval
+            dictAxisCoor['x'] = xval
 
         if self.yCheckBox.GetValue() or self.allCheckBox.GetValue():
-            # self.jY.SetValue(yval)
-            cmdy = " Y%s" % yval
+            dictAxisCoor['y'] = yval
 
         if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
-            # self.jZ.SetValue(zval)
-            cmdz = " Z%s" % zval
+            dictAxisCoor['z'] = zval
+
+        if machif_cmd == gc.EV_CMD_MOVE:
+            dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
 
         if (self.configZJogMovesLast):
-            if (len(cmdx) > 0) or (len(cmdy) > 0):
-                cmd = "".join([gcode_cmd, cmdx, cmdy, "\n"])
-                self.mainWindow.SerialWrite(cmd)
+            if 'x' in dictAxisCoor or 'y' in dictAxisCoor:
+                if 'z' in dictAxisCoor:
+                    dictAxisCoor['lastz'] = dictAxisCoor.get('z')
+                    dictAxisCoor.pop('z')
 
-            if (len(cmdz) > 0):
-                cmd = "".join([gcode_cmd, cmdz, "\n"])
-                self.mainWindow.SerialWrite(cmd)
+                self.mainWindow.mainWndOutQueue.put(
+                    gc.SimpleEvent(machif_cmd, dictAxisCoor)
+                )
+
+            if 'lastz' in dictAxisCoor:
+                dictAxisCoor['z'] = dictAxisCoor.get('lastz')
+                self.mainWindow.mainWndOutQueue.put(
+                    gc.SimpleEvent(machif_cmd, dictAxisCoor)
+                )
 
         else:
-            if (len(cmdx) > 0) or (len(cmdy) > 0) or (len(cmdz) > 0):
-                cmd = "".join([gcode_cmd, cmdx, cmdy, cmdz, "\n"])
-                self.mainWindow.SerialWrite(cmd)
+            if 'x' in dictAxisCoor or 'y' in dictAxisCoor or 'z' in dictAxisCoor:
+                self.mainWindow.mainWndOutQueue.put(
+                    gc.SimpleEvent(machif_cmd, dictAxisCoor)
+                )
 
     def OnResetToZero(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
-
-        self.OnJogCmd(gc.ZERO_STRING, gc.ZERO_STRING, gc.ZERO_STRING,
-                      mim.getSetAxisCmd())
+        """ Reset machine selected axis to zero position
+        """
+        self.OnJogCmd(
+            gc.ZERO_STRING, gc.ZERO_STRING, gc.ZERO_STRING, gc.EV_CMD_SET_AXIS
+        )
 
         if self.configReqUpdateOnJogSetOp:
             self.mainWindow.GetMachineStatus()
 
     def OnGoToZero(self, e):
-        self.OnJogCmd(gc.ZERO_STRING, gc.ZERO_STRING, gc.ZERO_STRING,
-                      gc.DEVICE_CMD_RAPID_LINEAR_MOVE)
+        """ Jogs machine selected axis to zero position
+        """
+        if self.configRapidJog:
+            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        else:
+            gc_cmd = gc.EV_CMD_MOVE
+
+        self.OnJogCmd(gc.ZERO_STRING, gc.ZERO_STRING, gc.ZERO_STRING, gc_cmd)
 
     def OnResetToJogVal(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
-
+        """ Reset machine selected axis to user input job values
+        """
         self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-            mim.getSetAxisCmd())
+            gc.EV_CMD_SET_AXIS
+        )
 
         if self.configReqUpdateOnJogSetOp:
             self.mainWindow.GetMachineStatus()
 
     def OnGoToJogVal(self, e):
+        """ Jogs machine selected axis to user input job values
+        """
+        if self.configRapidJog:
+            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        else:
+            gc_cmd = gc.EV_CMD_MOVE
+
         self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
-            gc.DEVICE_CMD_RAPID_LINEAR_MOVE)
+            gc_cmd
+        )
 
     def OnGoHome(self, e):
+        """ Needs work not all controls can home each axis
+            for example example grbl
+        """
         self.OnJogCmd(gc.ZERO_STRING, gc.ZERO_STRING, gc.ZERO_STRING,
-                      gc.DEVICE_CMD_HOME_AXIS)
+                      gc.EV_CMD_HOME)
 
     def OnSaveJogPosition(self, e):
         xVal = self.jX.GetValue()
@@ -1319,20 +1459,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                 self.restorePositionButton.Enable()
 
     def OnRestoreJogPosition(self, e):
-        cmdx = " X%s" % self.SavedJogPos[0]
-        cmdy = " Y%s" % self.SavedJogPos[1]
-        cmdz = " Z%s" % self.SavedJogPos[2]
-        gcode_cmd = gc.DEVICE_CMD_RAPID_LINEAR_MOVE
-
-        if (self.configZJogMovesLast):
-            cmd = "".join([gcode_cmd, cmdx, cmdy, "\n"])
-            self.mainWindow.SerialWrite(cmd)
-
-            cmd = "".join([gcode_cmd, cmdz, "\n"])
-            self.mainWindow.SerialWrite(cmd)
+        if self.configRapidJog:
+            gc_cmd = gc.EV_CMD_RAPID_MOVE
         else:
-            cmd = "".join([gcode_cmd, cmdx, cmdy, cmdz, "\n"])
-            self.mainWindow.SerialWrite(cmd)
+            gc_cmd = gc.EV_CMD_MOVE
+
+        self.OnJogCmd(self.SavedJogPos[0], self.SavedJogPos[1],
+            self.SavedJogPos[2], gc_cmd
+        )
+
 
     def OnPushStack(self, e):
         xVal = self.jX.GetValue()

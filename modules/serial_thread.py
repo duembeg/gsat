@@ -199,15 +199,14 @@ class SerialPortThread(threading.Thread):
                 while '\n' in self.rxBuffer:
                     serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
 
-                    if len(serialData) > 0:
-                        # pdb.set_trace()
+                    if serialData:
 
                         if self.cmdLineOptions.vverbose:
                             print "[%03d] <- ASCII:%s HEX:%s" % (len(serialData),
-                                                                 serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
+                                serialData.strip(), ':'.join(x.encode('hex') for x in serialData))
                         elif self.cmdLineOptions.verbose:
                             print "[%03d] <- %s" % (len(serialData),
-                                                    serialData.strip())
+                                serialData.strip())
 
                         # add data to queue
                         self.serialThreadOutQueue.put(gc.SimpleEvent(
