@@ -192,7 +192,7 @@ class MachIf_Base(object):
             self.write(self.cmdStatus)
 
     def doHome(self, dict_axis):
-        self._send_axis_cmd(self.cmdHome, dict_axis_coor)
+        self._send_axis_cmd(self.cmdHome, dict_axis)
 
     def doInitComm(self):
         self.write(self.cmdInitComm)
