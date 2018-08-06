@@ -423,7 +423,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         # check for clear alarm condition
         if (self.clearAlarmFlag):
             self.clearAlarmFlag = False
-            #super(MachIf_GRBL, self).write(self.getInitCommCmd())
+            super(MachIf_GRBL, self).write(self.cmdStatus)
 
     def write(self, txData, raw_write=False):
         askForStatus = False
