@@ -29,6 +29,7 @@ try:
 except ImportError:
     import json
 
+import modules.config as gc
 import modules.machif as mi
 
 
