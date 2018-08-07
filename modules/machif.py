@@ -189,7 +189,7 @@ class MachIf_Base(object):
     def doGetStatus(self):
         if self.okToSend(self.cmdStatus):
             self._serialTxRxInQueue.put(
-                gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdStatus)
+                gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdStatus.strip())
             )
 
             self.write(self.cmdStatus)
