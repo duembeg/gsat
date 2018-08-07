@@ -158,7 +158,7 @@ class MachIf_TinyG(mi.MachIf_Base):
                 if 'mpoa' in sr:
                     sr['posa'] = sr['mpoa']
 
-            dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
+                sr['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
         except:
             match = False
@@ -175,25 +175,21 @@ class MachIf_TinyG(mi.MachIf_Base):
                 dataDict['f'] = [1, 0, 0]
                 match = True
 
+            if 'sr' not in dataDict:
+                dataDict['sr'] = {}
+
+            sr['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
+
             for pos in [posx, posy, posz, posa]:
                 if pos is not None:
-                    if 'sr' not in dataDict:
-                        dataDict['sr'] = {}
-
                     dataDict['sr'][pos.group(1)] = float(pos.group(2))
                     match = True
 
             if vel is not None:
-                if 'sr' not in dataDict:
-                    dataDict['sr'] = {}
-
                 dataDict['sr']['vel'] = float(vel.group(1))
                 match = True
 
             if stat is not None:
-                if 'sr' not in dataDict:
-                    dataDict['sr'] = {}
-
                 dataDict['sr']['stat'] = self.stat_dict.get(
                     int(stat.group(1)), "Uknown")
                 match = True

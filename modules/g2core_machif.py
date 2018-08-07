@@ -140,7 +140,7 @@ class MachIf_g2core(mi.MachIf_Base):
                 if 'mpoa' in sr:
                     sr['posa'] = sr['mpoa']
 
-            dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
+                sr['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
         except:
             ack = self.reMachineAck.match(data)
@@ -151,25 +151,23 @@ class MachIf_g2core(mi.MachIf_Base):
             if ack is not None:
                 dataDict['r'] = {"f": [1, 0, 0]}
                 dataDict['f'] = [1, 0, 0]
-            elif pos is not None:
-                if 'sr' not in dataDict:
-                    dataDict['sr'] = {}
-
-                dataDict['sr']["".join(["pos", pos.group(1).lower()])] = float(
-                    pos.group(2))
-            elif vel is not None:
-                if 'sr' not in dataDict:
-                    dataDict['sr'] = {}
-
-                dataDict['sr']['vel'] = float(vel.group(1))
-            elif stat is not None:
-                if 'sr' not in dataDict:
-                    dataDict['sr'] = {}
-
-                dataDict['sr']['stat'] = stat.group(1)
             else:
-                if self.cmdLineOptions.vverbose:
-                    print "** MachIf_g2core cannot decode data!! [%s]." % data
+                if 'sr' not in dataDict:
+                    dataDict['sr'] = {}
+
+                sr['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
+                
+                if pos is not None:
+                    dataDict['sr'][
+                        "".join(["pos", pos.group(1).lower()])] = float(
+                        pos.group(2))
+                elif vel is not None:
+                    dataDict['sr']['vel'] = float(vel.group(1))
+                elif stat is not None:
+                    dataDict['sr']['stat'] = stat.group(1)
+                else:
+                    if self.cmdLineOptions.vverbose:
+                        print "** MachIf_g2core cannot decode data!! [%s]." % data
 
         if 'r' in dataDict:
             # checking for count in "f" response doesn't always work as expected and broke on edge branch
@@ -190,13 +188,6 @@ class MachIf_g2core(mi.MachIf_Base):
                 #print dataDict
 
         return dataDict
-
-    def doClearAlarm(self):
-        """ Clears alarm condition in grbl
-        """
-        self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdClearAlarm))
-        self.write(self.cmdClearAlarm)
-        self.write(self.getStatusCmd())
 
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller

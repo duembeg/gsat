@@ -151,8 +151,11 @@ class MachIf_Base(object):
         return data
 
     def doClearAlarm(self):
+        """ Clears alarm condition
+        """
         self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdClearAlarm))
         self.write(self.cmdClearAlarm)
+        self.write(self.getStatusCmd())
 
     def doCycleStartResume(self):
         """ send cycle resume command

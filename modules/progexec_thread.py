@@ -84,17 +84,14 @@ class MachIfExecuteThread(threading.Thread):
         self.machIfModule = None
 
         # init device module
-        self.InitMachineIfModule()
+        self.initMachineIfModule()
 
         # start thread
         self.start()
 
-    """-------------------------------------------------------------------------
-   programExecuteThread: Main Window Event Handlers
-   Handle events coming from main UI
-   -------------------------------------------------------------------------"""
-
-    def ProcessQueue(self):
+    def processQueue(self):
+        """ Handle events coming from main UI
+        """
         # check output queue and notify UI if is not empty
         if not self.progExecOutQueue.empty():
             # if self.okToPostEvents:
@@ -248,7 +245,7 @@ class MachIfExecuteThread(threading.Thread):
    programExecuteThread: General Functions
    -------------------------------------------------------------------------"""
 
-    def InitMachineIfModule(self):
+    def initMachineIfModule(self):
         self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
         if self.cmdLineOptions.vverbose:
@@ -257,7 +254,7 @@ class MachIfExecuteThread(threading.Thread):
 
         self.machIfModule.init(self.stateData)
 
-    def SerialRead(self):
+    def serialRead(self):
         rxData = self.machIfModule.read()
         mainWndEvent = False
 
@@ -315,10 +312,10 @@ class MachIfExecuteThread(threading.Thread):
 
         return rxData
 
-    def SerialWrite(self, serialData):
+    def serialWrite(self, serial_data):
         bytesSent = 0
 
-        lines = serialData.splitlines(True)
+        lines = serial_data.splitlines(True)
 
         for line in lines:
             bytes_sent = self.machIfModule.write(line)
@@ -332,53 +329,65 @@ class MachIfExecuteThread(threading.Thread):
 
         return bytesSent
 
-    def Tick(self):
+    def tick(self):
         self.machIfModule.tick()
-        self.ProcessQueue()
+        self.processQueue()
 
-    def WaitForAcknowledge(self):
-        waitForAcknowlege = True
+    def waitForAcknowledge(self):
+        """ waits for a ack kind of response also check for errors
+            and signal calling function
+        """
+        rc_error = False
+        wait_for_acknowlege = True
 
-        while (waitForAcknowlege):
-            rxDataDict = self.WaitForResponse()
+        while (wait_for_acknowlege):
+            rxDataDict = self.waitForResponse()
 
             if self.swState == gc.STATE_ABORT:
-                waitForAcknowlege = False
+                wait_for_acknowlege = False
 
             if self.lastEventID == gc.EV_CMD_STOP:
-                waitForAcknowlege = False
+                wait_for_acknowlege = False
 
             if self.endThread:
-                waitForAcknowlege = False
+                wait_for_acknowlege = False
 
             if 'r' in rxDataDict:
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread found acknowledgement"\
                         " [%s]" % str(rxDataDict['r']).strip()
 
-                    if rxDataDict['f'][1] == 0:
+                if rxDataDict['f'][1] == 0:
+                    if self.cmdLineOptions.vverbose:
                         print "** programExecuteThread acknowledgement OK %s" % str(
                             rxDataDict['f'])
-                    else:
+                else:
+                    self.swState = gc.STATE_IDLE
+                    rc_error = True
+                    if self.cmdLineOptions.vverbose:
                         print "** programExecuteThread acknowledgement ERROR %s" % str(
                             rxDataDict['f'])
 
-                waitForAcknowlege = False
+                wait_for_acknowlege = False
                 break
 
             if 'err' in rxDataDict:
+                self.swState = gc.STATE_IDLE
+                rc_error = True
                 if self.cmdLineOptions.vverbose:
                     print "** programExecuteThread found error acknowledgement"\
                         " [%s]" % str(rxDataDict['r']).strip()
-                waitForAcknowlege = False
+                wait_for_acknowlege = False
                 break
 
-    def WaitForResponse(self):
+        return rc_error
+
+    def waitForResponse(self):
         waitForResponse = True
         rxDataDict = {}
 
         while (waitForResponse):
-            rxDataDict = self.SerialRead()
+            rxDataDict = self.serialRead()
 
             if self.swState == gc.STATE_ABORT:
                 waitForResponse = False
@@ -387,7 +396,7 @@ class MachIfExecuteThread(threading.Thread):
                 if len(rxDataDict['rx_data'].strip()) > 0:
                     waitForResponse = False
 
-            self.Tick()
+            self.tick()
 
             if self.endThread:
                 waitForResponse = False
@@ -399,43 +408,44 @@ class MachIfExecuteThread(threading.Thread):
 
         return rxDataDict
 
-    def RunStepSendGcode(self, gcodeData):
-        writeToDevice = True
-
-        gcode = gcodeData.strip()
+    def sendRunStepGcode(self, gcode_data):
+        write_to_device = True
+        error = False
+        gcode = gcode_data.strip()
 
         if len(gcode) > 0:
             gcode = "%s\n" % (gcode)
 
             if self.machIfModule.okToSend(gcode):
                 # write data
-                self.SerialWrite(gcode)
+                self.serialWrite(gcode)
 
                 ''' Wait for acknowledge might no longer needed, the
                 machine IF object will track the device queue
                 all will manage whether or not we can send more
                 commands to the IF'''
                 # wait for response
-                self.WaitForAcknowledge()
+                error = self.waitForAcknowledge()
                 # self.SerialRead()
 
                 if self.machineAutoStatus:
                     self.machIfModule.doGetStatus()
             else:
-                writeToDevice = False
-                self.SerialRead()
+                write_to_device = False
+                self.serialRead()
 
-        if writeToDevice:
-            self.workingProgramCounter += 1
+        if write_to_device:
+            if not error:
+                self.workingProgramCounter += 1
 
             # if we stop early make sure to update PC to main UI
             if self.swState == gc.STATE_IDLE:
                 self.progExecOutQueue.put(gc.SimpleEvent(
                     gc.EV_PC_UPDATE, self.workingProgramCounter))
 
-    def ProcessRunSate(self):
-        # send data to serial port ----------------------------------------------
-
+    def processRunSate(self):
+        """ Process RUN state and update counters or end state
+        """
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
             self.swState = gc.STATE_IDLE
@@ -480,11 +490,20 @@ class MachIfExecuteThread(threading.Thread):
             gcode = reComments.sub("", gcode)
 
         # send g-code command
-        self.RunStepSendGcode(gcode)
+        self.sendRunStepGcode(gcode)
 
-    def ProcessStepSate(self):
-        # send data to serial port ----------------------------------------------
+        # check if something else switch to IDLE (like errors)
+        if gc.STATE_IDLE == self.swState:
+            self.swState = gc.STATE_BREAK
+            self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_HIT_BRK_PT, None))
+            if self.cmdLineOptions.vverbose:
+                print "** programExecuteThread swState is gc.gSTATE_IDLE, stop RUN and swState->gc.STATE_BREAK"
+            return
 
+
+    def processStepSate(self):
+        """ Process STEP state and update counters or end state
+        """
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
             self.swState = gc.STATE_IDLE
@@ -497,7 +516,7 @@ class MachIfExecuteThread(threading.Thread):
         self.progExecOutQueue.put(gc.SimpleEvent(
             gc.EV_PC_UPDATE, self.workingProgramCounter))
 
-        # end IDLE state
+        # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
             self.swState = gc.STATE_IDLE
             self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_STEP_END, None))
@@ -511,22 +530,30 @@ class MachIfExecuteThread(threading.Thread):
         for reComments in gReGcodeComments:
             gcode = reComments.sub("", gcode)
 
-        self.RunStepSendGcode(gcode)
+        self.sendRunStepGcode(gcode)
 
-    def ProcessIdleSate(self):
-        self.SerialRead()
+        # check if something else switch to IDLE (like errors)
+        if gc.STATE_IDLE == self.swState:
+            self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_STEP_END, None))
+            if self.cmdLineOptions.vverbose:
+                print "** programExecuteThread swState is gc.gSTATE_IDLE, stop STEP"
+            return
 
-    def ProcessSerialWriteQueue(self):
+
+    def processIdleSate(self):
+        self.serialRead()
+
+    def processSerialWriteQueue(self):
         if len(self.serialWriteQueue) > 0:
 
             data = self.serialWriteQueue[0]
 
             if self.machIfModule.okToSend(data[0]):
                 self.serialWriteQueue.pop(0)
-                self.SerialWrite(data[0])
+                self.serialWrite(data[0])
 
                 if data[1]:
-                    self.WaitForAcknowledge()
+                    self.waitForAcknowledge()
 
     def run(self):
         """Run Worker Thread."""
@@ -542,32 +569,32 @@ class MachIfExecuteThread(threading.Thread):
         while(self.endThread != True):
 
             # process bookeeping input queue for new commands or actions
-            self.Tick()
+            self.tick()
 
             # process write queue from UI cmds
-            self.ProcessSerialWriteQueue()
+            self.processSerialWriteQueue()
 
             # check if we need to exit now
             if self.endThread:
                 break
 
             if self.swState == gc.STATE_RUN:
-                self.ProcessRunSate()
+                self.processRunSate()
             elif self.swState == gc.STATE_STEP:
-                self.ProcessStepSate()
+                self.processStepSate()
             elif self.swState == gc.STATE_IDLE:
-                self.ProcessIdleSate()
+                self.processIdleSate()
             elif self.swState == gc.STATE_BREAK:
-                self.ProcessIdleSate()
+                self.processIdleSate()
             elif self.swState == gc.STATE_ABORT:
-                self.ProcessIdleSate()
+                self.processIdleSate()
                 break
             else:
                 if self.cmdLineOptions.verbose:
                     print "** programExecuteThread unexpected state [%d], moving back to IDLE." \
                         ", swState->gc.gSTATE_IDLE " % (self.swState)
 
-                self.ProcessIdleSate()
+                self.processIdleSate()
                 self.swState = gc.STATE_IDLE
 
             time.sleep(0.01)

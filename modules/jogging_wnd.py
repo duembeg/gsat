@@ -95,12 +95,12 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(self.cbNumKeypadPendant, flag=wx.LEFT, border=20)
 
         # Add perform Z operation last check box
-        self.cbZJogMovesLast = wx.CheckBox(self, wx.ID_ANY, "Z jog moves last")
-        self.cbZJogMovesLast.SetValue(
-            self.configData.get('/jogging/ZJogMovesLast'))
-        self.cbZJogMovesLast.SetToolTip(
-            wx.ToolTip("If enable, any XY jog moves are perform first and Z jog moves are last"))
-        vBoxSizer.Add(self.cbZJogMovesLast, flag=wx.LEFT, border=20)
+        self.cbZJogSafeMove = wx.CheckBox(self, wx.ID_ANY, "Z jog safe move")
+        self.cbZJogSafeMove.SetValue(
+            self.configData.get('/jogging/ZJogSafeMove'))
+        self.cbZJogSafeMove.SetToolTip(
+            wx.ToolTip("when enabled, if Z_destination is grater Z_current, Z axis moves first, and vise-versa"))
+        vBoxSizer.Add(self.cbZJogSafeMove, flag=wx.LEFT, border=20)
 
         # Add rapid jog
         self.cbRapidJog = wx.CheckBox(
@@ -297,8 +297,8 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
                             self.cbReqUpdateOnJogSetOp.GetValue())
         self.configData.set('/jogging/NumKeypadPendant',
                             self.cbNumKeypadPendant.GetValue())
-        self.configData.set('/jogging/ZJogMovesLast',
-                            self.cbZJogMovesLast.GetValue())
+        self.configData.set('/jogging/ZJogSafeMove',
+                            self.cbZJogSafeMove.GetValue())
 
         self.configData.set('/jogging/SpindleSpeed',
                             self.spindleSpeedSpinCtrl.GetValue())
@@ -389,6 +389,12 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.configData = config_data
         self.stateData = state_data
         self.machStat = "None"
+        self.machPosX = 0
+        self.machPosY = 0
+        self.machPosZ = 0
+        self.machPosA = 0
+        self.machPosB = 0
+        self.machPosC = 0
 
         self.memoX = gc.ZERO_STRING
         self.memoY = gc.ZERO_STRING
@@ -448,8 +454,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             '/jogging/ReqUpdateOnJogSetOp')
         self.configNumKeypadPendant = self.configData.get(
             '/jogging/NumKeypadPendant')
-        self.configZJogMovesLast = self.configData.get(
-            '/jogging/ZJogMovesLast')
+        self.configZJogSafeMove = self.configData.get(
+            '/jogging/ZJogSafeMove')
 
         self.configSpindleSpeed = self.configData.get('/jogging/SpindleSpeed')
 
@@ -505,7 +511,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
         self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
-        self.zJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
+        self.zJogMovesLastCheckBox.SetValue(self.configZJogSafeMove)
 
         self.spindleSpeedSpinCtrl.SetValue(self.configSpindleSpeed)
 
@@ -556,19 +562,37 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     def UpdateUI(self, stateData, statusData=None):
         self.stateData = stateData
 
-        if statusData is not None and self.configAutoMPOS:
+        if statusData is not None:
             x = statusData.get('posx')
             if x is not None:
-                self.jX.SetValue("{:.3f}".format(x))
+                self.machPosX = x
+                if self.configAutoMPOS:
+                    self.jX.SetValue("{:.3f}".format(x))
 
             y = statusData.get('posy')
             if y is not None:
-                self.jY.SetValue("{:.3f}".format(y))
+                self.machPosY = y
+                if self.configAutoMPOS:
+                    self.jY.SetValue("{:.3f}".format(y))
 
             z = statusData.get('posz')
             if z is not None:
-                self.jZ.SetValue("{:.3f}".format(z))
+                self.machPosZ = z
+                if self.configAutoMPOS:
+                    self.jZ.SetValue("{:.3f}".format(z))
 
+            a = statusData.get('posa')
+            if z is not None:
+                self.machPosA = a
+
+            b = statusData.get('posb')
+            if z is not None:
+                self.machPosB = b
+                
+            c = statusData.get('posc')
+            if z is not None:
+                self.machPosC = c
+                
             stat = statusData.get('stat')
             if stat is not None:
                 self.machStat = stat
@@ -837,7 +861,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
 
         # add rapid jog check box controls
-        self.rapidJogCheckBox = wx.CheckBox(self, label='Rapid/Feed rate')
+        self.rapidJogCheckBox = wx.CheckBox(self, label='Rapid/Feed')
         self.rapidJogCheckBox.SetValue(self.configRapidJog)
         self.rapidJogCheckBox.SetToolTip(
             wx.ToolTip("Enables rapid jog positioning"))
@@ -859,7 +883,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             1, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
 
         # add spindle speed controls
-        spinText = wx.StaticText(self, -1, "Spindle speed")
+        spinText = wx.StaticText(self, -1, "Spindle (rpm)")
         gbJogSpindleGridSizer.Add(spinText, pos=(
             2, 0), span=(1, 2), flag=wx.TOP, border=5)
 
@@ -977,11 +1001,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         vBoxSizer.Add(self.numKeypadPendantCheckBox)
 
         # Add check box for Z moves last
-        self.zJogMovesLastCheckBox = wx.CheckBox(self, label="Z jog move last")
-        self.zJogMovesLastCheckBox.SetValue(self.configZJogMovesLast)
+        self.zJogMovesLastCheckBox = wx.CheckBox(self, label="Z jog safe move")
+        self.zJogMovesLastCheckBox.SetValue(self.configZJogSafeMove)
         self.zJogMovesLastCheckBox.SetToolTip(
-            wx.ToolTip("If enabled, XY jog moves then Z Jog moves last"))
-        self.Bind(wx.EVT_CHECKBOX, self.OnZJogMovesLast,
+            wx.ToolTip("when enabled, if Z_destination is grater Z_current, Z axis moves first, and vise-versa"))
+        self.Bind(wx.EVT_CHECKBOX, self.OnZJogSafeMove,
                   self.zJogMovesLastCheckBox)
         vBoxSizer.Add(self.zJogMovesLastCheckBox)
 
@@ -1350,16 +1374,12 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     def OnNumKeypadPendant(self, e):
         self.configNumKeypadPendant = e.IsChecked()
 
-    def OnZJogMovesLast(self, e):
-        self.configZJogMovesLast = e.IsChecked()
+    def OnZJogSafeMove(self, e):
+        self.configZJogSafeMove = e.IsChecked()
 
     def OnJogCmd(self, xval, yval, zval, machif_cmd):
         """ Utility function, for jog commands
         """
-        cmd = ""
-        cmdx = ""
-        cmdy = ""
-        cmdz = ""
         dictAxisCoor = {}
 
         if self.xCheckBox.GetValue() or self.allCheckBox.GetValue():
@@ -1371,27 +1391,79 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
             dictAxisCoor['z'] = zval
 
-        if machif_cmd == gc.EV_CMD_MOVE:
+        if gc.EV_CMD_MOVE == machif_cmd or \
+            gc.EV_CMD_MOVE_RELATIVE == machif_cmd:
             dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
 
-        if (self.configZJogMovesLast):
-            if 'x' in dictAxisCoor or 'y' in dictAxisCoor:
-                if 'z' in dictAxisCoor:
-                    dictAxisCoor['lastz'] = dictAxisCoor.get('z')
-                    dictAxisCoor.pop('z')
+        if self.configZJogSafeMove and 'z' in dictAxisCoor and \
+            (gc.EV_CMD_MOVE == machif_cmd or \
+            gc.EV_CMD_RAPID_MOVE == machif_cmd or \
+            gc.EV_CMD_MOVE_RELATIVE == machif_cmd or \
+            gc.EV_CMD_RAPID_MOVE_RELATIVE == machif_cmd):
+            # figure out where we going and if we need to move
+            # z axis first or last... basic assumptions...
+            # if relative move a -z move means move Z last
+            # if relative move a +z move means move Z first
+            # if move, compare machine Z to new Z destination
+            #    if Z < machine Z, move Z last
+            #    if Z > machine Z, move Z first
+            move_z_last = False
+
+            if gc.EV_CMD_MOVE_RELATIVE == machif_cmd or \
+            gc.EV_CMD_RAPID_MOVE_RELATIVE == machif_cmd:
+                if float(dictAxisCoor['z']) < 1:
+                    move_z_last = True
+                elif float(dictAxisCoor['z']) > 1:
+                    move_z_last = False
+
+            elif gc.EV_CMD_MOVE == machif_cmd or \
+            gc.EV_CMD_RAPID_MOVE == machif_cmd:
+                if float(dictAxisCoor['z']) < self.machPosZ:
+                    move_z_last = True
+                elif float(dictAxisCoor['z']) > self.machPosZ:
+                    move_z_last = False
+
+            dictZ = {'z': dictAxisCoor['z']}
+            if 'feed' in dictAxisCoor:                
+                dictZ['feed'] = dictAxisCoor['feed']
+
+
+            dictXY = {}
+            if 'x' in dictAxisCoor:
+                dictXY['x'] = dictAxisCoor['x']
+                
+                if 'feed' in dictAxisCoor:                
+                    dictXY['feed'] = dictAxisCoor['feed']
+
+            if 'y' in dictAxisCoor:
+                dictXY['y'] = dictAxisCoor['y']
+                if 'feed' in dictAxisCoor:                
+                    dictXY['feed'] = dictAxisCoor['feed']
+
+
+            if move_z_last:
+                if dictXY.keys():
+                    self.mainWindow.mainWndOutQueue.put(
+                        gc.SimpleEvent(machif_cmd, dictXY)
+                    )
 
                 self.mainWindow.mainWndOutQueue.put(
-                    gc.SimpleEvent(machif_cmd, dictAxisCoor)
+                    gc.SimpleEvent(machif_cmd, dictZ)
+                )
+            else:
+                self.mainWindow.mainWndOutQueue.put(
+                    gc.SimpleEvent(machif_cmd, dictZ)
                 )
 
-            if 'lastz' in dictAxisCoor:
-                dictAxisCoor['z'] = dictAxisCoor.get('lastz')
-                self.mainWindow.mainWndOutQueue.put(
-                    gc.SimpleEvent(machif_cmd, dictAxisCoor)
-                )
+                if dictXY.keys():
+                    self.mainWindow.mainWndOutQueue.put(
+                        gc.SimpleEvent(machif_cmd, dictXY)
+                    )
 
         else:
-            if 'x' in dictAxisCoor or 'y' in dictAxisCoor or 'z' in dictAxisCoor:
+            if 'x' in dictAxisCoor or 'y' in dictAxisCoor or  \
+                'z' in dictAxisCoor or 'a' in dictAxisCoor or \
+                'b' in dictAxisCoor or 'c' in dictAxisCoor:
                 self.mainWindow.mainWndOutQueue.put(
                     gc.SimpleEvent(machif_cmd, dictAxisCoor)
                 )

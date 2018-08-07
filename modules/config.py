@@ -79,7 +79,7 @@ ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  
 -------------------------------------------------------------------------------------------------------
 IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   | IGNORE    |
 -------------------------------------------------------------------------------------------------------
-RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | IDLE    | IDLE    | ABORT   | IDLE      |
+RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | BREAK    | IDLE    | ABORT   | IDLE      |
 -------------------------------------------------------------------------------------------------------
 STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   | IDLE      |
 -------------------------------------------------------------------------------------------------------
@@ -279,7 +279,7 @@ class gsatConfigData():
             '/jogging/AutoMPOS': (True, True),
             '/jogging/ReqUpdateOnJogSetOp': (True, True),
             '/jogging/NumKeypadPendant': (True, False),
-            '/jogging/ZJogMovesLast': (True, False),
+            '/jogging/ZJogSafeMove': (True, False),
             '/jogging/Custom1Label': (False, "Custom 1"),
             '/jogging/Custom1Script': (False, ""),
             '/jogging/Custom2Label': (False, "Custom 2"),

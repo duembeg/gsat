@@ -222,14 +222,13 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.spComboBox.SetItems(serList)
 
 
-"""----------------------------------------------------------------------------
-   gsatMachineStatusPanel:
-   Status information about machine, controls to enable auto and manual
-   refresh.
-----------------------------------------------------------------------------"""
-
-
 class gsatMachineStatusPanel(wx.ScrolledWindow):
+    """-------------------------------------------------------------------------
+    gsatMachineStatusPanel:
+    Status information about machine, controls to enable auto and manual
+    refresh.
+    -------------------------------------------------------------------------"""
+
     def __init__(self, parent, config_data, state_data, **args):
         wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -256,14 +255,14 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         vBoxSizer.Add(droBox, 0, flag=wx.ALL | wx.EXPAND, border=5)
         vBoxSizer.Add(statusBox, 0, flag=wx.ALL | wx.EXPAND, border=5)
 
-        # Add Buttons -----------------------------------------------------------
-        self.refreshButton = wx.Button(self, wx.ID_REFRESH)
-        self.refreshButton.SetToolTip(
-            wx.ToolTip("Refresh machine status"))
-        self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
-        self.refreshButton.Disable()
+        # # Add Buttons -----------------------------------------------------------
+        # self.refreshButton = wx.Button(self, wx.ID_REFRESH)
+        # self.refreshButton.SetToolTip(
+        #     wx.ToolTip("Refresh machine status"))
+        # self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
+        # self.refreshButton.Disable()
 
-        vBoxSizer.Add(self.refreshButton, 0, flag=wx.ALL, border=10)
+        # vBoxSizer.Add(self.refreshButton, 0, flag=wx.ALL, border=10)
 
         # Finish up init UI
         self.SetSizer(vBoxSizer)
@@ -300,23 +299,27 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
             fv = statusData.get('fv')
             fb = statusData.get('fb')
-
             if (fb is not None) and (fv is not None):
                 self.version.SetLabel("fb[%s] fv[%s]" % (str(fb), str(fv)))
             elif fb is not None:
                 self.version.SetLabel(str(fb))
 
+            ib = statusData.get('ib')
+            if ib is not None:
+                self.bufferStatus.SetLabel("%d/%d" % (ib[1], ib[0]))
+
         if stateData.serialPortIsOpen:
-            self.refreshButton.Enable()
+            # self.refreshButton.Enable()
 
             if statusData is not None:
                 stat = statusData.get('stat')
                 if stat is not None:
                     self.runStatus.SetLabel(stat)
         else:
-            self.refreshButton.Disable()
+            # self.refreshButton.Disable()
             self.version.SetLabel("uknown")
             self.runStatus.SetLabel("detach")
+            self.bufferStatus.SetLabel("-/-")
 
         machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
@@ -421,6 +424,15 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.runStatus.SetFont(font)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
         flexGridSizer.Add(self.runStatus, 0, flag=wx.ALIGN_LEFT)
+
+        # Add MachIf running status
+        st = wx.StaticText(self, label="Device buffer")
+        st.SetFont(font)
+        self.bufferStatus = wx.StaticText(self, label="-/-")
+        self.bufferStatus.SetForegroundColour(self.machineDataColor)
+        self.bufferStatus.SetFont(font)
+        flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
+        flexGridSizer.Add(self.bufferStatus, 0, flag=wx.ALIGN_LEFT)
 
         # Add MachIF version
         st = wx.StaticText(self, label="Device version")
