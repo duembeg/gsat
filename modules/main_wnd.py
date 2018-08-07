@@ -85,7 +85,7 @@ import modules.editor_wnd as ed
 import modules.machine_wnd as mc
 import modules.jogging_wnd as jog
 import modules.compvision_wnd as compv
-import modules.progexec_thread as progexec
+import modules.machif_progexec as mi_progexec
 
 """----------------------------------------------------------------------------
    Globals:
@@ -2073,8 +2073,8 @@ class gsatMainWindow(wx.Frame):
         self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
         self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
 
-        self.progExecThread = progexec.MachIfExecuteThread(self, self.stateData, self.mainWndOutQueue,
-                                                            self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
+        self.progExecThread = mi_progexec.MachIfExecuteThread(self, self.stateData, self.mainWndOutQueue,
+            self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
 
         self.UpdateUI()
 
