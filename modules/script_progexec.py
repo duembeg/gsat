@@ -23,20 +23,17 @@
 
 ----------------------------------------------------------------------------"""
 
-import os
-import re
-import serial
+# import os
+# import re
 import threading
-import Queue
 import time
-import pdb
 
 import wx
 
 import modules.config as gc
-import modules.machif_config as mi
 
-class ScriptExecuteThread(threading.Thread):
+
+class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
     """  Threads that executes the scripts that directly interface with
     machif_progexec.
     This thread allows the UI to continue being responsive to user input
@@ -44,33 +41,18 @@ class ScriptExecuteThread(threading.Thread):
     events.
     """
 
-    def __init__(self, notify_window, state_data, in_queue, out_queue, cmd_line_options):
+    def __init__(self, event_handler, state_data, cmd_line_options):
         """Init Worker Thread Class."""
         threading.Thread.__init__(self)
+        gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.notifyWindow = notify_window
+        self.eventHandler = event_handler
         self.stateData = state_data
-        self.scriptExecInQueue = in_queue
-        self.progExecOutQueue = out_queue
         self.cmdLineOptions = cmd_line_options
         self.okToPostEvents = True
 
-        self.gcodeDataLines = []
-        self.breakPointSet = set()
-        self.initialProgramCounter = 0
-        self.workingCounterWorking = 0
-        self.lastWorkingCounterWorking = -1
-
         self.swState = gc.STATE_IDLE
-        self.lastEventID = gc.EV_CMD_NULL
-
-        self.serialWriteQueue = []
-
-        self.machIfModule = None
-
-        # init device module
-        self.initMachineIfModule()
 
         # start thread
         self.start()
@@ -78,154 +60,42 @@ class ScriptExecuteThread(threading.Thread):
     def processQueue(self):
         """ Handle events coming from main UI
         """
-        # check output queue and notify UI if is not empty
-        if not self.progExecOutQueue.empty():
-            # if self.okToPostEvents:
-            #   self.okToPostEvents = False
-            #   wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-            wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
-
-        # process events from queue ---------------------------------------------
-        if not self.scriptExecInQueue.empty():
+        # process events from queue
+        if not self._eventQueue.empty():
             # get item from queue
-            e = self.scriptExecInQueue.get()
+            e = self._eventQueue.get()
 
             self.lastEventID = e.event_id
 
             if e.event_id == gc.EV_CMD_EXIT:
                 if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_EXIT."
+                    print "** scriptExecuteThread got event gc.gEV_CMD_EXIT."
 
-                if self.machIfModule.isSerialPortOpen():
-                    self.machIfModule.close()
-                else:
-                    self.endThread = True
-                    self.swState = gc.STATE_IDLE
+                self.endThread = True
+                self.swState = gc.STATE_IDLE
 
             elif e.event_id == gc.EV_CMD_RUN:
                 if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_RUN, swState->gc.gSTATE_RUN"
-                self.gcodeDataLines = e.data[0]
-                self.initialProgramCounter = e.data[1]
-                self.workingProgramCounter = self.initialProgramCounter
-                self.breakPointSet = e.data[2]
+                    print "** scriptExecuteThread got event gc.gEV_CMD_RUN, "\
+                        "swState->gc.gSTATE_RUN"
                 self.swState = gc.STATE_RUN
-
-            elif e.event_id == gc.EV_CMD_STEP:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_STEP, swState->gc.gSTATE_STEP"
-                self.gcodeDataLines = e.data[0]
-                self.initialProgramCounter = e.data[1]
-                self.workingProgramCounter = self.initialProgramCounter
-                self.breakPointSet = e.data[2]
-                self.swState = gc.STATE_STEP
 
             elif e.event_id == gc.EV_CMD_STOP:
                 if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE"
+                    print "** scriptExecuteThread got event gc.gEV_CMD_STOP, "\
+                        "swState->gc.gSTATE_IDLE"
 
                 self.swState = gc.STATE_IDLE
 
-            elif e.event_id == gc.EV_CMD_SEND:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_SEND."
-                self.serialWriteQueue.append((e.data, False))
-
-            elif e.event_id == gc.EV_CMD_SEND_W_ACK:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_SEND_W_ACK."
-                self.serialWriteQueue.append((e.data, True))
-
-            elif e.event_id == gc.EV_CMD_AUTO_STATUS:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_AUTO_STATUS."
-                self.machineAutoStatus = e.data
-
-            elif e.event_id == gc.EV_CMD_OK_TO_POST:
-                # if self.cmdLineOptions.vverbose:
-                #   print "** programExecuteThread got event gc.gEV_CMD_OK_TO_POST."
-                #self.okToPostEvents = True
-                pass
-
             elif e.event_id == gc.EV_CMD_GET_STATUS:
                 if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_GET_STATUS."
-                self.machIfModule.doGetStatus()
-
-            elif e.event_id == gc.EV_CMD_CYCLE_START:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_CYCLE_START."
-
-                # this command is usually use for resume after a machine stop
-                # thus, queues most probably full send without checking if ok...
-                self.machIfModule.doCycleStartResume()
-
-            elif e.event_id == gc.EV_CMD_FEED_HOLD:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_FEED_HOLD."
-
-                # this command is usually use for abort and machine stop
-                # we can't afford to skip this action, send without checking if ok...
-                self.machIfModule.doFeedHold()
-
-            elif e.event_id == gc.EV_CMD_QUEUE_FLUSH:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_QUEUE_FLUSH."
-
-                self.machIfModule.doQueueFlush()
-
-            elif e.event_id == gc.EV_CMD_RESET:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_RESET."
-
-                self.machIfModule.doReset()
-
-            elif e.event_id == gc.EV_CMD_CLEAR_ALARM:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_CLEAR_ALARM."
-
-                self.machIfModule.doClearAlarm()
-
-            elif e.event_id == gc.EV_CMD_MOVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_MOVE."
-
-                self.machIfModule.doMove(e.data)
-
-            elif e.event_id == gc.EV_CMD_MOVE_RELATIVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_MOVE_RELATIVE."
-
-                self.machIfModule.doMoveRelative(e.data)
-
-            elif e.event_id == gc.EV_CMD_RAPID_MOVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_RAPID_MOVE."
-
-                self.machIfModule.doFastMove(e.data)
-
-            elif e.event_id == gc.EV_CMD_RAPID_MOVE_RELATIVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_RAPID_MOVE_RELATIVE."
-
-                self.machIfModule.doFastMoveRelative(e.data)
-
-            elif e.event_id == gc.EV_CMD_SET_AXIS:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_SET_AXIS."
-
-                self.machIfModule.doSetAxis(e.data)
-
-            elif e.event_id == gc.EV_CMD_HOME:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_HOME."
-
-                self.machIfModule.doHome(e.data)
+                    print "** scriptExecuteThread got event "\
+                        "gc.gEV_CMD_GET_STATUS."
 
             else:
                 if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got unknown event!! [%s]." % str(
-                        e.event_id)
+                    print "** scriptExecuteThread got unknown event!!"\
+                        " [%s]." % str(e.event_id)
 
     def tick(self):
         return
@@ -235,11 +105,6 @@ class ScriptExecuteThread(threading.Thread):
 
     def processRunSate(self):
         """ Process RUN state and update counters or end state
-        """
-        return
-
-    def processStepSate(self):
-        """ Process STEP state and update counters or end state
         """
         return
 
@@ -255,12 +120,12 @@ class ScriptExecuteThread(threading.Thread):
         self.endThread = False
 
         if self.cmdLineOptions.vverbose:
-            print "** programExecuteThread start."
+            print "** scriptExecuteThread start."
 
         # inti machine interface
         self.machIfModule.open()
 
-        while(self.endThread != True):
+        while (not self.endThread):
 
             # process bookeeping input queue for new commands or actions
             self.tick()
@@ -274,18 +139,15 @@ class ScriptExecuteThread(threading.Thread):
 
             if self.swState == gc.STATE_RUN:
                 self.processRunSate()
-            elif self.swState == gc.STATE_STEP:
-                self.processStepSate()
             elif self.swState == gc.STATE_IDLE:
-                self.processIdleSate()
-            elif self.swState == gc.STATE_BREAK:
                 self.processIdleSate()
             elif self.swState == gc.STATE_ABORT:
                 self.processIdleSate()
                 break
             else:
                 if self.cmdLineOptions.verbose:
-                    print "** programExecuteThread unexpected state [%d], moving back to IDLE." \
+                    print "** scriptExecuteThread unexpected state "\
+                        "[%d], moving back to IDLE." \
                         ", swState->gc.gSTATE_IDLE " % (self.swState)
 
                 self.processIdleSate()
@@ -294,7 +156,7 @@ class ScriptExecuteThread(threading.Thread):
             time.sleep(0.01)
 
         if self.cmdLineOptions.vverbose:
-            print "** programExecuteThread exit."
+            print "** scriptExecuteThread exit."
 
-        self.progExecOutQueue.put(gc.SimpleEvent(gc.EV_EXIT, ""))
-        wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
+        self.eventHandler.eveventPut(gc.EV_EXIT, "")
+        #wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))

@@ -26,10 +26,10 @@
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
-    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE debug/step for "\
-    "Grbl like GCODE interpreters. With features similar to software debuggers. Features "\
-    "Such as breakpoint, change current program counter, inspection and modification "\
-    "of variables."
+    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE "\
+    "debug/step for grbl like GCODE interpreters. With features similar "\
+    "to software debuggers. Features Such as breakpoint, change current "\
+    "program counter, inspection and modification of variables."
 
 
 # define authorship information
@@ -59,7 +59,6 @@ import os
 import sys
 import glob
 import serial
-import tty
 import re
 import threading
 import Queue
@@ -386,7 +385,7 @@ class gsatSettingsDialog(wx.Dialog):
         self.CV2Page.UpdatConfigData()
 
 
-class gsatMainWindow(wx.Frame):
+class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     """ Main Window Inits the UI and other panels, it also controls the worker
     threads and resources such as serial port.
     """
@@ -395,6 +394,7 @@ class gsatMainWindow(wx.Frame):
                  pos=wx.DefaultPosition, size=(800, 600), style=wx.DEFAULT_FRAME_STYLE):
 
         wx.Frame.__init__(self, parent, id, title, pos, size, style)
+        gc.EventQueueIf.__init__(self)
 
         # init cmd line options
         self.cmdLineOptions = cmd_line_options
@@ -578,7 +578,7 @@ class gsatMainWindow(wx.Frame):
         # Create the menubar
         # self.menuBar = FM.FlatMenuBar(self, wx.ID_ANY, 32, 5,
         #   options = FM_OPT_SHOW_TOOLBAR | FM_OPT_SHOW_CUSTOMIZE)
-        #self.menuBar = fm.FlatMenuBar(self, wx.ID_ANY, options=fm.FM_OPT_SHOW_TOOLBAR)
+        # self.menuBar = fm.FlatMenuBar(self, wx.ID_ANY, options=fm.FM_OPT_SHOW_TOOLBAR)
         self.menuBar = wx.MenuBar()
 
         #------------------------------------------------------------------------

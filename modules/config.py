@@ -22,7 +22,7 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
+import Queue
 import wx
 
 """----------------------------------------------------------------------------
@@ -166,10 +166,12 @@ def init_config(cmd_line_options, config_data, state_data):
     CONFIG_DATA = config_data
     STATE_DATA = state_data
 
+
 class gsatStateData():
     """-------------------------------------------------------------------------
     provides various data information
     -------------------------------------------------------------------------"""
+
     def __init__(self):
 
         # state status
@@ -365,6 +367,7 @@ def reg_thread_queue_data_event(win, func):
 class ThreadQueueEvent(wx.PyEvent):
     """ Simple event to carry arbitrary data.
     """
+
     def __init__(self, data):
         """Init Result Event."""
         wx.PyEvent.__init__(self)
@@ -372,9 +375,22 @@ class ThreadQueueEvent(wx.PyEvent):
         self.data = data
 
 
-class SimpleEvent():
+class SimpleEvent(object):
     """ Simple event to carry arbitrary data.
     """
-    def __init__(self, event_id, data):
+
+    def __init__(self, event_id, data, sender_id=None):
         self.event_id = event_id
         self.data = data
+        self.sender_id = sender_id
+
+
+class EventQueueIf():
+    """ Class that implement simple queue APIs
+    """
+    def __init__(self):
+        self._eventQueue = Queue.Queue()
+
+    def eventPut(self, id, data, sender=None):
+        self._eventQueue.put(SimpleEvent(id, data, sender))
+

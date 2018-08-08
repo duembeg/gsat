@@ -29,7 +29,7 @@ import modules.config as gc
 import modules.serial_thread as st
 
 
-class MachIf_Base(object):
+class MachIf_Base(object, gc.EventQueueIf):
     """----------------------------------------------------------------------------
     machIf_Base:
 
@@ -40,6 +40,8 @@ class MachIf_Base(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, cmd_line_options, if_id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
+        gc.EventQueueIf.__init__(self)
+
         self.id = if_id
         self.name = name
         self._inputBufferMaxSize = input_buffer_max_size
@@ -53,8 +55,6 @@ class MachIf_Base(object):
 
         self._serialPortOpen = False
         self._serialTxRxThread = None
-        self._serialTxRxInQueue = Queue.Queue()
-        self._serialTxRxOutQueue = Queue.Queue()
         self.stateData = None
 
         # machine
@@ -84,10 +84,7 @@ class MachIf_Base(object):
 
         self._send_axis_cmd(move_code, dictAxisCoor)
 
-        self._serialTxRxInQueue.put(
-            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
-        )
-
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
         self.write("".join([machine_current_position_mode,"\n"]))
 
     def _reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
@@ -136,15 +133,12 @@ class MachIf_Base(object):
                 machine_code, " F",str(dictAxisCoor.get('feed'))
                 ])
 
-        self._serialTxRxInQueue.put(
-            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % machine_code)
-        )
-
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_code)
         self.write("".join([machine_code,"\n"]))
 
     def close(self):
         if self._serialTxRxThread is not None:
-            self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_EXIT, None))
+            self._serialTxRxThread.eventPut(gc.EV_CMD_EXIT, None)
 
     @abstractmethod
     def decode(self, data):
@@ -153,17 +147,14 @@ class MachIf_Base(object):
     def doClearAlarm(self):
         """ Clears alarm condition
         """
-        self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdClearAlarm))
+        self.eventPut(gc.EV_SER_TXDATA, self.cmdClearAlarm)
         self.write(self.cmdClearAlarm)
         self.write(self.getStatusCmd())
 
     def doCycleStartResume(self):
         """ send cycle resume command
         """
-        self._serialTxRxInQueue.put(
-            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdCycleStart)
-        )
-
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdCycleStart)
         self.write(self.cmdCycleStart)
 
     def doFastMove(self, dict_axis_coor):
@@ -180,18 +171,12 @@ class MachIf_Base(object):
     def doFeedHold(self):
         """ send feed hold command
         """
-        self._serialTxRxInQueue.put(
-            gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdFeedHold)
-        )
-
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdFeedHold)
         self.write(self.cmdFeedHold)
 
     def doGetStatus(self):
         if self.okToSend(self.cmdStatus):
-            self._serialTxRxInQueue.put(
-                gc.SimpleEvent(gc.EV_SER_TXDATA, "%s\n" % self.cmdStatus.strip())
-            )
-
+            self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdStatus.strip())
             self.write(self.cmdStatus)
 
     def doHome(self, dict_axis):
@@ -286,8 +271,8 @@ class MachIf_Base(object):
     def open(self):
         if self.stateData is not None:
             # inti serial RX thread
-            self._serialTxRxThread = st.SerialPortThread(self, self.stateData, self._serialTxRxOutQueue,
-                                                         self._serialTxRxInQueue, self.cmdLineOptions)
+            self._serialTxRxThread = st.SerialPortThread(
+                self, self.stateData, self.cmdLineOptions)
             self.doInitComm()
 
     def read(self):
@@ -297,9 +282,9 @@ class MachIf_Base(object):
 
         if self._serialTxRxThread is not None:
 
-            if not self._serialTxRxInQueue.empty():
+            if not self._eventQueue.empty():
                 # get item from queue
-                e = self._serialTxRxInQueue.get()
+                e = self._eventQueue.get()
 
                 if e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
                                   gc.EV_SER_PORT_CLOSE]:
@@ -338,8 +323,9 @@ class MachIf_Base(object):
 
             if raw_write:
                 # self._serialTxRxThread.serialWrite(txData)
-                self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
-                                                            txData))
+                #self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
+                #                                            txData))
+                self._serialTxRxThread.eventPut(gc.EV_CMD_SER_TXDATA, txData)
             else:
                 lines = txData.splitlines(True)
 
@@ -355,8 +341,9 @@ class MachIf_Base(object):
                     Leaving this here to revisit in future ."""
                     # self._serialTxRxThread.serialWrite(line)
 
-                    self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
-                                                                line))
+                    #self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
+                    #                                            line))
+                    self._serialTxRxThread.eventPut(gc.EV_CMD_SER_TXDATA, line)
 
                     bytesSent = bytesSent + len(line)
 

@@ -318,7 +318,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 alarm_code = int(alarm_code)
                 alarm_str = "[MSG:Alarm:%d - %s]\n" % (alarm_code,
                     GRBL_ALARM_CODE_2_STR_DICT.get(alarm_code, "Uknown"))
-                self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_RXDATA, alarm_str))
+                self.eventPut(gc.EV_SER_RXDATA, alarm_str)
             else:
                 error_code = -1
 
@@ -344,7 +344,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 error_code = int(error_code)
                 err_str = "[MSG:Error:%d - %s]\n" % (error_code,
                     GRBL_ERROR_CODE_2_STR_DICT.get(error_code, "Unknown"))
-                self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_RXDATA, err_str))
+                self.eventPut(gc.EV_SER_RXDATA, err_str)
             else:
                 error_code = -1
 
@@ -382,11 +382,11 @@ class MachIf_GRBL(mi.MachIf_Base):
 
     def doHome(self, dict_axis):
         if 'x' in dict_axis and 'y' in dict_axis and 'z' in dict_axis:
-            self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, self.cmdHome))
+            self.eventPut(gc.EV_SER_TXDATA, self.cmdHome)
             self.write(self.cmdHome)
         else:
             msg = "!! grbl doesn't support single/partial axis homing."
-            self._serialTxRxInQueue.put(gc.SimpleEvent(gc.EV_SER_TXDATA, msg))
+            self.eventPut(gc.EV_SER_TXDATA, msg)
 
     def doInitComm(self):
         """ soft reset grbl to get it to talk to is hw version info

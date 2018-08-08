@@ -47,7 +47,7 @@ gReGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
 # message example "(MSG, CHANGE TOOL BIT: to drill size 0.81300 mm)"
 gReGcodeMsg = re.compile(r'^\s*\(MSG,(.+)\)')
 
-class MachIfExecuteThread(threading.Thread):
+class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     """  Threads that executes the gcode sending code to serial port. This
     thread allows the UI to continue being responsive to user input while this
     thread is busy executing program or waiting for serial events.
@@ -58,6 +58,7 @@ class MachIfExecuteThread(threading.Thread):
     def __init__(self, notify_window, state_data, in_queue, out_queue, cmd_line_options, machif_id, machine_auto_status=False):
         """Init Worker Thread Class."""
         threading.Thread.__init__(self)
+        gc.EventQueueIf.__init__(self)
 
         # init local variables
         self.notifyWindow = notify_window

@@ -92,13 +92,14 @@ class MachIf_TinyG(mi.MachIf_Base):
     }
 
     def __init__(self, cmd_line_options):
-        super(MachIf_TinyG, self).__init__(cmd_line_options, ID,
-                                           NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
-                                           BUFFER_WATERMARK_PRCNT)
+        super(MachIf_TinyG, self).__init__(
+            cmd_line_options, ID, NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
+            BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
         # list of commands
+        self.cmdClearAlarm = '{"clear":true}\n'
         self.cmdInitComm = '\n{"sys":null}\n'
         self.cmdQueueFlushCmd = "%\n"
         self.cmdSetAxisCmd = "G28.3"
@@ -160,7 +161,7 @@ class MachIf_TinyG(mi.MachIf_Base):
 
                 sr['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-        except:
+        except ValueError:
             match = False
             ack = self.reMachineAck.match(data)
             posx = self.reMachinePosX.match(data)
@@ -217,12 +218,6 @@ class MachIf_TinyG(mi.MachIf_Base):
                 #print dataDict
 
         return dataDict
-
-    def doClearAlarm(self):
-        """ Clears alarm condition in grbl
-        """
-        self.write('{"clear":true}\n')
-        self.write(self.getStatusCmd())
 
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller
