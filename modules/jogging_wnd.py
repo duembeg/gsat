@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    jogging.py
 
-   Copyright (C) 2013-2017 Wilhelm Duembeg
+   Copyright (C) 2013-2018 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    grbl like GCODE interpreters. With features similar to software debuggers.
@@ -588,11 +588,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             b = statusData.get('posb')
             if z is not None:
                 self.machPosB = b
-                
+
             c = statusData.get('posc')
             if z is not None:
                 self.machPosC = c
-                
+
             stat = statusData.get('stat')
             if stat is not None:
                 self.machStat = stat
@@ -1424,20 +1424,20 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                     move_z_last = False
 
             dictZ = {'z': dictAxisCoor['z']}
-            if 'feed' in dictAxisCoor:                
+            if 'feed' in dictAxisCoor:
                 dictZ['feed'] = dictAxisCoor['feed']
 
 
             dictXY = {}
             if 'x' in dictAxisCoor:
                 dictXY['x'] = dictAxisCoor['x']
-                
-                if 'feed' in dictAxisCoor:                
+
+                if 'feed' in dictAxisCoor:
                     dictXY['feed'] = dictAxisCoor['feed']
 
             if 'y' in dictAxisCoor:
                 dictXY['y'] = dictAxisCoor['y']
-                if 'feed' in dictAxisCoor:                
+                if 'feed' in dictAxisCoor:
                     dictXY['feed'] = dictAxisCoor['feed']
 
 

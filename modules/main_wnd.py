@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    main_wnd.py
 
-   Copyright (C) 2013-2017 Wilhelm Duembeg
+   Copyright (C) 2013-2018 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -36,7 +36,7 @@ __description__ = \
 __authors__ = ['Wilhelm Duembeg']
 __author__ = ','.join(__authors__)
 __credits__ = []
-__copyright__ = 'Copyright (c) 2013-2017'
+__copyright__ = 'Copyright (c) 2013-2018'
 __license__ = 'GPL v2, Copyright (c) 2013-2014'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
