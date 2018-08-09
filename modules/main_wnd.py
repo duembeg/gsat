@@ -60,11 +60,8 @@ import sys
 import glob
 import serial
 import re
-import threading
-import Queue
 import time
 import shutil
-import pdb
 from optparse import OptionParser
 import wx
 import wx.combo
@@ -140,6 +137,7 @@ gID_TIMER_RUN = wx.NewId()
 # -----------------------------------------------------------------------------
 gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
+idle_count = 0
 
 class gsatLog(wx.PyLog):
     """ custom wxLog
@@ -417,9 +415,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # register for thread events
         gc.reg_thread_queue_data_event(self, self.OnThreadEvent)
 
-        # create serial obj
-        self.serPort = serial.Serial()
-
         # create app data obj
         self.stateData = gc.gsatStateData()
 
@@ -434,19 +429,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         gc.init_config(cmd_line_options, self.configData, self.stateData)
 
         # init some variables
-        self.progExecThread = None
+        self.machifProgExec = None
         self.machineAutoRefreshTimer = None
         self.runTimer = None
         self.runStartTime = 0
         self.runEndTime = 0
-
-        # thread communication queues
-        self.mainWndInQueue = Queue.Queue()
-        self.mainWndOutQueue = Queue.Queue()
+        self.eventInCount = 0
+        self.eventHandleCount = 0
 
         # register for close events
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        #self.Bind (wx.EVT_IDLE, self.OnThreadEvent)
+        # self.Bind(wx.EVT_IDLE, self.OnIdle)
 
         self.InitUI()
         self.Centre()
@@ -1513,12 +1506,18 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.Refresh()
 
     def OnRun(self, e=None):
-        if self.progExecThread is not None:
+        if self.machifProgExec is not None:
             rawText = self.gcText.GetText()
             self.stateData.gcodeFileLines = rawText.splitlines(True)
 
-            self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_RUN,
-                                                    [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
+            self.machifProgExec.eventPut(
+                gc.EV_CMD_RUN,
+                [
+                    self.stateData.gcodeFileLines,
+                    self.stateData.programCounter,
+                    self.stateData.breakPoints
+                ]
+            )
 
             if self.stateData.swState != gc.STATE_PAUSE and \
                self.stateData.swState != gc.STATE_BREAK:
@@ -1568,13 +1567,18 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_STOP, state)
 
     def OnStep(self, e):
-        if self.progExecThread is not None:
+        if self.machifProgExec is not None:
             rawText = self.gcText.GetText()
             self.stateData.gcodeFileLines = rawText.splitlines(True)
 
-            self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_STEP,
-                                                    [self.stateData.gcodeFileLines, self.stateData.programCounter, self.stateData.breakPoints]))
-
+            self.machifProgExec.eventPut(
+                gc.EV_CMD_STEP,
+                [
+                    self.stateData.gcodeFileLines,
+                    self.stateData.programCounter,
+                    self.stateData.breakPoints
+                ]
+            )
             self.stateData.swState = gc.STATE_STEP
             self.UpdateUI()
 
@@ -1702,9 +1706,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_REFRESH, state)
 
     def OnMachineCycleStart(self, e):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(
-                gc.SimpleEvent(gc.EV_CMD_CYCLE_START, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_CYCLE_START)
 
             if (self.stateData.swState == gc.STATE_PAUSE):
                 self.OnRun(e)
@@ -1720,13 +1723,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_CYCLE_START, state)
 
     def OnMachineFeedHold(self, e):
-        if self.progExecThread is not None:
+        if self.machifProgExec is not None:
 
             if (self.stateData.swState == gc.STATE_RUN):
                 self.OnPause(e)
 
-            self.mainWndOutQueue.put(
-                gc.SimpleEvent(gc.EV_CMD_FEED_HOLD, None))
+            self.machifProgExec.eventPut(gc.EV_CMD_FEED_HOLD)
 
     def OnMachineFeedHoldUpdate(self, e=None):
         state = False
@@ -1739,10 +1741,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_FEED_HOLD, state)
 
     def OnMachineQueueFlush(self, e):
-        if self.progExecThread is not None:
-
-            self.mainWndOutQueue.put(
-                gc.SimpleEvent(gc.EV_CMD_QUEUE_FLUSH, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.put(gc.EV_CMD_QUEUE_FLUSH)
 
     def OnMachineQueueFlushUpdate(self, e=None):
         state = False
@@ -1755,8 +1755,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_QUEUE_FLUSH, state)
 
     def OnMachineReset(self, e):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_RESET, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_RESET)
 
     def OnMachineResetUpdate(self, e=None):
         state = False
@@ -1770,9 +1770,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_RESET, state)
 
     def OnMachineClearAlarm(self, e):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(
-                gc.SimpleEvent(gc.EV_CMD_CLEAR_ALARM, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM)
 
     def OnMachineClearAlarmUpdate(self, e=None):
         state = False
@@ -1786,12 +1785,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_CLEAR_ALARM, state)
 
     def OnAbort(self, e):
-        self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_FEED_HOLD, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_FEED_HOLD)
 
-        # self.serPort.write("!\n")
-        # self.Stop(gc.gSTATE_ABORT)
         self.Stop()
-        #self.outputText.AppendText("> !\n")
 
         mim = mi.GetMachIfModule(self.stateData.machIfId)
 
@@ -1967,8 +1964,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.SerialWrite(serialData)
 
     def OnClose(self, e):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_EXIT, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
         time.sleep(1)
 
@@ -2064,27 +2061,30 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         return sbList
 
     def SerialClose(self):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_EXIT, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
     def SerialOpen(self, port, baud):
         self.stateData.serialPort = port
         self.stateData.serialPortBaud = baud
         self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
-        self.stateData.machineStatusAutoRefreshPeriod = self.machineAutoRefreshPeriod
+        self.stateData.machineStatusAutoRefreshPeriod = \
+            self.machineAutoRefreshPeriod
 
-        self.progExecThread = mi_progexec.MachIfExecuteThread(self, self.stateData, self.mainWndOutQueue,
-            self.mainWndInQueue, self.cmdLineOptions, self.stateData.machIfId, self.machineAutoStatus)
+        self.machifProgExec = mi_progexec.MachIfExecuteThread(
+            self, self.stateData, self.cmdLineOptions, self.stateData.machIfId,
+            self.machineAutoStatus)
 
         self.UpdateUI()
 
     def SerialWrite(self, serialData):
         if self.stateData.serialPortIsOpen:
 
-            if self.progExecThread is not None:
-                self.mainWndOutQueue.put(
-                    gc.SimpleEvent(gc.EV_CMD_SEND, serialData))
-                # self.mainWndOutQueue.join()
+            if self.machifProgExec is not None:
+                self.machifProgExec.eventPut(gc.EV_CMD_SEND, serialData)
+                # self.mainWndOutQueue.put(
+                #     gc.SimpleEvent(gc.EV_CMD_SEND, serialData))
+                # # self.mainWndOutQueue.join()
 
         elif self.cmdLineOptions.verbose:
             print "gsatMainWindow ERROR: attempt serial write with port closed!!"
@@ -2092,16 +2092,15 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def SerialWriteWaitForAck(self, serialData):
         if self.stateData.serialPortIsOpen:
 
-            if self.progExecThread is not None:
-                self.mainWndOutQueue.put(gc.SimpleEvent(
-                    gc.EV_CMD_SEND_W_ACK, serialData))
+            if self.machifProgExec is not None:
+                self.machifProgExec.eventPut(gc.EV_CMD_SEND_W_ACK, serialData)
 
         elif self.cmdLineOptions.verbose:
             print "gsatMainWindow ERROR: attempt serial write with port closed!!"
 
     def Stop(self, toState=gc.STATE_IDLE):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(gc.SimpleEvent(gc.EV_CMD_STOP, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_STOP)
 
             self.stateData.swState = toState
             self.UpdateUI()
@@ -2116,17 +2115,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def MachineStatusAutoRefresh(self, autoRefresh):
         self.stateData.machineStatusAutoRefresh = autoRefresh
 
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(gc.SimpleEvent(
-                gc.EV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(
+                gc.EV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh
+            )
 
         if autoRefresh:
             self.GetMachineStatus()
 
     def GetMachineStatus(self):
-        if self.progExecThread is not None:
-            self.mainWndOutQueue.put(
-                gc.SimpleEvent(gc.EV_CMD_GET_STATUS, None))
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(gc.EV_CMD_GET_STATUS)
 
         elif self.cmdLineOptions.verbose:
             print "gsatMainWindow ERROR: attempt GetMachineStatus without progExecTread!!"
@@ -2256,19 +2255,33 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         return ret_lienes
 
-    def OnThreadEvent(self, e):
-        """ program execution thread event handlers handle events coming from
-        serial port thread
+    def OnIdle(self, e):
+        """ process idel time
         """
-        if not self.mainWndInQueue.empty():
-            # get dat from queue
-            te = self.mainWndInQueue.get()
+        pass
+        # self.OnThreadEvent(e)
+
+        # global idle_count
+        # idle_count = idle_count+1
+        # print "here on Idle %d" % idle_count
+
+        # if not self._eventQueue.empty():
+        #     e.RequestMore()
+
+    def OnThreadEvent(self, e):
+        """ program execution thread event handlers handle events
+        """
+        self.eventHandleCount = self.eventHandleCount + 1
+        # process events from queue
+        if not self._eventQueue.empty():
+            # get item from queue
+            te = self._eventQueue.get()
 
             if te.event_id == gc.EV_ABORT:
                 if self.cmdLineOptions.vverbose:
                     print "gsatMainWindow got event gc.gEV_ABORT."
                 self.outputText.AppendText(te.data)
-                self.progExecThread = None
+                self.machifProgExec = None
                 self.stateData.serialPortIsOpen = False
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
@@ -2434,7 +2447,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if self.cmdLineOptions.vverbose:
                     print "gsatMainWindow got event gc.gEV_EXIT."
 
-                self.progExecThread = None
+                self.machifProgExec = None
 
             else:
                 if self.cmdLineOptions.vverbose:
@@ -2442,8 +2455,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
-        # tell program exec thread that our queue is empty, ok to post more event
-        #self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
+        # # tell program exec thread that our queue is empty, ok to post more
+        # # event
+        # self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
+
+        if not self._eventQueue.empty():
+            pass # timed post again
 
     def RunDeviceInitScript(self):
         initScriptEn = self.configData.get('/machine/InitScriptEnable')
@@ -2472,3 +2489,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         self.SerialWrite(initLine)
                         # self.SerialWriteWaitForAck(initLine)
                         self.outputText.AppendText(initLine)
+
+    def eventPut(self, id, data=None, sender=None):
+        gc.EventQueueIf.eventPut(self, id, data, sender)
+        self.eventInCount = self.eventInCount + 1
+        wx.PostEvent(self, gc.ThreadQueueEvent(None))
+
+    def eventForward2Machif(self, id, data=None, sender=None):
+        if self.machifProgExec is not None:
+            self.machifProgExec.eventPut(id, data, sender)

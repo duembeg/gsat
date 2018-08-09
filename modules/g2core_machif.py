@@ -292,8 +292,9 @@ class MachIf_g2core(mi.MachIf_Base):
     def _init(self):
         """ Init object variables, ala soft-reset in hw
         """
-        super(MachIf_g2core, self)._reset(BUFFER_MAX_SIZE,
-                                          BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
+        super(MachIf_g2core, self)._reset(
+            BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT
+        )
 
         self._inputBufferPart = list()
 
@@ -359,7 +360,8 @@ class MachIf_g2core(mi.MachIf_Base):
                     dataDict['sr']['stat'] = stat.group(1)
                 else:
                     if self.cmdLineOptions.vverbose:
-                        print "** MachIf_g2core cannot decode data!! [%s]." % data
+                        print "** MachIf_g2core cannot decode data!! [%s]."\
+                            % data
 
         if 'r' in dataDict:
             # checking for count in "f" response doesn't always work as
@@ -372,9 +374,12 @@ class MachIf_g2core(mi.MachIf_Base):
                 self._inputBufferSize = self._inputBufferSize - bufferPart
 
                 if self.cmdLineOptions.vverbose:
-                    print "** MachIf_g2core input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                        (bufferPart, self._inputBufferSize,
-                         (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+                    print "** MachIf_g2core input buffer decode returned: "\
+                        "%d, buffer size: %d, %.2f%% full" % (
+                            bufferPart, self._inputBufferSize, (
+                                100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)
+                            )
+                        )
 
         if 'sr' in dataDict:
             sr = dataDict['sr']
@@ -400,9 +405,12 @@ class MachIf_g2core(mi.MachIf_Base):
             self._inputBufferPart.append(dataLen)
 
             if self.cmdLineOptions.vverbose:
-                print "** MachIf_g2core input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-                    (dataLen, self._inputBufferSize,
-                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+                print "** MachIf_g2core input buffer encode used: "\
+                    "%d, buffer size: %d, %.2f%% full" % (
+                        dataLen, self._inputBufferSize, (
+                            100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)
+                        )
+                    )
 
         return data
 

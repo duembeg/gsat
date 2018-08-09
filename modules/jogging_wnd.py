@@ -374,13 +374,9 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/cli/CmdMaxHistory', self.sc.GetValue())
 
 
-"""----------------------------------------------------------------------------
-   gsatJoggingPanel:
-   Jog controls for the machine as well as custom user controls.
-----------------------------------------------------------------------------"""
-
-
 class gsatJoggingPanel(wx.ScrolledWindow):
+    """ Jog controls for the machine as well as custom user controls.
+    """
     def __init__(self, parent, config_data, state_data, **args):
         wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -1192,7 +1188,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             gc_cmd = gc.EV_CMD_MOVE_RELATIVE
             dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
 
-        self.mainWindow.mainWndOutQueue.put(gc.SimpleEvent(gc_cmd, dictAxisCoor))
+        self.mainWindow.eventForward2Machif(gc_cmd, dictAxisCoor)
 
     def OnAllCheckBox(self, evt):
         self.xCheckBox.SetValue(evt.IsChecked())
@@ -1284,82 +1280,62 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         """ Home X axis
         """
         dictAxisCoor = {'x':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
-        )
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_HOME, dictAxisCoor)
 
     def OnHomeY(self, e):
         """ Home Y axis
         """
         dictAxisCoor = {'y':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
-        )
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_HOME, dictAxisCoor)
 
     def OnHomeZ(self, e):
         """ Home Z axis
         """
         dictAxisCoor = {'z':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
-        )
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_HOME, dictAxisCoor)
 
     def OnHomeXY(self, e):
         """ Home X and Y axis
         """
-        dictAxisCoor = {'x':0, 'y':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
-        )
+        dictAxisCoor = {'x': 0, 'y': 0}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_HOME, dictAxisCoor)
 
     def OnHome(self, e):
         """ Home machine
         """
-        dictAxisCoor = {'x':0, 'y':0, 'z':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_HOME, dictAxisCoor)
-        )
+        dictAxisCoor = {'x': 0, 'y': 0, 'z': 0}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_HOME, dictAxisCoor)
 
     def OnSetToZero(self, e):
         """ Sets axis X, Y and Z to 0
         """
-        dictAxisCoor = {'x':0, 'y':0, 'z':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_SET_AXIS, dictAxisCoor)
-        )
+        dictAxisCoor = {'x': 0, 'y': 0, 'z': 0}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
     def OnSetToZeroXY(self, e):
         """ Sets axis X and Y to 0
         """
-        dictAxisCoor = {'x':0, 'y':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_SET_AXIS, dictAxisCoor)
-        )
+        dictAxisCoor = {'x': 0, 'y': 0}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
     def OnSetToZeroZ(self, e):
         """ Sets axis Z to 0
         """
-        dictAxisCoor = {'z':0}
-
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_SET_AXIS, dictAxisCoor)
-        )
+        dictAxisCoor = {'z': 0}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
     def OnGoToZeroXY(self, e):
         """ Jogs axis X and Y to 0
         """
-        dictAxisCoor = {'x':0, 'y':0}
+        dictAxisCoor = {'x': 0, 'y': 0}
 
-        self.mainWindow.mainWndOutQueue.put(
-            gc.SimpleEvent(gc.EV_CMD_RAPID_MOVE, dictAxisCoor)
-        )
+        if self.configRapidJog:
+            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        else:
+            gc_cmd = gc.EV_CMD_MOVE
+            dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
+
+        self.mainWindow.eventForward2Machif(gc_cmd, dictAxisCoor)
 
     def OnSetStepSize(self, e):
         buttonById = self.FindWindowById(e.GetId())
@@ -1443,30 +1419,21 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
             if move_z_last:
                 if dictXY.keys():
-                    self.mainWindow.mainWndOutQueue.put(
-                        gc.SimpleEvent(machif_cmd, dictXY)
-                    )
+                    self.mainWindow.eventForward2Machif(machif_cmd, dictXY)
 
-                self.mainWindow.mainWndOutQueue.put(
-                    gc.SimpleEvent(machif_cmd, dictZ)
-                )
+                self.mainWindow.eventForward2Machif(machif_cmd, dictZ)
+
             else:
-                self.mainWindow.mainWndOutQueue.put(
-                    gc.SimpleEvent(machif_cmd, dictZ)
-                )
+                self.mainWindow.eventForward2Machif(machif_cmd, dictZ)
 
                 if dictXY.keys():
-                    self.mainWindow.mainWndOutQueue.put(
-                        gc.SimpleEvent(machif_cmd, dictXY)
-                    )
+                    self.mainWindow.eventForward2Machif(machif_cmd, dictXY)
 
         else:
             if 'x' in dictAxisCoor or 'y' in dictAxisCoor or  \
                 'z' in dictAxisCoor or 'a' in dictAxisCoor or \
                 'b' in dictAxisCoor or 'c' in dictAxisCoor:
-                self.mainWindow.mainWndOutQueue.put(
-                    gc.SimpleEvent(machif_cmd, dictAxisCoor)
-                )
+                self.mainWindow.eventForward2Machif(machif_cmd, dictAxisCoor)
 
     def OnResetToZero(self, e):
         """ Reset machine selected axis to zero position

@@ -110,31 +110,31 @@ class MachIf_Base(object, gc.EventQueueIf):
 
         if 'z' in dictAxisCoor:
             machine_code = "".join([
-                machine_code, " Z",str(dictAxisCoor.get('z'))
+                machine_code, " Z", str(dictAxisCoor.get('z'))
                 ])
 
         if 'a' in dictAxisCoor:
             machine_code = "".join([
-                machine_code, " A",str(dictAxisCoor.get('a'))
+                machine_code, " A", str(dictAxisCoor.get('a'))
                 ])
 
         if 'b' in dictAxisCoor:
             machine_code = "".join([
-                machine_code, " B",str(dictAxisCoor.get('b'))
+                machine_code, " B", str(dictAxisCoor.get('b'))
                 ])
 
         if 'c' in dictAxisCoor:
             machine_code = "".join([
-                machine_code, " C",str(dictAxisCoor.get('c'))
+                machine_code, " C", str(dictAxisCoor.get('c'))
                 ])
 
         if 'feed' in dictAxisCoor:
             machine_code = "".join([
-                machine_code, " F",str(dictAxisCoor.get('feed'))
+                machine_code, " F", str(dictAxisCoor.get('feed'))
                 ])
 
         self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_code)
-        self.write("".join([machine_code,"\n"]))
+        self.write("".join([machine_code, "\n"]))
 
     def close(self):
         if self._serialTxRxThread is not None:
@@ -161,7 +161,6 @@ class MachIf_Base(object, gc.EventQueueIf):
         """ Fast (rapid) move to a coordinate in opsolute position mode
         """
         self._move("G90 G00", dict_axis_coor)
-
 
     def doFastMoveRelative(self, dict_axis_coor):
         """ Fast (rapid) move to a coordinate in relative position mode
@@ -323,8 +322,6 @@ class MachIf_Base(object, gc.EventQueueIf):
 
             if raw_write:
                 # self._serialTxRxThread.serialWrite(txData)
-                #self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
-                #                                            txData))
                 self._serialTxRxThread.eventPut(gc.EV_CMD_SER_TXDATA, txData)
             else:
                 lines = txData.splitlines(True)
@@ -340,9 +337,6 @@ class MachIf_Base(object, gc.EventQueueIf):
                     *** UPDATE: there was no observable benefit nor issues
                     Leaving this here to revisit in future ."""
                     # self._serialTxRxThread.serialWrite(line)
-
-                    #self._serialTxRxOutQueue.put(gc.SimpleEvent(gc.EV_CMD_SER_TXDATA,
-                    #                                            line))
                     self._serialTxRxThread.eventPut(gc.EV_CMD_SER_TXDATA, line)
 
                     bytesSent = bytesSent + len(line)

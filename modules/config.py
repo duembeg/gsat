@@ -168,9 +168,8 @@ def init_config(cmd_line_options, config_data, state_data):
 
 
 class gsatStateData():
-    """-------------------------------------------------------------------------
-    provides various data information
-    -------------------------------------------------------------------------"""
+    """ Provides various data information
+    """
 
     def __init__(self):
 
@@ -200,9 +199,8 @@ class gsatStateData():
 
 
 class gsatConfigData():
-    """-------------------------------------------------------------------------
-    provides various data information
-    -------------------------------------------------------------------------"""
+    """ Provides various data information
+    """
 
     def __init__(self):
         # -----------------------------------------------------------------------
@@ -216,13 +214,14 @@ class gsatConfigData():
             '/mainApp/MaxFileHistory': (True, 10),
             '/mainApp/RoundInch2mm': (True, 4),
             '/mainApp/Roundmm2Inch': (True, 4),
-            #'/mainApp/DefaultLayout/Dimensions' :(False, ""),
-            #'/mainApp/DefaultLayout/Perspective':(False, ""),
-            #'/mainApp/ResetLayout/Dimensions'   :(False, ""),
-            #'/mainApp/ResetLayout/Perspective'  :(False, ""),
+            # '/mainApp/DefaultLayout/Dimensions' :(False, ""),
+            # '/mainApp/DefaultLayout/Perspective':(False, ""),
+            # '/mainApp/ResetLayout/Dimensions'   :(False, ""),
+            # '/mainApp/ResetLayout/Perspective'  :(False, ""),
 
             # code keys
-            # 0:NoAutoScroll 1:AlwaysAutoScroll 2:SmartAutoScroll 3:OnGoToPCAutoScroll
+            # 0:NoAutoScroll 1:AlwaysAutoScroll 2:SmartAutoScroll
+            # 3:OnGoToPCAutoScroll
             '/code/AutoScroll': (True, 3),
             '/code/CaretLine': (True, True),
             '/code/CaretLineForeground': (False, '#000000'),
@@ -391,6 +390,5 @@ class EventQueueIf():
     def __init__(self):
         self._eventQueue = Queue.Queue()
 
-    def eventPut(self, id, data, sender=None):
+    def eventPut(self, id, data=None, sender=None):
         self._eventQueue.put(SimpleEvent(id, data, sender))
-

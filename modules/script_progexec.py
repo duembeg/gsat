@@ -28,8 +28,6 @@
 import threading
 import time
 
-import wx
-
 import modules.config as gc
 
 
@@ -125,7 +123,7 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
         # inti machine interface
         self.machIfModule.open()
 
-        while (not self.endThread):
+        while not self.endThread:
 
             # process bookeeping input queue for new commands or actions
             self.tick()
@@ -159,4 +157,4 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
             print "** scriptExecuteThread exit."
 
         self.eventHandler.eveventPut(gc.EV_EXIT, "")
-        #wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
+        # wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))

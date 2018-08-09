@@ -23,7 +23,6 @@
 
 ----------------------------------------------------------------------------"""
 
-import os
 import re
 import wx
 from wx import stc as stc
@@ -78,8 +77,10 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
                                       value=asList[self.configData.get(
                                           '/%s/AutoScroll' % self.key)],
                                       choices=asList, style=wx.CB_READONLY)
-        hBoxSizer.Add(self.asComboBox, 0,
-                      flag=wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
+        hBoxSizer.Add(
+            self.asComboBox, 0,
+            flag=wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, border=5
+        )
 
         vBoxSizer.Add(hBoxSizer, 0, wx.LEFT | wx.EXPAND |
                       wx.ALIGN_LEFT, border=20)
@@ -126,27 +127,44 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
         text = wx.StaticText(self, label="Window")
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.windowForeground = csel.ColourSelect(self, -1, "",
-                                                  hex_to_rgb(self.configData.get('/%s/WindowForeground' % self.key)))
-        foregroundColorSizer.Add(self.windowForeground, 0,
-                                 flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+        self.windowForeground = csel.ColourSelect (
+            self, -1, "",
+            hex_to_rgb(self.configData.get('/%s/WindowForeground' % self.key))
+        )
+        foregroundColorSizer.Add(
+            self.windowForeground, 0,
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+        )
 
         text = wx.StaticText(self, label="Line Numbers")
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.lineNumbersForeground = csel.ColourSelect(self, -1, "",
-                                                       hex_to_rgb(self.configData.get('/%s/LineNumberForeground' % self.key)))
-        foregroundColorSizer.Add(self.lineNumbersForeground, 0,
-                                 flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+        self.lineNumbersForeground = csel.ColourSelect(
+            self, -1, "",
+            hex_to_rgb(self.configData.get('/%s/LineNumberForeground' \
+            % self.key))
+        )
+        foregroundColorSizer.Add(
+            self.lineNumbersForeground, 0,
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+        )
 
         text = wx.StaticText(self, label="Highlight Line")
-        foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.caretLineForeground = csel.ColourSelect(self, -1, "",
-                                                     hex_to_rgb(self.configData.get('/%s/CaretLineForeground' % self.key)))
-        foregroundColorSizer.Add(
-            self.caretLineForeground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
-        vColorSizer.Add(foregroundColorSizer, 0,
-                        flag=wx.LEFT | wx.EXPAND, border=20)
+        foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        self.caretLineForeground = csel.ColourSelect(
+            self, -1, "",
+            hex_to_rgb(self.configData.get('/%s/CaretLineForeground'\
+            % self.key))
+        )
+
+        foregroundColorSizer.Add(
+            self.caretLineForeground, 0,
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+        )
+
+        vColorSizer.Add(
+            foregroundColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20
+        )
 
         # Background
         text = wx.StaticText(self, label="")
@@ -156,24 +174,38 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
         text = wx.StaticText(self, label="Window")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.windowBackground = csel.ColourSelect(self, -1, "",
-                                                  hex_to_rgb(self.configData.get('/%s/WindowBackground' % self.key)))
+        self.windowBackground = csel.ColourSelect(
+            self, -1, "",
+            hex_to_rgb(self.configData.get('/%s/WindowBackground' % self.key))
+        )
         backgroundColorSizer.Add(
-            self.windowBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+            self.windowBackground, 0,
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+        )
 
         text = wx.StaticText(self, label="Line Numbers")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.lineNumbersBackground = csel.ColourSelect(self, -1, "",
-                                                       hex_to_rgb(self.configData.get('/%s/LineNumberBackground' % self.key)))
+        self.lineNumbersBackground = csel.ColourSelect(
+            self, -1, "",
+            hex_to_rgb(self.configData.get('/%s/LineNumberBackground'\
+            % self.key))
+        )
         backgroundColorSizer.Add(
-            self.lineNumbersBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+            self.lineNumbersBackground, 0,
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+        )
 
         text = wx.StaticText(self, label="Highlight Line")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.caretLineBackground = csel.ColourSelect(self, -1, "",
-                                                     hex_to_rgb(self.configData.get('/%s/CaretLineBackground' % self.key)))
+        self.caretLineBackground = csel.ColourSelect(
+            self, -1, "",
+            hex_to_rgb(self.configData.get('/%s/CaretLineBackground'\
+            % self.key))
+        )
         backgroundColorSizer.Add(
-            self.caretLineBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+            self.caretLineBackground, 0,
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+        )
 
         vColorSizer.Add(backgroundColorSizer, 0,
                         flag=wx.LEFT | wx.EXPAND, border=20)
@@ -187,52 +219,74 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
             text = wx.StaticText(self, label="G Code")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.gCodeHighlight = csel.ColourSelect(self, -1, "",
-                                                    hex_to_rgb(self.configData.get('/%s/GCodeHighlight' % self.key)))
+            self.gCodeHighlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/GCodeHighlight'\
+                % self.key))
+            )
             syntaxColorSizer.Add(self.gCodeHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="M Code")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.gModeHighlight = csel.ColourSelect(self, -1, "",
-                                                    hex_to_rgb(self.configData.get('/%s/MCodeHighlight' % self.key)))
+            self.gModeHighlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/MCodeHighlight'\
+                % self.key))
+            )
             syntaxColorSizer.Add(self.gModeHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="Axis Codes")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.axisHighlight = csel.ColourSelect(self, -1, "",
-                                                   hex_to_rgb(self.configData.get('/%s/AxisHighlight' % self.key)))
+            self.axisHighlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/AxisHighlight' % self.key))
+            )
             syntaxColorSizer.Add(self.axisHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="Parameters")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.parametersHighlight = csel.ColourSelect(self, -1, "",
-                                                         hex_to_rgb(self.configData.get('/%s/ParametersHighlight' % self.key)))
+            self.parametersHighlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/ParametersHighlight'\
+                % self.key))
+            )
             syntaxColorSizer.Add(self.parametersHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="Parameters2")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.parameters2Highlight = csel.ColourSelect(self, -1, "",
-                                                          hex_to_rgb(self.configData.get('/%s/Parameters2Highlight' % self.key)))
+            self.parameters2Highlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/Parameters2Highlight'\
+                % self.key))
+            )
             syntaxColorSizer.Add(self.parameters2Highlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="Comments")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.commentsHighlight = csel.ColourSelect(self, -1, "",
-                                                       hex_to_rgb(self.configData.get('/%s/CommentsHighlight' % self.key)))
+            self.commentsHighlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/CommentsHighlight'\
+                % self.key))
+            )
             syntaxColorSizer.Add(self.commentsHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="G-Code Line #")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.gCodeLineNumberHighlight = csel.ColourSelect(self, -1, "",
-                                                              hex_to_rgb(self.configData.get('/%s/GCodeLineNumberHighlight' % self.key)))
-            syntaxColorSizer.Add(self.gCodeLineNumberHighlight,
-                                 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+            self.gCodeLineNumberHighlight = csel.ColourSelect(
+                self, -1, "",
+                hex_to_rgb(self.configData.get('/%s/GCodeLineNumberHighlight'\
+                % self.key))
+            )
+            syntaxColorSizer.Add(
+                self.gCodeLineNumberHighlight, 0,
+                flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
+            )
 
             vColorSizer.Add(syntaxColorSizer, 0, flag=wx.LEFT |
                             wx.EXPAND, border=20)

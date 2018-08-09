@@ -23,17 +23,15 @@
 
 ----------------------------------------------------------------------------"""
 import os
-import re
 import sys
 import serial
 import tty
 import threading
-import Queue
 import time
-import pdb
 import wx
 
 import modules.config as gc
+
 
 class SerialPortThread(threading.Thread, gc.EventQueueIf):
     """ Threads to send and monitor serial port for new data.
@@ -185,11 +183,11 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
             while inDataCnt > 0 and not exFlag:
 
-                # read data from port
-                # Was running with performance issues using readline(), move to read()
-                # Using "".join() as performance is much better then "+="
-                #serialData = self.serPort.readline()
-                #self.rxBuffer += self.serPort.read(inDataCnt)
+                # # read data from port
+                # # Was running with performance issues using readline(), move to read()
+                # # Using "".join() as performance is much better then "+="
+                # serialData = self.serPort.readline()
+                # self.rxBuffer += self.serPort.read(inDataCnt)
                 self.rxBuffer = "".join(
                     [self.rxBuffer, self.serPort.read(inDataCnt)])
 
@@ -227,10 +225,10 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             exMsg = "** IOError exception: %s\n" % str(e)
             exFlag = True
 
-        except:
-            e = sys.exc_info()[0]
-            exMsg = "** Unexpected exception: %s\n" % str(e)
-            exFlag = True
+        # except:
+        #     e = sys.exc_info()[0]
+        #     exMsg = "** Unexpected exception: %s\n" % str(e)
+        #     exFlag = True
 
         if exFlag:
             # make sure we stop processing any states...
@@ -275,10 +273,10 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 exMsg = "** IOError exception: %s\n" % str(e)
                 exFlag = True
 
-            except:
-                e = sys.exc_info()[0]
-                exMsg = "** Unexpected excetion: %s\n" % str(e)
-                exFlag = True
+            # except:
+            #     e = sys.exc_info()[0]
+            #     exMsg = "** Unexpected excetion: %s\n" % str(e)
+            #     exFlag = True
 
             if exFlag:
                 # make sure we stop processing any states...
@@ -301,13 +299,13 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         self.serialOpen()
 
-        while ((self.endThread != True) and (self.serPort is not None)):
+        while (not self.endThread) and (self.serPort is not None):
 
             # process input queue for new commands or actions
             self.processQueue()
 
             # check if we need to exit now
-            if self.endThread:
+            if (self.endThread):
                 break
 
             if self.serPort.isOpen():
@@ -317,8 +315,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                     # do nothing, wait to be terminated
                     pass
                 else:
-                    exMsg = "** SerialPortThread unexpected state [%d], Aborting..." % (
-                        self.swState)
+                    exMsg = "** SerialPortThread unexpected state [%d], "\
+                        "Aborting..." % (self.swState)
                     if self.cmdLineOptions.verbose:
                         print exMsg
 
