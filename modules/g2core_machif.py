@@ -249,7 +249,8 @@ class MachIf_g2core(mi.MachIf_Base):
 
     Init buffer to (1) when connecting it counts that as one char on response
     initial msg looks like
-    {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":"SYSTEM READY"},"f":[1,0,1]}
+    {"r":{"fv":0.98,"fb":89.03,"hp":3,"hv":0,"id":"0213-2335-6343","msg":
+    "SYSTEM READY"},"f":[1,0,1]}
 
     !!notice f[1,0,1]
     ------------------------------------------------------------------------"""
@@ -374,12 +375,11 @@ class MachIf_g2core(mi.MachIf_Base):
                 self._inputBufferSize = self._inputBufferSize - bufferPart
 
                 if self.cmdLineOptions.vverbose:
+                    prcnt = float(self._inputBufferSize) / \
+                        self._inputBufferMaxSize
                     print "** MachIf_g2core input buffer decode returned: "\
-                        "%d, buffer size: %d, %.2f%% full" % (
-                            bufferPart, self._inputBufferSize, (
-                                100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)
-                            )
-                        )
+                        "%d, buffer size: %d, %.2f%% full" % \
+                        (bufferPart, self._inputBufferSize, (100*prcnt))
 
         if 'sr' in dataDict:
             sr = dataDict['sr']
@@ -405,12 +405,10 @@ class MachIf_g2core(mi.MachIf_Base):
             self._inputBufferPart.append(dataLen)
 
             if self.cmdLineOptions.vverbose:
+                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
                 print "** MachIf_g2core input buffer encode used: "\
-                    "%d, buffer size: %d, %.2f%% full" % (
-                        dataLen, self._inputBufferSize, (
-                            100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)
-                        )
-                    )
+                    "%d, buffer size: %d, %.2f%% full" % \
+                    (dataLen, self._inputBufferSize, (100 * prcnt))
 
         return data
 

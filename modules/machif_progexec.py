@@ -407,7 +407,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
     def sendRunStepGcode(self, gcode_data):
         write_to_device = True
-        error = False
+        rc_error = False
         gcode = gcode_data.strip()
 
         if len(gcode) > 0:
@@ -422,7 +422,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 all will manage whether or not we can send more
                 commands to the IF'''
                 # wait for response
-                error = self.waitForAcknowledge()
+                rc_error = self.waitForAcknowledge()
                 # self.SerialRead()
 
                 if self.machineAutoStatus:
@@ -432,17 +432,22 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.serialRead()
 
         if write_to_device:
-            if not error:
+            if not rc_error:
                 self.workingProgramCounter += 1
 
             # if we stop early make sure to update PC to main UI
             if self.swState == gc.STATE_IDLE:
-                self.eventHandler.eventPut(gc.EV_PC_UPDATE,
-                                           self.workingProgramCounter)
+                self.eventHandler.eventPut(
+                    gc.EV_PC_UPDATE, self.workingProgramCounter
+                )
+
+        return rc_error
 
     def processRunSate(self):
         """ Process RUN state and update counters or end state
         """
+        error = False
+
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
             self.swState = gc.STATE_IDLE
@@ -489,11 +494,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             gcode = reComments.sub("", gcode)
 
         # send g-code command
-        self.sendRunStepGcode(gcode)
+        error = self.sendRunStepGcode(gcode)
 
-        # check if something else switch to IDLE (like errors)
-        if gc.STATE_IDLE == self.swState:
+        # check for erros
+        if error:
             self.swState = gc.STATE_BREAK
+            self.errorFlag = False
             self.eventHandler.eventPut(gc.EV_HIT_BRK_PT)
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread swState is gc.gSTATE_IDLE, "\
@@ -503,6 +509,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     def processStepSate(self):
         """ Process STEP state and update counters or end state
         """
+        error = False
+
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
             self.swState = gc.STATE_IDLE
@@ -530,10 +538,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         for reComments in gReGcodeComments:
             gcode = reComments.sub("", gcode)
 
-        self.sendRunStepGcode(gcode)
+        error = self.sendRunStepGcode(gcode)
 
-        # check if something else switch to IDLE (like errors)
-        if gc.STATE_IDLE == self.swState:
+        # check for error
+        if error:
             self.eventHandler.eventPut(gc.EV_STEP_END)
             if self.cmdLineOptions.vverbose:
                 print "** programExecuteThread swState is gc.gSTATE_IDLE, "\
@@ -544,7 +552,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.serialRead()
 
     def processSerialWriteQueue(self):
-        if len(self.serialWriteQueue) > 0:
+        if self.serialWriteQueue:
 
             data = self.serialWriteQueue[0]
 

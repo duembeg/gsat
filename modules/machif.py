@@ -22,7 +22,6 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import Queue
 from abc import ABCMeta, abstractmethod
 
 import modules.config as gc
@@ -30,16 +29,15 @@ import modules.serial_thread as st
 
 
 class MachIf_Base(object, gc.EventQueueIf):
-    """----------------------------------------------------------------------------
-    machIf_Base:
-
-    Machine interface base class to provide a unified API for specific devices
-    (g2core, TinyG, grbl, etc).
-
-    ----------------------------------------------------------------------------"""
+    """ Machine interface base class to provide a unified API for specific
+        devices (g2core, TinyG, grbl, etc).
+    """
     __metaclass__ = ABCMeta
 
-    def __init__(self, cmd_line_options, if_id, name, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
+    def __init__(
+        self, cmd_line_options, if_id, name, input_buffer_max_size,
+        input_buffer_init_val, input_buffer_watermark_prcnt
+    ):
         gc.EventQueueIf.__init__(self)
 
         self.id = if_id
@@ -85,9 +83,12 @@ class MachIf_Base(object, gc.EventQueueIf):
         self._send_axis_cmd(move_code, dictAxisCoor)
 
         self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
-        self.write("".join([machine_current_position_mode,"\n"]))
+        self.write("".join([machine_current_position_mode, "\n"]))
 
-    def _reset(self, input_buffer_max_size, input_buffer_init_val, input_buffer_watermark_prcnt):
+    def _reset(
+        self, input_buffer_max_size, input_buffer_init_val,
+        input_buffer_watermark_prcnt
+    ):
         self._inputBufferMaxSize = input_buffer_max_size
         self._inputBufferWatermark = float(
             self._inputBufferMaxSize) * input_buffer_watermark_prcnt

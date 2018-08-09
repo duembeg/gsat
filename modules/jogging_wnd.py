@@ -23,7 +23,6 @@
 
 ----------------------------------------------------------------------------"""
 
-import os
 import re
 import wx
 from wx.lib import scrolledpanel as scrolled
@@ -33,6 +32,7 @@ import modules.config as gc
 import modules.machif_config as mi
 
 import images.icons as ico
+
 
 class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
     """ Jog panel settings
@@ -120,11 +120,11 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.jogFeedRateSpinCtrl = fs.FloatSpin(self, -1,
-                                                 min_val=0, max_val=999999, increment=100,
-                                                 value=self.configData.get(
-                                                     '/jogging/JogFeedRate'),
-                                                 size=(-1, -1), agwStyle=fs.FS_LEFT)
+        self.jogFeedRateSpinCtrl = fs.FloatSpin(
+            self, -1, min_val=0, max_val=999999, increment=100,
+            value=self.configData.get('/jogging/JogFeedRate'),
+            size=(-1, -1), agwStyle=fs.FS_LEFT
+        )
         self.jogFeedRateSpinCtrl.SetFormat("%f")
         self.jogFeedRateSpinCtrl.SetDigits(0)
         self.jogFeedRateSpinCtrl.SetToolTip(wx.ToolTip(

@@ -24,10 +24,8 @@
 ----------------------------------------------------------------------------"""
 
 import os
-import re
 import wx
 from wx.lib import scrolledpanel as scrolled
-from wx.lib.agw import floatspin as fs
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -57,27 +55,32 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         st = wx.StaticText(self, label="Device")
         machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
-        self.deviceComboBox = wx.ComboBox(self, -1, value=mi.GetMachIfName(machIfId),
-                                          choices=sorted(mi.MACHIF_LIST), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY)
+        self.deviceComboBox = wx.ComboBox(
+            self, -1, value=mi.GetMachIfName(machIfId),
+            choices=sorted(mi.MACHIF_LIST),
+            style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY
+        )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.deviceComboBox, 1,
                           flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         # get serial port list and baud rate speeds
-        #spList = self.configData.get('/machine/PortList')
         brList = self.configData.get('/machine/BaudList')
 
         # Add serial port controls
         st = wx.StaticText(self, label="Serial Port")
-        self.spComboBox = wx.ComboBox(self, -1, value=self.configData.get('/machine/Port'),
-                                      choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+        self.spComboBox = wx.ComboBox(
+            self, -1, value=self.configData.get('/machine/Port'),
+            choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
+        )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND |
                           wx.ALIGN_CENTER_VERTICAL)
 
         self.Bind(wx.EVT_COMBOBOX, self.OnSpComboBoxSelect)
 
-        # older version of wx *12.04, 14.04) doesn't support EVT_COMBOBOX_DROPDOWN
+        # older version of wx *12.04, 14.04) doesn't support
+        # EVT_COMBOBOX_DROPDOWN
         try:
             self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown)
         except:
@@ -85,8 +88,10 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         # Add baud rate controls
         st = wx.StaticText(self, label="Baud Rate")
-        self.sbrComboBox = wx.ComboBox(self, -1, value=self.configData.get('/machine/Baud'),
-                                       choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+        self.sbrComboBox = wx.ComboBox(
+            self, -1, value=self.configData.get('/machine/Baud'),
+            choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
+        )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND |
                           wx.ALIGN_CENTER_VERTICAL)
@@ -125,7 +130,11 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.cbAutoStatus = wx.CheckBox(self, wx.ID_ANY, "Auto Status Request")
         self.cbAutoStatus.SetValue(self.configData.get('/machine/AutoStatus'))
         self.cbAutoStatus.SetToolTip(
-            wx.ToolTip("Send \"STATUS\" request with every command sent (experimental)"))
+            wx.ToolTip(
+                "Send \"STATUS\" request with every command sent "
+                "(experimental)"
+            )
+        )
 
         vBoxSizerRoot.Add(self.cbAutoStatus, 0, flag=wx.TOP |
                           wx.LEFT | wx.EXPAND, border=20)
@@ -137,7 +146,11 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.cbAutoRefresh.SetValue(
             self.configData.get('/machine/AutoRefresh'))
         self.cbAutoRefresh.SetToolTip(
-            wx.ToolTip("Send \"STATUS\" request on a time base (experimental, GRBL only)"))
+            wx.ToolTip(
+                "Send \"STATUS\" request on a time base (experimental, "
+                "GRBL only)"
+            )
+        )
         hBoxSizer.Add(self.cbAutoRefresh, flag=wx.ALIGN_CENTER_VERTICAL)
 
         # Add spin ctrl
@@ -202,32 +215,27 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                 # Scan for available ports.
                 for i in range(256):
                     try:
-                        #s = serial.Serial(i)
                         serial.Serial(i)
                         serList.append('COM'+str(i + 1))
-                        # s.close()
                     except serial.SerialException, e:
                         pass
                     except OSError, e:
                         pass
             else:
-                serList = glob.glob(
-                    '/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob('/dev/cu*')
+                serList = glob.glob('/dev/ttyUSB*') + \
+                    glob.glob('/dev/ttyACM*') + \
+                    glob.glob('/dev/cu*')
 
             if len(serList) < 1:
                 serList = ['None']
 
-        #import pdb;pdb.set_trace()
-        # self.spComboBox.Set(serList)
         self.spComboBox.SetItems(serList)
 
 
 class gsatMachineStatusPanel(wx.ScrolledWindow):
-    """-------------------------------------------------------------------------
-    gsatMachineStatusPanel:
-    Status information about machine, controls to enable auto and manual
-    refresh.
-    -------------------------------------------------------------------------"""
+    """ Status information about machine, controls to enable auto and manual
+        refresh.
+    """
 
     def __init__(self, parent, config_data, state_data, **args):
         wx.ScrolledWindow.__init__(self, parent, **args)
@@ -248,14 +256,14 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
     def InitUI(self):
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Add Static Boxes ------------------------------------------------------
+        # Add Static Boxes ----------------------------------------------------
         droBox = self.CreateDroBox()
         statusBox = self.CreateStatusStaticBox()
 
         vBoxSizer.Add(droBox, 0, flag=wx.ALL | wx.EXPAND, border=5)
         vBoxSizer.Add(statusBox, 0, flag=wx.ALL | wx.EXPAND, border=5)
 
-        # # Add Buttons -----------------------------------------------------------
+        # # Add Buttons -------------------------------------------------------
         # self.refreshButton = wx.Button(self, wx.ID_REFRESH)
         # self.refreshButton.SetToolTip(
         #     wx.ToolTip("Refresh machine status"))

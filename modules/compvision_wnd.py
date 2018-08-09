@@ -164,7 +164,8 @@ class gsatCV2Panel(wx.ScrolledWindow):
     """
     def __init__(
         self, parent, config_data, state_data, cmd_line_options,
-        **args):
+        **args
+    ):
 
         wx.ScrolledWindow.__init__(self, parent, **args)
 
@@ -388,7 +389,8 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
                 goitem = False
                 while (not self.t2cvwQueue.empty()):
-                    te = self.t2cvwQueue.get()
+                    # te = self.t2cvwQueue.get()
+                    self.t2cvwQueue.get()
                     goitem = True
 
                 # make sure to unlock thread
@@ -405,7 +407,8 @@ class gsatComputerVisionThread(threading.Thread):
 
     def __init__(
         self, notify_window, in_queue, out_queue, config_data,
-        cmd_line_options):
+        cmd_line_options
+    ):
 
         threading.Thread.__init__(self)
 
@@ -528,13 +531,13 @@ class gsatComputerVisionThread(threading.Thread):
         if self.cmdLineOptions.vverbose:
             print "** gsatcomputerVisionThread start."
 
-        while(self.endThread != True):
+        while (not self.endThread):
 
             # capture frame
             frame = self.CaptureFrame()
 
             # sned frame to window, and wait...
-            #wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
+            # wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
             self.t2cvwQueue.put(gc.SimpleEvent(EV_CMD_CV_IMAGE, frame))
             self.t2cvwQueue.join()
 

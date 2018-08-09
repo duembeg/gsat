@@ -43,8 +43,13 @@ MACHIF_TINYG = mi_tinyg.MachIf_TinyG(gc.CMD_LINE_OPTIONS)
 MACHIF_G2CORE = mi_g2core.MachIf_g2core(gc.CMD_LINE_OPTIONS)
 MACHIF_SMOOTHIE = mi_smoothie.MachIf_Smoothie(gc.CMD_LINE_OPTIONS)
 
-MACHIF_CLS_LIST = [MACHIF_GRBL, MACHIF_TINYG,
-                  MACHIF_G2CORE, MACHIF_SMOOTHIE]
+MACHIF_CLS_LIST = [
+    MACHIF_GRBL,
+    MACHIF_TINYG,
+    MACHIF_G2CORE,
+    MACHIF_SMOOTHIE
+]
+
 MACHIF_LIST = [mach_if_cls.getName() for mach_if_cls in MACHIF_CLS_LIST]
 
 
