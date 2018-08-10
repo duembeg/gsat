@@ -290,6 +290,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 if len(rx_data) > 0:
 
+                    if 'rx_data_info' in rxData:
+                        rx_data_info = rxData['rx_data_info']
+                        rx_data = "".join(
+                            [rx_data.strip(), " ", rx_data_info]
+                        )
+
                     # add data to queue and signal main window to consume
                     self.eventHandler.eventPut(gc.EV_DATA_IN, rx_data)
 

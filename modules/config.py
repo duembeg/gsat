@@ -25,6 +25,8 @@
 import Queue
 import wx
 
+from enum import Enum
+
 """----------------------------------------------------------------------------
    Globals:
 ----------------------------------------------------------------------------"""
@@ -79,7 +81,7 @@ ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  
 -------------------------------------------------------------------------------------------------------
 IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   | IGNORE    |
 -------------------------------------------------------------------------------------------------------
-RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | BREAK    | IDLE    | ABORT   | IDLE      |
+RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | BREAK    | IDLE    | ABORT   | IDLE     |
 -------------------------------------------------------------------------------------------------------
 STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   | IDLE      |
 -------------------------------------------------------------------------------------------------------
@@ -137,6 +139,8 @@ EV_CMD_HOME = 1210
 
 
 EV_NULL = 100
+EV_HELLO = 110
+EV_GOODBY = 120
 EV_EXIT = 200
 EV_ABORT = 2000
 EV_RUN_END = 2010
@@ -153,6 +157,15 @@ EV_SER_PORT_CLOSE = 2110
 EV_TIMER = 2120
 EV_DATA_STATUS = 2130
 EV_DEVICE_DETECTED = 2140
+
+
+class VerboseMask (Enum):
+    """ Verbose mask enum
+    """
+    main_window = 0x0000000F
+    machif_progexec = 0x000000F0
+    machif = 0x00000F00
+    serial = 0x0000F000
 
 
 def init_config(cmd_line_options, config_data, state_data):

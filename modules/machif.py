@@ -22,6 +22,7 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import re
 from abc import ABCMeta, abstractmethod
 
 import modules.config as gc
@@ -33,6 +34,8 @@ class MachIf_Base(object, gc.EventQueueIf):
         devices (g2core, TinyG, grbl, etc).
     """
     __metaclass__ = ABCMeta
+
+    reMachiePositionMode = re.compile(r'.*(G9[0|1]).*')
 
     def __init__(
         self, cmd_line_options, if_id, name, input_buffer_max_size,
@@ -82,8 +85,9 @@ class MachIf_Base(object, gc.EventQueueIf):
 
         self._send_axis_cmd(move_code, dictAxisCoor)
 
-        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
-        self.write("".join([machine_current_position_mode, "\n"]))
+        if machine_current_position_mode != self.machinePositionMode:
+            self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
+            self.write("".join([machine_current_position_mode, "\n"]))
 
     def _reset(
         self, input_buffer_max_size, input_buffer_init_val,
@@ -161,12 +165,18 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doFastMove(self, dict_axis_coor):
         """ Fast (rapid) move to a coordinate in opsolute position mode
         """
-        self._move("G90 G00", dict_axis_coor)
+        if self.machinePositionMode == "G90":
+            self._move("G00", dict_axis_coor)
+        else:
+            self._move("G90 G00", dict_axis_coor)
 
     def doFastMoveRelative(self, dict_axis_coor):
         """ Fast (rapid) move to a coordinate in relative position mode
         """
-        self._move("G91 G00", dict_axis_coor)
+        if self.machinePositionMode == "G91":
+            self._move("G00", dict_axis_coor)
+        else:
+            self._move("G91 G00", dict_axis_coor)
 
     def doFeedHold(self):
         """ send feed hold command
@@ -188,12 +198,18 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doMove(self, dict_axis_coor):
         """ Move to a coordinate in opsolute position mode
         """
-        self._move("G90 G01", dict_axis_coor)
+        if self.machinePositionMode == "G90":
+            self._move("G01", dict_axis_coor)
+        else:
+            self._move("G90 G01", dict_axis_coor)
 
     def doMoveRelative(self, dict_axis_coor):
         """ Move to a coordinate in relative position mode
         """
-        self._move("G91 G01", dict_axis_coor)
+        if self.machinePositionMode == "G91":
+            self._move("G01", dict_axis_coor)
+        else:
+            self._move("G91 G01", dict_axis_coor)
 
     def doQueueFlush(self):
         self.write(self.cmdQueueFlush)
@@ -210,6 +226,13 @@ class MachIf_Base(object, gc.EventQueueIf):
 
     @abstractmethod
     def encode(self, data, bookeeping=True):
+        """ encodes the data for the controller if needed
+        """
+        # check positioning mode change
+        position_mode = self.reMachiePositionMode.match(data)
+        if position_mode is not None:
+            self.machinePositionMode = position_mode.group(1)
+
         return data
 
     @abstractmethod

@@ -396,6 +396,8 @@ class MachIf_g2core(mi.MachIf_Base):
         """
         data = data.encode('ascii')
 
+        data = super(MachIf_g2core, self).encode(data)
+
         if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
         elif bookeeping:

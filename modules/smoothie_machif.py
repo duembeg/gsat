@@ -273,6 +273,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
         data = data.encode('ascii')
 
+        data = super(MachIf_Smoothie, self).encode(data)
+
         # handle special cases due to status in cmd line and how GRBL
         # reports deals with this. if not careful we might get two status
         # from a single line but is not consistence on host this works.

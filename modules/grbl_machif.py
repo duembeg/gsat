@@ -136,6 +136,43 @@ GRBL_DOOR_CODE_2_STR_DICT = {
        "Reset will throw an alarm",
 }
 
+GRBL_CONFIG_2_STR_DICT = {
+    0: "Step pulse, microseconds",
+    1: "Step idle delay, milliseconds",
+    2: "Step port invert, mask",
+    3: "Direction port invert, mask",
+    4: "Step enable invert, boolean",
+    5: "Limit pins invert, boolean",
+    6: "Probe pin invert, boolean",
+    10: "Status report, mask",
+    11: "Junction deviation, mm",
+    12: "Arc tolerance, mm",
+    13: "Report inches, boolean",
+    20: "Soft limits, boolean",
+    21: "Hard limits, boolean",
+    22: "Homing cycle, boolean",
+    23: "Homing dir invert, mask",
+    24: "Homing feed, mm/min",
+    25: "Homing seek, mm/min",
+    26:	"Homing debounce, milliseconds",
+    27: "Homing pull-off, mm",
+    30: "Max spindle speed, RPM",
+    31: "Min spindle speed, RPM",
+    32: "Laser mode, boolean",
+    100: "X steps/mm",
+    101: "Y steps/mm",
+    102: "Z steps/mm",
+    110: "X Max rate, mm/min",
+    111: "Y Max rate, mm/min",
+    112: "Z Max rate, mm/min",
+    120: "X Acceleration, mm/sec^2",
+    121: "Y Acceleration, mm/sec^2",
+    122: "Z Acceleration, mm/sec^2",
+    130: "X Max travel, mm",
+    131: "Y Max travel, mm",
+    132: "Z Max travel, mm",
+}
+
 # This values are only use to initialize or reset base class.
 # base class has internal variables tor track these
 ID = 1000
@@ -219,7 +256,8 @@ class MachIf_GRBL(mi.MachIf_Base):
     # grbl init, example "ALARM:x"
     reGrblAlarm = re.compile(r'ALARM:(\d+)')
 
-    reGrblMachiePositionMode = re.compile(r'.*(G9[0|1]).*')
+    # grbl config settings
+    reGrblConfig = re.compile(r'^\$(\d+)=\d+.*\s*')
 
     def __init__(self, cmd_line_options):
         super(MachIf_GRBL, self).__init__(cmd_line_options, ID, NAME,
@@ -355,12 +393,10 @@ class MachIf_GRBL(mi.MachIf_Base):
             alarm_code = alarm.group(1).strip()
             if alarm_code.isdigit():
                 alarm_code = int(alarm_code)
-                alarm_str = "[MSG:Alarm:%d - %s]\n" % (
-                    alarm_code, GRBL_ALARM_CODE_2_STR_DICT.get(
-                        alarm_code, "Uknown"
-                    )
+                alarm_str = "[MSG: %s]\n" % (
+                    GRBL_ALARM_CODE_2_STR_DICT.get(alarm_code, "Uknown")
                 )
-                self.eventPut(gc.EV_SER_RXDATA, alarm_str)
+                dataDict['rx_data_info'] = alarm_str
             else:
                 error_code = -1
 
@@ -383,12 +419,11 @@ class MachIf_GRBL(mi.MachIf_Base):
             error_code = error.group(1).strip()
             if error_code.isdigit():
                 error_code = int(error_code)
-                err_str = "[MSG:Error:%d - %s]\n" % (
-                    error_code, GRBL_ERROR_CODE_2_STR_DICT.get(
-                        error_code, "Unknown"
-                    )
+                err_str = "[MSG: %s]\n" % (
+                    GRBL_ERROR_CODE_2_STR_DICT.get(error_code, "Unknown")
                 )
-                self.eventPut(gc.EV_SER_RXDATA, err_str)
+
+                dataDict['rx_data_info'] = err_str
             else:
                 error_code = -1
 
@@ -425,6 +460,13 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self.initStringDetectFlag = True
 
+        config = self.reGrblConfig.match(data)
+        if config is not None:
+            data_len = len(data)
+            fill = 20 - data_len
+            dataDict['rx_data_info'] = "%s%s\n" % (' '*fill, \
+                GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), ""))
+
         return dataDict
 
     def doHome(self, dict_axis):
@@ -449,6 +491,8 @@ class MachIf_GRBL(mi.MachIf_Base):
             return data
 
         data = data.encode('ascii')
+
+        data = super(MachIf_GRBL, self).encode(data)
 
         # handle special cases due to status in cmd line and how GRBL
         # reports deals with this. if not careful we might get two status
@@ -486,11 +530,6 @@ class MachIf_GRBL(mi.MachIf_Base):
                 print "** MachIf_GRBL input buffer encode used: %d, "\
                     "buffer size: %d, %.2f%% full" % \
                     (dataLen, self._inputBufferSize, (100 * prcnt))
-
-            # check positioning mode change
-            position_mode = self.reGrblMachiePositionMode.match(data)
-            if position_mode is not None:
-                self.machinePositionMode = position_mode.group(1)
 
         return data
 
