@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   g2core_machif.py
+   machif_g2core.py
 
    Copyright (C) 2013-2018 Wilhelm Duembeg
 

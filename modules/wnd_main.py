@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   main_wnd.py
+   wnd_main.py
 
    Copyright (C) 2013-2018 Wilhelm Duembeg
 
@@ -77,10 +77,10 @@ from wx.lib import scrolledpanel as scrolled
 import modules.config as gc
 import modules.machif_config as mi
 import images.icons as ico
-import modules.editor_wnd as ed
-import modules.machine_wnd as mc
-import modules.jogging_wnd as jog
-import modules.compvision_wnd as compv
+import modules.wnd_editor as ed
+import modules.wnd_machine as mc
+import modules.wnd_jogging as jog
+import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
 
 """----------------------------------------------------------------------------

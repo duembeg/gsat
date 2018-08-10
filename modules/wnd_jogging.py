@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   jogging.py
+   wnd_jogging.py
 
    Copyright (C) 2013-2018 Wilhelm Duembeg
 
@@ -38,8 +38,9 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
     """ Jog panel settings
     """
     def __init__(self, parent, config_data, **args):
-        scrolled.ScrolledPanel.__init__(self, parent,
-                                        style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
+        scrolled.ScrolledPanel.__init__(
+            self, parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER
+        )
 
         self.configData = config_data
 

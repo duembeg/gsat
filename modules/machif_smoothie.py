@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   smoothie_machif.py
+   machif_smoothie.py
 
    Copyright (C) 2013-2018 Wilhelm Duembeg
 
@@ -24,6 +24,7 @@
 ----------------------------------------------------------------------------"""
 import datetime as dt
 import re
+
 import modules.machif as mi
 
 """ Global values for this module

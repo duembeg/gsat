@@ -36,7 +36,7 @@ import os
 from optparse import OptionParser
 import wx
 
-import modules.main_wnd as mw
+import modules.wnd_main as mw
 
 
 """----------------------------------------------------------------------------

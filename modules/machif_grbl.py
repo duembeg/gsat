@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   grbl_machif.py
+   machif_grbl.py
 
    Copyright (C) 2013-2018 Wilhelm Duembeg
 
@@ -24,6 +24,7 @@
 ----------------------------------------------------------------------------"""
 import datetime as dt
 import re
+
 import modules.config as gc
 import modules.machif as mi
 
@@ -464,8 +465,10 @@ class MachIf_GRBL(mi.MachIf_Base):
         if config is not None:
             data_len = len(data)
             fill = 20 - data_len
-            dataDict['rx_data_info'] = "%s%s\n" % (' '*fill, \
-                GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), ""))
+            dataDict['rx_data_info'] = "%s%s\n" % (
+                ' '*fill,
+                GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), "")
+            )
 
         return dataDict
 

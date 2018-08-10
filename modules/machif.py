@@ -86,7 +86,9 @@ class MachIf_Base(object, gc.EventQueueIf):
         self._send_axis_cmd(move_code, dictAxisCoor)
 
         if machine_current_position_mode != self.machinePositionMode:
-            self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode)
+            self.eventPut(
+                gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode
+            )
             self.write("".join([machine_current_position_mode, "\n"]))
 
     def _reset(
@@ -284,8 +286,8 @@ class MachIf_Base(object, gc.EventQueueIf):
 
         for line in lines:
             data = self.encode(line, bookeeping=False)
-
-            if (self._inputBufferSize + len(data)) > self._inputBufferWatermark:
+            new_size = self._inputBufferSize + len(data)
+            if new_size > self._inputBufferWatermark:
                 bufferHasRoom = False
                 break
 

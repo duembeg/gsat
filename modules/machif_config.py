@@ -24,10 +24,10 @@
 ----------------------------------------------------------------------------"""
 
 import modules.config as gc
-import modules.g2core_machif as mi_g2core
-import modules.tinyg_machif as mi_tinyg
-import modules.grbl_machif as mi_grbl
-import modules.smoothie_machif as mi_smoothie
+import modules.machif_g2core as mi_g2core
+import modules.machif_tinyg as mi_tinyg
+import modules.machif_grbl as mi_grbl
+import modules.machif_smoothie as mi_smoothie
 
 # --------------------------------------------------------------------------
 # Device type, this data needs to be in sync with the machif_* files
