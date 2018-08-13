@@ -242,7 +242,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         return data
 
     @abstractmethod
-    def factory(self, cmd_line_options):
+    def factory(self):
         return None
 
     def getCycleStartCmd(self):

@@ -546,7 +546,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                                     (100*prcnt)))
         return data
 
-    def factory(self, cmd_line_options):
+    def factory(self):
         return MachIf_GRBL()
 
     def init(self, state_data):

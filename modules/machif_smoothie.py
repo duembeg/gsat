@@ -314,8 +314,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
         return data
 
-    def factory(self, cmd_line_options):
-        return MachIf_Smoothie(cmd_line_options)
+    def factory(self):
+        return MachIf_Smoothie()
 
     def init(self, state_data):
         super(MachIf_Smoothie, self).init(state_data)
