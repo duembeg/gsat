@@ -321,6 +321,21 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if 'fb' in rxData['r']:
                     self.eventHandler.eventPut(gc.EV_DATA_STATUS, rxData['r'])
 
+                if 'f' in rxData:
+                    if (rxData['f'][1] != 0 and
+                        gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC):
+                        msg = "acknowledgement state ERROR[%d]" % \
+                                rxData['f'][1]
+                        if 'rx_data' in rxData:
+                            msg = "".join([msg, " ",
+                                            rxData['rx_data'].strip()])
+
+                        if 'rx_data_info' in rxData:
+                            msg = "".join([msg, " ",
+                                            rxData['rx_data_info'].strip()])
+
+                        self.logger.info(msg)
+
         return rxData
 
     def serialWrite(self, serial_data):
@@ -368,18 +383,18 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     #     self.logger.info("acknowledgement state OK")
                     pass
                 else:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
-                        msg = "acknowledgement state ERROR[%d]" % \
-                              rxDataDict['f'][1]
-                        if 'rx_data' in rxDataDict:
-                            msg = "".join([msg, " ",
-                                           rxDataDict['rx_data'].strip()])
+                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                    #     msg = "acknowledgement state ERROR[%d]" % \
+                    #           rxDataDict['f'][1]
+                    #     if 'rx_data' in rxDataDict:
+                    #         msg = "".join([msg, " ",
+                    #                        rxDataDict['rx_data'].strip()])
 
-                        if 'rx_data_info' in rxDataDict:
-                            msg = "".join([msg, " ",
-                                           rxDataDict['rx_data_info'].strip()])
+                    #     if 'rx_data_info' in rxDataDict:
+                    #         msg = "".join([msg, " ",
+                    #                        rxDataDict['rx_data_info'].strip()])
 
-                        self.logger.info(msg)
+                    #     self.logger.info(msg)
 
                     self.swState = gc.STATE_IDLE
                     rc_error = True
