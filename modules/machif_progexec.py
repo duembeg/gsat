@@ -323,16 +323,16 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 if 'f' in rxData:
                     if (rxData['f'][1] != 0 and
-                        gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC):
+                       gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC):
                         msg = "acknowledgement state ERROR[%d]" % \
                                 rxData['f'][1]
                         if 'rx_data' in rxData:
                             msg = "".join([msg, " ",
-                                            rxData['rx_data'].strip()])
+                                          rxData['rx_data'].strip()])
 
                         if 'rx_data_info' in rxData:
                             msg = "".join([msg, " ",
-                                            rxData['rx_data_info'].strip()])
+                                          rxData['rx_data_info'].strip()])
 
                         self.logger.info(msg)
 
@@ -498,11 +498,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.lastWorkingCounterWorking = self.workingProgramCounter
 
         # check for break point hit
-        if (self.workingProgramCounter in self.breakPointSet) and \
-           (self.workingProgramCounter != self.initialProgramCounter):
+        if (self.workingProgramCounter in self.breakPointSet and
+           self.workingProgramCounter != self.initialProgramCounter):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
-                self.logger.info("encounter breakpoint PC[%d], "\
-                                 "moving to gc.STATE_BREAK" % \
+                self.logger.info("encounter breakpoint PC[%d], "
+                                 "moving to gc.STATE_BREAK" %
                                  (self.workingProgramCounter + 1))
 
             self.swState = gc.STATE_BREAK
@@ -517,10 +517,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         if (reMsgSearch is not None) and \
            (self.workingProgramCounter != self.initialProgramCounter):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
-                self.logger.info("encounter MSG line PC[%s], "\
-                                 "moving to gc.STATE_BREAK, MSG[%s]" % \
+                self.logger.info("encounter MSG line PC[%s], "
+                                 "moving to gc.STATE_BREAK, MSG[%s]" %
                                  (self.workingProgramCounter,
-                                 reMsgSearch.group(1)))
+                                  reMsgSearch.group(1)))
 
             self.swState = gc.STATE_BREAK
             self.eventHandler.eventPut(gc.EV_HIT_MSG, reMsgSearch.group(1))
