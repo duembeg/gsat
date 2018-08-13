@@ -22,10 +22,11 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import logging
+from logging import handlers, Formatter
+
 import Queue
 import wx
-
-from enum import Enum
 
 """----------------------------------------------------------------------------
    Globals:
@@ -114,6 +115,7 @@ open again and will start in IDLE state.
 # EVENT ID             EVENT CODE
 EV_CMD_NULL = 100
 EV_CMD_EXIT = 200
+EV_CMD_OPEN = 300
 EV_CMD_RUN = 1000
 EV_CMD_STEP = 1010
 EV_CMD_STOP = 1020
@@ -158,14 +160,106 @@ EV_TIMER = 2120
 EV_DATA_STATUS = 2130
 EV_DEVICE_DETECTED = 2140
 
+# --------------------------------------------------------------------------
+# VERBOSE MASK
+# --------------------------------------------------------------------------
+VERBOSE_MASK = 0
 
-class VerboseMask (Enum):
-    """ Verbose mask enum
+VERBOSE_MASK_UI = 0x000000FF
+VERBOSE_MASK_UI_EV = 0x00000001
+VERBOSE_MASK_MACHIF = 0x0000FF00
+VERBOSE_MASK_MACHIF_EXEC = 0x00000F00
+VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000100
+VERBOSE_MASK_MACHIF_MOD = 0x0000F000
+VERBOSE_MASK_MACHIF_MOD_EV = 0x00001000
+VERBOSE_MASK_MACHIF_EV = \
+    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_EXEC_EV
+VERBOSE_MASK_SERIALIF = 0x000F0000
+VERBOSE_MASK_SERIALIF_STR = 0x00010000
+VERBOSE_MASK_SERIALIF_HEX = 0x00020000
+VERBOSE_MASK_SERIALIF_EV = 0x00040000
+VERBOSE_MASK_EVENTIF = \
+    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV |\
+    VERBOSE_MASK_SERIALIF_EV
+
+
+def decode_verbose_mask_string(verbose_mask_str):
+    """ Decode and init gc VERBOSE_MASK
     """
-    main_window = 0x0000000F
-    machif_progexec = 0x000000F0
-    machif = 0x00000F00
-    serial = 0x0000F000
+    global VERBOSE_MASK
+
+    mask_list = verbose_mask_str.split(",")
+
+    for mask in mask_list:
+        mask = str(mask).lower()
+        if "ui" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_UI
+
+        if "machif" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF
+
+        if "machif_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EV
+
+        if "machif_exec" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EXEC
+
+        if "machif_exec_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EXEC_EV
+
+        if "machif_mod" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_MOD
+
+        if "machif_mod_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_MOD_EV
+
+        if "serialif" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF
+
+        if "serialif_str" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_STR
+
+        if "serialif_hex" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_HEX
+
+        if "serialif_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_EV
+
+        if "eventif" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_EVENTIF
+
+    return VERBOSE_MASK
+
+
+# --------------------------------------------------------------------------
+# LOGGING MASK
+# --------------------------------------------------------------------------
+
+def init_logger(filename):
+    log_path = filename
+
+    logger = logging.getLogger()
+
+    ch = logging.StreamHandler()
+    # ch_format = Formatter("%(levelname)s : %(message)s")
+    ch_format = Formatter("%(asctime)s - m:%(module)s l:%(lineno)d >> "
+                          "%(message)s", datefmt='%Y%m%d %I:%M:%S %p')
+    ch.setFormatter(ch_format)
+    logger.addHandler(ch)
+
+    # create a rotating file handler and add it to the logger
+    # fh = handlers.RotatingFileHandler(log_path,
+    #   maxBytes=5000000, backupCount=4)
+    # fh_format = Formatter("%(asctime)s - m:%(module)s l:%(lineno)d "
+    #                       "t:%(thread)d >> %(levelname)s : %(message)s",
+    #                       datefmt='%Y%m%d %I:%M:%S %p')
+    # fh.setFormatter(log_format)
+    # logger.addHandler(handler)
+
+    # set the root logging level
+    logger.setLevel(logging.INFO)
+
+    # logger.info('>>> start')
 
 
 def init_config(cmd_line_options, config_data, state_data):
@@ -178,6 +272,8 @@ def init_config(cmd_line_options, config_data, state_data):
     CMD_LINE_OPTIONS = cmd_line_options
     CONFIG_DATA = config_data
     STATE_DATA = state_data
+
+    init_logger('foo')
 
 
 class gsatStateData():
@@ -391,17 +487,29 @@ class SimpleEvent(object):
     """ Simple event to carry arbitrary data.
     """
 
-    def __init__(self, event_id, data, sender_id=None):
+    def __init__(self, event_id, data, sender=None):
         self.event_id = event_id
         self.data = data
-        self.sender_id = sender_id
+        self.sender = sender
 
 
 class EventQueueIf():
     """ Class that implement simple queue APIs
     """
     def __init__(self):
+        self._eventListeners = dict()
         self._eventQueue = Queue.Queue()
 
-    def eventPut(self, id, data=None, sender=None):
-        self._eventQueue.put(SimpleEvent(id, data, sender))
+    def addEventListener(self, listener):
+        self._eventListeners[id(listener)] = listener
+
+    def eventPut(self, event_id, event_data=None, sender=None):
+        self._eventQueue.put(SimpleEvent(event_id, event_data, sender))
+
+    def notifyEventListeners(self, event_id, data=None):
+        for listener in self._eventListeners.keys():
+            self._eventListeners[listener].eventPut(event_id, data, self)
+
+    def removeEventListener(self, listener):
+        if id(listener) in self._eventListeners:
+            self._eventListeners.pop(id(listener))

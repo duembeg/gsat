@@ -32,6 +32,16 @@ except ImportError:
 import modules.config as gc
 import modules.machif as mi
 
+""" Global values for this module
+"""
+# This values are only use to initialize or reset base class.
+# base class has internal variables tor track these
+ID = 1200
+NAME = "g2core"
+BUFFER_MAX_SIZE = 255
+BUFFER_INIT_VAL = 0
+BUFFER_WATERMARK_PRCNT = 0.90
+
 G2CORE_STAT_CODE_2_STR_DICT = {
     0: "OK",
     1: "ERROR",
@@ -220,16 +230,6 @@ G2CORE_STAT_CODE_2_STR_DICT = {
     255: "ERROR_255",
 }
 
-""" Global values for this module
-"""
-# This values are only use to initialize or reset base class.
-# base class has internal variables tor track these
-ID = 1200
-NAME = "g2core"
-BUFFER_MAX_SIZE = 255
-BUFFER_INIT_VAL = 0
-BUFFER_WATERMARK_PRCNT = 0.90
-
 
 class MachIf_g2core(mi.MachIf_Base):
     """------------------------------------------------------------------------
@@ -278,9 +278,9 @@ class MachIf_g2core(mi.MachIf_Base):
         13: 'Panic',
     }
 
-    def __init__(self, cmd_line_options):
+    def __init__(self):
         super(MachIf_g2core, self).__init__(
-            cmd_line_options, ID, NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
+            ID, NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
             BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
@@ -338,6 +338,10 @@ class MachIf_g2core(mi.MachIf_Base):
                             stat_code, "Unknown"))
                     self.eventPut(gc.EV_SER_RXDATA, stat_str)
 
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                        error_msg = "found error [%s]" % stat_str
+                        self.logger.info(error_msg)
+
         except ValueError:
             ack = self.reMachineAck.match(data)
             pos = self.reMachinePos.match(data)
@@ -360,9 +364,8 @@ class MachIf_g2core(mi.MachIf_Base):
                 elif stat is not None:
                     dataDict['sr']['stat'] = stat.group(1)
                 else:
-                    if self.cmdLineOptions.vverbose:
-                        print "** MachIf_g2core cannot decode data!! [%s]."\
-                            % data
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                        self.logger.info("cannot decode data!! [%s]" % data)
 
         if 'r' in dataDict:
             # checking for count in "f" response doesn't always work as
@@ -374,12 +377,14 @@ class MachIf_g2core(mi.MachIf_Base):
 
                 self._inputBufferSize = self._inputBufferSize - bufferPart
 
-                if self.cmdLineOptions.vverbose:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                     prcnt = float(self._inputBufferSize) / \
-                        self._inputBufferMaxSize
-                    print "** MachIf_g2core input buffer decode returned: "\
-                        "%d, buffer size: %d, %.2f%% full" % \
-                        (bufferPart, self._inputBufferSize, (100*prcnt))
+                            self._inputBufferMaxSize
+                    self.logger.info("decode, input buffer free: %d,"
+                                     "buffer size: %d, %.2f%% full" % (
+                                         bufferPart,
+                                         self._inputBufferSize,
+                                         (100*prcnt)))
 
         if 'sr' in dataDict:
             sr = dataDict['sr']
@@ -406,13 +411,15 @@ class MachIf_g2core(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if self.cmdLineOptions.vverbose:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                print "** MachIf_g2core input buffer encode used: "\
-                    "%d, buffer size: %d, %.2f%% full" % \
-                    (dataLen, self._inputBufferSize, (100 * prcnt))
+                self.logger.info("encode, input buffer used: %d, buffer "
+                                 "size: %d, %.2f%% full" % (
+                                    dataLen,
+                                    self._inputBufferSize,
+                                    (100*prcnt)))
 
         return data
 
-    def factory(self, cmd_line_options):
-        return MachIf_g2core(cmd_line_options)
+    def factory(self):
+        return MachIf_g2core()

@@ -38,10 +38,10 @@ MACHIF_NONE = None
 # gMACHIF_G2CORE          = 1200
 # gMACHIF_SMOOTHIE        = 1300
 
-MACHIF_GRBL = mi_grbl.MachIf_GRBL(gc.CMD_LINE_OPTIONS)
-MACHIF_TINYG = mi_tinyg.MachIf_TinyG(gc.CMD_LINE_OPTIONS)
-MACHIF_G2CORE = mi_g2core.MachIf_g2core(gc.CMD_LINE_OPTIONS)
-MACHIF_SMOOTHIE = mi_smoothie.MachIf_Smoothie(gc.CMD_LINE_OPTIONS)
+MACHIF_GRBL = mi_grbl.MachIf_GRBL()
+MACHIF_TINYG = mi_tinyg.MachIf_TinyG()
+MACHIF_G2CORE = mi_g2core.MachIf_g2core()
+MACHIF_SMOOTHIE = mi_smoothie.MachIf_Smoothie()
 
 MACHIF_CLS_LIST = [
     MACHIF_GRBL,
@@ -94,7 +94,7 @@ def GetMachIfModule(machIfId):
 
     for mach_if in MACHIF_CLS_LIST:
         if machIfId == mach_if.getId():
-            machIfModule = mach_if.factory(gc.CMD_LINE_OPTIONS)
+            machIfModule = mach_if.factory()
             break
 
     return machIfModule

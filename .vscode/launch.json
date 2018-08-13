@@ -29,6 +29,15 @@
             ]
         },
         {
+            "name": "Python: gsat-vmask",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/gsat.py",
+            "args": [
+                "--vm=machif_exec,ui"
+            ]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

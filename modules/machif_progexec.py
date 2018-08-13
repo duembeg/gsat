@@ -26,6 +26,7 @@
 import re
 import threading
 import time
+import logging
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -78,6 +79,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         self.machIfModule = None
 
+        self.logger = logging.getLogger()
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+            self.logger.info("init logging id:0x%x" % id(self))
+
         # init device module
         self.initMachineIfModule()
 
@@ -101,86 +106,72 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             self.lastEventID = e.event_id
 
-            if e.event_id == gc.EV_CMD_EXIT:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_EXIT."
+            if e.event_id == gc.EV_CMD_STEP:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_STEP")
 
-                if self.machIfModule.isSerialPortOpen():
-                    self.machIfModule.close()
-                else:
-                    self.endThread = True
-                    self.swState = gc.STATE_IDLE
-
-            elif e.event_id == gc.EV_CMD_RUN:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_RUN, "\
-                        "swState->gc.gSTATE_RUN"
-                self.gcodeDataLines = e.data[0]
-                self.initialProgramCounter = e.data[1]
-                self.workingProgramCounter = self.initialProgramCounter
-                self.breakPointSet = e.data[2]
-                self.swState = gc.STATE_RUN
-
-            elif e.event_id == gc.EV_CMD_STEP:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_STEP, swState->gc.gSTATE_STEP"
                 self.gcodeDataLines = e.data[0]
                 self.initialProgramCounter = e.data[1]
                 self.workingProgramCounter = self.initialProgramCounter
                 self.breakPointSet = e.data[2]
                 self.swState = gc.STATE_STEP
 
+            elif e.event_id == gc.EV_CMD_RUN:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_RUN")
+
+                self.gcodeDataLines = e.data[0]
+                self.initialProgramCounter = e.data[1]
+                self.workingProgramCounter = self.initialProgramCounter
+                self.breakPointSet = e.data[2]
+                self.swState = gc.STATE_RUN
+
             elif e.event_id == gc.EV_CMD_STOP:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE"
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_STOP")
 
                 self.swState = gc.STATE_IDLE
 
             elif e.event_id == gc.EV_CMD_SEND:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_SEND."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_SEND %s" % e.data)
+
                 self.serialWriteQueue.append((e.data, False))
 
             elif e.event_id == gc.EV_CMD_SEND_W_ACK:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_SEND_W_ACK."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_SEND_W_ACK %s" % e.data)
+
                 self.serialWriteQueue.append((e.data, True))
 
             elif e.event_id == gc.EV_CMD_AUTO_STATUS:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_AUTO_STATUS."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_AUTO_STATUS")
+
                 self.machineAutoStatus = e.data
 
             elif e.event_id == gc.EV_CMD_OK_TO_POST:
-                # if self.cmdLineOptions.vverbose:
-                #    print "** programExecuteThread got event "\
-                #        "gc.gEV_CMD_OK_TO_POST."
-                # self.okToPostEvents = True
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_OK_TO_POST")
                 pass
 
             elif e.event_id == gc.EV_CMD_GET_STATUS:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_GET_STATUS."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_GET_STATUS")
+
                 self.machIfModule.doGetStatus()
 
             elif e.event_id == gc.EV_CMD_CYCLE_START:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_CYCLE_START."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_CYCLE_START")
 
                 # this command is usually use for resume after a machine stop
                 # thus, queues most probably full send without checking if ok..
                 self.machIfModule.doCycleStartResume()
 
             elif e.event_id == gc.EV_CMD_FEED_HOLD:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_FEED_HOLD."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_FEED_HOLD")
 
                 # this command is usually use for abort and machine stop
                 # we can't afford to skip this action, send without checking
@@ -188,69 +179,85 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.machIfModule.doFeedHold()
 
             elif e.event_id == gc.EV_CMD_QUEUE_FLUSH:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_QUEUE_FLUSH."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_QUEUE_FLUSH")
 
                 self.machIfModule.doQueueFlush()
 
             elif e.event_id == gc.EV_CMD_RESET:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_RESET."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_RESET")
 
                 self.machIfModule.doReset()
 
             elif e.event_id == gc.EV_CMD_CLEAR_ALARM:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_CLEAR_ALARM."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_CLEAR_ALARM")
 
                 self.machIfModule.doClearAlarm()
 
             elif e.event_id == gc.EV_CMD_MOVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_MOVE."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_MOVE %s" % e.data)
 
                 self.machIfModule.doMove(e.data)
 
             elif e.event_id == gc.EV_CMD_MOVE_RELATIVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_MOVE_RELATIVE."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_MOVE_RELATIVE %s" % e.data)
 
                 self.machIfModule.doMoveRelative(e.data)
 
             elif e.event_id == gc.EV_CMD_RAPID_MOVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_RAPID_MOVE."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_RAPID_MOVE %s" % e.data)
 
                 self.machIfModule.doFastMove(e.data)
 
             elif e.event_id == gc.EV_CMD_RAPID_MOVE_RELATIVE:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_RAPID_MOVE_RELATIVE."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_RAPID_MOVE_RELATIVE %s" % e.data)
 
                 self.machIfModule.doFastMoveRelative(e.data)
 
             elif e.event_id == gc.EV_CMD_SET_AXIS:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event "\
-                        "gc.gEV_CMD_SET_AXIS."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_SET_AXIS")
 
                 self.machIfModule.doSetAxis(e.data)
 
             elif e.event_id == gc.EV_CMD_HOME:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got event gc.gEV_CMD_HOME."
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_HOME")
 
                 self.machIfModule.doHome(e.data)
 
+            elif e.event_id == gc.EV_CMD_EXIT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_EXIT")
+
+                if self.machIfModule.isSerialPortOpen():
+                    self.machIfModule.close()
+                else:
+                    self.endThread = True
+                    self.swState = gc.STATE_IDLE
+
+            elif e.event_id == gc.EV_HELLO:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
+
+                self.addEventListener(e.sender)
+
+            elif e.event_id == gc.EV_GOODBY:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_GOODBY from 0x%x" % id(e.sender))
+
+                self.removeEventListener(e.sender)
+
             else:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread got unknown event!! [%s]."\
-                        % str(e.event_id)
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.error("got unknown event!! [%s]." %
+                                      str(e.event_id))
 
     """-------------------------------------------------------------------------
    programExecuteThread: General Functions
@@ -259,9 +266,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     def initMachineIfModule(self):
         self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
-        if self.cmdLineOptions.vverbose:
-            print "** programExecuteThread Init MachIf Module (%s)."\
-                % self.machIfModule.getName()
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+            msg = "init MachIf Module (%s)." % self.machIfModule.getName()
+            self.logger.info(msg)
 
         self.machIfModule.init(self.stateData)
 
@@ -356,30 +363,36 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 wait_for_acknowlege = False
 
             if 'r' in rxDataDict:
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread found acknowledgement"\
-                        " [%s]" % str(rxDataDict['r']).strip()
-
                 if rxDataDict['f'][1] == 0:
-                    if self.cmdLineOptions.vverbose:
-                        print "** programExecuteThread acknowledgement OK %s"\
-                            % str(rxDataDict['f'])
+                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                    #     self.logger.info("acknowledgement state OK")
+                    pass
                 else:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                        msg = "acknowledgement state ERROR[%d]" % \
+                              rxDataDict['f'][1]
+                        if 'rx_data' in rxDataDict:
+                            msg = "".join([msg, " ",
+                                           rxDataDict['rx_data'].strip()])
+
+                        if 'rx_data_info' in rxDataDict:
+                            msg = "".join([msg, " ",
+                                           rxDataDict['rx_data_info'].strip()])
+
+                        self.logger.info(msg)
+
                     self.swState = gc.STATE_IDLE
                     rc_error = True
-                    if self.cmdLineOptions.vverbose:
-                        print "** programExecuteThread acknowledgement "\
-                            "ERROR %s" % str(rxDataDict['f'])
 
                 wait_for_acknowlege = False
                 break
 
             if 'err' in rxDataDict:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                    self.logger.info("acknowledgement state ERROR")
+
                 self.swState = gc.STATE_IDLE
                 rc_error = True
-                if self.cmdLineOptions.vverbose:
-                    print "** programExecuteThread found error "\
-                        "acknowledgement [%s]" % str(rxDataDict['r']).strip()
                 wait_for_acknowlege = False
                 break
 
@@ -456,11 +469,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("reach last PC, moving to gc.STATE_IDLE")
+
             self.swState = gc.STATE_IDLE
             self.eventHandler.eventPut(gc.EV_RUN_END)
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread reach last PC, "\
-                    "swState->gc.gSTATE_IDLE"
             return
 
         # update PC
@@ -472,12 +485,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         # check for break point hit
         if (self.workingProgramCounter in self.breakPointSet) and \
            (self.workingProgramCounter != self.initialProgramCounter):
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("encounter breakpoint PC[%d], "\
+                                 "moving to gc.STATE_BREAK" % \
+                                 (self.workingProgramCounter + 1))
+
             self.swState = gc.STATE_BREAK
             self.eventHandler.eventPut(gc.EV_HIT_BRK_PT)
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread encounter breakpoint "\
-                    "PC[%s], swState->gc.gSTATE_BREAK" % \
-                    (self.workingProgramCounter)
             return
 
         # get gcode line
@@ -487,12 +501,14 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         reMsgSearch = gReGcodeMsg.search(gcode)
         if (reMsgSearch is not None) and \
            (self.workingProgramCounter != self.initialProgramCounter):
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("encounter MSG line PC[%s], "\
+                                 "moving to gc.STATE_BREAK, MSG[%s]" % \
+                                 (self.workingProgramCounter,
+                                 reMsgSearch.group(1)))
+
             self.swState = gc.STATE_BREAK
             self.eventHandler.eventPut(gc.EV_HIT_MSG, reMsgSearch.group(1))
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread encounter MSG line PC[%s], "\
-                    "swState->gc.gSTATE_BREAK, MSG[%s]" % \
-                    (self.workingProgramCounter, reMsgSearch.group(1))
             return
 
         # don't sent unnecessary data save the bits for speed
@@ -504,12 +520,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # check for erros
         if error:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("error event, moving to gc.STATE_BREAK")
+
             self.swState = gc.STATE_BREAK
             self.errorFlag = False
             self.eventHandler.eventPut(gc.EV_HIT_BRK_PT)
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread swState is gc.gSTATE_IDLE, "\
-                    "stop RUN and swState->gc.STATE_BREAK"
             return
 
     def processStepSate(self):
@@ -519,11 +535,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # check if we are done with gcode
         if self.workingProgramCounter >= len(self.gcodeDataLines):
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("reach last PC, moving to gc.STATE_IDLE")
+
             self.swState = gc.STATE_IDLE
             self.eventHandler.eventPut(gc.EV_STEP_END)
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread reach last PC, "\
-                    "swState->gc.gSTATE_IDLE"
             return
 
         # update PC
@@ -531,11 +547,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("finish STEP cmd, moving to gc.STATE_IDLE")
+
             self.swState = gc.STATE_IDLE
             self.eventHandler.eventPut(gc.EV_STEP_END)
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread finish STEP cmd, "\
-                    "swState->gc.gSTATE_IDLE"
             return
 
         gcode = self.gcodeDataLines[self.workingProgramCounter]
@@ -548,10 +564,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # check for error
         if error:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                self.logger.info("error event, moving to gc.STATE_IDLE")
+
             self.eventHandler.eventPut(gc.EV_STEP_END)
-            if self.cmdLineOptions.vverbose:
-                print "** programExecuteThread swState is gc.gSTATE_IDLE, "\
-                    "stop STEP"
             return
 
     def processIdleSate(self):
@@ -574,8 +590,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         # This is the code executing in the new thread.
         self.endThread = False
 
-        if self.cmdLineOptions.vverbose:
-            print "** programExecuteThread start."
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+            self.logger.info("thread start")
 
         # inti machine interface
         self.machIfModule.open()
@@ -604,18 +620,18 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.processIdleSate()
                 break
             else:
-                if self.cmdLineOptions.verbose:
-                    print "** programExecuteThread unexpected state [%d], "\
-                        "moving back to IDLE, swState->gc.gSTATE_IDLE "\
-                        % (self.swState)
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                    msg = "unexpected state [%d], moving back to IDLE, "\
+                          "swState->gc.STATE_IDLE " % (self.swState)
+
+                    self.logger.info(msg)
 
                 self.processIdleSate()
                 self.swState = gc.STATE_IDLE
 
             time.sleep(0.01)
 
-        if self.cmdLineOptions.vverbose:
-            print "** programExecuteThread exit."
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+            self.logger.info("thread exit")
 
         self.eventHandler.eventPut(gc.EV_EXIT)
-        # wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))

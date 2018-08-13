@@ -22,8 +22,10 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+
 import re
 from abc import ABCMeta, abstractmethod
+import logging
 
 import modules.config as gc
 import modules.serial_thread as st
@@ -38,7 +40,7 @@ class MachIf_Base(object, gc.EventQueueIf):
     reMachiePositionMode = re.compile(r'.*(G9[0|1]).*')
 
     def __init__(
-        self, cmd_line_options, if_id, name, input_buffer_max_size,
+        self, if_id, name, input_buffer_max_size,
         input_buffer_init_val, input_buffer_watermark_prcnt
     ):
         gc.EventQueueIf.__init__(self)
@@ -52,7 +54,9 @@ class MachIf_Base(object, gc.EventQueueIf):
         self._inputBufferInitVal = input_buffer_init_val
         self._inputBufferSize = self._inputBufferInitVal
 
-        self.cmdLineOptions = cmd_line_options
+        self.logger = logging.getLogger()
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            self.logger.info("init logging id:0x%x" % id(self))
 
         self._serialPortOpen = False
         self._serialTxRxThread = None
@@ -296,43 +300,79 @@ class MachIf_Base(object, gc.EventQueueIf):
     def open(self):
         if self.stateData is not None:
             # inti serial RX thread
-            self._serialTxRxThread = st.SerialPortThread(
-                self, self.stateData, self.cmdLineOptions)
-            self.doInitComm()
+            self._serialTxRxThread = st.SerialPortThread(self, self.stateData)
+
+            if self._serialTxRxThread is not None:
+                self._serialTxRxThread.eventPut(gc.EV_HELLO, None, self)
+                self.doInitComm()
 
     def read(self):
         """ Read and process data from txrx thread
         """
         dictData = {}
 
-        if self._serialTxRxThread is not None:
+        if self._serialTxRxThread is not None and \
+           not self._eventQueue.empty():
 
-            if not self._eventQueue.empty():
-                # get item from queue
-                e = self._eventQueue.get()
+            # get item from queue
+            e = self._eventQueue.get()
 
-                if e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
-                                  gc.EV_SER_PORT_CLOSE]:
-                    dictData['event'] = {}
-                    dictData['event']['id'] = e.event_id
-                    dictData['event']['data'] = e.data
+            if e.event_id == gc.EV_SER_RXDATA:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    self.logger.info("EV_SER_RXDATA")
 
-                    if e.event_id == gc.EV_SER_PORT_OPEN:
-                        self._serialPortOpen = True
+                if len(e.data) > 0:
+                    dictData = self.decode(e.data)
+                    dictData['rx_data'] = e.data
 
-                    elif e.event_id == gc.EV_SER_PORT_CLOSE:
-                        self._serialPortOpen = False
+            elif e.event_id == gc.EV_SER_TXDATA:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    self.logger.info("EV_SER_TXDATA")
 
-                elif e.event_id == gc.EV_SER_RXDATA:
+                if len(e.data) > 0:
+                    dictData['tx_data'] = e.data
 
-                    if len(e.data) > 0:
-                        dictData = self.decode(e.data)
-                        dictData['rx_data'] = e.data
+            elif e.event_id == gc.EV_HELLO:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
 
-                elif e.event_id == gc.EV_SER_TXDATA:
+                self.addEventListener(e.sender)
 
-                    if len(e.data) > 0:
-                        dictData['tx_data'] = e.data
+            elif e.event_id == gc.EV_GOODBY:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    self.logger.info("EV_GOODBY from 0x%x" % id(e.sender))
+
+                self.removeEventListener(e.sender)
+
+            elif e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
+                                gc.EV_SER_PORT_CLOSE]:
+                dictData['event'] = {}
+                dictData['event']['id'] = e.event_id
+                dictData['event']['data'] = e.data
+
+                if e.event_id == gc.EV_SER_PORT_OPEN:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        self.logger.info("EV_SER_PORT_OPEN")
+
+                    self._serialPortOpen = True
+
+                elif e.event_id == gc.EV_SER_PORT_CLOSE:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        self.logger.info("EV_SER_PORT_CLOSE")
+
+                    self._serialPortOpen = False
+
+                elif e.event_id == gc.EV_ABORT:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        self.logger.info("EV_ABORT")
+
+                elif e.event_id == gc.EV_EXIT:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        self.logger.info("EV_EXIT")
+            else:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    self.logger.error("EV_?? got unknown event!! [%s]" %
+                                      str(e.event_id))
 
         return dictData
 

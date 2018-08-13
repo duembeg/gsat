@@ -22,6 +22,7 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+
 import datetime as dt
 import re
 
@@ -226,7 +227,7 @@ class MachIf_GRBL(mi.MachIf_Base):
     reGrblVersion = re.compile(r'\[VER:(.*):\]')
 
     # grbl init, example "Grbl 0.8c ['$' for help]"
-    reGrblInitStr = re.compile(r'Grbl\s*(.*)\s*\[.*\]')
+    reGrblInitStr = re.compile(r'(Grbl\s*(.*)\s*\[.*\])')
 
     # status,
     # quick re check to avoid multiple checks, speeds things up
@@ -260,8 +261,8 @@ class MachIf_GRBL(mi.MachIf_Base):
     # grbl config settings
     reGrblConfig = re.compile(r'^\$(\d+)=\d+.*\s*')
 
-    def __init__(self, cmd_line_options):
-        super(MachIf_GRBL, self).__init__(cmd_line_options, ID, NAME,
+    def __init__(self):
+        super(MachIf_GRBL, self).__init__(ID, NAME,
                                           BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
                                           BUFFER_WATERMARK_PRCNT)
 
@@ -329,14 +330,14 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             dataDict['sr'] = sr
 
-            if self.cmdLineOptions.vverbose:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                self.logger.info("status match %s" % str(statusData))
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                print "** MachIf_GRBL re GRBL status match %s" % str(
-                    statusData)
-                print "** MachIf_GRBL str match from %s" % str(data.strip())
-                print "** MachIf_GRBL input buffer decode returned: %d, "\
-                    "buffer size: %d, %.2f%% full" % \
-                    (bufferPart, self._inputBufferSize, (100 * prcnt))
+                self.logger.info("decode, input buffer free: %d, buffer size: "
+                                 "%d, %.2f%% full" % (
+                                        bufferPart,
+                                        self._inputBufferSize,
+                                        (100*prcnt)))
 
             # check on status change
             decodedStatus = self.stat_dict.get(
@@ -361,21 +362,21 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_GRBL found acknowledgement [%s]" % \
-                    data.strip()
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                self.logger.info("founf acknowledge [%s]" % data.strip())
 
             r = {}
             dataDict['r'] = r
             dataDict['f'] = [0, 0, bufferPart]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if self.cmdLineOptions.vverbose:
-                prcn = float(self._inputBufferSize)/self._inputBufferMaxSize
-                print "** MachIf_GRBL input buffer decode returned: %d, "\
-                    "buffer size: %d, %.2f%% full" % (
-                        bufferPart, self._inputBufferSize, (100 * prcn)
-                    )
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
+                self.logger.info("decode, input buffer free: %d, buffer size: "
+                                 "%d, %.2f%% full" % (
+                                        bufferPart,
+                                        self._inputBufferSize,
+                                        (100*prcnt)))
 
         alarm = self.reGrblAlarm.search(data)
         if alarm is not None:
@@ -410,9 +411,6 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_GRBL found error [%s]" % data.strip()
-
             if 'r' not in dataDict:
                 r = {}
                 dataDict['r'] = r
@@ -425,25 +423,34 @@ class MachIf_GRBL(mi.MachIf_Base):
                 )
 
                 dataDict['rx_data_info'] = err_str
+
             else:
                 error_code = -1
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                error_msg = "found error [%s]" % data.strip()
+                if 'rx_data_info' in dataDict:
+                    error_msg = "found %s, %s" % (
+                                data.strip(),
+                                dataDict['rx_data_info'].strip())
+                self.logger.info(error_msg)
 
             dataDict['f'] = [0, error_code, bufferPart, error_code]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if self.cmdLineOptions.vverbose:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                print "** MachIf_GRBL input buffer decode returned: %d, "\
-                    "buffer size: %d, %.2f%% full" % (
-                        bufferPart, self._inputBufferSize, (100 * prcnt)
-                    )
+                self.logger.info("decode, input buffer free: %d, buffer size: "
+                                 "%d, %.2f%% full" % (
+                                        bufferPart,
+                                        self._inputBufferSize,
+                                        (100*prcnt)))
 
         version = self.reGrblVersion.match(data)
         if version is not None:
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_GRBL found device version [%s]" % (
-                        version.group(1).strip()
-                    )
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                self.logger.info("found version [%s]" %
+                                 version.group(1).strip())
 
             if 'r' not in dataDict:
                 r = {}
@@ -455,9 +462,9 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         initStr = self.reGrblInitStr.match(data)
         if initStr is not None:
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_GRBL found device init string [%s]" % \
-                    initStr.group(1).strip()
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                self.logger.info("found device init string [%s]" %
+                                 initStr.group(1).strip())
 
             self.initStringDetectFlag = True
 
@@ -514,11 +521,13 @@ class MachIf_GRBL(mi.MachIf_Base):
                 self._inputBufferSize = self._inputBufferSize + 1
 
         if data == self.cmdStatus and bookeeping:
-            if self.cmdLineOptions.vverbose:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                print "** MachIf_GRBL input buffer encode used: %d, "\
-                    "buffer size: %d, %.2f%% full" % \
-                    (1, self._inputBufferSize, (100 * prcnt))
+                self.logger.info("encode, input buffer used: %d, buffer "
+                                 "size: %d, %.2f%% full" % (
+                                    1,
+                                    self._inputBufferSize,
+                                    (100*prcnt)))
 
         elif data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
@@ -528,16 +537,17 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if self.cmdLineOptions.vverbose:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                print "** MachIf_GRBL input buffer encode used: %d, "\
-                    "buffer size: %d, %.2f%% full" % \
-                    (dataLen, self._inputBufferSize, (100 * prcnt))
-
+                self.logger.info("encode, input buffer used: %d, buffer "
+                                 "size: %d, %.2f%% full" % (
+                                    dataLen,
+                                    self._inputBufferSize,
+                                    (100*prcnt)))
         return data
 
     def factory(self, cmd_line_options):
-        return MachIf_GRBL(cmd_line_options)
+        return MachIf_GRBL()
 
     def init(self, state_data):
         super(MachIf_GRBL, self).init(state_data)

@@ -22,6 +22,7 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+
 import datetime as dt
 import re
 
@@ -110,8 +111,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
     # grbl error, example  "error:20", "error: Unsupported command"
     reSmoothieMachineError = re.compile(r'^error:(.*)\s$')
 
-    def __init__(self, cmd_line_options):
-        super(MachIf_Smoothie, self).__init__(cmd_line_options, ID, "Smoothie",
+    def __init__(self):
+        super(MachIf_Smoothie, self).__init__(ID, NAME,
                                               BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
                                               BUFFER_WATERMARK_PRCNT)
 

@@ -23,6 +23,34 @@
 
 ----------------------------------------------------------------------------"""
 
+import os
+import sys
+import glob
+import serial
+import re
+import time
+import shutil
+import logging
+import wx
+import wx.combo
+# from wx import stc as stc
+# from wx.lib.mixins import listctrl as listmix
+from wx.lib.agw import aui as aui
+from wx.lib.agw import floatspin as fs
+from wx.lib.agw import genericmessagedialog as gmd
+# from wx.lib.agw import flatmenu as fm
+from wx.lib.wordwrap import wordwrap
+from wx.lib import scrolledpanel as scrolled
+
+import modules.config as gc
+import modules.machif_config as mi
+import images.icons as ico
+import modules.wnd_editor as ed
+import modules.wnd_machine as mc
+import modules.wnd_jogging as jog
+import modules.wnd_compvision as compv
+import modules.machif_progexec as mi_progexec
+
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
@@ -51,37 +79,6 @@ __version_info__ = (1, 6, 0)
 __version__ = 'v%i.%i.%i beta' % __version_info__
 __revision__ = __version__
 
-
-"""----------------------------------------------------------------------------
-   Dependencies:
-----------------------------------------------------------------------------"""
-import os
-import sys
-import glob
-import serial
-import re
-import time
-import shutil
-from optparse import OptionParser
-import wx
-import wx.combo
-from wx import stc as stc
-from wx.lib.mixins import listctrl as listmix
-from wx.lib.agw import aui as aui
-from wx.lib.agw import floatspin as fs
-from wx.lib.agw import genericmessagedialog as gmd
-#from wx.lib.agw import flatmenu as fm
-from wx.lib.wordwrap import wordwrap
-from wx.lib import scrolledpanel as scrolled
-
-import modules.config as gc
-import modules.machif_config as mi
-import images.icons as ico
-import modules.wnd_editor as ed
-import modules.wnd_machine as mc
-import modules.wnd_jogging as jog
-import modules.wnd_compvision as compv
-import modules.machif_progexec as mi_progexec
 
 """----------------------------------------------------------------------------
    Globals:
@@ -388,10 +385,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     threads and resources such as serial port.
     """
 
-    def __init__(self, parent, id=wx.ID_ANY, title="", cmd_line_options=None,
+    def __init__(self, parent, wnd_id=wx.ID_ANY, title="", cmd_line_options=None,
                  pos=wx.DefaultPosition, size=(800, 600), style=wx.DEFAULT_FRAME_STYLE):
 
-        wx.Frame.__init__(self, parent, id, title, pos, size, style)
+        wx.Frame.__init__(self, parent, wnd_id, title, pos, size, style)
         gc.EventQueueIf.__init__(self)
 
         # init cmd line options
@@ -427,6 +424,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # init global config
         gc.init_config(cmd_line_options, self.configData, self.stateData)
+
+        self.logger = logging.getLogger()
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI:
+            self.logger.info("init logging id:0x%x" % id(self))
 
         # init some variables
         self.machifProgExec = None
@@ -1162,7 +1163,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.aui_mgr.Update()
 
-    """-------------------------------------------------------------------------
+    """------------------------------------------------------------------------
    gsatMainWindow: UI Event Handlers
    -------------------------------------------------------------------------"""
 
@@ -1177,9 +1178,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.appToolBar.EnableTool(gID_TOOLBAR_OPEN, state)
         self.appToolBar.Refresh()
 
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     # File Menu Handlers
-    #---------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     def OnFileOpen(self, e):
         """ File Open """
         # get current file data
