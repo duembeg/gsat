@@ -51,16 +51,14 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     of data sent to the serial port.
     """
 
-    def __init__(self, event_handler, state_data, cmd_line_options,
-                 machif_id, machine_auto_status=False):
+    def __init__(self, event_handler, state_data, machif_id,
+                 machine_auto_status=False):
         """Init Worker Thread Class."""
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.eventHandler = event_handler
         self.stateData = state_data
-        self.cmdLineOptions = cmd_line_options
         self.machIfId = machif_id
         self.okToPostEvents = True
 
@@ -78,6 +76,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.serialWriteQueue = []
 
         self.machIfModule = None
+
+        self.addEventListener(event_handler)
 
         self.logger = logging.getLogger()
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
@@ -288,8 +288,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 forwardEvent = False
 
             if forwardEvent:
-                # add data to queue and signal main window to consume
-                self.eventHandler.eventPut(e['id'], e['data'])
+                # notify listeners
+                self.notifyEventListeners(e['id'], e['data'])
 
         else:
             if 'rx_data' in rxData:
@@ -303,23 +303,25 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                             [rx_data.strip(), " ", rx_data_info]
                         )
 
-                    # add data to queue and signal main window to consume
-                    self.eventHandler.eventPut(gc.EV_DATA_IN, rx_data)
+                    # notify listeners
+                    self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
 
             if 'tx_data' in rxData:
                 tx_data = rxData['tx_data']
 
                 if len(tx_data) > 0:
 
-                    # add data to queue and signal main window to consume
-                    self.eventHandler.eventPut(gc.EV_DATA_OUT, tx_data)
+                    # notify listeners
+                    self.notifyEventListeners(gc.EV_DATA_OUT, tx_data)
 
             if 'sr' in rxData:
-                self.eventHandler.eventPut(gc.EV_DATA_STATUS, rxData['sr'])
+                # notify listeners
+                self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['sr'])
 
             if 'r' in rxData:
                 if 'fb' in rxData['r']:
-                    self.eventHandler.eventPut(gc.EV_DATA_STATUS, rxData['r'])
+                    # notify listeners
+                    self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r'])
 
                 if 'f' in rxData:
                     if (rxData['f'][1] != 0 and
@@ -348,7 +350,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # sent data to UI
             if bytes_sent > 0:
-                self.eventHandler.eventPut(gc.EV_DATA_OUT, line)
+                # notify listeners
+                self.notifyEventListeners(gc.EV_DATA_OUT, line)
 
             bytesSent = bytesSent + bytes_sent
 
@@ -471,9 +474,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # if we stop early make sure to update PC to main UI
             if self.swState == gc.STATE_IDLE:
-                self.eventHandler.eventPut(
-                    gc.EV_PC_UPDATE, self.workingProgramCounter
-                )
+                # notify listeners
+                self.notifyEventListeners(gc.EV_PC_UPDATE,
+                                          self.workingProgramCounter)
 
         return rc_error
 
@@ -488,13 +491,16 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.logger.info("reach last PC, moving to gc.STATE_IDLE")
 
             self.swState = gc.STATE_IDLE
-            self.eventHandler.eventPut(gc.EV_RUN_END)
+
+            # notify listeners
+            self.notifyEventListeners(gc.EV_RUN_END)
             return
 
         # update PC
         if self.lastWorkingCounterWorking != self.workingProgramCounter:
-            self.eventHandler.eventPut(
-                gc.EV_PC_UPDATE, self.workingProgramCounter)
+            # notify listeners
+            self.notifyEventListeners(gc.EV_PC_UPDATE,
+                                      self.workingProgramCounter)
             self.lastWorkingCounterWorking = self.workingProgramCounter
 
         # check for break point hit
@@ -506,7 +512,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                                  (self.workingProgramCounter + 1))
 
             self.swState = gc.STATE_BREAK
-            self.eventHandler.eventPut(gc.EV_HIT_BRK_PT)
+            # notify listeners
+            self.notifyEventListeners(gc.EV_HIT_BRK_PT)
             return
 
         # get gcode line
@@ -523,7 +530,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                                   reMsgSearch.group(1)))
 
             self.swState = gc.STATE_BREAK
-            self.eventHandler.eventPut(gc.EV_HIT_MSG, reMsgSearch.group(1))
+
+            # notify listeners
+            self.notifyEventListeners(gc.EV_HIT_MSG, reMsgSearch.group(1))
             return
 
         # don't sent unnecessary data save the bits for speed
@@ -540,7 +549,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             self.swState = gc.STATE_BREAK
             self.errorFlag = False
-            self.eventHandler.eventPut(gc.EV_HIT_BRK_PT)
+
+            # notify listeners
+            self.notifyEventListeners(gc.EV_HIT_BRK_PT)
             return
 
     def processStepSate(self):
@@ -554,11 +565,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.logger.info("reach last PC, moving to gc.STATE_IDLE")
 
             self.swState = gc.STATE_IDLE
-            self.eventHandler.eventPut(gc.EV_STEP_END)
+
+            # notify listeners
+            self.notifyEventListeners(gc.EV_STEP_END)
             return
 
         # update PC
-        self.eventHandler.eventPut(gc.EV_PC_UPDATE, self.workingProgramCounter)
+        self.notifyEventListeners(gc.EV_PC_UPDATE, self.workingProgramCounter)
 
         # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
@@ -566,7 +579,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.logger.info("finish STEP cmd, moving to gc.STATE_IDLE")
 
             self.swState = gc.STATE_IDLE
-            self.eventHandler.eventPut(gc.EV_STEP_END)
+
+            # notify listeners
+            self.notifyEventListeners(gc.EV_STEP_END)
             return
 
         gcode = self.gcodeDataLines[self.workingProgramCounter]
@@ -582,7 +597,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
                 self.logger.info("error event, moving to gc.STATE_IDLE")
 
-            self.eventHandler.eventPut(gc.EV_STEP_END)
+            # notify listeners
+            self.notifyEventListeners(gc.EV_STEP_END)
             return
 
     def processIdleSate(self):
@@ -649,4 +665,5 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
             self.logger.info("thread exit")
 
-        self.eventHandler.eventPut(gc.EV_EXIT)
+        # notify listeners
+        self.notifyEventListeners(gc.EV_EXIT)

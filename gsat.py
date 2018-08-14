@@ -24,14 +24,6 @@
 
 ----------------------------------------------------------------------------"""
 
-__appname__ = "Gcode Step and Alignment Tool"
-
-__description__ = \
-    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE "\
-    "debug/step for grbl like GCODE interpreters. With features similar to "\
-    "software debuggers. Features Such as breakpoint, change current program "\
-    "counter, inspection and modification of variables."
-
 import os
 import sys
 from optparse import OptionParser
@@ -39,6 +31,14 @@ import wx
 
 import modules.config as gc
 import modules.wnd_main as mw
+
+__appname__ = "Gcode Step and Alignment Tool"
+
+__description__ = \
+    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE "\
+    "debug/step for grbl like GCODE interpreters. With features similar to "\
+    "software debuggers. Features Such as breakpoint, change current program "\
+    "counter, inspection and modification of variables."
 
 
 def get_cli_params():
@@ -51,7 +51,7 @@ def get_cli_params():
     parser = OptionParser(usage=usage)
     parser.add_option("-c", "--config",
                       dest="config",
-                      help="Use alternate configuration file name, location "\
+                      help="Use alternate configuration file name, location "
                       "will be in HOME folder regardless of file name.",
                       metavar="FILE")
 
@@ -59,20 +59,20 @@ def get_cli_params():
                       dest="verbose",
                       action="store_true",
                       default=False,
-                      help="print extra information while processing input "\
+                      help="print extra information while processing input "
                       "file.")
 
     parser.add_option("--vv", "--vverbose",
                       dest="vverbose",
                       action="store_true",
                       default=False,
-                      help="print extra extra information while processing "\
+                      help="print extra extra information while processing "
                       "input file.")
 
     parser.add_option("--vm", "--verbose_mask",
                       dest="verbose_mask",
                       default=None,
-                      help="select verbose mask. UI, MACHIF, MACHIF_MOD, "\
+                      help="select verbose mask. UI, MACHIF, MACHIF_MOD, "
                       "MACHIF_EXEC, SERIALIF, SERIALIF_STR, SERIALIF_HEX",
                       metavar="")
 
@@ -80,8 +80,7 @@ def get_cli_params():
 
     if options.verbose_mask is not None:
         options.verbose_mask = gc.decode_verbose_mask_string(
-            options.verbose_mask
-        )
+            options.verbose_mask)
 
     elif options.verbose:
         options.verbose_mask = gc.VERBOSE_MASK_SERIALIF_STR

@@ -195,6 +195,9 @@ def decode_verbose_mask_string(verbose_mask_str):
         if "ui" == mask:
             VERBOSE_MASK |= VERBOSE_MASK_UI
 
+        if "ui_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_UI_EV
+
         if "machif" == mask:
             VERBOSE_MASK |= VERBOSE_MASK_MACHIF
 

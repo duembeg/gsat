@@ -57,7 +57,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.eventHandler = event_handler
         self.serPort = None
         self.stateData = state_data
 
@@ -69,6 +68,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
             self.logger.info("init logging id:0x%x" % id(self))
+
+        if event_handler is not None:
+            self.addEventListener(event_handler)
 
         # start thread
         self.start()
@@ -186,12 +188,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
                     # no exceptions report serial port open
 
-                    # too early to notify clients, as this function gets
-                    # called from thread run, before event loop
-                    # self.notifyEventListeners(gc.EV_SER_PORT_OPEN, port)
-
                     # sending directly to who created us
-                    self.eventHandler.eventPut(gc.EV_SER_PORT_OPEN, port)
+                    self.notifyEventListeners(gc.EV_SER_PORT_OPEN, port)
 
         else:
             exMsg = "There is no valid serial port detected {%s}." % str(port)
@@ -204,12 +202,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                 self.logger.error(exMsg.strip())
 
-            # too early to notify clients, as this function gets
-            # called from thread run, before event loop
-            # self.notifyEventListeners(gc.EV_ABORT, exMsg)
-
             # sending directly to who created us
-            self.eventHandler.eventPut(gc.EV_ABORT, exMsg)
+            self.notifyEventListeners(gc.EV_ABORT, exMsg)
 
     def serialRead(self):
         exFlag = False
