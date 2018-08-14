@@ -1512,14 +1512,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             self.InitConfig()
 
-            # re open serial port if open
-            if (self.stateData.serialPortIsOpen and (self.stateData
-               .serialPort != self.machinePort or self.stateData
-               .serialPortBaud != self.machineBaud)):
-
-                self.SerialClose()
-                self.SerialOpen(self.machinePort, self.machineBaud)
-
             if (self.stateData
                .machineStatusAutoRefresh != self.machineAutoRefresh or
                self.stateData.machineStatusAutoRefreshPeriod != self
@@ -1529,6 +1521,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.machineAutoRefresh
                 self.stateData.machineStatusAutoRefreshPeriod =\
                     self.machineAutoRefreshPeriod
+
+            # re open serial port if open
+            if (self.stateData.serialPortIsOpen and (self.stateData
+               .serialPort != self.machinePort or self.stateData
+               .serialPortBaud != self.machineBaud)):
+
+                self.SerialClose()
+                self.SerialOpen()
 
             self.gcText.UpdateSettings(self.configData)
             self.outputText.UpdateSettings(self.configData)
