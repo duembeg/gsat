@@ -51,15 +51,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     of data sent to the serial port.
     """
 
-    def __init__(self, event_handler, state_data, machif_id,
-                 machine_auto_status=False):
+    def __init__(self, event_handler):
         """Init Worker Thread Class."""
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.stateData = state_data
-        self.machIfId = machif_id
+        self.machIfId = mi.GetMachIfId(gc.CONFIG_DATA.get('/machine/Device'))
         self.okToPostEvents = True
 
         self.gcodeDataLines = []
@@ -71,7 +69,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.swState = gc.STATE_IDLE
         self.lastEventID = gc.EV_CMD_NULL
 
-        self.machineAutoStatus = machine_auto_status
+        self.machineAutoStatus = gc.CONFIG_DATA.get('/machine/AutoStatus')
 
         self.serialWriteQueue = []
 
@@ -270,7 +268,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             msg = "init MachIf Module (%s)." % self.machIfModule.getName()
             self.logger.info(msg)
 
-        self.machIfModule.init(self.stateData)
+        self.machIfModule.init()
 
     def serialRead(self):
         rxData = self.machIfModule.read()
@@ -462,8 +460,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 rc_error = self.waitForAcknowledge()
                 # self.SerialRead()
 
-                if self.machineAutoStatus:
-                    self.machIfModule.doGetStatus()
+                # if self.machineAutoStatus:
+                #     self.machIfModule.doGetStatus()
             else:
                 write_to_device = False
                 self.serialRead()

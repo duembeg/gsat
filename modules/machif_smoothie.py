@@ -26,6 +26,7 @@
 import datetime as dt
 import re
 
+import modules.config as gc
 import modules.machif as mi
 
 """ Global values for this module
@@ -121,6 +122,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
         self.currentStatus = SMOOTHIE_STATE_UKNOWN
         self.autoStatusNextMicro = None
         self.machineAutoRefresh = False
+        self.machineAutoRefreshPeriod = 200
 
         # list of commads
         self.cmdStatus = '?'
@@ -187,7 +189,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
                 if decodedStatus in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]:
                     self.autoStatusNextMicro = dt.datetime.now() + \
                         dt.timedelta(
-                            microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
+                            microseconds=self.machineAutoRefreshPeriod * 1000)
 
                 self.currentStatus = decodedStatus
 
@@ -317,9 +319,11 @@ class MachIf_Smoothie(mi.MachIf_Base):
     def factory(self):
         return MachIf_Smoothie()
 
-    def init(self, state_data):
-        super(MachIf_Smoothie, self).init(state_data)
-        self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
+    def init(self):
+        super(MachIf_Smoothie, self).init()
+        self.machineAutoRefresh = gc.CONFIG_DATA.get('/machine/AutoRefresh')
+        self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
+            '/machine/AutoRefreshPeriod')
 
     def tick(self):
         # check if is time for autorefresh and send get status cmd and prepare next refresh time
@@ -334,12 +338,12 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
                 self.autoStatusNextMicro = dt.datetime.now() + \
                     dt.timedelta(
-                        microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
+                        microseconds=self.machineAutoRefreshPeriod * 1000)
 
         elif self.autoStatusNextMicro != None and self.currentStatus not in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]:
             self.autoStatusNextMicro = None
 
-        if self.machineAutoRefresh != self.stateData.machineStatusAutoRefresh:
+        if self.machineAutoRefresh != gc.CONFIG_DATA.get('/machine/AutoRefresh'):
             # depending on current state do appropriate action
             if self.machineAutoRefresh == False:
                 if self.okToSend(self.cmdStatus):
@@ -347,19 +351,27 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
                 self.autoStatusNextMicro = dt.datetime.now() + \
                     dt.timedelta(
-                        microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
+                        microseconds=self.machineAutoRefreshPeriod * 1000)
             else:
                 self.autoStatusNextMicro = None
 
             # finally update local variable
-            self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
+            self.machineAutoRefresh = gc.CONFIG_DATA.get(
+                '/machine/AutoRefresh')
+
+        if self.machineAutoRefreshPeriod != \
+           gc.CONFIG_DATA.get('/machine/AutoRefreshPeriod'):
+            self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
+                '/machine/AutoRefreshPeriod')
 
     def write(self, txData, raw_write=False):
         askForStatus = False
         bytesSent = 0
 
         # moving to active state get at least one status msg
-        if self.currentStatus in [SMOOTHIE_STATE_IDLE, SMOOTHIE_STATE_STOP, SMOOTHIE_STATE_HOME, SMOOTHIE_STATE_SLEEP, SMOOTHIE_STATE_HOLD]:
+        if self.currentStatus in [SMOOTHIE_STATE_IDLE, SMOOTHIE_STATE_STOP,
+                                  SMOOTHIE_STATE_HOME, SMOOTHIE_STATE_SLEEP,
+                                  SMOOTHIE_STATE_HOLD]:
             askForStatus = True
 
         bytesSent = super(MachIf_Smoothie, self).write(txData, raw_write)
@@ -370,6 +382,6 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self.autoStatusNextMicro = dt.datetime.now() + \
                 dt.timedelta(
-                    microseconds=self.stateData.machineStatusAutoRefreshPeriod * 1000)
+                    microseconds=self.machineAutoRefreshPeriod * 1000)
 
         return bytesSent

@@ -1991,8 +1991,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.stateData.serialPortIsOpen:
             self.SerialClose()
         else:
-            self.SerialOpen(self.configData.get('/machine/Port'),
-                            self.configData.get('/machine/Baud'))
+            self.SerialOpen()
 
     # -------------------------------------------------------------------------
     # Help Menu Handlers
@@ -2130,16 +2129,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.machifProgExec is not None:
             self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
-    def SerialOpen(self, port, baud):
-        self.stateData.serialPort = port
-        self.stateData.serialPortBaud = baud
+    def SerialOpen(self):
+        self.stateData.serialPort = self.configData.get('/machine/Port')
+        self.stateData.serialPortBaud = self.configData.get('/machine/Baud')
         self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
         self.stateData.machineStatusAutoRefreshPeriod = \
             self.machineAutoRefreshPeriod
 
-        self.machifProgExec = mi_progexec.MachIfExecuteThread(
-            self, self.stateData, self.stateData.machIfId,
-            self.machineAutoStatus)
+        self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
 
         self.UpdateUI()
 

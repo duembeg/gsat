@@ -60,7 +60,8 @@ class MachIf_Base(object, gc.EventQueueIf):
 
         self._serialPortOpen = False
         self._serialTxRxThread = None
-        self.stateData = None
+        self.serialName = None
+        self.serialBaud = None
 
         # machine
         self.machinePositionMode = "G90"
@@ -275,8 +276,9 @@ class MachIf_Base(object, gc.EventQueueIf):
     def getStatusCmd(self):
         return self.cmdStatus
 
-    def init(self, state_data):
-        self.stateData = state_data
+    def init(self):
+        self.serialName = gc.CONFIG_DATA.get('/machine/Port')
+        self.serialBaud = gc.CONFIG_DATA.get('/machine/Baud')
 
     def isSerialPortOpen(self):
         return self._serialPortOpen
@@ -298,9 +300,12 @@ class MachIf_Base(object, gc.EventQueueIf):
         return bufferHasRoom
 
     def open(self):
-        if self.stateData is not None:
+        if self.serialName is not None and self.serialBaud is not None:
+
             # inti serial RX thread
-            self._serialTxRxThread = st.SerialPortThread(self, self.stateData)
+            self._serialTxRxThread = st.SerialPortThread(self,
+                                                         self.serialName,
+                                                         self.serialBaud)
 
             if self._serialTxRxThread is not None:
                 self._serialTxRxThread.eventPut(gc.EV_HELLO, None, self)

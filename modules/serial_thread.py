@@ -50,15 +50,16 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
     """ Threads to send and monitor serial port for new data.
     """
 
-    def __init__(self, event_handler, state_data):
+    def __init__(self, event_handler, port_name, port_baud):
         """ Init serial class
         """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.serPort = None
-        self.stateData = state_data
+        self.serialPort = None
+        self.serialPortName = port_name
+        self.serialPortBaud = port_baud
 
         self.rxBuffer = ""
 
@@ -117,10 +118,10 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
     def serialClose(self):
         """ Close serial port
         """
-        if self.serPort is not None:
-            if self.serPort.isOpen():
-                # self.serPort.flushInput()
-                self.serPort.close()
+        if self.serialPort is not None:
+            if self.serialPort.isOpen():
+                # self.serialPort.flushInput()
+                self.serialPort.close()
 
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                     self.logger.info("close serial port")
@@ -135,8 +136,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         self.serialClose()
 
-        port = self.stateData.serialPort
-        baud = self.stateData.serialPortBaud
+        port = self.serialPortName
+        baud = self.serialPortBaud
 
         if port != "None":
             portName = port
@@ -144,15 +145,15 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 portName = r"\\.\%s" % (str(port))
 
             try:
-                self.serPort = serial.Serial(port=portName,
-                                             baudrate=baud,
-                                             timeout=0.001,
-                                             bytesize=serial.EIGHTBITS,
-                                             parity=serial.PARITY_NONE,
-                                             stopbits=serial.STOPBITS_ONE,
-                                             xonxoff=False,
-                                             rtscts=False,
-                                             dsrdtr=False)
+                self.serialPort = serial.Serial(port=portName,
+                                                baudrate=baud,
+                                                timeout=0.001,
+                                                bytesize=serial.EIGHTBITS,
+                                                parity=serial.PARITY_NONE,
+                                                stopbits=serial.STOPBITS_ONE,
+                                                xonxoff=False,
+                                                rtscts=False,
+                                                dsrdtr=False)
 
             except serial.SerialException, e:
                 exMsg = "** PySerial exception: %s\n" % str(e)
@@ -171,14 +172,14 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             #     exMsg = "** Unexpected exception: %s\n" % str(e)
             #     exFlag = True
 
-            if self.serPort is not None:
-                if self.serPort.isOpen():
+            if self.serialPort is not None:
+                if self.serialPort.isOpen():
                     # change tty mode, this is strange and not doing it
                     # was causing issues reconnecting to GRBL if disconnected
                     # because exception, it was fine other wise.
                     # These two lines makes it so opening port again will
                     # connect successfully even after exception close
-                    serial_fd = self.serPort.fileno()
+                    serial_fd = self.serialPort.fileno()
                     tty.setraw(serial_fd)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
@@ -211,7 +212,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         serialData = ""
 
         try:
-            inDataCnt = self.serPort.inWaiting()
+            inDataCnt = self.serialPort.inWaiting()
 
             while inDataCnt > 0 and not exFlag:
 
@@ -219,10 +220,10 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 # # Was running with performance issues using readline(), move
                 # # to read() using "".join() as performance is much better
                 # # then "+="
-                # serialData = self.serPort.readline()
-                # self.rxBuffer += self.serPort.read(inDataCnt)
+                # serialData = self.serialPort.readline()
+                # self.rxBuffer += self.serialPort.read(inDataCnt)
                 self.rxBuffer = "".join(
-                    [self.rxBuffer, self.serPort.read(inDataCnt)])
+                    [self.rxBuffer, self.serialPort.read(inDataCnt)])
 
                 while '\n' in self.rxBuffer:
                     serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
@@ -246,7 +247,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                         # when serial traffic is constant
                         time.sleep(0.01)
 
-                inDataCnt = self.serPort.inWaiting()
+                inDataCnt = self.serialPort.inWaiting()
 
         except serial.SerialException, e:
             exMsg = "** PySerial exception: %s\n" % e.message
@@ -283,7 +284,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         if len(serialData) == 0:
             return
 
-        if self.serPort.isOpen():
+        if self.serialPort.isOpen():
 
             try:
                 # send command
@@ -295,7 +296,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                           gc.VERBOSE_MASK_SERIALIF_STR):
                         self.logger.info(verbose_data_ascii("->", serialData))
 
-                self.serPort.write(serialData)
+                self.serialPort.write(serialData)
 
             except serial.SerialException, e:
                 exMsg = "** PySerial exception: %s\n" % e.message
@@ -335,7 +336,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         self.serialOpen()
 
-        while (not self.endThread) and (self.serPort is not None):
+        while (not self.endThread) and (self.serialPort is not None):
 
             # process input queue for new commands or actions
             self.processQueue()
@@ -344,7 +345,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             if (self.endThread):
                 break
 
-            if self.serPort.isOpen():
+            if self.serialPort.isOpen():
                 if self.swState == gc.STATE_RUN:
                     self.serialRead()
                 elif self.swState == gc.STATE_ABORT:
