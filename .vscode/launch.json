@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: gsat-console",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/gsat-console.py",

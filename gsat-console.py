@@ -82,6 +82,7 @@ def get_cli_params():
 if __name__ == '__main__':
 
     machifProgExec = None
+    gcodeFileLines = []
     (cmd_line_options, cli_args) = get_cli_params()
 
     try:
