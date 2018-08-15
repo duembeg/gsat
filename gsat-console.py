@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
-   gsat.py:
+   gsat-console.py:
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2018-2018 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -28,9 +28,10 @@ import os
 import sys
 from optparse import OptionParser
 import wx
+import time
 
 import modules.config as gc
-import modules.wnd_main as mw
+import modules.machif_progexec as mi_progexec
 
 __appname__ = "Gcode Step and Alignment Tool"
 
@@ -49,25 +50,10 @@ def get_cli_params():
         "usage: %prog [options]"
 
     parser = OptionParser(usage=usage)
-    parser.add_option("-c", "--config",
-                      dest="config",
-                      help="Use alternate configuration file name, location "
-                      "will be in HOME folder regardless of file name.",
+    parser.add_option("-g", "--gcode",
+                      dest="gcode",
+                      help="gcode file.",
                       metavar="FILE")
-
-    parser.add_option("-v", "--verbose",
-                      dest="verbose",
-                      action="store_true",
-                      default=False,
-                      help="print extra information while processing input "
-                      "file.")
-
-    parser.add_option("--vv", "--vverbose",
-                      dest="vverbose",
-                      action="store_true",
-                      default=False,
-                      help="print extra extra information while processing "
-                      "input file.")
 
     parser.add_option("--vm", "--verbose_mask",
                       dest="verbose_mask",
@@ -82,19 +68,6 @@ def get_cli_params():
         options.verbose_mask = gc.decode_verbose_mask_string(
             options.verbose_mask)
 
-    elif options.verbose:
-        options.verbose_mask = gc.VERBOSE_MASK_SERIALIF_STR
-
-    elif options.vverbose:
-        options.verbose_mask = gc.VERBOSE_MASK_SERIALIF_HEX
-
-    else:
-        options.verbose_mask = 0
-
-    # check arguments sanity
-    if options.vverbose:
-        options.verbose = True
-
     if wx.VERSION < (2, 8, 0, 0):
         print "** Required wxPython 2.7 or grater."
         options.error()
@@ -108,12 +81,35 @@ def get_cli_params():
 ----------------------------------------------------------------------------"""
 if __name__ == '__main__':
 
-    if 'ubuntu' in os.getenv('DESKTOP_SESSION', 'unknown'):
-        os.environ["UBUNTU_MENUPROXY"] = "0"
-
+    machifProgExec = None
     (cmd_line_options, cli_args) = get_cli_params()
 
-    app = wx.App(0)
-    mw.gsatMainWindow(None, title=__appname__,
-                      cmd_line_options=cmd_line_options)
-    app.MainLoop()
+    try:
+        configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
+
+        configData = gc.gsatConfigData()
+        configData.load(configFile)
+        stateData = gc.gsatStateData()
+
+        gc.init_config(cmd_line_options, configData, stateData)
+
+        if os.path.exists(cmd_line_options.gcode):
+            gcode_file = file(cmd_line_options.gcode)
+            gcode_data = gcode_file.read()
+
+            gcodeFileLines = gcode_data.splitlines(True)
+
+        machifProgExec = mi_progexec.MachIfExecuteThread(None)
+
+        # TODO: need code to check port is open
+        time.sleep(2)
+
+        machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM)
+
+        machifProgExec.eventPut(gc.EV_CMD_RUN,[gcodeFileLines, 0, set()])
+
+        time.sleep(20)
+
+    finally:
+        if machifProgExec is not None:
+            machifProgExec.eventPut(gc.EV_CMD_EXIT)

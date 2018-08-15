@@ -75,7 +75,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         self.machIfModule = None
 
-        self.addEventListener(event_handler)
+        if event_handler is not None:
+            self.addEventListener(event_handler)
 
         self.logger = logging.getLogger()
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
