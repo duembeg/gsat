@@ -44,7 +44,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/gsat.py",
             "args": [
-                "--vm=machif_exec,ui"
+                "--vm=machif,ui,serialif"
             ]
         },
         {

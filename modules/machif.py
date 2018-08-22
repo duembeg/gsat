@@ -74,7 +74,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         self.cmdHome = 'G28.2'
         self.cmdInitComm = ''
         self.cmdQueueFlush = ''
-        self.cmdProbeAxis = '"G38.2'
+        self.cmdProbeAxis = 'G38.2'
         self.cmdReset = '\x18'
         self.cmdSetAxis = 'G92'
         self.cmdStatus = ''

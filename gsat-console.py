@@ -50,8 +50,15 @@ def get_cli_params():
         "usage: %prog [options]"
 
     parser = OptionParser(usage=usage)
+    parser.add_option("-c", "--config",
+                      dest="config",
+                      default=None,
+                      help="Use alternate configuration file name, location "
+                      "will be in HOME folder regardless of file name.",
+                      metavar="FILE")
     parser.add_option("-g", "--gcode",
                       dest="gcode",
+                      default="None",
                       help="gcode file.",
                       metavar="FILE")
 
@@ -86,13 +93,13 @@ if __name__ == '__main__':
     (cmd_line_options, cli_args) = get_cli_params()
 
     try:
-        configFile = wx.FileConfig("gsat", style=wx.CONFIG_USE_LOCAL_FILE)
+        config_fname = cmd_line_options.config
 
-        configData = gc.gsatConfigData()
-        configData.load(configFile)
-        stateData = gc.gsatStateData()
+        if config_fname is None:
+            config_fname = os.path.abspath(os.path.abspath(os.path.expanduser(
+                "~/.gsat.json")))
 
-        gc.init_config(cmd_line_options, configData, stateData)
+        gc.init_config(cmd_line_options, config_fname, "foo")
 
         if os.path.exists(cmd_line_options.gcode):
             gcode_file = file(cmd_line_options.gcode)

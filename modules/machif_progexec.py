@@ -322,6 +322,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     # notify listeners
                     self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r'])
 
+                if 'init' in rxData['r']:
+                    # notify listeners
+                    self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r'])
+
                 if 'f' in rxData:
                     if (rxData['f'][1] != 0 and
                        gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC):

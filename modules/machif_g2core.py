@@ -313,6 +313,14 @@ class MachIf_g2core(mi.MachIf_Base):
                     sr = r['sr']
                     dataDict['sr'] = sr
 
+                if 'msg' in r:
+                    if r['msg'] == "SYSTEM READY":
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                            self.logger.info("found device init string [%s]" %
+                                             r['msg'])
+
+                        dataDict['r']['init'] = r['msg']
+
             if 'sr' in dataDict:
                 sr = dataDict['sr']
 

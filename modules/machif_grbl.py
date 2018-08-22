@@ -469,6 +469,12 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self.initStringDetectFlag = True
 
+            if 'r' not in dataDict:
+                r = {}
+                dataDict['r'] = r
+
+            dataDict['r']['init'] = initStr.group(1).strip()
+
         config = self.reGrblConfig.match(data)
         if config is not None:
             data_len = len(data)

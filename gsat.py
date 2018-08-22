@@ -113,6 +113,14 @@ if __name__ == '__main__':
 
     (cmd_line_options, cli_args) = get_cli_params()
 
+    config_fname = cmd_line_options.config
+
+    if config_fname is None:
+        config_fname = os.path.abspath(os.path.abspath(os.path.expanduser(
+            "~/.gsat.json")))
+
+    gc.init_config(cmd_line_options, config_fname, "foo")
+
     app = wx.App(0)
     mw.gsatMainWindow(None, title=__appname__,
                       cmd_line_options=cmd_line_options)

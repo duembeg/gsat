@@ -57,7 +57,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.deviceComboBox = wx.ComboBox(
             self, -1, value=mi.GetMachIfName(machIfId),
-            choices=sorted(mi.MACHIF_LIST),
+            choices=sorted(mi.MACHIF_LIST, key=str.lower),
             style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY
         )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -65,7 +65,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                           flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         # get serial port list and baud rate speeds
-        brList = self.configData.get('/machine/BaudList')
+        brList = ['1200', '2400', '4800', '9600',
+                  '19200', '38400', '57600', '115200']
 
         # Add serial port controls
         st = wx.StaticText(self, label="Serial Port")

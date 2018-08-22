@@ -111,9 +111,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.endThread = True
 
             else:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
-                    self.logger.error("EV_?? got unknown event!! [%s]" %
-                                      str(e.event_id))
+                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
+                self.logger.error("EV_?? got unknown event!! [%s]" %
+                                  str(e.event_id))
 
     def serialClose(self):
         """ Close serial port
@@ -200,8 +200,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
-                self.logger.error(exMsg.strip())
+            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+            self.logger.error(exMsg.strip())
 
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
@@ -270,8 +270,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
-                self.logger.error(exMsg.strip())
+            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+            self.logger.error(exMsg.strip())
 
             # add data to queue
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
@@ -319,8 +319,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 # make sure we stop processing any states...
                 self.swState = gc.STATE_ABORT
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
-                    self.logger.error(exMsg.strip())
+                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+                self.logger.error(exMsg.strip())
 
                 # add data to queue
                 self.notifyEventListeners(gc.EV_ABORT, exMsg)
@@ -355,16 +355,16 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                     exMsg = "unexpected state [%d], Aborting..." \
                             % (self.swState)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
-                        self.logger.error(exMsg.strip())
+                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+                    self.logger.error(exMsg.strip())
 
                     self.notifyEventListeners(gc.EV_ABORT, exMsg)
                     break
             else:
                 message = "serial port is close, terminating.\n"
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
-                    self.logger.error(message.strip())
+                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+                self.logger.error(message.strip())
 
                 # make sure we stop processing any states...
                 self.swState = gc.STATE_ABORT

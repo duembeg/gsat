@@ -199,7 +199,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
         self.scFileHistory = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scFileHistory.SetRange(0, 100)
         self.scFileHistory.SetValue(
-            self.configData.get('/mainApp/MaxFileHistory'))
+            self.configData.get('/mainApp/FileHistory/MaxFiles'))
         hBoxSizer.Add(self.scFileHistory, flag=wx.ALL |
                       wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -249,7 +249,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
                             self.cbDisplayRunTimeDialog.GetValue())
         self.configData.set('/mainApp/BackupFile',
                             self.cbBackupFile.GetValue())
-        self.configData.set('/mainApp/MaxFileHistory',
+        self.configData.set('/mainApp/FileHistory/MaxFiles',
                             self.scFileHistory.GetValue())
         self.configData.set('/mainApp/RoundInch2mm',
                             self.scIN2MMRound.GetValue())
@@ -392,15 +392,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # init cmd line options
         self.cmdLineOptions = cmd_line_options
 
-        # init config file
-        if self.cmdLineOptions.config is not None:
-            self.configFile = wx.FileConfig(
-                "gsat", localFilename=self.cmdLineOptions.config,
-                style=wx.CONFIG_USE_LOCAL_FILE)
-        else:
-            self.configFile = wx.FileConfig(
-                "gsat", style=wx.CONFIG_USE_LOCAL_FILE)
-
         self.SetIcon(ico.imgGCSBlack32x32.GetIcon())
 
         if sys.platform in 'darwin':
@@ -411,17 +402,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # register for thread events
         gc.reg_thread_queue_data_event(self, self.OnThreadEvent)
 
-        # create app data obj
-        self.stateData = gc.gsatStateData()
+        # get app data obj
+        self.stateData = gc.STATE_DATA
 
-        # create app data obj
-        self.configData = gc.gsatConfigData()
-        self.configData.load(self.configFile)
-        self.configData.add('/machine/PortList', self.GetSerialPortList())
-        self.configData.add('/machine/BaudList', self.GetSerialBaudRateList())
-
-        # init global config
-        gc.init_config(cmd_line_options, self.configData, self.stateData)
+        # get app data obj
+        self.configData = gc.CONFIG_DATA
 
         self.logger = logging.getLogger()
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI:
@@ -431,7 +416,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # init some variables
         self.machifProgExec = None
-        self.machineAutoRefreshTimer = None
         self.runTimer = None
         self.runStartTime = 0
         self.runEndTime = 0
@@ -442,6 +426,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         # self.Bind(wx.EVT_IDLE, self.OnIdle)
 
+        self.machinePort = ""
+        self.machineBaud = 0
+        self.machineAutoRefresh = False
+        self.machineAutoRefreshPeriod = 200
+
         self.InitUI()
         self.Centre()
         self.Show()
@@ -450,20 +439,19 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.displayRuntimeDialog = self.configData.get(
             '/mainApp/DisplayRunTimeDialog')
         self.saveBackupFile = self.configData.get('/mainApp/BackupFile')
-        self.maxFileHistory = self.configData.get('/mainApp/MaxFileHistory')
+        self.maxFileHistory = self.configData.get(
+            '/mainApp/FileHistory/MaxFiles', 10)
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
-        self.machinePort = self.configData.get('/machine/Port')
-        self.machineBaud = self.configData.get('/machine/Baud')
-        self.machineAutoStatus = self.configData.get('/machine/AutoStatus')
-        self.machineAutoRefresh = self.configData.get('/machine/AutoRefresh')
-        self.machineAutoRefreshPeriod = self.configData.get(
-            '/machine/AutoRefreshPeriod')
         self.stateData.machIfId = mi.GetMachIfId(
             self.configData.get('/machine/Device'))
         self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
         self.stateData.serialPort = self.configData.get('/machine/Port')
         self.stateData.serialPortBaud = self.configData.get('/machine/Baud')
+        self.stateData.machineStatusAutoRefresh = self.configData.get(
+            '/machine/AutoRefresh')
+        self.stateData.machineStatusAutoRefreshPeriod = self.configData.get(
+            '/machine/AutoRefreshPeriod')
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
             self.logger.info("Init config values...")
@@ -478,14 +466,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              self.roundInch2mm)
             self.logger.info("roundmm2Inch:             %s" %
                              self.roundmm2Inch)
-            self.logger.info("machinePort:              %s" % self.machinePort)
-            self.logger.info("machineBaud:              %s" % self.machineBaud)
-            self.logger.info("machineAutostatus:        %s" %
-                             self.machineAutoStatus)
-            self.logger.info("machineAutoRefresh:       %s" %
-                             self.machineAutoRefresh)
-            self.logger.info("machineAutoRefreshPeriod: %s" %
-                             self.machineAutoRefreshPeriod)
             self.logger.info("machIfName:               %s" %
                              self.stateData.machIfName)
             self.logger.info("machIfId:                 %s" %
@@ -494,6 +474,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              self.stateData.serialPort)
             self.logger.info("machIfBaud:               %s" %
                              self.stateData.serialPortBaud)
+            self.logger.info("machIfAutoRefresh:       %s" %
+                             self.stateData.machineStatusAutoRefresh)
+            self.logger.info("machineAutoRefreshPeriod: %s" %
+                             self.stateData.machineStatusAutoRefreshPeriod)
 
     def InitUI(self):
         """ Init main UI """
@@ -570,9 +554,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # load default layout
         self.aui_mgr.SavePerspective()
-        self.SaveLayoutData('/mainApp/ResetLayout')
 
-        self.LoadLayoutData('/mainApp/DefaultLayout', False)
+        self.SaveLayoutData('/mainApp/Layout/Reset')
+
+        self.LoadLayoutData('/mainApp/Layout/Default', False)
 
         # finish up
         self.aui_mgr.Update()
@@ -604,7 +589,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # load history
         self.fileHistory = wx.FileHistory(self.maxFileHistory)
-        self.fileHistory.Load(self.configFile)
+
+        # load form config daat
+        for i in list(reversed(range(1, self.maxFileHistory+1))):
+            fn = self.configData.get("/mainApp/FileHistory/File%d" % (i))
+            if fn is not None:
+                self.fileHistory.AddFileToHistory(fn)
+
         self.fileHistory.UseMenu(recentMenu)
         self.fileHistory.AddFilesToMenu()
 
@@ -1252,8 +1243,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             # save history
             self.fileHistory.AddFileToHistory(self.stateData.gcodeFileName)
-            self.fileHistory.Save(self.configFile)
-            self.configFile.Flush()
+
+            # update file history in config data
+            historyCount = self.fileHistory.GetCount()
+
+            if historyCount > 0:
+                for index in range(historyCount):
+                    self.configData.add(
+                        '/mainApp/FileHistory/File%d' % (index+1),
+                        self.fileHistory.GetHistoryFile(index)
+                    )
+                self.configData.save()
 
             self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
@@ -1305,8 +1305,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             fileNumber)
         self.fileHistory.AddFileToHistory(
             self.stateData.gcodeFileName)  # move up the list
-        self.fileHistory.Save(self.configFile)
-        self.configFile.Flush()
+
+        # update file history in config data
+        historyCount = self.fileHistory.GetCount()
+
+        if historyCount > 0:
+            for index in range(historyCount):
+                self.configData.add(
+                    '/mainApp/FileHistory/File%d' % (index+1),
+                    self.fileHistory.GetHistoryFile(index)
+                )
+            self.configData.save()
 
         self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
@@ -1377,15 +1386,27 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             # save history
             self.fileHistory.AddFileToHistory(self.stateData.gcodeFileName)
-            self.fileHistory.Save(self.configFile)
-            self.configFile.Flush()
+
+            # update file history in config data
+            historyCount = self.fileHistory.GetCount()
+
+            if historyCount > 0:
+                for index in range(historyCount):
+                    self.configData.add(
+                        '/mainApp/FileHistory/File%d' % (index+1),
+                        self.fileHistory.GetHistoryFile(index)
+                    )
+                self.configData.save()
 
             self.gcText.SaveFile(self.stateData.gcodeFileName)
 
             # update title
-            self.SetTitle("%s - %s" %
-                          (os.path.basename(self.stateData.gcodeFileName),
-                           __appname__))
+            self.SetTitle(
+                "%s - %s" %
+                (os.path.basename(self.stateData.gcodeFileName), __appname__))
+
+            self.statusbar.SetStatusText(
+                os.path.basename(self.stateData.gcodeFileName))
 
             self.UpdateUI()
 
@@ -1487,21 +1508,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnViewMenuUpdate(e, self.CV2Panel)
 
     def OnLoadDefaultLayout(self, e):
-        self.LoadLayoutData('/mainApp/DefaultLayout')
+        self.LoadLayoutData('/mainApp/Layout/Default')
         self.aui_mgr.Update()
 
     def OnSaveDefaultLayout(self, e):
-        self.SaveLayoutData('/mainApp/DefaultLayout')
+        self.SaveLayoutData('/mainApp/Layout/Default')
 
     def OnResetDefaultLayout(self, e):
-        self.configFile.DeleteGroup('/mainApp/DefaultLayout')
-        self.LoadLayoutData('/mainApp/ResetLayout')
+        self.LoadLayoutData('/mainApp/Layout/Reset')
+        self.SaveLayoutData('/mainApp/Layout/Default')
 
     def OnSettings(self, e):
-        # update serial port data
-        self.configData.add('/machine/PortList', self.GetSerialPortList())
-        self.configData.add('/machine/BaudList', self.GetSerialBaudRateList())
-
         # do settings dialog
         dlg = gsatSettingsDialog(self, self.configData)
 
@@ -1510,25 +1527,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if result == wx.ID_OK:
             dlg.UpdatConfigData()
 
+            self.configData.save()
+
             self.InitConfig()
-
-            if (self.stateData
-               .machineStatusAutoRefresh != self.machineAutoRefresh or
-               self.stateData.machineStatusAutoRefreshPeriod != self
-               .machineAutoRefreshPeriod):
-
-                self.stateData.machineStatusAutoRefresh =\
-                    self.machineAutoRefresh
-                self.stateData.machineStatusAutoRefreshPeriod =\
-                    self.machineAutoRefreshPeriod
-
-            # re open serial port if open
-            if (self.stateData.serialPortIsOpen and (self.stateData
-               .serialPort != self.machinePort or self.stateData
-               .serialPortBaud != self.machineBaud)):
-
-                self.SerialClose()
-                self.SerialOpen()
 
             self.gcText.UpdateSettings(self.configData)
             self.outputText.UpdateSettings(self.configData)
@@ -1536,8 +1537,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machineJoggingPanel.UpdateSettings(self.configData)
             self.CV2Panel.UpdateSettings(self.configData)
 
-            # save config data to file now...
-            self.configData.save(self.configFile)
+            # re open serial port if open
+            if (self.stateData.serialPortIsOpen and (self.stateData
+               .serialPort != self.machinePort or self.stateData
+               .serialPortBaud != self.machineBaud)):
+
+                self.SerialClose()
 
         dlg.Destroy()
 
@@ -2035,7 +2040,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.SerialClose()
 
         self.machineJoggingPanel.SaveCli()
-        self.configData.save(self.configFile)
+        self.configData.save()
         self.aui_mgr.UnInit()
 
         self.Destroy()
@@ -2076,6 +2081,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         minutes, reminder = divmod(reminder, 60)
         seconds, mseconds = divmod(reminder, 1)
         runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
+
+        if (mseconds):
+            pass
 
         if self.stateData.swState != gc.STATE_RUN and \
            self.stateData.swState != gc.STATE_PAUSE and \
@@ -2130,11 +2138,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
     def SerialOpen(self):
-        self.stateData.serialPort = self.configData.get('/machine/Port')
-        self.stateData.serialPortBaud = self.configData.get('/machine/Baud')
-        self.stateData.machineStatusAutoRefresh = self.machineAutoRefresh
-        self.stateData.machineStatusAutoRefreshPeriod = \
-            self.machineAutoRefreshPeriod
+        self.machinePort = self.stateData.serialPort
+        self.machineBaud = self.stateData.serialPortBaud
+        self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
+        self.machineAutoRefreshPeriod = \
+            self.stateData.machineStatusAutoRefreshPeriod
 
         self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
 
@@ -2197,8 +2205,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 "progExecTread!!"
 
     def LoadLayoutData(self, key, update=True):
-        dimesnionsData = layoutData = self.configFile.Read(key+"/Dimensions")
-        if len(dimesnionsData) > 0:
+        dimesnionsData = layoutData = self.configData.get(
+            "".join([key, "/Dimensions"]), "")
+        if dimesnionsData:
             dimesnionsData = dimesnionsData.split("|")
 
             winPposition = eval(dimesnionsData[0])
@@ -2216,8 +2225,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.SetPosition(winPposition)
                 self.SetSize(winSize)
 
-        layoutData = self.configFile.Read(key+"/Perspective")
-        if len(layoutData) > 0:
+        layoutData = self.configData.get("".join([key, "/Perspective"]), "")
+        if layoutData:
             self.aui_mgr.LoadPerspective(layoutData, update)
 
     def SaveLayoutData(self, key):
@@ -2235,8 +2244,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             str(winIsIconized)
         ])
 
-        self.configFile.Write(key+"/Dimensions", dimensionsData)
-        self.configFile.Write(key+"/Perspective", layoutData)
+        self.configData.set("".join([key, "/Dimensions"]), dimensionsData)
+        self.configData.set("".join([key, "/Perspective"]), layoutData)
+        self.configData.save()
 
     def ConvertInchAndmm(self, lines, in_to_mm=True, round_to=-1):
         ret_lienes = []
@@ -2362,7 +2372,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.stateData.machineStatusString = te.data['stat']
 
                 # TODO: this doens't belong here put in machif_proexec
-                if 'fb' in te.data:
+                if 'init' in te.data:
                     # if self.cmdLineOptions.vverbose:
                     #     print "gsatMainWindow device detected via version " \
                     #         "string [%s]." % te.data['fb']
@@ -2429,6 +2439,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     "%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
                 runEndTimeStr = time.strftime(
                     "%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
+
+                if (mseconds):
+                    pass
 
                 self.machineStatusPanel.UpdateUI(
                     self.stateData, dict({'rtime': runTimeStr}))

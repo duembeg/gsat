@@ -318,6 +318,20 @@ class MachIf_TinyG(mi.MachIf_Base):
                             self.logger.info("found version fb[%s] "
                                              "fv[%s]" % (sys['fb'], sys['fv']))
 
+                    if 'id' in sys:
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                            self.logger.info("found device init string [%s]" %
+                                             ("id:"+sys['id']))
+
+                        dataDict['r']['init'] = "id:"+sys['id']
+
+                if 'id' in r:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                        self.logger.info("found device init string [%s]" %
+                                         ("id:"+r['id']))
+
+                    dataDict['r']['init'] = "id:"+r['id']
+
             if 'sr' in dataDict:
                 sr = dataDict['sr']
 
