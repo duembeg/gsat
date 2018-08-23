@@ -48,6 +48,15 @@
             ]
         },
         {
+            "name": "Python: Current File ask for args",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": [
+                "-c~/.gsat"
+            ]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

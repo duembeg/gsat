@@ -27,7 +27,6 @@
 import os
 import sys
 from optparse import OptionParser
-import wx
 import time
 
 import modules.config as gc
@@ -41,6 +40,10 @@ __description__ = \
     "software debuggers. Features Such as breakpoint, change current program "\
     "counter, inspection and modification of variables."
 
+__version_info__ = (1, 0, 0)
+__version__ = 'v%i.%i.%i beta' % __version_info__
+__revision__ = __version__
+
 
 def get_cli_params():
     ''' define, retrieve and error check command line interface (cli) params
@@ -49,7 +52,7 @@ def get_cli_params():
     usage = \
         "usage: %prog [options]"
 
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=usage, version="%prog " + __revision__)
     parser.add_option("-c", "--config",
                       dest="config",
                       default=None,
@@ -74,11 +77,6 @@ def get_cli_params():
     if options.verbose_mask is not None:
         options.verbose_mask = gc.decode_verbose_mask_string(
             options.verbose_mask)
-
-    if wx.VERSION < (2, 8, 0, 0):
-        print "** Required wxPython 2.7 or grater."
-        options.error()
-        sys.exit(1)
 
     return (options, args)
 
@@ -114,7 +112,7 @@ if __name__ == '__main__':
 
         machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM)
 
-        machifProgExec.eventPut(gc.EV_CMD_RUN,[gcodeFileLines, 0, set()])
+        machifProgExec.eventPut(gc.EV_CMD_RUN, [gcodeFileLines, 0, set()])
 
         time.sleep(20)
 

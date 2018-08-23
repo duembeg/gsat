@@ -48,7 +48,7 @@ def get_cli_params():
     usage = \
         "usage: %prog [options]"
 
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=usage, version="%prog " + mw.__revision__)
     parser.add_option("-c", "--config",
                       dest="config",
                       help="Use alternate configuration file name, location "
@@ -97,7 +97,7 @@ def get_cli_params():
 
     if wx.VERSION < (2, 8, 0, 0):
         print "** Required wxPython 2.7 or grater."
-        options.error()
+        parser.error()
         sys.exit(1)
 
     return (options, args)

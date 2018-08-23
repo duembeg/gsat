@@ -392,11 +392,10 @@ class gsatConfigData():
         "mainApp": {
             "BackupFile": True,
             "DisplayRunTimeDialog": True,
-            "MaxFileHistory": 10,
             "RoundInch2mm": 4,
             "Roundmm2Inch": 4,
             "FileHistory": {
-                "MaxFiles": 10,
+                "FilesMaxHistory": 10,
             },
         },
         "output": {
@@ -495,6 +494,12 @@ class gsatConfigData():
         """
         with open(self.configFileName, 'w') as f:
             json.dump(self.workingConfigData, f, indent=3, sort_keys=True)
+
+    def dump(self):
+        """ dups config to stdout
+        """
+        data = json.dumps(self.workingConfigData, indent=3, sort_keys=True)
+        print data
 
 
 """----------------------------------------------------------------------------

@@ -199,7 +199,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
         self.scFileHistory = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scFileHistory.SetRange(0, 100)
         self.scFileHistory.SetValue(
-            self.configData.get('/mainApp/FileHistory/MaxFiles'))
+            self.configData.get('/mainApp/FileHistory/FilesMaxHistory'))
         hBoxSizer.Add(self.scFileHistory, flag=wx.ALL |
                       wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -249,7 +249,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
                             self.cbDisplayRunTimeDialog.GetValue())
         self.configData.set('/mainApp/BackupFile',
                             self.cbBackupFile.GetValue())
-        self.configData.set('/mainApp/FileHistory/MaxFiles',
+        self.configData.set('/mainApp/FileHistory/FilesMaxHistory',
                             self.scFileHistory.GetValue())
         self.configData.set('/mainApp/RoundInch2mm',
                             self.scIN2MMRound.GetValue())
@@ -440,7 +440,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             '/mainApp/DisplayRunTimeDialog')
         self.saveBackupFile = self.configData.get('/mainApp/BackupFile')
         self.maxFileHistory = self.configData.get(
-            '/mainApp/FileHistory/MaxFiles', 10)
+            '/mainApp/FileHistory/FilesMaxHistory', 10)
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
         self.stateData.machIfId = mi.GetMachIfId(
@@ -474,7 +474,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              self.stateData.serialPort)
             self.logger.info("machIfBaud:               %s" %
                              self.stateData.serialPortBaud)
-            self.logger.info("machIfAutoRefresh:       %s" %
+            self.logger.info("machIfAutoRefresh:        %s" %
                              self.stateData.machineStatusAutoRefresh)
             self.logger.info("machineAutoRefreshPeriod: %s" %
                              self.stateData.machineStatusAutoRefreshPeriod)
