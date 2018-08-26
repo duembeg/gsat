@@ -322,7 +322,100 @@ class gsatStateData():
         self.gcodeFileLines = []
 
 
-class gsatConfigData():
+class ConfigData(object):
+    """ Provides various data information
+    """
+    def __init__(self, config_fname=None):
+
+        self.configFileName = config_fname
+
+        self.datastore = dict()
+
+    def add(self, key_path, val):
+        """ Add new key value pair
+        """
+        if type(key_path) is list:
+            key_list = key_path
+        else:
+            key_list = key_path.split("/")
+
+            if key_list[0] == "":
+                key_list.pop(0)
+
+        node = self.get(key_list[:-1])
+
+        if node is None:
+            node = self.datastore
+
+            for key in key_list[:-1]:
+                if key in node:
+                    node = node[key]
+                else:
+                    node[key] = dict()
+                    node = node[key]
+
+        node[key_list[-1:][0]] = val
+
+    def get(self, key_path, defualt_rv=None):
+        """ Get value for a given key
+        """
+        return_val = defualt_rv
+
+        if type(key_path) is list:
+            key_list = key_path
+        else:
+            key_list = key_path.split("/")
+
+            if key_list[0] == "":
+                key_list.pop(0)
+
+        if key_list:
+            node = self.datastore
+
+            for key in key_list:
+                if key in node:
+                    node = node[key]
+                else:
+                    key = None
+                    break
+
+            if key is not None:
+                return_val = node
+
+        return return_val
+
+    def set(self, key_path, val):
+        """ Set value for a given key
+        """
+        self.add(key_path, val)
+
+    def load(self):
+        """ Load data from config file
+        """
+        if self.configFileName is not None:
+            if os.path.exists(self.configFileName):
+                datastore = dict()
+
+                with open(self.configFileName, 'r') as f:
+                    datastore = json.load(f)
+
+                self.datastore.update(datastore)
+
+    def save(self):
+        """ Save data to config file
+        """
+        if self.configFileName is not None:
+            with open(self.configFileName, 'w') as f:
+                json.dump(self.datastore, f, indent=3, sort_keys=True)
+
+    def dump(self):
+        """ dups config to stdout
+        """
+        data = json.dumps(self.datastore, indent=3, sort_keys=True)
+        print data
+
+
+class gsatConfigData(ConfigData):
     """ Provides various data information
     """
     configDefault = {
@@ -413,93 +506,8 @@ class gsatConfigData():
     }
 
     def __init__(self, config_fname):
-
-        self.configFileName = config_fname
-
-        self.workingConfigData = dict()
-        self.workingConfigData.update(self.configDefault)
-
-    def add(self, key_path, val):
-        """ Add new key value pair
-        """
-        if type(key_path) is list:
-            key_list = key_path
-        else:
-            key_list = key_path.split("/")
-
-            if key_list[0] == "":
-                key_list.pop(0)
-
-        node = self.get(key_list[:-1])
-
-        if node is None:
-            node = self.workingConfigData
-
-            for key in key_list[:-1]:
-                if key in node:
-                    node = node[key]
-                else:
-                    node[key] = dict()
-                    node = node[key]
-
-        node[key_list[-1:][0]] = val
-
-    def get(self, key_path, defualt_rv=None):
-        """ Get value for a given key
-        """
-        return_val = defualt_rv
-
-        if type(key_path) is list:
-            key_list = key_path
-        else:
-            key_list = key_path.split("/")
-
-            if key_list[0] == "":
-                key_list.pop(0)
-
-        if key_list:
-            node = self.workingConfigData
-
-            for key in key_list:
-                if key in node:
-                    node = node[key]
-                else:
-                    key = None
-                    break
-
-            if key is not None:
-                return_val = node
-
-        return return_val
-
-    def set(self, key_path, val):
-        """ Set value for a given key
-        """
-        self.add(key_path, val)
-
-    def load(self):
-        """ Load data from config file
-        """
-        # if file dosen't exist then use default values
-        if os.path.exists(self.configFileName):
-            datastore = dict()
-
-            with open(self.configFileName, 'r') as f:
-                datastore = json.load(f)
-
-            self.workingConfigData.update(datastore)
-
-    def save(self):
-        """ Save data to config file
-        """
-        with open(self.configFileName, 'w') as f:
-            json.dump(self.workingConfigData, f, indent=3, sort_keys=True)
-
-    def dump(self):
-        """ dups config to stdout
-        """
-        data = json.dumps(self.workingConfigData, indent=3, sort_keys=True)
-        print data
+        super(gsatConfigData, self).__init__(config_fname)
+        self.datastore.update(self.configDefault)
 
 
 """----------------------------------------------------------------------------

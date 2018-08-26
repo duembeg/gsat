@@ -1803,7 +1803,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnMachineQueueFlush(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.put(gc.EV_CMD_QUEUE_FLUSH)
+            self.machifProgExec.eventPut(gc.EV_CMD_QUEUE_FLUSH)
 
     def OnMachineQueueFlushUpdate(self, e=None):
         state = False
