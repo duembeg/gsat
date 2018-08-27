@@ -159,14 +159,14 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doClearAlarm(self):
         """ Clears alarm condition
         """
-        self.eventPut(gc.EV_SER_TXDATA, self.cmdClearAlarm)
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdClearAlarm.strip())
         self.write(self.cmdClearAlarm)
         self.write(self.getStatusCmd())
 
     def doCycleStartResume(self):
         """ send cycle resume command
         """
-        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdCycleStart)
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdCycleStart.strip())
         self.write(self.cmdCycleStart)
 
     def doFastMove(self, dict_axis_coor):
@@ -188,7 +188,7 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doFeedHold(self):
         """ send feed hold command
         """
-        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdFeedHold)
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdFeedHold.strip())
         self.write(self.cmdFeedHold)
 
     def doGetStatus(self):
@@ -219,6 +219,7 @@ class MachIf_Base(object, gc.EventQueueIf):
             self._move("G91 G01", dict_axis_coor)
 
     def doQueueFlush(self):
+        self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdQueueFlush.strip())
         self.write(self.cmdQueueFlush)
         self._init()
 
