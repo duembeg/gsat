@@ -287,7 +287,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
         # list of commads
         self.cmdClearAlarm = '{"clr":null}\n'
-        self.cmdQueueFlush = '%\n'
+        self.cmdQueueFlush = '%'
         self.cmdStatus = '{"sr":null}\n'
 
     def _init(self):
