@@ -581,7 +581,8 @@ class MachIf_GRBL(mi.MachIf_Base):
             else:
                 self.autoStatusNextMicro = None
 
-        if self.machineAutoRefresh != gc.CONFIG_DATA.get('/machine/AutoRefresh'):
+        if self.machineAutoRefresh != gc.CONFIG_DATA.get(
+                '/machine/AutoRefresh'):
             # depending on current state do appropriate action
             if not self.machineAutoRefresh:
                 if self.okToSend(self.cmdStatus):
@@ -594,7 +595,8 @@ class MachIf_GRBL(mi.MachIf_Base):
                 self.autoStatusNextMicro = None
 
             # finally update local variable
-            self.machineAutoRefresh = gc.CONFIG_DATA.get('/machine/AutoRefresh')
+            self.machineAutoRefresh = gc.CONFIG_DATA.get(
+                    '/machine/AutoRefresh')
 
         if self.machineAutoRefreshPeriod != \
            gc.CONFIG_DATA.get('/machine/AutoRefreshPeriod'):

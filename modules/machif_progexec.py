@@ -384,26 +384,27 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 wait_for_acknowlege = False
 
             if 'r' in rxDataDict:
-                if rxDataDict['f'][1] == 0:
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
-                    #     self.logger.info("acknowledgement state OK")
-                    pass
-                else:
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
-                    #     msg = "acknowledgement state ERROR[%d]" % \
-                    #           rxDataDict['f'][1]
-                    #     if 'rx_data' in rxDataDict:
-                    #         msg = "".join([msg, " ",
-                    #                        rxDataDict['rx_data'].strip()])
+                if 'f' in rxDataDict:
+                    if rxDataDict['f'][1] == 0:
+                        # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                        #     self.logger.info("acknowledgement state OK")
+                        pass
+                    else:
+                        # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
+                        #     msg = "acknowledgement state ERROR[%d]" % \
+                        #           rxDataDict['f'][1]
+                        #     if 'rx_data' in rxDataDict:
+                        #         msg = "".join([msg, " ",
+                        #                        rxDataDict['rx_data'].strip()])
 
-                    #     if 'rx_data_info' in rxDataDict:
-                    #         msg = "".join([msg, " ",
-                    #                        rxDataDict['rx_data_info'].strip()])
+                        #     if 'rx_data_info' in rxDataDict:
+                        #         msg = "".join([msg, " ",
+                        #                        rxDataDict['rx_data_info'].strip()])
 
-                    #     self.logger.info(msg)
+                        #     self.logger.info(msg)
 
-                    self.swState = gc.STATE_IDLE
-                    rc_error = True
+                        self.swState = gc.STATE_IDLE
+                        rc_error = True
 
                 wait_for_acknowlege = False
                 break
