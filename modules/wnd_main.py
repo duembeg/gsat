@@ -2447,7 +2447,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.stateData, dict({'rtime': runTimeStr}))
                 self.Refresh()
                 self.UpdateUI()
-                print self.stateData.programCounter
 
                 # display run time dialog.
                 if self.displayRuntimeDialog:
