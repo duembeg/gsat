@@ -83,12 +83,12 @@ class MachIf_Base(object, gc.EventQueueIf):
     def _init(self):
         pass
 
-    def _move(self, move_code, dictAxisCoor):
+    def _move(self, move_code, dict_axis_coor):
         """ Move to a coordinate in opsolute or relative position mode
         """
         machine_current_position_mode = self.machinePositionMode
 
-        self._send_axis_cmd(move_code, dictAxisCoor)
+        self._sendAxisCmd(move_code, dict_axis_coor)
 
         if machine_current_position_mode != self.machinePositionMode:
             self.eventPut(
@@ -105,44 +105,44 @@ class MachIf_Base(object, gc.EventQueueIf):
             self._inputBufferMaxSize) * input_buffer_watermark_prcnt
         self._inputBufferSize = input_buffer_init_val
 
-    def _send_axis_cmd(self, code, dictAxisCoor):
+    def _sendAxisCmd(self, code, dict_axis_coor):
         """ sends axis cmd
         """
         machine_code = code
 
-        if 'x' in dictAxisCoor:
+        if 'x' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " X", str(dictAxisCoor.get('x'))
+                machine_code, " X", str(dict_axis_coor.get('x'))
                 ])
 
-        if 'y' in dictAxisCoor:
+        if 'y' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " Y", str(dictAxisCoor.get('y'))
+                machine_code, " Y", str(dict_axis_coor.get('y'))
                 ])
 
-        if 'z' in dictAxisCoor:
+        if 'z' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " Z", str(dictAxisCoor.get('z'))
+                machine_code, " Z", str(dict_axis_coor.get('z'))
                 ])
 
-        if 'a' in dictAxisCoor:
+        if 'a' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " A", str(dictAxisCoor.get('a'))
+                machine_code, " A", str(dict_axis_coor.get('a'))
                 ])
 
-        if 'b' in dictAxisCoor:
+        if 'b' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " B", str(dictAxisCoor.get('b'))
+                machine_code, " B", str(dict_axis_coor.get('b'))
                 ])
 
-        if 'c' in dictAxisCoor:
+        if 'c' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " C", str(dictAxisCoor.get('c'))
+                machine_code, " C", str(dict_axis_coor.get('c'))
                 ])
 
-        if 'feed' in dictAxisCoor:
+        if 'feed' in dict_axis_coor:
             machine_code = "".join([
-                machine_code, " F", str(dictAxisCoor.get('feed'))
+                machine_code, " F", str(dict_axis_coor.get('feed'))
                 ])
 
         self.eventPut(gc.EV_SER_TXDATA, "%s\n" % machine_code)
@@ -155,6 +155,8 @@ class MachIf_Base(object, gc.EventQueueIf):
     @abstractmethod
     def decode(self, data):
         return data
+
+    # list if Actions fucntions "use to be neamed do<Something>
 
     def doClearAlarm(self):
         """ Clears alarm condition
@@ -197,7 +199,7 @@ class MachIf_Base(object, gc.EventQueueIf):
             self.write(self.cmdStatus)
 
     def doHome(self, dict_axis):
-        self._send_axis_cmd(self.cmdHome, dict_axis)
+        self._sendAxisCmd(self.cmdHome, dict_axis)
 
     def doInitComm(self):
         self.write(self.cmdInitComm)
@@ -218,6 +220,12 @@ class MachIf_Base(object, gc.EventQueueIf):
         else:
             self._move("G91 G01", dict_axis_coor)
 
+    def doProbe(self, dict_axis_coor):
+        """ Probe toward work piace, coordinate and feed rate required
+            Errors/Alarm if probe fails
+        """
+        self._sendAxisCmd(self.cmdProbeAxis, dict_axis_coor)
+
     def doQueueFlush(self):
         self.eventPut(gc.EV_SER_TXDATA, "%s\n" % self.cmdQueueFlush.strip())
         self.write(self.cmdQueueFlush)
@@ -230,7 +238,7 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doSetAxis(self, dict_axis_coor):
         """ Set axis coordinates
         """
-        self._send_axis_cmd(self.cmdSetAxis, dict_axis_coor)
+        self._sendAxisCmd(self.cmdSetAxis, dict_axis_coor)
 
     @abstractmethod
     def encode(self, data, bookeeping=True):

@@ -490,6 +490,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         if 'x' in dict_axis and 'y' in dict_axis and 'z' in dict_axis:
             self.eventPut(gc.EV_SER_TXDATA, self.cmdHome)
             self.write(self.cmdHome)
+            self.write(self.cmdStatus)
         else:
             msg = "!! grbl doesn't support single/partial axis homing."
             self.eventPut(gc.EV_SER_RXDATA, msg)

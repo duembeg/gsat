@@ -253,6 +253,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.removeEventListener(e.sender)
 
+            elif e.event_id == gc.EV_CMD_PROBE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_PROBE %s" % e.data)
+
+                self.machIfModule.doProbe(e.data)
+
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.error("got unknown event!! [%s]." %
