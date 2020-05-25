@@ -167,7 +167,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizerRoot.Add(hBoxSizer, 0, flag=wx.TOP |
                           wx.LEFT | wx.EXPAND, border=20)
 
-    def UpdatConfigData(self):
+    def UpdateConfigData(self):
         self.configData.set('/machine/Device', self.deviceComboBox.GetValue())
         self.configData.set('/machine/Port', self.spComboBox.GetValue())
         self.configData.set('/machine/Baud', self.sbrComboBox.GetValue())

@@ -83,14 +83,15 @@ class MachIf_Base(object, gc.EventQueueIf):
     def _init(self):
         pass
 
-    def _move(self, move_code, dict_axis_coor):
-        """ Move to a coordinate in opsolute or relative position mode
+    def _move(self, move_code, dict_axis_coor, resert_pos_mode=True):
+        """ Move to a coordinate in obsolete or relative position mode
         """
         machine_current_position_mode = self.machinePositionMode
 
         self._sendAxisCmd(move_code, dict_axis_coor)
 
-        if machine_current_position_mode != self.machinePositionMode:
+        if machine_current_position_mode != self.machinePositionMode and\
+           resert_pos_mode:
             self.eventPut(
                 gc.EV_SER_TXDATA, "%s\n" % machine_current_position_mode
             )
@@ -172,7 +173,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         self.write(self.cmdCycleStart)
 
     def doFastMove(self, dict_axis_coor):
-        """ Fast (rapid) move to a coordinate in opsolute position mode
+        """ Fast (rapid) move to a coordinate in obsolete position mode
         """
         if self.machinePositionMode == "G90":
             self._move("G00", dict_axis_coor)
@@ -203,6 +204,22 @@ class MachIf_Base(object, gc.EventQueueIf):
 
     def doInitComm(self):
         self.write(self.cmdInitComm)
+
+    def doJogFastMove(self, dict_axis_coor):
+        self.doFastMove(dict_axis_coor)
+
+    def doJogFastMoveRelative(self, dict_axis_coor):
+        self.doFastMoveRelative(dict_axis_coor)
+
+    def doJogMove(self, dict_axis_coor):
+        self.doMove(dict_axis_coor)
+
+    def doJogMoveRelative(self, dict_axis_coor):
+        self.doMoveRelative(dict_axis_coor)
+
+    def doJogStop(self):
+        self.doFeedHold()
+        self.doQueueFlush()
 
     def doMove(self, dict_axis_coor):
         """ Move to a coordinate in opsolute position mode

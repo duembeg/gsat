@@ -244,7 +244,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
 
         self.SetSizer(vBoxSizer)
 
-    def UpdatConfigData(self):
+    def UpdateConfigData(self):
         self.configData.set('/mainApp/DisplayRunTimeDialog',
                             self.cbDisplayRunTimeDialog.GetValue())
         self.configData.set('/mainApp/BackupFile',
@@ -287,9 +287,9 @@ class gsatSettingsDialog(wx.Dialog):
         # for Windows and OS X, tabbed on the left don't work as well
         if sys.platform.startswith('linux'):
             self.noteBook = wx.Notebook(
-                self, size=(640, 400), style=wx.BK_LEFT)
+                self, size=(700, 400), style=wx.BK_LEFT)
         else:
-            self.noteBook = wx.Notebook(self, size=(640, 400))
+            self.noteBook = wx.Notebook(self, size=(700, 400))
 
         self.noteBook.AssignImageList(self.imageList)
 
@@ -325,6 +325,7 @@ class gsatSettingsDialog(wx.Dialog):
 
         self.SetSizerAndFit(sizer)
         # self.SetAutoLayout(True)
+        self.Layout()
 
     def AddGeneralPage(self, page):
         self.generalPage = gsatGeneralSettingsPanel(
@@ -367,14 +368,14 @@ class gsatSettingsDialog(wx.Dialog):
         self.noteBook.AddPage(self.CV2Page, " OpenCV2")
         self.noteBook.SetPageImage(page, page)
 
-    def UpdatConfigData(self):
-        self.generalPage.UpdatConfigData()
-        self.programPage.UpdatConfigData()
-        self.outputPage.UpdatConfigData()
-        self.cliPage.UpdatConfigData()
-        self.machinePage.UpdatConfigData()
-        self.jogPage.UpdatConfigData()
-        self.CV2Page.UpdatConfigData()
+    def UpdateConfigData(self):
+        self.generalPage.UpdateConfigData()
+        self.programPage.UpdateConfigData()
+        self.outputPage.UpdateConfigData()
+        self.cliPage.UpdateConfigData()
+        self.machinePage.UpdateConfigData()
+        self.jogPage.UpdateConfigData()
+        self.CV2Page.UpdateConfigData()
 
 
 class gsatMainWindow(wx.Frame, gc.EventQueueIf):
@@ -1525,7 +1526,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         result = dlg.ShowModal()
 
         if result == wx.ID_OK:
-            dlg.UpdatConfigData()
+            dlg.UpdateConfigData()
 
             self.configData.save()
 

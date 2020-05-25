@@ -33,6 +33,8 @@ import modules.machif_config as mi
 
 import images.icons as ico
 
+import time
+
 
 class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
     """ Jog panel settings
@@ -103,14 +105,23 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
             wx.ToolTip("when enabled, if Z_destination is grater Z_current, Z axis moves first, and vise-versa"))
         vBoxSizer.Add(self.cbZJogSafeMove, flag=wx.LEFT, border=20)
 
+        # Add interactive jog
+        self.cbJogInteractive = wx.CheckBox(
+            self, wx.ID_ANY, "Interactive Jog")
+        self.cbJogInteractive.SetValue(
+            self.configData.get('/jogging/JogInteractive'))
+        self.cbJogInteractive.SetToolTip(
+            wx.ToolTip("Enables interactive jog positioning"))
+        vBoxSizer.Add(self.cbJogInteractive, flag=wx.LEFT, border=20)
+
         # Add rapid jog
-        self.cbRapidJog = wx.CheckBox(
+        self.cbJogRapid = wx.CheckBox(
             self, wx.ID_ANY, "Rapid Jog")
-        self.cbRapidJog.SetValue(
-            self.configData.get('/jogging/RapidJog'))
-        self.cbRapidJog.SetToolTip(
-            wx.ToolTip(""))
-        vBoxSizer.Add(self.cbRapidJog, flag=wx.LEFT, border=20)
+        self.cbJogRapid.SetValue(
+            self.configData.get('/jogging/JogRapid'))
+        self.cbJogRapid.SetToolTip(
+            wx.ToolTip("Enables rapid jog positioning, otherwise feedrate"))
+        vBoxSizer.Add(self.cbJogRapid, flag=wx.LEFT, border=20)
 
         vBoxSizer.AddSpacer(20)
 
@@ -290,7 +301,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
         return vBoxSizerRoot, [tcLabel, tcScript]
 
-    def UpdatConfigData(self):
+    def UpdateConfigData(self):
         self.configData.set('/jogging/XYZReadOnly',
                             self.cbXYZReadOnly.GetValue())
         self.configData.set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
@@ -311,8 +322,11 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/jogging/ProbeFeedRate',
                             self.probeZFeedRateSpinCtrl.GetValue())
 
-        self.configData.set('/jogging/RapidJog',
-                            self.cbRapidJog.GetValue())
+        self.configData.set('/jogging/JogInteractive',
+                            self.cbJogInteractive.GetValue())
+
+        self.configData.set('/jogging/JogRapid',
+                            self.cbJogRapid.GetValue())
 
         self.configData.set('/jogging/JogFeedRate',
                             self.jogFeedRateSpinCtrl.GetValue())
@@ -370,7 +384,7 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
         self.SetSizer(vBoxSizer)
 
-    def UpdatConfigData(self):
+    def UpdateConfigData(self):
         self.configData.set('/cli/SaveCmdHistory', self.cb.GetValue())
         self.configData.set('/cli/CmdMaxHistory', self.sc.GetValue())
 
@@ -413,6 +427,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.LoadCli()
 
         self.SavedJogPos = None
+
+        self.keyCache = None
+        self.jogInteractiveState = False
 
         self.numKeypadPendantKeys = [
             wx.WXK_NUMPAD_UP,
@@ -479,8 +496,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.configCustom4Script = self.configData.get(
             '/jogging/Custom4Script')
 
-        self.configRapidJog = self.configData.get('/jogging/RapidJog')
         self.configJogFeedRate = self.configData.get('/jogging/JogFeedRate')
+        self.configJogInteractive = self.configData.get(
+            '/jogging/JogInteractive')
+        self.configJogRapid = self.configData.get('/jogging/JogRapid')
 
         # cli data
         self.cliSaveCmdHistory = self.configData.get('/cli/SaveCmdHistory')
@@ -511,6 +530,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.zJogMovesLastCheckBox.SetValue(self.configZJogSafeMove)
 
         self.spindleSpeedSpinCtrl.SetValue(self.configSpindleSpeed)
+
+        self.rapidJogCheckBox.SetValue(self.configJogRapid)
 
         self.custom1Button.SetLabel(self.configCustom1Label)
         self.custom2Button.SetLabel(self.configCustom2Label)
@@ -552,9 +573,16 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.Layout()
 
         self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         self.jX.Bind(wx.EVT_TEXT_PASTE, self.onJogEditPaste)
         self.jY.Bind(wx.EVT_TEXT_PASTE, self.onJogEditPaste)
         self.jZ.Bind(wx.EVT_TEXT_PASTE, self.onJogEditPaste)
+
+        # keyboard timer for interactive fucntion
+        self.keyTimer = wx.Timer(self, id=-1)
+        #self.keyTimerEvent = wx.TimerEvent(self.keyTimer.GetId())
+        self.Bind(wx.EVT_TIMER, self.OnKeyTimer, self.keyTimer)
 
     def UpdateUI(self, stateData, statusData=None):
         self.stateData = stateData
@@ -673,8 +701,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         gbStepSizeGridSizer = wx.GridBagSizer(0, 0)
         gbJogSpindleGridSizer = wx.GridBagSizer(0, 0)
 
-        buttonSize = (50, 50)
-        #buttonSizeLong = (50, 75)
+        buttonSize = (52, 52)
+        #buttonSizeLong = (52, 75)
         #buttonSizeWideLong = (60, 75)
 
         # X axis buttons
@@ -779,14 +807,27 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.Bind(wx.EVT_BUTTON, self.OnHomeZ, self.homeZButton)
         gbzJoggingGridSizer.Add(self.homeZButton, pos=(1, 3))
 
+
         # self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(),
         #   size=buttonSize, style=wx.BORDER_NONE)
         #self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
         #self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
         #gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
 
+        '''
+        # add interactive jog check box controls
+        self.interactiveJogCheckBox = wx.CheckBox(self, label='Interactive/Step size')
+        self.interactiveJogCheckBox.SetValue(self.configJogInteractive)
+        self.interactiveJogCheckBox.SetToolTip(
+            wx.ToolTip("Enables interactive jog positioning, otherwise step size"))
+        self.Bind(wx.EVT_CHECKBOX, self.OnJogInteractive, self.interactiveJogCheckBox)
+
+        gbStepSizeGridSizer.Add(self.interactiveJogCheckBox, pos=(
+            0, 0), span=(1, 5), flag=wx.TOP, border=5)
+        '''
+
         # add step size controls
-        stepButtonSize = (45, -1)
+        stepButtonSize = (46, -1)
 
         spinText = wx.StaticText(self, -1, "Step size")
         gbStepSizeGridSizer.Add(spinText, pos=(
@@ -794,82 +835,84 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         self.stepSpinCtrl = fs.FloatSpin(self, -1,
                                          min_val=0, max_val=99999, increment=0.10, value=1.0,
-                                         size=(stepButtonSize[0]*2, -1), agwStyle=fs.FS_LEFT)
+                                         size=(stepButtonSize[0]*3, -1), agwStyle=fs.FS_LEFT)
+
         self.stepSpinCtrl.SetFormat("%f")
-        self.stepSpinCtrl.SetDigits(4)
+        self.stepSpinCtrl.SetDigits(3)
         self.stepSpinCtrl.SetToolTip(wx.ToolTip(
             "Shift + mouse wheel = 2 * increment\n"
             "Ctrl + mouse wheel = 10 * increment\n"
             "Alt + mouse wheel = 100 * increment"))
         gbStepSizeGridSizer.Add(self.stepSpinCtrl, pos=(
-            1, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
+            1, 0), span=(1, 3), flag=wx.ALIGN_CENTER_VERTICAL)
 
         self.stepSize0p05 = wx.Button(self, label="0.05", size=stepButtonSize)
         self.stepSize0p05.SetToolTip(wx.ToolTip("Set step size to 0.05"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0p05)
-        gbStepSizeGridSizer.Add(self.stepSize0p05, pos=(1, 2))
+        gbStepSizeGridSizer.Add(self.stepSize0p05, pos=(1, 3))
 
         self.stepSize0p1 = wx.Button(self, label="0.1", size=stepButtonSize)
         self.stepSize0p1.SetToolTip(wx.ToolTip("Set step size to 0.1"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0p1)
-        gbStepSizeGridSizer.Add(self.stepSize0p1, pos=(1, 3))
+        gbStepSizeGridSizer.Add(self.stepSize0p1, pos=(2, 0))
 
         self.stepSize0p5 = wx.Button(self, label="0.5", size=stepButtonSize)
         self.stepSize0p5.SetToolTip(wx.ToolTip("Set step size to 0.5"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize0p5)
-        gbStepSizeGridSizer.Add(self.stepSize0p5, pos=(2, 0))
+        gbStepSizeGridSizer.Add(self.stepSize0p5, pos=(2, 1))
 
         self.stepSize1 = wx.Button(self, label="1", size=stepButtonSize)
         self.stepSize1.SetToolTip(wx.ToolTip("Set step size to 1"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize1)
-        gbStepSizeGridSizer.Add(self.stepSize1, pos=(2, 1))
+        gbStepSizeGridSizer.Add(self.stepSize1, pos=(2, 2))
 
         self.stepSize5 = wx.Button(self, label="5", size=stepButtonSize)
         self.stepSize5.SetToolTip(wx.ToolTip("Set step size to 5"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize5)
-        gbStepSizeGridSizer.Add(self.stepSize5, pos=(2, 2))
+        gbStepSizeGridSizer.Add(self.stepSize5, pos=(2, 3))
 
         self.stepSize10 = wx.Button(self, label="10", size=stepButtonSize)
         self.stepSize10.SetToolTip(wx.ToolTip("Set step size to 10"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize10)
-        gbStepSizeGridSizer.Add(self.stepSize10, pos=(2, 3))
+        gbStepSizeGridSizer.Add(self.stepSize10, pos=(3, 0))
 
         self.stepSize20 = wx.Button(self, label="20", size=stepButtonSize)
         self.stepSize20.SetToolTip(wx.ToolTip("Set step size to 20"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize20)
-        gbStepSizeGridSizer.Add(self.stepSize20, pos=(3, 0))
+        gbStepSizeGridSizer.Add(self.stepSize20, pos=(3, 1))
 
         self.stepSize50 = wx.Button(self, label="50", size=stepButtonSize)
         self.stepSize50.SetToolTip(wx.ToolTip("Set step size to 50"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize50)
-        gbStepSizeGridSizer.Add(self.stepSize50, pos=(3, 1))
+        gbStepSizeGridSizer.Add(self.stepSize50, pos=(3, 2))
 
         self.stepSize100 = wx.Button(self, label="100", size=stepButtonSize)
         self.stepSize100.SetToolTip(wx.ToolTip("Set step size to 100"))
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize100)
-        gbStepSizeGridSizer.Add(self.stepSize100, pos=(3, 2))
+        gbStepSizeGridSizer.Add(self.stepSize100, pos=(3, 3))
 
-        self.stepSize200 = wx.Button(self, label="200", size=stepButtonSize)
-        self.stepSize200.SetToolTip(wx.ToolTip("Set step size to 200"))
-        self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize200)
-        gbStepSizeGridSizer.Add(self.stepSize200, pos=(3, 3))
+        #self.stepSize200 = wx.Button(self, label="200", size=stepButtonSize)
+        #self.stepSize200.SetToolTip(wx.ToolTip("Set step size to 200"))
+        #self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize200)
+        #gbStepSizeGridSizer.Add(self.stepSize200, pos=(3, 3))
 
         gbzJoggingGridSizer.Add(gbStepSizeGridSizer, pos=(3, 0), span=(4, 4))
 
 
         # add rapid jog check box controls
-        self.rapidJogCheckBox = wx.CheckBox(self, label='Rapid/Feed')
-        self.rapidJogCheckBox.SetValue(self.configRapidJog)
+        self.rapidJogCheckBox = wx.CheckBox(self, label='Rapid')
+        self.rapidJogCheckBox.SetValue(self.configJogRapid)
         self.rapidJogCheckBox.SetToolTip(
-            wx.ToolTip("Enables rapid jog positioning"))
-        self.Bind(wx.EVT_CHECKBOX, self.OnRapidJog, self.rapidJogCheckBox)
+            wx.ToolTip("Enables rapid jog positioning, otherwise feedrate"))
+        self.Bind(wx.EVT_CHECKBOX, self.OnJogRapid, self.rapidJogCheckBox)
 
         gbJogSpindleGridSizer.Add(self.rapidJogCheckBox, pos=(
             0, 0), span=(1, 2), flag=wx.TOP, border=5)
 
         self.feedRateSpinCtrl = fs.FloatSpin(self, -1,
             min_val=0, max_val=999999, increment=100, value=self.configJogFeedRate,
-            size=(stepButtonSize[0]*2, -1), agwStyle=fs.FS_LEFT)
+            size=(stepButtonSize[0]*3, -1), agwStyle=fs.FS_LEFT)
+
         self.feedRateSpinCtrl.SetFormat("%f")
         self.feedRateSpinCtrl.SetDigits(0)
         self.feedRateSpinCtrl.SetToolTip(wx.ToolTip(
@@ -877,7 +920,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             "Ctrl + mouse wheel = 10 * increment\n"
             "Alt + mouse wheel = 100 * increment"))
         gbJogSpindleGridSizer.Add(self.feedRateSpinCtrl, pos=(
-            1, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
+            1, 0), span=(1, 3), flag=wx.ALIGN_CENTER_VERTICAL)
 
         # add spindle speed controls
         spinText = wx.StaticText(self, -1, "Spindle (rpm)")
@@ -886,7 +929,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         self.spindleSpeedSpinCtrl = fs.FloatSpin(self, -1,
             min_val=0, max_val=99999, increment=100, value=self.configSpindleSpeed,
-            size=(stepButtonSize[0]*2, -1), agwStyle=fs.FS_LEFT)
+            size=(stepButtonSize[0]*3, -1), agwStyle=fs.FS_LEFT)
         self.spindleSpeedSpinCtrl.SetFormat("%f")
         self.spindleSpeedSpinCtrl.SetDigits(0)
         self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip(
@@ -894,10 +937,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             "Ctrl + mouse wheel = 10 * increment\n"
             "Alt + mouse wheel = 100 * increment"))
         gbJogSpindleGridSizer.Add(self.spindleSpeedSpinCtrl, pos=(
-            3, 0), span=(1, 2), flag=wx.ALIGN_CENTER_VERTICAL)
+            3, 0), span=(1, 3), flag=wx.ALIGN_CENTER_VERTICAL)
 
         gbzJoggingGridSizer.Add(gbJogSpindleGridSizer,
-                                pos=(3, 4), span=(2, 2))
+                                pos=(3, 4), span=(2, 3))
 
         # add Zero and go to Zero buttons
         self.SetToZeroButton = wx.BitmapButton(self, -1, ico.imgSetToZero.GetBitmap(),
@@ -1172,21 +1215,27 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         """ Jog given axis, by selected step
         """
         dictAxisCoor = {}
-        fAxisPos = float(staticControl.GetValue())
+
+        fAxisPos = self.stepSpinCtrl.GetValue()
+
+        if self.configJogInteractive and self.jogInteractiveState:
+            # make this a very large number, we will jog will be
+            # cancel when user lets go of key
+            fAxisPos = 10000
 
         if opAdd:
-            fAxisPos = self.stepSpinCtrl.GetValue()
+            pass
         else:
-            fAxisPos = -1 * self.stepSpinCtrl.GetValue()
+            fAxisPos = -1 * fAxisPos
 
         fAxisStrPos = gc.NUMBER_FORMAT_STRING % (fAxisPos)
 
         dictAxisCoor[str(axis).lower()] = fAxisStrPos
 
-        if self.configRapidJog:
-            gc_cmd = gc.EV_CMD_RAPID_MOVE_RELATIVE
+        if self.configJogRapid:
+            gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE
         else:
-            gc_cmd = gc.EV_CMD_MOVE_RELATIVE
+            gc_cmd = gc.EV_CMD_JOG_MOVE_RELATIVE
             dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
 
         self.mainWindow.eventForward2Machif(gc_cmd, dictAxisCoor)
@@ -1330,10 +1379,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         """
         dictAxisCoor = {'x': 0, 'y': 0}
 
-        if self.configRapidJog:
-            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        if self.configJogRapid:
+            gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
         else:
-            gc_cmd = gc.EV_CMD_MOVE
+            gc_cmd = gc.EV_CMD_JOG_MOVE
             dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
 
         self.mainWindow.eventForward2Machif(gc_cmd, dictAxisCoor)
@@ -1341,12 +1390,18 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     def OnSetStepSize(self, e):
         buttonById = self.FindWindowById(e.GetId())
         self.stepSpinCtrl.SetValue(float(buttonById.GetLabel()))
+        # self.stepSpinCtrl.SetValue(buttonById.GetLabel())
 
     def OnUseMachineWorkPosition(self, e):
         self.configAutoMPOS = e.IsChecked()
 
-    def OnRapidJog(self, e):
-        self.configRapidJog = e.IsChecked()
+    '''
+    def OnJogInteractive(self, e):
+        self.configJogInteractive = e.IsChecked()
+    '''
+
+    def OnJogRapid(self, e):
+        self.configJogRapid = e.IsChecked()
 
     def OnNumKeypadPendant(self, e):
         self.configNumKeypadPendant = e.IsChecked()
@@ -1368,15 +1423,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         if self.zCheckBox.GetValue() or self.allCheckBox.GetValue():
             dictAxisCoor['z'] = zval
 
-        if gc.EV_CMD_MOVE == machif_cmd or \
-            gc.EV_CMD_MOVE_RELATIVE == machif_cmd:
+        if gc.EV_CMD_JOG_MOVE == machif_cmd or \
+            gc.EV_CMD_JOG_MOVE_RELATIVE == machif_cmd:
             dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
 
         if self.configZJogSafeMove and 'z' in dictAxisCoor and \
-            (gc.EV_CMD_MOVE == machif_cmd or \
-            gc.EV_CMD_RAPID_MOVE == machif_cmd or \
-            gc.EV_CMD_MOVE_RELATIVE == machif_cmd or \
-            gc.EV_CMD_RAPID_MOVE_RELATIVE == machif_cmd):
+            (gc.EV_CMD_JOG_MOVE == machif_cmd or \
+            gc.EV_CMD_JOG_RAPID_MOVE == machif_cmd or \
+            gc.EV_CMD_JOG_MOVE_RELATIVE == machif_cmd or \
+            gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE == machif_cmd):
             # figure out where we going and if we need to move
             # z axis first or last... basic assumptions...
             # if relative move a -z move means move Z last
@@ -1386,15 +1441,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             #    if Z > machine Z, move Z first
             move_z_last = False
 
-            if gc.EV_CMD_MOVE_RELATIVE == machif_cmd or \
-            gc.EV_CMD_RAPID_MOVE_RELATIVE == machif_cmd:
+            if gc.EV_CMD_JOG_MOVE_RELATIVE == machif_cmd or \
+            gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE == machif_cmd:
                 if float(dictAxisCoor['z']) < 1:
                     move_z_last = True
                 elif float(dictAxisCoor['z']) > 1:
                     move_z_last = False
 
-            elif gc.EV_CMD_MOVE == machif_cmd or \
-            gc.EV_CMD_RAPID_MOVE == machif_cmd:
+            elif gc.EV_CMD_JOG_MOVE == machif_cmd or \
+            gc.EV_CMD_JOG_RAPID_MOVE == machif_cmd:
                 if float(dictAxisCoor['z']) < self.machPosZ:
                     move_z_last = True
                 elif float(dictAxisCoor['z']) > self.machPosZ:
@@ -1403,7 +1458,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             dictZ = {'z': dictAxisCoor['z']}
             if 'feed' in dictAxisCoor:
                 dictZ['feed'] = dictAxisCoor['feed']
-
 
             dictXY = {}
             if 'x' in dictAxisCoor:
@@ -1416,7 +1470,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                 dictXY['y'] = dictAxisCoor['y']
                 if 'feed' in dictAxisCoor:
                     dictXY['feed'] = dictAxisCoor['feed']
-
 
             if move_z_last:
                 if dictXY.keys():
@@ -1449,10 +1502,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     def OnGoToZero(self, e):
         """ Jogs machine selected axis to zero position
         """
-        if self.configRapidJog:
-            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        if self.configJogRapid:
+            gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
         else:
-            gc_cmd = gc.EV_CMD_MOVE
+            gc_cmd = gc.EV_CMD_JOG_MOVE
 
         self.OnJogCmd(gc.ZERO_STRING, gc.ZERO_STRING, gc.ZERO_STRING, gc_cmd)
 
@@ -1470,10 +1523,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     def OnGoToJogVal(self, e):
         """ Jogs machine selected axis to user input job values
         """
-        if self.configRapidJog:
-            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        if self.configJogRapid:
+            gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
         else:
-            gc_cmd = gc.EV_CMD_MOVE
+            gc_cmd = gc.EV_CMD_JOG_MOVE
 
         self.OnJogCmd(
             self.jX.GetValue(), self.jY.GetValue(), self.jZ.GetValue(),
@@ -1499,15 +1552,14 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                 self.restorePositionButton.Enable()
 
     def OnRestoreJogPosition(self, e):
-        if self.configRapidJog:
-            gc_cmd = gc.EV_CMD_RAPID_MOVE
+        if self.configJogRapid:
+            gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
         else:
-            gc_cmd = gc.EV_CMD_MOVE
+            gc_cmd = gc.EV_CMD_JOG_MOVE
 
         self.OnJogCmd(self.SavedJogPos[0], self.SavedJogPos[1],
             self.SavedJogPos[2], gc_cmd
         )
-
 
     def OnPushStack(self, e):
         xVal = self.jX.GetValue()
@@ -1601,6 +1653,24 @@ class gsatJoggingPanel(wx.ScrolledWindow):
                 cliCmdHistory = "|".join(cliCmdHistory)
                 self.configData.set('/cli/CmdHistory', cliCmdHistory)
 
+    def OnKeyUp(self, e):
+        print "key up event"
+        e.skip()
+
+    def OnKeyDown(self, e):
+        print "key down event"
+        e.skip()
+
+    def OnKeyTimer(self, e):
+        # print "Got Timer"
+        # print "expire", int(round(time.time() * 1000))
+        self.keyCache = None
+
+        if self.jogInteractiveState:
+            gc_cmd = gc.EV_CMD_JOG_STOP
+            self.mainWindow.eventForward2Machif(gc_cmd)
+            self.jogInteractiveState = False
+
     def OnKeyPress(self, e):
         '''
         http://docs.wxwidgets.org/3.1/defs_8h.html#a41c4609211685cff198618963ec8f77d
@@ -1608,7 +1678,6 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         #print wx.WXK_SCROLL
         #print wx.WXK_NUMPAD_BEGIN (5 on keypad when num lock is off)
         '''
-
         if not self.configNumKeypadPendant:
             e.Skip()
             return
@@ -1625,8 +1694,22 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
             key = e.GetKeyCode()
 
-            #print dir(e)
-            #print e.GetModifiers()
+            # print dir(e)
+            # print e.GetModifiers()
+
+            if self.configJogInteractive:
+                if self.keyCache is None:
+                    self.keyTimer.Start(milliseconds = 100, oneShot = True)
+                    self.keyCache = key
+                elif self.keyCache == key and not self.jogInteractiveState:
+                    self.keyTimer.Start(milliseconds = 100, oneShot = True)
+                    self.jogInteractiveState = True
+                elif self.keyCache == key and self.jogInteractiveState:
+                    self.keyTimer.Start(milliseconds = 100, oneShot = True)
+                    return
+                else:
+                    print "Oops!! key change too fast, not sure what to do"
+                    self.keyTimer.Start(milliseconds = 1, oneShot = True)
 
             if (key == wx.WXK_NUMPAD_UP):
                 evt = wx.PyCommandEvent(

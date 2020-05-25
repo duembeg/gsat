@@ -219,6 +219,36 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.machIfModule.doFastMoveRelative(e.data)
 
+            elif e.event_id == gc.EV_CMD_JOG_MOVE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_JOG_MOVE %s" % e.data)
+
+                self.machIfModule.doJogMove(e.data)
+
+            elif e.event_id == gc.EV_CMD_JOG_MOVE_RELATIVE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE %s" % e.data)
+
+                self.machIfModule.doJogMoveRelative(e.data)
+
+            elif e.event_id == gc.EV_CMD_JOG_RAPID_MOVE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_JOG_RAPID_MOVE %s" % e.data)
+
+                self.machIfModule.doJogFastMove(e.data)
+
+            elif e.event_id == gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_JOG_RAPID_MOVE_RELATIVE %s" % e.data)
+
+                self.machIfModule.doJogFastMoveRelative(e.data)
+
+            elif e.event_id == gc.EV_CMD_JOG_STOP:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_JOG_STOP %s" % e.data)
+
+                self.machIfModule.doJogStop()
+
             elif e.event_id == gc.EV_CMD_SET_AXIS:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_SET_AXIS")

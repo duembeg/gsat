@@ -91,24 +91,43 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
         text.SetFont(font)
         vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
+        self.fontSelect = wx.FontPickerCtrl(self, size=(300,-1))
+        vBoxSizer.Add(self.fontSelect, 0, wx.LEFT | wx.ALIGN_LEFT,
+                      border=20)
+        font = wx.Font(self.configData.get('/%s/FontSize' % self.key),
+                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
+                       unicode(self.configData.get('/%s/FontFace' % self.key)))
+
+        font_style_str = self.configData.get('/%s/FontStyle' % self.key)
+
+        if "bold" in font_style_str:
+            font.MakeBold()
+
+        if "italic" in font_style_str:
+            font.MakeItalic()
+
+        self.fontSelect.SetSelectedFont(font)
+
+        vBoxSizer.Add((10, 10), 0, wx.ALL, border = 1)
+
         gBoxSizer = wx.GridSizer(1, 3)
 
         self.checkReadOnly = wx.CheckBox(self, label="ReadOnly")
         self.checkReadOnly.SetValue(
             self.configData.get('/%s/ReadOnly' % self.key))
-        gBoxSizer.Add(self.checkReadOnly, 0, wx.ALIGN_CENTER)
+        gBoxSizer.Add(self.checkReadOnly, 0, wx.ALIGN_LEFT)
 
         self.checkLineNumbers = wx.CheckBox(self, label="Line Numbers")
         self.checkLineNumbers.SetValue(
             self.configData.get('/%s/LineNumber' % self.key))
-        gBoxSizer.Add(self.checkLineNumbers, 0, wx.ALIGN_CENTER)
+        gBoxSizer.Add(self.checkLineNumbers, 0, wx.ALIGN_LEFT)
 
         self.checkCaretLine = wx.CheckBox(self, label="Highlight Caret Line")
         self.checkCaretLine.SetValue(
             self.configData.get('/%s/CaretLine' % self.key))
-        gBoxSizer.Add(self.checkCaretLine, 0, wx.ALIGN_CENTER)
+        gBoxSizer.Add(self.checkCaretLine, 0, wx.ALIGN_LEFT)
 
-        vBoxSizer.Add(gBoxSizer, 0, wx.ALL | wx.EXPAND, border=5)
+        vBoxSizer.Add(gBoxSizer, 0, wx.LEFT, border=20)
 
         # Colors
         text = wx.StaticText(self, label="Colors")
@@ -296,7 +315,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
         # finish up
         self.SetSizerAndFit(vBoxSizer)
 
-    def UpdatConfigData(self):
+    def UpdateConfigData(self):
         asValue = self.asComboBox.GetSelection()
         if asValue > 0:
             self.configData.set('/%s/AutoScroll' % self.key,
@@ -323,6 +342,25 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
                             self.lineNumbersForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
         self.configData.set('/%s/LineNumberBackground' % self.key,
                             self.lineNumbersBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+
+        font = self.fontSelect.GetSelectedFont()
+        font_style_list = []
+        font_style_str = ""
+
+        if font.GetWeight() == wx.BOLD:
+            font_style_list.append("bold")
+
+        if font.GetStyle() == wx.ITALIC:
+            font_style_list.append("italic")
+
+        if len(font_style_list) == 0:
+            font_style_str = "normal"
+        else:
+            font_style_str = ",".join(font_style_list)
+
+        self.configData.set('/%s/FontFace' % self.key, font.GetFaceName())
+        self.configData.set('/%s/FontSize' % self.key, font.GetPointSize())
+        self.configData.set('/%s/FontStyle' % self.key, font_style_str)
 
         if self.key == 'code':
             self.configData.set('/%s/GCodeHighlight' % self.key,
@@ -392,6 +430,10 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         self.configCaretLineBackground = self.configData.get(
             '/output/CaretLineBackground')
 
+        self.configFontFace = self.configData.get('/output/FontFace')
+        self.configFontSize = self.configData.get('/output/FontSize')
+        self.configFontStyle = self.configData.get('/output/FontStyle')
+
         self.SetReadOnly(self.configReadOnly)
 
         if (self.configAutoScroll == 1) or (self.configAutoScroll == 2):
@@ -405,17 +447,32 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
 
     def InitUI(self):
         # global default style
+        if self.configFontFace == "System" or self.configFontSize == -1:
+            sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FIXED_FONT)
+            sysFont.SetNativeFontInfoUserDesc("Monospace bold 11")
+            self.configFontFace = sysFont.FaceName
+            self.configData.set('/output/FontFace', self.configFontFace)
+            self.configFontSize = sysFont.PointSize
+            self.configData.set('/output/FontSize', self.configFontSize)
+
+        '''
+        # global default style
         if wx.Platform == '__WXMSW__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Courier New"
-                              % (self.configWindowForeground, self.configWindowBackground))
+            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier New,size:%d"
+                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
         elif wx.Platform == '__WXMAC__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Monaco"
-                              % (self.configWindowForeground, self.configWindowBackground))
+            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Monaco,size:%d"
+                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
         else:
             defsize = wx.SystemSettings.GetFont(
                 wx.SYS_ANSI_FIXED_FONT).GetPointSize()
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,face:Courier,size:%d"
-                              % (self.configWindowForeground, self.configWindowBackground, defsize))
+        '''
+        self.StyleResetDefault()
+
+        self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,%s,face:%s,size:%d"
+                          % (self.configWindowForeground, self.configWindowBackground,
+                             self.configFontStyle, self.configFontFace,
+                             self.configFontSize))
 
         self.StyleClearAll()
 
@@ -563,26 +620,42 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         self.configCommentsHighlight = self.configData.get(
             '/code/CommentsHighlight')
 
+        self.configFontFace = self.configData.get('/code/FontFace')
+        self.configFontSize = self.configData.get('/code/FontSize')
+        self.configFontStyle = self.configData.get('/code/FontStyle')
+
         self.SetReadOnly(self.configReadOnly)
 
         if (self.configAutoScroll == 1) or (self.configAutoScroll == 2) or (self.configAutoScroll == 3):
             self.autoScroll = True
 
     def InitUI(self):
+        if self.configFontFace == "System" or self.configFontSize == -1:
+            sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FIXED_FONT)
+            sysFont.SetNativeFontInfoUserDesc("Monospace bold 11")
+            self.configFontFace = sysFont.FaceName
+            self.configData.set('/code/FontFace', self.configFontFace)
+            self.configFontSize = sysFont.PointSize
+            self.configData.set('/code/FontSize', self.configFontSize)
 
+        '''
         # global default style
         if wx.Platform == '__WXMSW__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier New"
-                              % (self.configWindowForeground, self.configWindowBackground))
+            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier New,size:%d"
+                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
         elif wx.Platform == '__WXMAC__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Monaco"
-                              % (self.configWindowForeground, self.configWindowBackground))
+            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Monaco,size:%d"
+                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
         else:
             defsize = wx.SystemSettings.GetFont(
                 wx.SYS_ANSI_FIXED_FONT).GetPointSize()
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier,size:%d"
-                              % (self.configWindowForeground, self.configWindowBackground, defsize))
+        '''
+        self.StyleResetDefault()
 
+        self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,%s,face:%s,size:%d"
+                          % (self.configWindowForeground, self.configWindowBackground,
+                             self.configFontStyle, self.configFontFace,
+                             self.configFontSize))
         self.StyleClearAll()
 
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s,bold"

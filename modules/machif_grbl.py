@@ -502,6 +502,35 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.write(self.cmdInitComm)
         self._init()
 
+    def doJogFastMove(self, dict_axis_coor):
+        """ Jog Fast (rapid) move to a coordinate in obsolete position mode
+        """
+        if 'f' not in dict_axis_coor:
+            dict_axis_coor['feed'] = 10000
+
+        self._move("$J=G90", dict_axis_coor, resert_pos_mode=False)
+
+    def doJogFastMoveRelative(self, dict_axis_coor):
+        """ Jog Fast (rapid) move to a coordinate in relative position mode
+        """
+        if 'f' not in dict_axis_coor:
+            dict_axis_coor['feed'] = 10000
+
+        self._move("$J=G91", dict_axis_coor, resert_pos_mode=False)
+
+    def doJogMove(self, dict_axis_coor):
+        """ Jog Move to a coordinate in obsolete position mode
+        """
+        self._move("$J=G90", dict_axis_coor, resert_pos_mode=False)
+
+    def doJogMoveRelative(self, dict_axis_coor):
+        """ Jog Move to a coordinate in relative position mode
+        """
+        self._move("$J=G91", dict_axis_coor, resert_pos_mode=False)
+
+    def doJogStop(self):
+        self.doFeedHold()
+
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller
         """

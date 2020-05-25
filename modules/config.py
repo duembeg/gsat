@@ -138,13 +138,17 @@ EV_CMD_QUEUE_FLUSH = 1110
 EV_CMD_RESET = 1120
 EV_CMD_MOVE = 1130
 EV_CMD_MOVE_RELATIVE = 1140
-EV_CMD_RELATIVE_MOVE = 1150
 EV_CMD_RAPID_MOVE = 1160
 EV_CMD_RAPID_MOVE_RELATIVE = 1170
 EV_CMD_CLEAR_ALARM = 1180
 EV_CMD_PROBE = 1190
 EV_CMD_SET_AXIS = 1200
 EV_CMD_HOME = 1210
+EV_CMD_JOG_MOVE = 1220
+EV_CMD_JOG_MOVE_RELATIVE = 1230
+EV_CMD_JOG_RAPID_MOVE = 1240
+EV_CMD_JOG_RAPID_MOVE_RELATIVE = 1250
+EV_CMD_JOG_STOP = 1260
 
 
 EV_NULL = 100
@@ -399,7 +403,17 @@ class ConfigData(object):
                 with open(self.configFileName, 'r') as f:
                     datastore = json.load(f)
 
-                self.datastore.update(datastore)
+                # need to do deep merge, update not sufficient
+                def deep_update(destination_dict, source_dict):
+                    for key in source_dict.keys():
+                        if isinstance(source_dict[key], dict):
+                            # get node or create one
+                            node = destination_dict.setdefault(key, {})
+                            deep_update(node, source_dict[key])
+                        else:
+                            destination_dict[key] = source_dict[key]
+
+                deep_update(self.datastore, datastore)
 
     def save(self):
         """ Save data to config file
@@ -431,6 +445,9 @@ class gsatConfigData(ConfigData):
             "CaretLineBackground": "#EFEFEF",
             "CaretLineForeground": "#000000",
             "CommentsHighlight": "#007F00",
+            "FontFace": "System",
+            "FontSize": -1,
+            "FontStyle": "normal",
             "GCodeHighlight": "#0000ff",
             "GCodeLineNumberHighlight": "#BFBFBF",
             "LineNumber": True,
@@ -462,11 +479,12 @@ class gsatConfigData(ConfigData):
             "Custom4Label": "Custom 4",
             "Custom4Script": "",
             "JogFeedRate": 1000,
+            "JogInteractive": False,
+            "JogRapid": True,
             "NumKeypadPendant": False,
             "ProbeDistance": 19.6,
             "ProbeFeedRate": 100.0,
             "ProbeMaxDistance": -40.0,
-            "RapidJog": True,
             "ReqUpdateOnJogSetOp": True,
             "SpindleSpeed": 12000,
             "XYZReadOnly": False,
@@ -496,6 +514,9 @@ class gsatConfigData(ConfigData):
             "CaretLine": False,
             "CaretLineBackground": "#C299A9",
             "CaretLineForeground": "#000000",
+            "FontFace": "System",
+            "FontSize": -1,
+            "FontStyle": "normal",
             "LineNumber": False,
             "LineNumberBackground": "#FFFFFF",
             "LineNumberForeground": "#000000",

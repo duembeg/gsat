@@ -150,7 +150,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(flexGridSizer, 0, flag=wx.ALL | wx.EXPAND, border=20)
         self.SetSizer(vBoxSizer)
 
-    def UpdatConfigData(self):
+    def UpdateConfigData(self):
         self.configData.set('/cv2/Enable', self.cbEnable.GetValue())
         self.configData.set('/cv2/Crosshair', self.cbCrosshair.GetValue())
         self.configData.set('/cv2/CaptureDevice', self.scDevice.GetValue())
