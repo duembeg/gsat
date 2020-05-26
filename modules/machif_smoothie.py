@@ -57,6 +57,7 @@ BUFFER_MAX_SIZE = 127
 BUFFER_INIT_VAL = 0
 BUFFER_WATERMARK_PRCNT = 0.90
 
+
 class MachIf_Smoothie(mi.MachIf_Base):
     """-------------------------------------------------------------------------
     MachIf_Smoothie:

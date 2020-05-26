@@ -79,8 +79,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
                                       choices=asList, style=wx.CB_READONLY)
         hBoxSizer.Add(
             self.asComboBox, 0,
-            flag=wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, border=5
-        )
+            flag=wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
         vBoxSizer.Add(hBoxSizer, 0, wx.LEFT | wx.EXPAND |
                       wx.ALIGN_LEFT, border=20)
@@ -91,7 +90,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
         text.SetFont(font)
         vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
-        self.fontSelect = wx.FontPickerCtrl(self, size=(300,-1))
+        self.fontSelect = wx.FontPickerCtrl(self, size=(300, -1))
         vBoxSizer.Add(self.fontSelect, 0, wx.LEFT | wx.ALIGN_LEFT,
                       border=20)
         font = wx.Font(self.configData.get('/%s/FontSize' % self.key),
@@ -108,7 +107,7 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
         self.fontSelect.SetSelectedFont(font)
 
-        vBoxSizer.Add((10, 10), 0, wx.ALL, border = 1)
+        vBoxSizer.Add((10, 10), 0, wx.ALL, border=1)
 
         gBoxSizer = wx.GridSizer(1, 3)
 
@@ -146,44 +145,39 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
         text = wx.StaticText(self, label="Window")
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        self.windowForeground = csel.ColourSelect (
+        self.windowForeground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/WindowForeground' % self.key))
-        )
+            hex_to_rgb(self.configData.get('/%s/WindowForeground' % self.key)))
+
         foregroundColorSizer.Add(
             self.windowForeground, 0,
-            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-        )
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Line Numbers")
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.lineNumbersForeground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/LineNumberForeground' \
-            % self.key))
-        )
+            hex_to_rgb(self.configData.get(
+                '/%s/LineNumberForeground' % self.key)))
+
         foregroundColorSizer.Add(
             self.lineNumbersForeground, 0,
-            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-        )
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Highlight Line")
 
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.caretLineForeground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/CaretLineForeground'\
-            % self.key))
-        )
+            hex_to_rgb(self.configData.get(
+                '/%s/CaretLineForeground' % self.key)))
 
         foregroundColorSizer.Add(
             self.caretLineForeground, 0,
-            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-        )
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         vColorSizer.Add(
-            foregroundColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20
-        )
+            foregroundColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         # Background
         text = wx.StaticText(self, label="")
@@ -195,39 +189,34 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.windowBackground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/WindowBackground' % self.key))
-        )
+            hex_to_rgb(self.configData.get('/%s/WindowBackground' % self.key)))
         backgroundColorSizer.Add(
             self.windowBackground, 0,
-            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-        )
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Line Numbers")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.lineNumbersBackground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/LineNumberBackground'\
-            % self.key))
-        )
+            hex_to_rgb(self.configData.get(
+                '/%s/LineNumberBackground' % self.key)))
+
         backgroundColorSizer.Add(
             self.lineNumbersBackground, 0,
-            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-        )
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Highlight Line")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.caretLineBackground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/CaretLineBackground'\
-            % self.key))
-        )
+            hex_to_rgb(self.configData.get(
+                '/%s/CaretLineBackground' % self.key)))
         backgroundColorSizer.Add(
             self.caretLineBackground, 0,
-            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-        )
+            flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
-        vColorSizer.Add(backgroundColorSizer, 0,
-                        flag=wx.LEFT | wx.EXPAND, border=20)
+        vColorSizer.Add(
+            backgroundColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         if self.key == 'code':
             # Syntax highlighting
@@ -260,18 +249,19 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.axisHighlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/AxisHighlight' % self.key))
-            )
-            syntaxColorSizer.Add(self.axisHighlight, 0,
-                                 flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+                hex_to_rgb(self.configData.get('/%s/AxisHighlight' % self.key)))
+
+            syntaxColorSizer.Add(
+                self.axisHighlight, 0,
+                flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
             text = wx.StaticText(self, label="Parameters")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.parametersHighlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/ParametersHighlight'\
-                % self.key))
-            )
+                hex_to_rgb(self.configData.get(
+                    '/%s/ParametersHighlight' % self.key)))
+
             syntaxColorSizer.Add(self.parametersHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
@@ -279,9 +269,9 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.parameters2Highlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/Parameters2Highlight'\
-                % self.key))
-            )
+                hex_to_rgb(self.configData.get(
+                    '/%s/Parameters2Highlight' % self.key)))
+
             syntaxColorSizer.Add(self.parameters2Highlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
@@ -289,9 +279,9 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.commentsHighlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/CommentsHighlight'\
-                % self.key))
-            )
+                hex_to_rgb(self.configData.get(
+                    '/%s/CommentsHighlight' % self.key)))
+
             syntaxColorSizer.Add(self.commentsHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
@@ -299,16 +289,15 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.gCodeLineNumberHighlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/GCodeLineNumberHighlight'\
-                % self.key))
-            )
+                hex_to_rgb(self.configData.get(
+                    '/%s/GCodeLineNumberHighlight' % self.key)))
+
             syntaxColorSizer.Add(
                 self.gCodeLineNumberHighlight, 0,
-                flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT
-            )
+                flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
-            vColorSizer.Add(syntaxColorSizer, 0, flag=wx.LEFT |
-                            wx.EXPAND, border=20)
+            vColorSizer.Add(
+                syntaxColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         vBoxSizer.Add(vColorSizer, 0, wx.LEFT | wx.ALIGN_LEFT, border=10)
 
@@ -817,8 +806,8 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         self.stateData = stateData
 
         if (self.stateData.swState == gc.STATE_IDLE or
-            self.stateData.swState == gc.STATE_BREAK or
-            self.stateData.swState == gc.STATE_PAUSE):
+           self.stateData.swState == gc.STATE_BREAK or
+           self.stateData.swState == gc.STATE_PAUSE):
 
             self.SetReadOnly(self.configReadOnly)
         else:
@@ -842,7 +831,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         self.GotoLine(pc)
 
     def UpdateBreakPoint(self, pc, enable):
-        if pc == -1 and enable == False:
+        if pc == -1 and not enable:
             self.MarkerDeleteAll(self.markerBreakpoint)
         else:
             markerBits = self.MarkerGet(pc)

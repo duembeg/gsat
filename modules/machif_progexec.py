@@ -239,7 +239,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_RAPID_MOVE_RELATIVE %s" % e.data)
+                    self.logger.info(
+                        "EV_CMD_JOG_RAPID_MOVE_RELATIVE %s" % e.data)
 
                 self.machIfModule.doJogFastMoveRelative(e.data)
 
@@ -405,19 +406,19 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             and signal calling function
         """
         rc_error = False
-        wait_for_acknowlege = True
+        wait_for_acknowledge = True
 
-        while (wait_for_acknowlege):
+        while (wait_for_acknowledge):
             rxDataDict = self.waitForResponse()
 
             if self.swState == gc.STATE_ABORT:
-                wait_for_acknowlege = False
+                wait_for_acknowledge = False
 
             if self.lastEventID == gc.EV_CMD_STOP:
-                wait_for_acknowlege = False
+                wait_for_acknowledge = False
 
             if self.endThread:
-                wait_for_acknowlege = False
+                wait_for_acknowledge = False
 
             if 'r' in rxDataDict:
                 if 'f' in rxDataDict:
@@ -442,7 +443,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                         self.swState = gc.STATE_IDLE
                         rc_error = True
 
-                wait_for_acknowlege = False
+                wait_for_acknowledge = False
                 break
 
             if 'err' in rxDataDict:
@@ -451,7 +452,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.swState = gc.STATE_IDLE
                 rc_error = True
-                wait_for_acknowlege = False
+                wait_for_acknowledge = False
                 break
 
         return rc_error
@@ -582,7 +583,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         # send g-code command
         error = self.sendRunStepGcode(gcode)
 
-        # check for erros
+        # check for errors
         if error:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
                 self.logger.info("error event, moving to gc.STATE_BREAK")

@@ -360,10 +360,10 @@ class ConfigData(object):
 
         node[key_list[-1:][0]] = val
 
-    def get(self, key_path, defualt_rv=None):
+    def get(self, key_path, default_rv=None):
         """ Get value for a given key
         """
-        return_val = defualt_rv
+        return_val = default_rv
 
         if type(key_path) is list:
             key_list = key_path
@@ -423,7 +423,7 @@ class ConfigData(object):
                 json.dump(self.datastore, f, indent=3, sort_keys=True)
 
     def dump(self):
-        """ dups config to stdout
+        """ dumps config to stdout
         """
         data = json.dumps(self.datastore, indent=3, sort_keys=True)
         print data
@@ -470,7 +470,7 @@ class gsatConfigData(ConfigData):
         },
         "jogging": {
             "AutoMPOS": False,
-            "CustomButtons" : {
+            "CustomButtons": {
                 "Custom1": {
                     "Label": "Custom 1",
                     "Script": "",

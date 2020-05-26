@@ -312,7 +312,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
             # except:
             #     e = sys.exc_info()[0]
-            #     exMsg = "** Unexpected excetion: %s\n" % str(e)
+            #     exMsg = "** Unexpected exception: %s\n" % str(e)
             #     exFlag = True
 
             if exFlag:

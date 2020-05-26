@@ -483,7 +483,7 @@ class gsatComputerVisionThread(threading.Thread):
             # color...
             frame = self.cv2.cvtColor(frame, self.cv2.COLOR_BGR2RGB)
 
-            # # important cannot call any wx. UI fucntions from this thread
+            # # important cannot call any wx. UI functions from this thread
             # # bad things will happen
             # sizePanel = self.capturePanel.GetClientSize()
             # image = self.cv.CreateImage(sizePanel, frame.depth,
@@ -536,7 +536,7 @@ class gsatComputerVisionThread(threading.Thread):
             # capture frame
             frame = self.CaptureFrame()
 
-            # sned frame to window, and wait...
+            # send frame to window, and wait...
             # wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
             self.t2cvwQueue.put(gc.SimpleEvent(EV_CMD_CV_IMAGE, frame))
             self.t2cvwQueue.join()
