@@ -470,14 +470,24 @@ class gsatConfigData(ConfigData):
         },
         "jogging": {
             "AutoMPOS": False,
-            "Custom1Label": "Custom 1",
-            "Custom1Script": "",
-            "Custom2Label": "Custom 2",
-            "Custom2Script": "",
-            "Custom3Label": "Custom 3",
-            "Custom3Script": "",
-            "Custom4Label": "Custom 4",
-            "Custom4Script": "",
+            "CustomButtons" : {
+                "Custom1": {
+                    "Label": "Custom 1",
+                    "Script": "",
+                },
+                "Custom2": {
+                    "Label": "Custom 2",
+                    "Script": "",
+                },
+                "Custom3": {
+                    "Label": "Custom 3",
+                    "Script": "",
+                },
+                "Custom4": {
+                    "Label": "Custom 4",
+                    "Script": "",
+                }
+            },
             "JogFeedRate": 1000,
             "JogInteractive": False,
             "JogRapid": True,

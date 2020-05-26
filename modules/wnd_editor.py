@@ -449,11 +449,11 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         # global default style
         if self.configFontFace == "System" or self.configFontSize == -1:
             sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FIXED_FONT)
-            sysFont.SetNativeFontInfoUserDesc("Monospace bold 11")
+            sysFont.SetNativeFontInfoUserDesc("Monospace 11")
             self.configFontFace = sysFont.FaceName
-            self.configData.set('/output/FontFace', self.configFontFace)
-            self.configFontSize = sysFont.PointSize
-            self.configData.set('/output/FontSize', self.configFontSize)
+            self.configData.set('/code/FontFace', self.configFontFace)
+            self.configData.set('/code/FontSize', 11)
+            self.configData.set('/code/FontStyle', "normal")
 
         '''
         # global default style
@@ -635,8 +635,8 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
             sysFont.SetNativeFontInfoUserDesc("Monospace bold 11")
             self.configFontFace = sysFont.FaceName
             self.configData.set('/code/FontFace', self.configFontFace)
-            self.configFontSize = sysFont.PointSize
-            self.configData.set('/code/FontSize', self.configFontSize)
+            self.configData.set('/code/FontSize', 11)
+            self.configData.set('/code/FontStyle', "bold")
 
         '''
         # global default style
