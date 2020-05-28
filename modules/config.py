@@ -507,7 +507,7 @@ class gsatConfigData(ConfigData):
             "Baud": "115200",
             "Device": "grbl",
             "InitScript": "",
-            "InitScriptEnable": True,
+            "InitScriptEnable": False,
             "Port": ""
         },
         "mainApp": {

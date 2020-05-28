@@ -1545,6 +1545,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.SerialClose()
 
+        # refresh UIs after settings updates
+        self.UpdateUI()
+
         dlg.Destroy()
 
     # -------------------------------------------------------------------------

@@ -229,8 +229,8 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.gCodeHighlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/GCodeHighlight'\
-                % self.key))
+                hex_to_rgb(self.configData.get(
+                    '/%s/GCodeHighlight' % self.key))
             )
             syntaxColorSizer.Add(self.gCodeHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
@@ -239,8 +239,8 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.gModeHighlight = csel.ColourSelect(
                 self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/MCodeHighlight'\
-                % self.key))
+                hex_to_rgb(self.configData.get(
+                    '/%s/MCodeHighlight' % self.key))
             )
             syntaxColorSizer.Add(self.gModeHighlight, 0,
                                  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
@@ -248,8 +248,8 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
             text = wx.StaticText(self, label="Axis Codes")
             syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
             self.axisHighlight = csel.ColourSelect(
-                self, -1, "",
-                hex_to_rgb(self.configData.get('/%s/AxisHighlight' % self.key)))
+                self, -1, "", hex_to_rgb(
+                    self.configData.get('/%s/AxisHighlight' % self.key)))
 
             syntaxColorSizer.Add(
                 self.axisHighlight, 0,
@@ -313,24 +313,34 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/%s/ReadOnly' % self.key,
                             self.checkReadOnly.GetValue())
 
-        self.configData.set('/%s/WindowForeground' % self.key,
-                            self.windowForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-        self.configData.set('/%s/WindowBackground' % self.key,
-                            self.windowBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+        self.configData.set(
+            '/%s/WindowForeground' % self.key,
+            self.windowForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+        self.configData.set(
+            '/%s/WindowBackground' % self.key,
+            self.windowBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
         self.configData.set('/%s/CaretLine' % self.key,
                             self.checkCaretLine.GetValue())
-        self.configData.set('/%s/CaretLineForeground' % self.key,
-                            self.caretLineForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-        self.configData.set('/%s/CaretLineBackground' % self.key,
-                            self.caretLineBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+        self.configData.set(
+            '/%s/CaretLineForeground' % self.key,
+            self.caretLineForeground.GetColour().GetAsString(
+                wx.C2S_HTML_SYNTAX))
+        self.configData.set(
+            '/%s/CaretLineBackground' % self.key,
+            self.caretLineBackground.GetColour().GetAsString(
+                wx.C2S_HTML_SYNTAX))
 
-        self.configData.set('/%s/LineNumber' % self.key,
-                            self.checkLineNumbers.GetValue())
-        self.configData.set('/%s/LineNumberForeground' % self.key,
-                            self.lineNumbersForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-        self.configData.set('/%s/LineNumberBackground' % self.key,
-                            self.lineNumbersBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+        self.configData.set(
+            '/%s/LineNumber' % self.key, self.checkLineNumbers.GetValue())
+        self.configData.set(
+            '/%s/LineNumberForeground' % self.key,
+            self.lineNumbersForeground.GetColour().GetAsString(
+                wx.C2S_HTML_SYNTAX))
+        self.configData.set(
+            '/%s/LineNumberBackground' % self.key,
+            self.lineNumbersBackground.GetColour().GetAsString(
+                wx.C2S_HTML_SYNTAX))
 
         font = self.fontSelect.GetSelectedFont()
         font_style_list = []
@@ -352,26 +362,39 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/%s/FontStyle' % self.key, font_style_str)
 
         if self.key == 'code':
-            self.configData.set('/%s/GCodeHighlight' % self.key,
-                                self.gCodeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/GCodeHighlight' % self.key,
+                self.gCodeHighlight.GetColour().GetAsString(
+                    wx.C2S_HTML_SYNTAX))
 
-            self.configData.set('/%s/MCodeHighlight' % self.key,
-                                self.gModeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/MCodeHighlight' % self.key,
+                self.gModeHighlight.GetColour().GetAsString(
+                    wx.C2S_HTML_SYNTAX))
 
-            self.configData.set('/%s/AxisHighlight' % self.key,
-                                self.axisHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/AxisHighlight' % self.key,
+                self.axisHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
-            self.configData.set('/%s/ParametersHighlight' % self.key,
-                                self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/ParametersHighlight' % self.key,
+                self.parametersHighlight.GetColour().GetAsString(
+                    wx.C2S_HTML_SYNTAX))
 
-            self.configData.set('/%s/Parameters2Highlight' % self.key,
-                                self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/Parameters2Highlight' % self.key,
+                self.parametersHighlight.GetColour().GetAsString(
+                    wx.C2S_HTML_SYNTAX))
 
-            self.configData.set('/%s/CommentsHighlight' % self.key,
-                                self.commentsHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/CommentsHighlight' % self.key,
+                self.commentsHighlight.GetColour().GetAsString(
+                    wx.C2S_HTML_SYNTAX))
 
-            self.configData.set('/%s/GCodeLineNumberHighlight' % self.key,
-                                self.gCodeLineNumberHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            self.configData.set(
+                '/%s/GCodeLineNumberHighlight' % self.key,
+                self.gCodeLineNumberHighlight.GetColour().GetAsString(
+                    wx.C2S_HTML_SYNTAX))
 
 
 """----------------------------------------------------------------------------
@@ -381,8 +404,9 @@ class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
 
 
 class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
-    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=0, name=stc.STCNameStr):
+    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY,
+                 pos=wx.DefaultPosition, size=wx.DefaultSize, style=0,
+                 name=stc.STCNameStr):
 
         stc.StyledTextCtrl.__init__(self, parent, id, pos, size,
                                     style, name)
@@ -437,7 +461,7 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
     def InitUI(self):
         # global default style
         if self.configFontFace == "System" or self.configFontSize == -1:
-            sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FIXED_FONT)
+            sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
             sysFont.SetNativeFontInfoUserDesc("Monospace 11")
             self.configFontFace = sysFont.FaceName
             self.configData.set('/code/FontFace', self.configFontFace)
@@ -447,26 +471,34 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         '''
         # global default style
         if wx.Platform == '__WXMSW__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier New,size:%d"
-                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
+            self.StyleSetSpec(
+                stc.STC_STYLE_DEFAULT,
+                "fore:%s,back:%s,bold,face:Courier New,size:%d" % (
+                    self.configWindowForeground, self.configWindowBackground,
+                    self.configFontSize))
+
         elif wx.Platform == '__WXMAC__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Monaco,size:%d"
-                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
+            self.StyleSetSpec(
+                stc.STC_STYLE_DEFAULT,
+                "fore:%s,back:%s,bold,face:Monaco,size:%d" % (
+                    self.configWindowForeground, self.configWindowBackground,
+                    self.configFontSize))
         else:
             defsize = wx.SystemSettings.GetFont(
                 wx.SYS_ANSI_FIXED_FONT).GetPointSize()
         '''
         self.StyleResetDefault()
 
-        self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,%s,face:%s,size:%d"
-                          % (self.configWindowForeground, self.configWindowBackground,
-                             self.configFontStyle, self.configFontFace,
-                             self.configFontSize))
+        self.StyleSetSpec(
+            stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,%s,face:%s,size:%d" % (
+                self.configWindowForeground, self.configWindowBackground,
+                self.configFontStyle, self.configFontFace, self.configFontSize))
 
         self.StyleClearAll()
 
-        self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s"
-                          % (self.configLineNumberForeground, self.configLineNumberBackground))
+        self.StyleSetSpec(
+            stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s" %
+            (self.configLineNumberForeground, self.configLineNumberBackground))
 
         # margin 0 for line numbers
         if self.configLineNumber:
@@ -478,10 +510,11 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
 
         # define markers
         self.markerCaretLine = 2
-        self.MarkerDefine(self.markerCaretLine, stc.STC_MARK_ROUNDRECT,
-                          self.configCaretLineForeground, self.configCaretLineBackground)
+        self.MarkerDefine(
+            self.markerCaretLine, stc.STC_MARK_ROUNDRECT,
+            self.configCaretLineForeground, self.configCaretLineBackground)
 
-        # disable two otehr margins
+        # disable two other margins
         self.SetMarginMask(1, pow(2, 0))
         self.SetMarginMask(2, pow(2, 1))
 
@@ -571,11 +604,12 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
 
 
 class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
-    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=0, name=stc.STCNameStr):
+    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY,
+                 pos=wx.DefaultPosition, size=wx.DefaultSize, style=0,
+                 name=stc.STCNameStr):
 
-        gsatStcStyledTextCtrl.__init__(self, parent, config_data, state_data, id, pos, size,
-                                       style, name)
+        gsatStcStyledTextCtrl.__init__(
+            self, parent, config_data, state_data, id, pos, size, style, name)
 
         self.InitConfig()
         self.InitUI()
@@ -620,7 +654,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
     def InitUI(self):
         if self.configFontFace == "System" or self.configFontSize == -1:
-            sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FIXED_FONT)
+            sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
             sysFont.SetNativeFontInfoUserDesc("Monospace bold 11")
             self.configFontFace = sysFont.FaceName
             self.configData.set('/code/FontFace', self.configFontFace)
@@ -630,25 +664,35 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         '''
         # global default style
         if wx.Platform == '__WXMSW__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Courier New,size:%d"
-                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
+            self.StyleSetSpec(
+                stc.STC_STYLE_DEFAULT,
+                "fore:%s,back:%s,bold,face:Courier New,size:%d" % (
+                    self.configWindowForeground, self.configWindowBackground,
+                    self.configFontSize))
+
         elif wx.Platform == '__WXMAC__':
-            self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,bold,face:Monaco,size:%d"
-                              % (self.configWindowForeground, self.configWindowBackground, self.configFontSize))
+            self.StyleSetSpec(
+                stc.STC_STYLE_DEFAULT,
+                "fore:%s,back:%s,bold,face:Monaco,size:%d" % (
+                    self.configWindowForeground, self.configWindowBackground,
+                    self.configFontSize))
         else:
             defsize = wx.SystemSettings.GetFont(
                 wx.SYS_ANSI_FIXED_FONT).GetPointSize()
         '''
         self.StyleResetDefault()
 
-        self.StyleSetSpec(stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,%s,face:%s,size:%d"
-                          % (self.configWindowForeground, self.configWindowBackground,
-                             self.configFontStyle, self.configFontFace,
-                             self.configFontSize))
+        self.StyleSetSpec(
+            stc.STC_STYLE_DEFAULT, "fore:%s,back:%s,%s,face:%s,size:%d" % (
+                self.configWindowForeground, self.configWindowBackground,
+                self.configFontStyle, self.configFontFace, self.configFontSize))
+
         self.StyleClearAll()
 
-        self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s,bold"
-                          % (self.configLineNumberForeground, self.configLineNumberBackground))
+        self.StyleSetSpec(
+            stc.STC_STYLE_LINENUMBER, "fore:%s,back:%s,bold" % (
+                self.configLineNumberForeground,
+                self.configLineNumberBackground))
 
         # margin 0 for line numbers
         if self.configLineNumber:
@@ -671,10 +715,11 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         self.markerBreakpoint = 1
         self.markerCaretLine = 2
         self.MarkerDefine(self.markerPC, stc.STC_MARK_ARROW, "BLACK", "GREEN")
-        self.MarkerDefine(self.markerBreakpoint,
-                          stc.STC_MARK_CIRCLE, "BLACK", "RED")
-        self.MarkerDefine(self.markerCaretLine, stc.STC_MARK_ROUNDRECT,
-                          self.configCaretLineForeground, self.configCaretLineBackground)
+        self.MarkerDefine(
+            self.markerBreakpoint, stc.STC_MARK_CIRCLE, "BLACK", "RED")
+        self.MarkerDefine(
+            self.markerCaretLine, stc.STC_MARK_ROUNDRECT,
+            self.configCaretLineForeground, self.configCaretLineBackground)
 
         self.SetMarginMask(1, pow(2, self.markerBreakpoint))
         self.SetMarginMask(2, pow(2, self.markerPC))

@@ -35,6 +35,7 @@ import images.icons as ico
 
 import time
 
+
 class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
     """ Jog panel settings
     """
@@ -64,7 +65,8 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.cbXYZReadOnly.SetValue(
             self.configData.get('/jogging/XYZReadOnly'))
         self.cbXYZReadOnly.SetToolTip(
-            wx.ToolTip("If enabled the XYZ fields in jogging status become read only"))
+            wx.ToolTip("If enabled the XYZ fields in jogging status become "
+                       "read only"))
         vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
 
         # Add update from machine pos check box
@@ -72,10 +74,12 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
             self, wx.ID_ANY, "Auto update from machine position")
         self.cbAutoMPOS.SetValue(self.configData.get('/jogging/AutoMPOS'))
         self.cbAutoMPOS.SetToolTip(
-            wx.ToolTip("Use Machine position to auto update Jogging position, "
-                       "jogging operation use these values to operate. The JOG current "
-                       "position need to be in sync with machine position before "
-                       "starting any jog operation. Results maybe undesirable otherwise"))
+            wx.ToolTip(
+                "Use Machine position to auto update Jogging position, "
+                "jogging operation use these values to operate. The JOG "
+                "current position need to be in sync with machine position "
+                "before starting any jog operation. Results maybe undesirable "
+                "otherwise"))
         vBoxSizer.Add(self.cbAutoMPOS, flag=wx.LEFT, border=20)
 
         # Add request status after jogging set operation check box
@@ -782,8 +786,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.Bind(wx.EVT_BUTTON, self.OnHome, self.homeButton)
         gbzJoggingGridSizer.Add(self.homeButton, pos=(0, 0))
 
-        self.homeXButton = wx.BitmapButton(self, -1, ico.imgHomeX.GetBitmap(),
-                                           size=buttonSize, style=wx.BORDER_NONE)
+        self.homeXButton = wx.BitmapButton(
+            self, -1, ico.imgHomeX.GetBitmap(), size=buttonSize,
+            style=wx.BORDER_NONE)
         self.homeXButton.SetToolTip(wx.ToolTip("Home X axis"))
         self.Bind(wx.EVT_BUTTON, self.OnHomeX, self.homeXButton)
         gbzJoggingGridSizer.Add(self.homeXButton, pos=(0, 2))
@@ -801,19 +806,23 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         gbzJoggingGridSizer.Add(self.homeZButton, pos=(1, 3))
 
 
-        # self.homeXYButton = wx.BitmapButton(self, -1, ico.imgHomeXY.GetBitmap(),
-        #   size=buttonSize, style=wx.BORDER_NONE)
-        #self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
-        #self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
-        #gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
+        # self.homeXYButton = wx.BitmapButton(
+        #   self, -1, ico.imgHomeXY.GetBitmap(), size=buttonSize,
+        #   style=wx.BORDER_NONE)
+        # self.homeXYButton.SetToolTip(wx.ToolTip("Home XY axis"))
+        # self.Bind(wx.EVT_BUTTON, self.OnHomeXY, self.homeXYButton)
+        # gbzJoggingGridSizer.Add(self.homeXYButton, pos=(1,1))
 
         '''
         # add interactive jog check box controls
-        self.interactiveJogCheckBox = wx.CheckBox(self, label='Interactive/Step size')
+        self.interactiveJogCheckBox = wx.CheckBox(
+            self, label='Interactive/Step size')
         self.interactiveJogCheckBox.SetValue(self.configJogInteractive)
         self.interactiveJogCheckBox.SetToolTip(
-            wx.ToolTip("Enables interactive jog positioning, otherwise step size"))
-        self.Bind(wx.EVT_CHECKBOX, self.OnJogInteractive, self.interactiveJogCheckBox)
+            wx.ToolTip("Enables interactive jog positioning, otherwise "
+                       "step size"))
+        self.Bind(
+            wx.EVT_CHECKBOX, self.OnJogInteractive, self.interactiveJogCheckBox)
 
         gbStepSizeGridSizer.Add(self.interactiveJogCheckBox, pos=(
             0, 0), span=(1, 5), flag=wx.TOP, border=5)
@@ -884,10 +893,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize100)
         gbStepSizeGridSizer.Add(self.stepSize100, pos=(3, 3))
 
-        #self.stepSize200 = wx.Button(self, label="200", size=stepButtonSize)
-        #self.stepSize200.SetToolTip(wx.ToolTip("Set step size to 200"))
-        #self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize200)
-        #gbStepSizeGridSizer.Add(self.stepSize200, pos=(3, 3))
+        # self.stepSize200 = wx.Button(self, label="200", size=stepButtonSize)
+        # self.stepSize200.SetToolTip(wx.ToolTip("Set step size to 200"))
+        # self.Bind(wx.EVT_BUTTON, self.OnSetStepSize, self.stepSize200)
+        # gbStepSizeGridSizer.Add(self.stepSize200, pos=(3, 3))
 
         gbzJoggingGridSizer.Add(gbStepSizeGridSizer, pos=(3, 0), span=(4, 4))
 
@@ -1172,6 +1181,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         spinText = wx.StaticText(self, -1, "Custom buttons")
         vBoxSizer.Add(spinText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
+        # add custom buttons
         buttonsCount = len(self.customButtonsDict)
         cols = 4
         rows = int(buttonsCount/cols + (buttonsCount%cols > 0))
@@ -1180,16 +1190,15 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         self.customButtonsObjDict = dict()
 
-        # add custom buttons
-        for i in range(1, buttonsCount+1):
-            label = self.customButtonsDict['Custom%d' % i]['Label']
-            script = self.customButtonsDict['Custom%d' % i]['Script']
+        for customButtonName in sorted(self.customButtonsDict.keys()):
+            label = self.customButtonsDict[customButtonName]['Label']
+            script = self.customButtonsDict[customButtonName]['Script']
             self.customButton = wx.Button(self, label=label)
             self.customButton.SetToolTip(
                 wx.ToolTip(script))
             self.Bind(wx.EVT_BUTTON, self.OnCustomButton, self.customButton)
             gBoxSizer.Add(self.customButton, 0, flag=wx.TOP | wx.EXPAND, border=5)
-            self.customButtonsObjDict[self.customButton] = 'Custom%d' % i
+            self.customButtonsObjDict[self.customButton] = customButtonName
 
         vBoxSizer.Add(gBoxSizer, flag=wx.EXPAND)
 
