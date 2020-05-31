@@ -504,13 +504,16 @@ class gsatConfigData(ConfigData):
             "AutoRefresh": True,
             "AutoRefreshPeriod": 200,
             "AutoStatus": False,
-            "AxisDroEnable": {
-                "X": True,
-                "Y": True,
-                "Z": True,
-                "A": False,
-                "B": False,
-                "C": False
+            "DRO": {
+                "EnableX": True,
+                "EnableY": True,
+                "EnableZ": True,
+                "EnableA": False,
+                "EnableB": False,
+                "EnableC": False,
+                "FontFace": "System",
+                "FontSize": -1,
+                "FontStyle": "normal",
             },
             "Baud": "115200",
             "Device": "grbl",

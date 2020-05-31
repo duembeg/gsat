@@ -102,10 +102,12 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         if self.configFontFace == "System" or self.configFontSize == -1:
             sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
             sysFont.SetNativeFontInfoUserDesc("Monospace 11")
-            self.configFontFace = sysFont.FaceName
-            self.configData.set('/code/FontFace', self.configFontFace)
-            self.configData.set('/code/FontSize', 11)
-            self.configData.set('/code/FontStyle', "normal")
+            self.configFontFace = sysFont.GetFaceName()
+            self.configFontSize = sysFont.GetPointSize()
+            self.configFontStyle = "normal"
+            self.configData.set('/output/FontFace', self.configFontFace)
+            self.configData.set('/output/FontSize', self.configFontSize)
+            self.configData.set('/output/FontStyle', self.configFontStyle)
 
         '''
         # global default style
@@ -295,10 +297,12 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         if self.configFontFace == "System" or self.configFontSize == -1:
             sysFont = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
             sysFont.SetNativeFontInfoUserDesc("Monospace bold 11")
-            self.configFontFace = sysFont.FaceName
+            self.configFontFace = sysFont.GetFaceName()
+            self.configFontSize = sysFont.GetPointSize()
+            self.configFontStyle = "normal"
             self.configData.set('/code/FontFace', self.configFontFace)
-            self.configData.set('/code/FontSize', 11)
-            self.configData.set('/code/FontStyle', "bold")
+            self.configData.set('/code/FontSize', self.configFontSize)
+            self.configData.set('/code/FontStyle', self.configFontStyle)
 
         '''
         # global default style

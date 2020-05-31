@@ -59,12 +59,15 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
                            scroll_unit, height/scroll_unit)
 
     def InitConfig(self):
-        self.configDroEnX = self.configData.get('/machine/AxisDroEnable/X')
-        self.configDroEnY = self.configData.get('/machine/AxisDroEnable/Y')
-        self.configDroEnZ = self.configData.get('/machine/AxisDroEnable/Z')
-        self.configDroEnA = self.configData.get('/machine/AxisDroEnable/A')
-        self.configDroEnB = self.configData.get('/machine/AxisDroEnable/B')
-        self.configDroEnC = self.configData.get('/machine/AxisDroEnable/C')
+        self.configDroEnX = self.configData.get('/machine/DRO/EnableX')
+        self.configDroEnY = self.configData.get('/machine/DRO/EnableY')
+        self.configDroEnZ = self.configData.get('/machine/DRO/EnableZ')
+        self.configDroEnA = self.configData.get('/machine/DRO/EnableA')
+        self.configDroEnB = self.configData.get('/machine/DRO/EnableB')
+        self.configDroEnC = self.configData.get('/machine/DRO/EnableC')
+        self.configDroFontFace = self.configData.get('/machine/DRO/FontFace')
+        self.configDroFontSize = self.configData.get('/machine/DRO/FontSize')
+        self.configDroFontStyle = self.configData.get('/machine/DRO/FontStyle')
 
     def UpdateSettings(self, config_data=None):
         if config_data is not None:
@@ -117,6 +120,28 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.sDroBoxSz.Layout()
 
         self.UpdateUI(self.stateData)
+
+        '''
+        fontPos = wx.Font(
+            self.configDroFontSize,
+            wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
+            unicode(self.configDroFontFace))
+
+        font_style_str = self.configDroFontStyle
+
+        if "bold" in font_style_str:
+            fontPos.MakeBold()
+
+        if "italic" in font_style_str:
+            fontPos.MakeItalic()
+
+        self.xPos.SetFont(fontPos)
+        self.yPos.SetFont(fontPos)
+        self.zPos.SetFont(fontPos)
+        self.aPos.SetFont(fontPos)
+        self.bPos.SetFont(fontPos)
+        self.cPos.SetFont(fontPos)
+        '''
 
     def InitUI(self):
         self.vRootBoxSz = wx.BoxSizer(wx.VERTICAL)
@@ -222,17 +247,40 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         fGridSizer = wx.FlexGridSizer(7, 2)
 
         # set font properties
-        font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+        if self.configDroFontFace == "System" or self.configDroFontSize == -1:
+            font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+            self.configDroFontFace = font.GetFaceName()
+            self.configDroFontSize = font.GetPointSize()
+            self.configDroFontStyle = "normal"
+            self.configData.set(
+                '/machine/DRO/FontFace', self.configDroFontFace)
+            self.configData.set(
+                '/machine/DRO/FontSize', self.configDroFontSize)
+            self.configData.set(
+                '/machine/DRO/FontStyle', self.configDroFontStyle)
 
-        self.droCtrlDict = dict()
+        fontSt = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+
+        fontPos = wx.Font(
+            self.configDroFontSize,
+            wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
+            unicode(self.configDroFontFace))
+
+        font_style_str = self.configDroFontStyle
+
+        if "bold" in font_style_str:
+            fontPos.MakeBold()
+
+        if "italic" in font_style_str:
+            fontPos.MakeItalic()
 
         # X axis
         self.xPosSt = wx.StaticText(self, label="X")
-        self.xPosSt.SetFont(font)
+        self.xPosSt.SetFont(fontSt)
         self.xPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.xPos.SetValue(gc.ZERO_STRING)
-        self.xPos.SetFont(font)
+        self.xPos.SetFont(fontPos)
         fGridSizer.Add(self.xPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                     wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.xPos, 1, flag=wx.ALL |
@@ -240,11 +288,11 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         # Y axis
         self.yPosSt = wx.StaticText(self, label="Y")
-        self.yPosSt.SetFont(font)
+        self.yPosSt.SetFont(fontSt)
         self.yPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.yPos.SetValue(gc.ZERO_STRING)
-        self.yPos.SetFont(font)
+        self.yPos.SetFont(fontPos)
         fGridSizer.Add(self.yPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                     wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.yPos, 1, flag=wx.ALL |
@@ -252,11 +300,11 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         # Z axis
         self.zPosSt = wx.StaticText(self, label="Z")
-        self.zPosSt.SetFont(font)
+        self.zPosSt.SetFont(fontSt)
         self.zPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.zPos.SetValue(gc.ZERO_STRING)
-        self.zPos.SetFont(font)
+        self.zPos.SetFont(fontPos)
         fGridSizer.Add(self.zPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                     wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.zPos, 1, flag=wx.ALL |
@@ -264,33 +312,33 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         # A axis
         self.aPosSt = wx.StaticText(self, label="A")
-        self.aPosSt.SetFont(font)
+        self.aPosSt.SetFont(fontSt)
         self.aPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.aPos.SetValue(gc.ZERO_STRING)
-        self.aPos.SetFont(font)
+        self.aPos.SetFont(fontPos)
         fGridSizer.Add(self.aPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                     wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.aPos, 1, flag=wx.ALL |
                     wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
         self.bPosSt = wx.StaticText(self, label="B")
-        self.bPosSt.SetFont(font)
+        self.bPosSt.SetFont(fontSt)
         self.bPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.bPos.SetValue(gc.ZERO_STRING)
-        self.bPos.SetFont(font)
+        self.bPos.SetFont(fontPos)
         fGridSizer.Add(self.bPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                     wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.bPos, 1, flag=wx.ALL |
                     wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
         self.cPosSt = wx.StaticText(self, label="C")
-        self.cPosSt.SetFont(font)
+        self.cPosSt.SetFont(fontSt)
         self.cPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.cPos.SetValue(gc.ZERO_STRING)
-        self.cPos.SetFont(font)
+        self.cPos.SetFont(fontPos)
         fGridSizer.Add(self.cPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                     wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.cPos, 1, flag=wx.ALL |
@@ -298,11 +346,11 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         # Feed Rate
         st = wx.StaticText(self, label="FR")
-        st.SetFont(font)
+        st.SetFont(fontSt)
         self.frVal = wx.TextCtrl(
             self, wx.ID_ANY, "", style=wx.TE_READONLY | wx.TE_RIGHT)
         self.frVal.SetValue("{:.2f}".format(eval(gc.ZERO_STRING)))
-        self.frVal.SetFont(font)
+        self.frVal.SetFont(fontPos)
         fGridSizer.Add(st, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                        wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.frVal, 1, flag=wx.ALL |
@@ -378,9 +426,9 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
       '''
 
         # Add Percent sent status
-        st = wx.StaticText(self, label="PC in file pos")
+        st = wx.StaticText(self, label="G-code lines")
         st.SetFont(font)
-        self.prcntStatus = wx.StaticText(self, label="0.00%")
+        self.prcntStatus = wx.StaticText(self, label="-/- (0.00%)")
         self.prcntStatus.SetForegroundColour(self.machineDataColor)
         self.prcntStatus.SetFont(font)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)

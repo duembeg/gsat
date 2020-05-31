@@ -2139,7 +2139,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if 'stat' in te.data:
                     self.stateData.machineStatusString = te.data['stat']
 
-                # TODO: this doens't belong here put in machif_proexec
+                # TODO: this doesn't belong here put in machif_proexec
                 if 'init' in te.data:
                     # if self.cmdLineOptions.vverbose:
                     #     print "gsatMainWindow device detected via version " \
@@ -2148,7 +2148,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.GetMachineStatus()
                     self.RunDeviceInitScript()
 
-                if len(self.stateData.gcodeFileLines):
+                if self.stateData.swState != gc.STATE_IDLE and len(
+                    self.stateData.gcodeFileLines):
                     prcnt = "%d/%d (%.2f%%)" % (
                         self.stateData.programCounter,
                         len(self.stateData.gcodeFileLines),
@@ -2186,7 +2187,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.stateData.deviceDetected = True
 
-                # TODO: this doens't belong here put in machif_proexec
+                # TODO: this doesn't belong here put in machif_proexec
                 self.GetMachineStatus()
                 self.RunDeviceInitScript()
 
@@ -2216,6 +2217,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.machineStatusPanel.UpdateUI(
                     self.stateData, dict({'rtime': runTimeStr}))
+
+                self.SetPC(0)
+
+                prcnt = "%d/%d (%.2f%%)" % (
+                    len(self.stateData.gcodeFileLines),
+                    len(self.stateData.gcodeFileLines),
+                    100)
+
+                self.machineStatusPanel.UpdateUI(
+                    self.stateData, dict({'prcnt': prcnt}))
+
                 self.Refresh()
                 self.UpdateUI()
 
@@ -2236,18 +2248,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     else:
                         wx.MessageBox(msgText, "G-Code Program",
                                       wx.OK | wx.ICON_INFORMATION)
-
-                self.SetPC(0)
-
-                prcnt = "%d/%d (%.2f%%)" % (
-                    len(self.stateData.gcodeFileLines),
-                    len(self.stateData.gcodeFileLines),
-                    100)
-
-                self.machineStatusPanel.UpdateUI(
-                    self.stateData, dict({'prcnt': prcnt}))
-                self.Refresh()
-                self.UpdateUI()
 
             elif te.event_id == gc.EV_STEP_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:

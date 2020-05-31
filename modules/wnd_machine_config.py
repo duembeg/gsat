@@ -57,7 +57,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizerRoot = wx.BoxSizer(wx.VERTICAL)
 
         # Add device type select
-        flexGridSizer = wx.FlexGridSizer(4, 2, 5, 5)
+        flexGridSizer = wx.FlexGridSizer(5, 2, 5, 5)
         flexGridSizer.AddGrowableCol(1)
 
         st = wx.StaticText(self, label="Device")
@@ -107,32 +107,57 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND |
                           wx.ALIGN_CENTER_VERTICAL)
 
-        # add DRO enable axis
+        # DRO Font
+        st = wx.StaticText(self, label="DRO Font")
+        self.fontSelect = wx.FontPickerCtrl(self, size=(300, -1))
+
+        self.fontSelect.SetToolTip(
+            wx.ToolTip("DRO Font updates after application restart"))
+
+        font = wx.Font(self.configData.get('/machine/DRO/FontSize'),
+                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
+                       unicode(self.configData.get('/machine/DRO/FontFace')))
+
+        font_style_str = self.configData.get('/machine/DRO/FontStyle')
+
+        if "bold" in font_style_str:
+            font.MakeBold()
+
+        if "italic" in font_style_str:
+            font.MakeItalic()
+
+        self.fontSelect.SetSelectedFont(font)
+
+        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.fontSelect, 1, flag=wx.EXPAND |
+                          wx.ALIGN_CENTER_VERTICAL)
+
+        # add DRO enable axes
         st = wx.StaticText(self, label="DRO Axes")
         hBoxSz = wx.BoxSizer(wx.HORIZONTAL)
 
         self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X")
-        self.cbDroEnX.SetValue(self.configData.get('/machine/AxisDroEnable/X'))
+        self.cbDroEnX.SetValue(self.configData.get('/machine/DRO/EnableX'))
         self.cbDroEnX.SetToolTip(wx.ToolTip("DRO Enable X axis"))
 
         self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y")
-        self.cbDroEnY.SetValue(self.configData.get('/machine/AxisDroEnable/Y'))
+        self.cbDroEnY.SetValue(self.configData.get('/machine/DRO/EnableY'))
         self.cbDroEnY.SetToolTip(wx.ToolTip("DRO Enable Y axis"))
 
         self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z")
-        self.cbDroEnZ.SetValue(self.configData.get('/machine/AxisDroEnable/Z'))
+        self.cbDroEnZ.SetValue(self.configData.get('/machine/DRO/EnableZ'))
         self.cbDroEnZ.SetToolTip(wx.ToolTip("DRO Enable Z axis"))
 
         self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A")
-        self.cbDroEnA.SetValue(self.configData.get('/machine/AxisDroEnable/A'))
+        self.cbDroEnA.SetValue(self.configData.get('/machine/DRO/EnableA'))
         self.cbDroEnA.SetToolTip(wx.ToolTip("DRO Enable A axis"))
 
         self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B")
-        self.cbDroEnB.SetValue(self.configData.get('/machine/AxisDroEnable/B'))
+        self.cbDroEnB.SetValue(self.configData.get('/machine/DRO/EnableB'))
         self.cbDroEnB.SetToolTip(wx.ToolTip("DRO Enable B axis"))
 
         self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C")
-        self.cbDroEnC.SetValue(self.configData.get('/machine/AxisDroEnable/C'))
+        self.cbDroEnC.SetValue(self.configData.get('/machine/DRO/EnableC'))
         self.cbDroEnC.SetToolTip(wx.ToolTip("DRO Enable C axis"))
 
         hBoxSz.Add(self.cbDroEnX, 0, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -147,6 +172,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND |
                           wx.TOP | wx.LEFT | wx.RIGHT, border=20)
+
 
         # add edit control for init script
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
@@ -227,18 +253,38 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/machine/Device', self.machIfName)
         self.configData.set('/machine/Port', self.spComboBox.GetValue())
         self.configData.set('/machine/Baud', self.sbrComboBox.GetValue())
+
+        font = self.fontSelect.GetSelectedFont()
+        font_style_list = []
+        font_style_str = ""
+
+        if font.GetWeight() == wx.BOLD:
+            font_style_list.append("bold")
+
+        if font.GetStyle() == wx.ITALIC:
+            font_style_list.append("italic")
+
+        if len(font_style_list) == 0:
+            font_style_str = "normal"
+        else:
+            font_style_str = ",".join(font_style_list)
+
+        self.configData.set('/machine/DRO/FontFace', font.GetFaceName())
+        self.configData.set('/machine/DRO/FontSize', font.GetPointSize())
+        self.configData.set('/machine/DRO/FontStyle', font_style_str)
+
         self.configData.set(
-            '/machine/AxisDroEnable/X', self.cbDroEnX.GetValue())
+            '/machine/DRO/EnableX', self.cbDroEnX.GetValue())
         self.configData.set(
-            '/machine/AxisDroEnable/Y', self.cbDroEnY.GetValue())
+            '/machine/DRO/EnableY', self.cbDroEnY.GetValue())
         self.configData.set(
-            '/machine/AxisDroEnable/Z', self.cbDroEnZ.GetValue())
+            '/machine/DRO/EnableZ', self.cbDroEnZ.GetValue())
         self.configData.set(
-            '/machine/AxisDroEnable/A', self.cbDroEnA.GetValue())
+            '/machine/DRO/EnableA', self.cbDroEnA.GetValue())
         self.configData.set(
-            '/machine/AxisDroEnable/B', self.cbDroEnB.GetValue())
+            '/machine/DRO/EnableB', self.cbDroEnB.GetValue())
         self.configData.set(
-            '/machine/AxisDroEnable/C', self.cbDroEnC.GetValue())
+            '/machine/DRO/EnableC', self.cbDroEnC.GetValue())
         self.configData.set('/machine/InitScriptEnable',
                             self.cbInitScript.GetValue())
         self.configData.set('/machine/InitScript',
