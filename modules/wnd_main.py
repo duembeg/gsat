@@ -2148,10 +2148,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.GetMachineStatus()
                     self.RunDeviceInitScript()
 
-                prcnt = "%.2f%%" % abs((float(
-                    self.stateData.programCounter)/float(len(
-                        self.stateData.gcodeFileLines)-1) * 100))
-                te.data['prcnt'] = prcnt
+                if len(self.stateData.gcodeFileLines):
+                    prcnt = "%d/%d (%.2f%%)" % (
+                        self.stateData.programCounter,
+                        len(self.stateData.gcodeFileLines),
+                        abs((float(self.stateData.programCounter)/float(len(
+                            self.stateData.gcodeFileLines)) * 100)))
+                    te.data['prcnt'] = prcnt
 
                 self.machineStatusPanel.UpdateUI(self.stateData, te.data)
                 self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
@@ -2235,8 +2238,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                                       wx.OK | wx.ICON_INFORMATION)
 
                 self.SetPC(0)
+
+                prcnt = "%d/%d (%.2f%%)" % (
+                    len(self.stateData.gcodeFileLines),
+                    len(self.stateData.gcodeFileLines),
+                    100)
+
                 self.machineStatusPanel.UpdateUI(
-                    self.stateData, dict({'prcnt': "100.00%"}))
+                    self.stateData, dict({'prcnt': prcnt}))
                 self.Refresh()
                 self.UpdateUI()
 

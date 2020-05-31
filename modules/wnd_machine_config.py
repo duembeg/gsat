@@ -57,7 +57,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizerRoot = wx.BoxSizer(wx.VERTICAL)
 
         # Add device type select
-        flexGridSizer = wx.FlexGridSizer(3, 2, 5, 5)
+        flexGridSizer = wx.FlexGridSizer(4, 2, 5, 5)
         flexGridSizer.AddGrowableCol(1)
 
         st = wx.StaticText(self, label="Device")
@@ -106,6 +106,44 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND |
                           wx.ALIGN_CENTER_VERTICAL)
+
+        # add DRO enable axis
+        st = wx.StaticText(self, label="DRO Axes")
+        hBoxSz = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X")
+        self.cbDroEnX.SetValue(self.configData.get('/machine/AxisDroEnable/X'))
+        self.cbDroEnX.SetToolTip(wx.ToolTip("DRO Enable X axis"))
+
+        self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y")
+        self.cbDroEnY.SetValue(self.configData.get('/machine/AxisDroEnable/Y'))
+        self.cbDroEnY.SetToolTip(wx.ToolTip("DRO Enable Y axis"))
+
+        self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z")
+        self.cbDroEnZ.SetValue(self.configData.get('/machine/AxisDroEnable/Z'))
+        self.cbDroEnZ.SetToolTip(wx.ToolTip("DRO Enable Z axis"))
+
+        self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A")
+        self.cbDroEnA.SetValue(self.configData.get('/machine/AxisDroEnable/A'))
+        self.cbDroEnA.SetToolTip(wx.ToolTip("DRO Enable A axis"))
+
+        self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B")
+        self.cbDroEnB.SetValue(self.configData.get('/machine/AxisDroEnable/B'))
+        self.cbDroEnB.SetToolTip(wx.ToolTip("DRO Enable B axis"))
+
+        self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C")
+        self.cbDroEnC.SetValue(self.configData.get('/machine/AxisDroEnable/C'))
+        self.cbDroEnC.SetToolTip(wx.ToolTip("DRO Enable C axis"))
+
+        hBoxSz.Add(self.cbDroEnX, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        hBoxSz.Add(self.cbDroEnY, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        hBoxSz.Add(self.cbDroEnZ, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        hBoxSz.Add(self.cbDroEnA, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        hBoxSz.Add(self.cbDroEnB, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        hBoxSz.Add(self.cbDroEnC, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+
+        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(hBoxSz, 0, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND |
                           wx.TOP | wx.LEFT | wx.RIGHT, border=20)
@@ -189,6 +227,18 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/machine/Device', self.machIfName)
         self.configData.set('/machine/Port', self.spComboBox.GetValue())
         self.configData.set('/machine/Baud', self.sbrComboBox.GetValue())
+        self.configData.set(
+            '/machine/AxisDroEnable/X', self.cbDroEnX.GetValue())
+        self.configData.set(
+            '/machine/AxisDroEnable/Y', self.cbDroEnY.GetValue())
+        self.configData.set(
+            '/machine/AxisDroEnable/Z', self.cbDroEnZ.GetValue())
+        self.configData.set(
+            '/machine/AxisDroEnable/A', self.cbDroEnA.GetValue())
+        self.configData.set(
+            '/machine/AxisDroEnable/B', self.cbDroEnB.GetValue())
+        self.configData.set(
+            '/machine/AxisDroEnable/C', self.cbDroEnC.GetValue())
         self.configData.set('/machine/InitScriptEnable',
                             self.cbInitScript.GetValue())
         self.configData.set('/machine/InitScript',

@@ -46,33 +46,93 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         self.machineDataColor = wx.RED
 
+        self.InitConfig()
+
         self.InitUI()
-        width, height = self.GetSize()
+
+        #self.UpdateSettings()
+        wx.CallAfter(self.UpdateSettings)
+
+        width, height = self.GetSizeTuple()
         scroll_unit = 10
         self.SetScrollbars(scroll_unit, scroll_unit, width /
                            scroll_unit, height/scroll_unit)
 
+    def InitConfig(self):
+        self.configDroEnX = self.configData.get('/machine/AxisDroEnable/X')
+        self.configDroEnY = self.configData.get('/machine/AxisDroEnable/Y')
+        self.configDroEnZ = self.configData.get('/machine/AxisDroEnable/Z')
+        self.configDroEnA = self.configData.get('/machine/AxisDroEnable/A')
+        self.configDroEnB = self.configData.get('/machine/AxisDroEnable/B')
+        self.configDroEnC = self.configData.get('/machine/AxisDroEnable/C')
+
+    def UpdateSettings(self, config_data=None):
+        if config_data is not None:
+            self.configData = config_data
+
+        self.InitConfig()
+
+        if self.configDroEnX:
+            self.xPosSt.Show()
+            self.xPos.Show()
+        else:
+            self.xPosSt.Hide()
+            self.xPos.Hide()
+
+        if self.configDroEnY:
+            self.yPosSt.Show()
+            self.yPos.Show()
+        else:
+            self.yPosSt.Hide()
+            self.yPos.Hide()
+
+        if self.configDroEnZ:
+            self.zPosSt.Show()
+            self.zPos.Show()
+        else:
+            self.zPosSt.Hide()
+            self.zPos.Hide()
+
+        if self.configDroEnA:
+            self.aPosSt.Show()
+            self.aPos.Show()
+        else:
+            self.aPosSt.Hide()
+            self.aPos.Hide()
+
+        if self.configDroEnB:
+            self.bPosSt.Show()
+            self.bPos.Show()
+        else:
+            self.bPosSt.Hide()
+            self.bPos.Hide()
+
+        if self.configDroEnC:
+            self.cPosSt.Show()
+            self.cPos.Show()
+        else:
+            self.cPosSt.Hide()
+            self.cPos.Hide()
+
+        self.sDroBoxSz.Layout()
+
+        self.UpdateUI(self.stateData)
+
     def InitUI(self):
-        vBoxSizer = wx.BoxSizer(wx.VERTICAL)
+        self.vRootBoxSz = wx.BoxSizer(wx.VERTICAL)
 
         # Add Static Boxes ----------------------------------------------------
-        droBox = self.CreateDroBox()
-        statusBox = self.CreateStatusStaticBox()
+        self.sDroBoxSz = self.CreateStaticBox("DRO")
+        self.CreateDroBox(self.sDroBoxSz)
 
-        vBoxSizer.Add(droBox, 0, flag=wx.ALL | wx.EXPAND, border=5)
-        vBoxSizer.Add(statusBox, 0, flag=wx.ALL | wx.EXPAND, border=5)
+        self.sStatusBoxSz = self.CreateStaticBox("Status")
+        self.CreateStatusStaticBox(self.sStatusBoxSz)
 
-        # # Add Buttons -------------------------------------------------------
-        # self.refreshButton = wx.Button(self, wx.ID_REFRESH)
-        # self.refreshButton.SetToolTip(
-        #     wx.ToolTip("Refresh machine status"))
-        # self.Bind(wx.EVT_BUTTON, self.OnRefresh, self.refreshButton)
-        # self.refreshButton.Disable()
+        self.vRootBoxSz.Add(self.sDroBoxSz, 0, flag=wx.ALL | wx.EXPAND, border=5)
+        self.vRootBoxSz.Add(self.sStatusBoxSz, 0, flag=wx.ALL | wx.EXPAND, border=5)
 
-        # vBoxSizer.Add(self.refreshButton, 0, flag=wx.ALL, border=10)
-
-        # Finish up init UI
-        self.SetSizer(vBoxSizer)
+        self.SetAutoLayout(True)
+        self.SetSizerAndFit(self.vRootBoxSz)
         self.Layout()
 
     def UpdateUI(self, stateData, statusData=None):
@@ -88,17 +148,35 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             if rtime is not None:
                 self.runTimeStatus.SetLabel(rtime)
 
-            x = statusData.get('posx')
-            if x is not None:
-                self.xPos.SetValue("{:.3f}".format(x))
+            if self.configDroEnX:
+                x = statusData.get('posx')
+                if x is not None:
+                    self.xPos.SetValue("{:.3f}".format(x))
 
-            y = statusData.get('posy')
-            if y is not None:
-                self.yPos.SetValue("{:.3f}".format(y))
+            if self.configDroEnY:
+                y = statusData.get('posy')
+                if y is not None:
+                    self.yPos.SetValue("{:.3f}".format(y))
 
-            z = statusData.get('posz')
-            if z is not None:
-                self.zPos.SetValue("{:.3f}".format(z))
+            if self.configDroEnZ:
+                z = statusData.get('posz')
+                if z is not None:
+                    self.zPos.SetValue("{:.3f}".format(z))
+
+            if self.configDroEnA:
+                a = statusData.get('posa')
+                if a is not None:
+                    self.aPos.SetValue("{:.3f}".format(a))
+
+            if self.configDroEnB:
+                b = statusData.get('posb')
+                if b is not None:
+                    self.bPos.SetValue("{:.3f}".format(b))
+
+            if self.configDroEnC:
+                c = statusData.get('posc')
+                if c is not None:
+                    self.cPos.SetValue("{:.3f}".format(c))
 
             fr = statusData.get('vel')
             if fr is not None:
@@ -130,10 +208,6 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
-        '''
-      self.machinePort.SetLabel(stateData.serialPort)
-      self.machineBaud.SetLabel(stateData.serialPortBaud)
-      '''
 
         self.Update()
 
@@ -141,51 +215,86 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         staticBox = wx.StaticBox(self, -1, label)
         staticBoxSizer = wx.StaticBoxSizer(staticBox, wx.VERTICAL)
 
+        # staticBoxSizer = wx.BoxSizer(wx.VERTICAL)
         return staticBoxSizer
 
-    def CreateDroBox(self):
-        positionBoxSizer = self.CreateStaticBox("DRO")
-        fGridSizer = wx.FlexGridSizer(4, 2)
-        positionBoxSizer.Add(fGridSizer, 0, flag=wx.EXPAND)
+    def CreateDroBox(self, sz):
+        fGridSizer = wx.FlexGridSizer(7, 2)
 
         # set font properties
         font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
 
+        self.droCtrlDict = dict()
+
         # X axis
-        st = wx.StaticText(self, label="X")
-        st.SetFont(font)
+        self.xPosSt = wx.StaticText(self, label="X")
+        self.xPosSt.SetFont(font)
         self.xPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.xPos.SetValue(gc.ZERO_STRING)
         self.xPos.SetFont(font)
-        fGridSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
-                       wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.xPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                    wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.xPos, 1, flag=wx.ALL |
-                       wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+                    wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
         # Y axis
-        st = wx.StaticText(self, label="Y")
-        st.SetFont(font)
+        self.yPosSt = wx.StaticText(self, label="Y")
+        self.yPosSt.SetFont(font)
         self.yPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.yPos.SetValue(gc.ZERO_STRING)
         self.yPos.SetFont(font)
-        fGridSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
-                       wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.yPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                    wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.yPos, 1, flag=wx.ALL |
-                       wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+                    wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
         # Z axis
-        st = wx.StaticText(self, label="Z")
-        st.SetFont(font)
+        self.zPosSt = wx.StaticText(self, label="Z")
+        self.zPosSt.SetFont(font)
         self.zPos = wx.TextCtrl(self, wx.ID_ANY, "",
                                 style=wx.TE_READONLY | wx.TE_RIGHT)
         self.zPos.SetValue(gc.ZERO_STRING)
         self.zPos.SetFont(font)
-        fGridSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
-                       wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.zPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                    wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.zPos, 1, flag=wx.ALL |
-                       wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+                    wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+
+        # A axis
+        self.aPosSt = wx.StaticText(self, label="A")
+        self.aPosSt.SetFont(font)
+        self.aPos = wx.TextCtrl(self, wx.ID_ANY, "",
+                                style=wx.TE_READONLY | wx.TE_RIGHT)
+        self.aPos.SetValue(gc.ZERO_STRING)
+        self.aPos.SetFont(font)
+        fGridSizer.Add(self.aPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                    wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.aPos, 1, flag=wx.ALL |
+                    wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+
+        self.bPosSt = wx.StaticText(self, label="B")
+        self.bPosSt.SetFont(font)
+        self.bPos = wx.TextCtrl(self, wx.ID_ANY, "",
+                                style=wx.TE_READONLY | wx.TE_RIGHT)
+        self.bPos.SetValue(gc.ZERO_STRING)
+        self.bPos.SetFont(font)
+        fGridSizer.Add(self.bPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                    wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.bPos, 1, flag=wx.ALL |
+                    wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+
+        self.cPosSt = wx.StaticText(self, label="C")
+        self.cPosSt.SetFont(font)
+        self.cPos = wx.TextCtrl(self, wx.ID_ANY, "",
+                                style=wx.TE_READONLY | wx.TE_RIGHT)
+        self.cPos.SetValue(gc.ZERO_STRING)
+        self.cPos.SetFont(font)
+        fGridSizer.Add(self.cPosSt, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                    wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.cPos, 1, flag=wx.ALL |
+                    wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
         # Feed Rate
         st = wx.StaticText(self, label="FR")
@@ -194,20 +303,19 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             self, wx.ID_ANY, "", style=wx.TE_READONLY | wx.TE_RIGHT)
         self.frVal.SetValue("{:.2f}".format(eval(gc.ZERO_STRING)))
         self.frVal.SetFont(font)
-        fGridSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+        fGridSizer.Add(st, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
                        wx.ALIGN_RIGHT, border=5)
         fGridSizer.Add(self.frVal, 1, flag=wx.ALL |
                        wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
         # finish init flex grid sizer
-        fGridSizer.AddGrowableCol(1, 1)
+        fGridSizer.AddGrowableCol(1)
 
-        return positionBoxSizer
+        sz.Add(fGridSizer, 0, flag=wx.EXPAND)
 
-    def CreateStatusStaticBox(self):
-        positionBoxSizer = self.CreateStaticBox("Status")
+    def CreateStatusStaticBox(self, sz):
         flexGridSizer = wx.FlexGridSizer(7, 2, 1, 5)
-        positionBoxSizer.Add(flexGridSizer, 1, flag=wx.EXPAND)
+        sz.Add(flexGridSizer, 1, flag=wx.LEFT | wx.EXPAND, border=10)
 
         # set font properties
         font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
@@ -287,12 +395,5 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
         flexGridSizer.Add(self.runTimeStatus, 0, flag=wx.ALIGN_LEFT)
 
-        return positionBoxSizer
-
     def OnRefresh(self, e):
         self.mainWindow.GetMachineStatus()
-
-    def UpdateSettings(self, config_data):
-        self.configData = config_data
-        self.UpdateUI(self.stateData)
-        # self.InitConfig()

@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    config.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013-2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -504,6 +504,14 @@ class gsatConfigData(ConfigData):
             "AutoRefresh": True,
             "AutoRefreshPeriod": 200,
             "AutoStatus": False,
+            "AxisDroEnable": {
+                "X": True,
+                "Y": True,
+                "Z": True,
+                "A": False,
+                "B": False,
+                "C": False
+            },
             "Baud": "115200",
             "Device": "grbl",
             "InitScript": "",
