@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif_grbl.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013-2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    grbl like GCODE interpreters. With features similar to software debuggers.
@@ -31,14 +31,14 @@ import modules.machif as mi
 
 """ Global values for this module
 """
-# Numeric reperecentation of state, cehcking strings all the time is not
+# Numeric reperecentation of state, checking strings all the time is not
 # fastest way...
-GRBL_STATE_UKNOWN = 1000
+GRBL_STATE_UNKNOWN = 1000
 GRBL_STATE_IDLE = 1010
 GRBL_STATE_RUN = 1020
 GRBL_STATE_HOLD = 1030
 GRBL_STATE_JOG = 1040
-GRBL_STATE_ALRARM = 1050
+GRBL_STATE_ALARM = 1050
 GRBL_STATE_DOOR = 1060
 GRBL_STATE_CHECK = 1070
 GRBL_STATE_HOME = 1080
@@ -205,7 +205,7 @@ class MachIf_GRBL(mi.MachIf_Base):
     per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer includes
     all characters including nulls and new line)
 
-    To be able to track working position changet GRBL settigs to display work
+    To be able to track working position changet GRBL settings to display work
     position as oppose to machine position from 1.1f use $10=0 to configure...
 
     -----------------------------------------------------------------------"""
@@ -215,7 +215,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         "Run": GRBL_STATE_RUN,
         "Hold": GRBL_STATE_HOLD,
         "Jog": GRBL_STATE_JOG,
-        "Alarm": GRBL_STATE_ALRARM,
+        "Alarm": GRBL_STATE_ALARM,
         "Door": GRBL_STATE_DOOR,
         "Check": GRBL_STATE_CHECK,
         "Home": GRBL_STATE_HOME,
@@ -268,9 +268,8 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         self._inputBufferPart = list()
 
-        self.machineAutoRefresh = False
         self.machineAutoRefreshPeriod = 200
-        self.machineStatus = GRBL_STATE_UKNOWN
+        self.machineStatus = GRBL_STATE_UNKNOWN
 
         self.autoStatusNextMicro = None
 
@@ -342,7 +341,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             # check on status change
             decodedStatus = self.stat_dict.get(
-                statusData[0], GRBL_STATE_UKNOWN)
+                statusData[0], GRBL_STATE_UNKNOWN)
 
             if self.machineStatus != decodedStatus:
                 if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
@@ -387,7 +386,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 sr = {}
 
             sr['stat'] = "Alarm"
-            decodedStatus = self.stat_dict.get(sr['stat'], GRBL_STATE_UKNOWN)
+            decodedStatus = self.stat_dict.get(sr['stat'], GRBL_STATE_UNKNOWN)
 
             sr['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
@@ -588,9 +587,8 @@ class MachIf_GRBL(mi.MachIf_Base):
 
     def init(self):
         super(MachIf_GRBL, self).init()
-        self.machineAutoRefresh = gc.CONFIG_DATA.get('/machine/AutoRefresh')
         self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-            '/machine/AutoRefreshPeriod')
+            '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value' % self.name)
 
     def tick(self):
         # check if is time for auto-refresh and send get status cmd and
@@ -611,27 +609,12 @@ class MachIf_GRBL(mi.MachIf_Base):
             else:
                 self.autoStatusNextMicro = None
 
-        if self.machineAutoRefresh != gc.CONFIG_DATA.get(
-                '/machine/AutoRefresh'):
-            # depending on current state do appropriate action
-            if not self.machineAutoRefresh:
-                if self.okToSend(self.cmdStatus):
-                    super(MachIf_GRBL, self).write(self.cmdStatus)
-
-                msec = self.machineAutoRefreshPeriod * 1000
-                self.autoStatusNextMicro = dt.datetime.now() + \
-                    dt.timedelta(microseconds=msec)
-            else:
-                self.autoStatusNextMicro = None
-
-            # finally update local variable
-            self.machineAutoRefresh = gc.CONFIG_DATA.get(
-                    '/machine/AutoRefresh')
-
-        if self.machineAutoRefreshPeriod != \
-           gc.CONFIG_DATA.get('/machine/AutoRefreshPeriod'):
+        if self.machineAutoRefreshPeriod != gc.CONFIG_DATA.get(
+                '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value'
+                % self.name):
             self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-                '/machine/AutoRefreshPeriod')
+                '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value'
+                % self.name)
 
         # check for init condition, take action, and reset init condition
         if (self.initStringDetectFlag):
@@ -652,8 +635,9 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         bytesSent = super(MachIf_GRBL, self).write(txData, raw_write)
 
-        if askForStatus and self.machineAutoRefresh:
+        if askForStatus:
             if self.okToSend(self.cmdStatus):
+                super(MachIf_GRBL, self).write(self.cmdStatus)
                 super(MachIf_GRBL, self).write(self.cmdStatus)
 
             msec = self.machineAutoRefreshPeriod * 1000

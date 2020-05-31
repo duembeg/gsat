@@ -305,7 +305,6 @@ class gsatStateData():
         self.swState = STATE_IDLE
 
         # link status
-        self.grblDetected = False
         self.serialPortIsOpen = False
         self.serialPort = ""
         self.serialPortBaud = "115200"
@@ -314,8 +313,6 @@ class gsatStateData():
         self.deviceDetected = False
 
         # machine status
-        self.machineStatusAutoRefresh = False
-        self.machineStatusAutoRefreshPeriod = 1
         self.machineStatusString = "Idle"
 
         # program status
@@ -437,6 +434,9 @@ class gsatConfigData(ConfigData):
             "CmdHistory": "",
             "CmdMaxHistory": 100,
             "SaveCmdHistory": True,
+            "FontFace": "System",
+            "FontSize": -1,
+            "FontStyle": "normal",
         },
         "code": {
             "AutoScroll": 3,
@@ -508,7 +508,27 @@ class gsatConfigData(ConfigData):
             "Device": "grbl",
             "InitScript": "",
             "InitScriptEnable": False,
-            "Port": ""
+            "Port": "",
+            "MachIfSpecific": {
+                "grbl": {
+                    "AutoRefreshPeriod": {
+                        "Value": 200,
+                        "Name": "Auto Refresh Period (msec)",
+                        "ToolTip": "How often so send request",
+                    }
+                },
+                "TinyG": {
+                },
+                "g2core": {
+                },
+                "Smoothie":{
+                    "AutoRefreshPeriod": {
+                        "Value": 200,
+                        "Name": "Auto Refresh Period (msec)",
+                        "ToolTip": "How often so send request",
+                    }
+                }
+            }
         },
         "mainApp": {
             "BackupFile": True,

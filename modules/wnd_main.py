@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_main.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013-2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -47,6 +47,7 @@ import modules.machif_config as mi
 import images.icons as ico
 import modules.wnd_editor as ed
 import modules.wnd_machine as mc
+import modules.wnd_machine_config as mcc
 import modules.wnd_jogging as jog
 import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
@@ -351,7 +352,7 @@ class gsatSettingsDialog(wx.Dialog):
         self.noteBook.SetPageImage(page, page)
 
     def AddMachinePage(self, page):
-        self.machinePage = mc.gsatMachineSettingsPanel(
+        self.machinePage = mcc.gsatMachineSettingsPanel(
             self.noteBook, self.configData)
         self.noteBook.AddPage(self.machinePage, "Machine")
         self.noteBook.SetPageImage(page, page)
@@ -429,8 +430,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.machinePort = ""
         self.machineBaud = 0
-        self.machineAutoRefresh = False
-        self.machineAutoRefreshPeriod = 200
 
         self.InitUI()
         self.Centre()
@@ -449,10 +448,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
         self.stateData.serialPort = self.configData.get('/machine/Port')
         self.stateData.serialPortBaud = self.configData.get('/machine/Baud')
-        self.stateData.machineStatusAutoRefresh = self.configData.get(
-            '/machine/AutoRefresh')
-        self.stateData.machineStatusAutoRefreshPeriod = self.configData.get(
-            '/machine/AutoRefreshPeriod')
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
             self.logger.info("Init config values...")
@@ -475,10 +470,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              self.stateData.serialPort)
             self.logger.info("machIfBaud:               %s" %
                              self.stateData.serialPortBaud)
-            self.logger.info("machIfAutoRefresh:        %s" %
-                             self.stateData.machineStatusAutoRefresh)
-            self.logger.info("machineAutoRefreshPeriod: %s" %
-                             self.stateData.machineStatusAutoRefreshPeriod)
 
     def InitUI(self):
         """ Init main UI """
@@ -2144,9 +2135,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def SerialOpen(self):
         self.machinePort = self.stateData.serialPort
         self.machineBaud = self.stateData.serialPortBaud
-        self.machineAutoRefresh = self.stateData.machineStatusAutoRefresh
-        self.machineAutoRefreshPeriod = \
-            self.stateData.machineStatusAutoRefreshPeriod
 
         self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
 
@@ -2188,17 +2176,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.stateData.programCounter = pc
         self.gcText.UpdatePC(pc)
-
-    def MachineStatusAutoRefresh(self, autoRefresh):
-        self.stateData.machineStatusAutoRefresh = autoRefresh
-
-        if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(
-                gc.EV_CMD_AUTO_STATUS, self.stateData.machineStatusAutoRefresh
-            )
-
-        if autoRefresh:
-            self.GetMachineStatus()
 
     def GetMachineStatus(self):
         if self.machifProgExec is not None:
