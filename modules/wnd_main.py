@@ -195,6 +195,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.runTimer = None
         self.runStartTime = 0
         self.runEndTime = 0
+        self.runEndWaitingForMachIfIdle = False
         self.eventInCount = 0
         self.eventHandleCount = 0
 
@@ -306,16 +307,16 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             .BestSize(640, 530).Hide().Layer(1))
 
         self.aui_mgr.AddPane(
-            self.machineJoggingPanel,
-            aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1)
-            .Caption("Machine Jogging").CloseButton(True).MaximizeButton(True)
-            .BestSize(400, 600).Layer(1))
-
-        self.aui_mgr.AddPane(
             self.machineStatusPanel,
             aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1)
             .Caption("Machine Status").CloseButton(True).MaximizeButton(True)
             .BestSize(360, 400).Layer(1))
+
+        self.aui_mgr.AddPane(
+            self.machineJoggingPanel,
+            aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1)
+            .Caption("Machine Jogging").CloseButton(True).MaximizeButton(True)
+            .BestSize(400, 600).Layer(1))
 
         self.CreateMenu()
         self.CreateToolBar()
@@ -1869,7 +1870,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         if self.stateData.swState != gc.STATE_RUN and \
            self.stateData.swState != gc.STATE_PAUSE and \
-           self.stateData.swState != gc.STATE_BREAK:
+           self.stateData.swState != gc.STATE_BREAK and \
+           not self.runEndWaitingForMachIfIdle:
+
             self.RunTimerStop()
 
         self.machineStatusPanel.UpdateUI(
@@ -2196,29 +2199,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.logger.info("EV_RUN_END")
 
                 self.stateData.swState = gc.STATE_IDLE
-                self.RunTimerStop()
-
-                # calculate run time
-                if self.runEndTime == 0:
-                    self.runEndTime = int(time.time())
-
-                runTime = self.runEndTime - self.runStartTime
-                hours, reminder = divmod(runTime, 3600)
-                minutes, reminder = divmod(reminder, 60)
-                seconds, mseconds = divmod(reminder, 1)
-                runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
-                runStartTimeStr = time.strftime(
-                    "%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
-                runEndTimeStr = time.strftime(
-                    "%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
-
-                if (mseconds):
-                    pass
-
-                self.machineStatusPanel.UpdateUI(
-                    self.stateData, dict({'rtime': runTimeStr}))
-
-                self.SetPC(0)
+                self.runEndWaitingForMachIfIdle = True
 
                 prcnt = "%d/%d (%.2f%%)" % (
                     len(self.stateData.gcodeFileLines),
@@ -2228,26 +2209,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machineStatusPanel.UpdateUI(
                     self.stateData, dict({'prcnt': prcnt}))
 
-                self.Refresh()
-                self.UpdateUI()
-
-                # display run time dialog.
-                if self.displayRuntimeDialog:
-                    msgText = \
-                        "Started:	%s\n"\
-                        "Ended:	%s\n"\
-                        "Run time:	%s" % (
-                            runStartTimeStr, runEndTimeStr, runTimeStr)
-
-                    if sys.platform in 'darwin':
-                        # because dialog icons where not working correctly in
-                        # Mac OS X
-                        gmd.GenericMessageDialog(msgText, "G-Code Program",
-                                                 gmd.GMD_DEFAULT, wx.OK |
-                                                 wx.ICON_INFORMATION)
-                    else:
-                        wx.MessageBox(msgText, "G-Code Program",
-                                      wx.OK | wx.ICON_INFORMATION)
 
             elif te.event_id == gc.EV_STEP_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2341,6 +2302,68 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         if not self._eventQueue.empty():
             pass  # timed post again
+
+        # deal with delay between sw-run-end and machif-end
+        # definition: software send all gcode lines ot machif, but machine
+        # still executing on them. UI should be re-anabled, any new command
+        # will be queued behind already proccessed ones
+        if self.runEndWaitingForMachIfIdle:
+            if self.stateData.machineStatusString in [
+               "Idle", "idle", "Stop", "stop", "End", "end"]:
+                self.runEndWaitingForMachIfIdle = False
+                self.RunTimerStop()
+
+                # calculate run time
+                if self.runEndTime == 0:
+                    self.runEndTime = int(time.time())
+
+                runTime = self.runEndTime - self.runStartTime
+                hours, reminder = divmod(runTime, 3600)
+                minutes, reminder = divmod(reminder, 60)
+                seconds, mseconds = divmod(reminder, 1)
+                runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
+                runStartTimeStr = time.strftime(
+                    "%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
+                runEndTimeStr = time.strftime(
+                    "%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
+
+                if (mseconds):
+                    pass
+
+                self.SetPC(0)
+
+                prcnt = "%d/%d (%.2f%%)" % (
+                    len(self.stateData.gcodeFileLines),
+                    len(self.stateData.gcodeFileLines),
+                    100)
+
+                self.machineStatusPanel.UpdateUI(
+                    self.stateData, dict(
+                        {
+                            'rtime': runTimeStr,
+                            'prcnt': prcnt
+                        }))
+
+                self.Refresh()
+                self.UpdateUI()
+
+                # display run time dialog.
+                if self.displayRuntimeDialog:
+                    msgText = \
+                        "Started:	%s\n"\
+                        "Ended:	%s\n"\
+                        "Run time:	%s" % (
+                            runStartTimeStr, runEndTimeStr, runTimeStr)
+
+                    if sys.platform in 'darwin':
+                        # because dialog icons where not working correctly in
+                        # Mac OS X
+                        gmd.GenericMessageDialog(msgText, "G-Code Program",
+                                                 gmd.GMD_DEFAULT, wx.OK |
+                                                 wx.ICON_INFORMATION)
+                    else:
+                        wx.MessageBox(msgText, "G-Code Program",
+                                      wx.OK | wx.ICON_INFORMATION)
 
     def RunDeviceInitScript(self):
         initScriptEn = self.configData.get('/machine/InitScriptEnable')

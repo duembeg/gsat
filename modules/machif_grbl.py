@@ -280,7 +280,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.cmdHome = '$H\n'
         self.cmdInitComm = self.cmdReset
 
-        # no way to clean quque, this will do soft reset
+        # no way to clean queue, this will do soft reset
         # *stoping coolean and spindle with it.
         self.cmdQueueFlush = self.cmdReset
 
