@@ -164,15 +164,27 @@ GRBL_CONFIG_2_STR_DICT = {
     100: "X steps/mm",
     101: "Y steps/mm",
     102: "Z steps/mm",
+    103: "A steps/mm",
+    104: "B steps/mm",
+    105: "C steps/mm",
     110: "X Max rate, mm/min",
     111: "Y Max rate, mm/min",
     112: "Z Max rate, mm/min",
+    113: "A Max rate, mm/min",
+    114: "B Max rate, mm/min",
+    115: "C Max rate, mm/min",
     120: "X Acceleration, mm/sec^2",
     121: "Y Acceleration, mm/sec^2",
     122: "Z Acceleration, mm/sec^2",
+    123: "A Acceleration, mm/sec^2",
+    124: "B Acceleration, mm/sec^2",
+    125: "C Acceleration, mm/sec^2",
     130: "X Max travel, mm",
     131: "Y Max travel, mm",
     132: "Z Max travel, mm",
+    133: "A Max travel, mm",
+    134: "B Max travel, mm",
+    135: "C Max travel, mm",
 }
 
 # This values are only use to initialize or reset base class.
@@ -223,8 +235,10 @@ class MachIf_GRBL(mi.MachIf_Base):
         "Stop": GRBL_STATE_STOP
     }
 
+    axes_list = ['x', 'y', 'z', 'a', 'b', 'c']
+
     # grbl version, example "[VER:x.x.x:]"
-    reGrblVersion = re.compile(r'\[VER:(.*):\]')
+    reGrblVersion = re.compile(r'\[VER:(.*):.*\]')
 
     # grbl init, example "Grbl 0.8c ['$' for help]"
     reGrblInitStr = re.compile(r'(Grbl\s*(.*)\s*\[.*\])')
@@ -236,15 +250,22 @@ class MachIf_GRBL(mi.MachIf_Base):
     # GRBL example
     #   "<Run,MPos:20.163,0.000,0.000,WPos:20.163,0.000,0.000>"
     #   "<Hold:29|WPos:20.163,0.000,20.000>"
-    # self.reGrblMachineStatus = re.compile(
-    #    r'<(\w+)[,\|].*WPos:([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+),'\
-    #    '([+-]{0,1}\d+\.\d+)')
+    #
+    # more with 3 axes
+    #   "<Idle|WPos:0.000,0.000,0.000,0.000|FS:0,0|Pn:XYZA|WCO:0.000,0.000,0.000,0.000>"
+
+    #reGrblMachineStatus = re.compile(
+    #    r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),'
+    #    r'([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
+
     reGrblMachineStatus = re.compile(
-        r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),'
-        r'([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
+        r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:(.+)\|FS:(\d+),(\d+)')
+
+    reGrblAxes = re.compile(
+        r'([+-]{0,1}\d+\.\d+),')
 
     """
-        To be able to track working position changet GRBL settigs to display
+        To be able to track working position changet GRBL settings to display
         work position as oppose to machine position from 1.1f use $10=0 to
         configure...
     """
@@ -323,10 +344,13 @@ class MachIf_GRBL(mi.MachIf_Base):
                 bufferPart = 0
 
             sr['stat'] = statusData[0]
-            sr['posx'] = float(statusData[1])
-            sr['posy'] = float(statusData[2])
-            sr['posz'] = float(statusData[3])
-            sr['vel'] = float(statusData[4])
+            sr['vel'] = float(statusData[2])
+
+            axes = self.reGrblAxes.findall('%s,' % statusData[1])
+            if len(axes):
+
+                for i in range(len(axes)):
+                    sr['pos%s' % self.axes_list[i]] = float(axes[i])
 
             dataDict['sr'] = sr
 

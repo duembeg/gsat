@@ -28,6 +28,7 @@ import wx
 from wx import stc as stc
 from wx.lib import scrolledpanel as scrolled
 from wx.lib import colourselect as csel
+import string
 
 import modules.config as gc
 
@@ -180,17 +181,23 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         if self.configAutoScroll >= 2:
             self.autoScroll = False
 
-    def AppendText(self, string):
+    def AppendText(self, data):
         readOnly = self.GetReadOnly()
         self.SetReadOnly(False)
 
         try:
-            stc.StyledTextCtrl.AppendText(self, string)
+            stc.StyledTextCtrl.AppendText(self, data)
 
         except:
             # sometimes there are utf_8 exceptions specially when
             # recovering from bad connection
-            pass
+
+            # Clean up string to only printable chars and try again
+            try:
+                filtered_string = filter(lambda x: x in string.printable, data)
+                stc.StyledTextCtrl.AppendText(self, filtered_string)
+            except:
+                pass
 
         self.SetReadOnly(readOnly)
 
