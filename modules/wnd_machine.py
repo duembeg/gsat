@@ -281,7 +281,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
             self.configDroFontFace = font.GetFaceName()
             self.configDroFontSize = font.GetPointSize()
-            self.configDroFontStyle = "normal"
+            self.configDroFontStyle = "bold"
             self.configData.set(
                 '/machine/DRO/FontFace', self.configDroFontFace)
             self.configData.set(
