@@ -57,7 +57,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.machIfId = mi.GetMachIfId(gc.CONFIG_DATA.get('/machine/Device'))
+        self.initConfig()
         self.okToPostEvents = True
 
         self.gcodeDataLines = []
@@ -68,8 +68,6 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         self.swState = gc.STATE_IDLE
         self.lastEventID = gc.EV_CMD_NULL
-
-        self.machineAutoStatus = gc.CONFIG_DATA.get('/machine/AutoStatus')
 
         self.serialWriteQueue = []
 
@@ -87,6 +85,18 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # start thread
         self.start()
+
+    def initConfig(self, run_time_safe_only=False):
+        """ Update configs that can be updated during run-time
+        """
+        if not run_time_safe_only:
+            self.machIfId = mi.GetMachIfId(gc.CONFIG_DATA.get('/machine/Device'))
+
+        self.filterGCodesEnable = gc.CONFIG_DATA.get(
+            '/machine/FilterGcodesEnable')
+        self.filterGCodes = gc.CONFIG_DATA.get('/machine/FilterGcodes')
+        filterGcodeList = self.filterGCodes.split(',')
+        self.filterGCodesList = [x.strip() for x in filterGcodeList]
 
     def processQueue(self):
         """ Handle events coming from main UI
@@ -142,12 +152,6 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_SEND_W_ACK %s" % e.data)
 
                 self.serialWriteQueue.append((e.data, True))
-
-            elif e.event_id == gc.EV_CMD_AUTO_STATUS:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_AUTO_STATUS")
-
-                self.machineAutoStatus = e.data
 
             elif e.event_id == gc.EV_CMD_OK_TO_POST:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -289,6 +293,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_PROBE %s" % e.data)
 
                 self.machIfModule.doProbe(e.data)
+
+            elif e.event_id == gc.EV_CMD_UPDATE_CONFIG:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_UPDATE_CONFIG")
+
+                self.initConfig(run_time_safe_only=True)
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -503,8 +513,6 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 rc_error = self.waitForAcknowledge()
                 # self.SerialRead()
 
-                # if self.machineAutoStatus:
-                #     self.machIfModule.doGetStatus()
             else:
                 write_to_device = False
                 self.serialRead()
@@ -579,6 +587,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         # don't sent unnecessary data save the bits for speed
         for reComments in gReGcodeComments:
             gcode = reComments.sub("", gcode)
+
+        if self.filterGCodesEnable:
+            for filter in self.filterGCodesList:
+                if filter in gcode:
+                    gcode = ""
+                    break
 
         # send g-code command
         error = self.sendRunStepGcode(gcode)

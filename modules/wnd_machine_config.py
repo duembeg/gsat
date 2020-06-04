@@ -41,6 +41,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                                         style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
+        self.lastSpecificProperty = ""
 
         self.InitConfig()
         self.InitUI()
@@ -173,38 +174,63 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND |
                           wx.TOP | wx.LEFT | wx.RIGHT, border=20)
 
+        self.pg = wxpg.PropertyGrid(self, wx.ID_ANY)
+        self.pg.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
+        self.pg.EnableScrolling(True, True)
+
+        self.pg.Append(wxpg.PropertyCategory("General Settings"))
+
+        prop = "Enable init script"
+        self.cbInitScript = self.pg.Append(wxpg.BoolProperty(
+            prop, value=self.configData.get('/machine/InitScriptEnable')))
+        self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
+        self.pg.SetPropertyHelpString(prop, "Enable initialization script")
+
+        prop = "Enable filter G-codes"
+        self.cbFilterGcodes = self.pg.Append(wxpg.BoolProperty(
+            prop, value=self.configData.get('/machine/FilterGcodesEnable')))
+        self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
+        self.pg.SetPropertyHelpString(
+            prop, "When enabled, skip filtered G-codes")
+
+        prop = "Filter G-codes list"
+        self.tcFilterGcodes = self.pg.Append(wxpg.StringProperty(
+            prop, value=self.configData.get('/machine/FilterGcodes')))
+        self.pg.SetPropertyHelpString(
+            prop,
+            "When enabled, If a line contains one of these G-codes it wil be "
+            "skipped (',' separated)")
+
+        self.CreateMachIfSpecificCtrls()
+
+        vBoxSizerRoot.Add(
+            self.pg, 1,
+            flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=20)
+
+        vBoxSizerRoot.AddSpacer(10, -1)
 
         # add edit control for init script
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.cbInitScript = wx.CheckBox(
-            self, wx.ID_ANY, "Initialization script")
-        self.cbInitScript.SetValue(
-            self.configData.get('/machine/InitScriptEnable'))
-        self.cbInitScript.SetToolTip(
-            wx.ToolTip("Enable initialization script"))
-        vBoxSizer.Add(self.cbInitScript, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        st = wx.StaticText(self, label="Init script")
+        vBoxSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
         self.tcInitScript = wx.TextCtrl(
             self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.tcInitScript.SetValue(self.configData.get('/machine/InitScript'))
         self.tcInitScript.SetToolTip(wx.ToolTip(
             "This script is sent to device upon connect detect"))
-        vBoxSizer.Add(self.tcInitScript, 2, flag=wx.ALL |
+        vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL |
                       wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
 
-        vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.EXPAND | wx.ALL, border=20)
-
-        self.machIfSpecificSizer = wx.BoxSizer(wx.VERTICAL)
-        self.CreateMachIfSpecificCtrls(self.machIfSpecificSizer)
-
         vBoxSizerRoot.Add(
-            self.machIfSpecificSizer, 0,
-            flag=wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, border=20)
+            vBoxSizer, 2, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
+
+        vBoxSizerRoot.AddSpacer(10, -1)
 
         self.SetSizer(vBoxSizerRoot)
 
-    def CreateMachIfSpecificCtrls(self, sz):
+    def CreateMachIfSpecificCtrls(self):
         ''' Add machif specific config
         '''
         self.machIfConfigCtrl = dict()
@@ -212,41 +238,40 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         if len(self.machIfConfigDic):
 
-            pg = wxpg.PropertyGrid(self, wx.ID_ANY)
-            pg.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
-
-            pg.Append(wxpg.PropertyCategory(
+            self.pg.Append(wxpg.PropertyCategory(
                 "%s Specific Stettings" % self.machIfName))
 
             for i in sorted(self.machIfConfigDic.keys()):
-                name =  self.machIfConfigDic[i]['Name']
+                name = self.machIfConfigDic[i]['Name']
                 value = self.machIfConfigDic[i]['Value']
-                tooltip =  self.machIfConfigDic[i].get('ToolTip', "")
+                tooltip = self.machIfConfigDic[i].get('ToolTip', "")
 
                 if type(value) == int:
-                    cp = pg.Append(wxpg.IntProperty(name, value=value))
-                    #pg.SetPropertyEditor(name,"SpinCtrl")
+                    cp = self.pg.Append(wxpg.IntProperty(name, value=value))
+                    # pg.SetPropertyEditor(name,"SpinCtrl")
                 elif type(value) == float:
-                    cp = pg.Append(wxpg.FloatProperty(name, value=value))
+                    cp = self.pg.Append(wxpg.FloatProperty(name, value=value))
                 elif type(value) == bool:
-                    cp = pg.Append(wxpg.BoolProperty(name, value=value))
-                    pg.SetPropertyAttribute(name, "UseCheckbox", True)
+                    cp = self.pg.Append(wxpg.BoolProperty(name, value=value))
+                    self.pg.SetPropertyAttribute(name, "UseCheckbox", True)
                 elif type(value) == str:
-                    cp = pg.Append(wxpg.StringProperty(name, value=value))
+                    cp = self.pg.Append(wxpg.StringProperty(name, value=value))
                 else:
                     cp = None
-                    pg.Append(wxpg.StringProperty(
+                    self.pg.Append(wxpg.StringProperty(
                         name,
                         value="type not supported: ToDo add type handling"))
 
                 if len(tooltip):
-                    pg.SetPropertyHelpString(name, tooltip)
+                    self.pg.SetPropertyHelpString(name, tooltip)
 
                 if cp is not None:
                     self.machIfConfigCtrl[i] = cp
 
-            pg.EnableScrolling(True,True)
-            sz.Add(pg, 0, flag=wx.EXPAND)
+        elif len(self.lastSpecificProperty):
+            self.pg.DeleteProperty(self.lastSpecificProperty)
+
+        self.lastSpecificProperty = "%s Specific Stettings" % self.machIfName
 
     def UpdateConfigData(self):
         self.machIfName = self.deviceComboBox.GetValue()
@@ -285,10 +310,20 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             '/machine/DRO/EnableB', self.cbDroEnB.GetValue())
         self.configData.set(
             '/machine/DRO/EnableC', self.cbDroEnC.GetValue())
-        self.configData.set('/machine/InitScriptEnable',
-                            self.cbInitScript.GetValue())
-        self.configData.set('/machine/InitScript',
-                            self.tcInitScript.GetValue())
+
+        self.configData.set(
+            '/machine/FilterGcodesEnable', self.cbFilterGcodes.GetValue())
+
+        filterGcodeList = self.tcFilterGcodes.GetValue().split(',')
+        filterGcodeList = [x.strip() for x in filterGcodeList]
+        filterGcodeList = ",".join(filterGcodeList)
+        self.configData.set(
+            '/machine/FilterGcodes', filterGcodeList)
+
+        self.configData.set(
+            '/machine/InitScriptEnable', self.cbInitScript.GetValue())
+        self.configData.set(
+            '/machine/InitScript', self.tcInitScript.GetValue())
 
         if len(self.machIfConfigCtrl):
             for i in self.machIfConfigCtrl:
@@ -299,13 +334,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
     def OnDeviceComboBoxSelect(self, event):
         self.machIfName = self.deviceComboBox.GetValue()
-        self.machIfSpecificSizer.DeleteWindows()
-        self.CreateMachIfSpecificCtrls(self.machIfSpecificSizer)
-        self.machIfSpecificSizer.Layout()
-        self.Layout()
-        self.SetAutoLayout(True)
-        self.SetupScrolling()
-
+        self.CreateMachIfSpecificCtrls()
 
     def OnSpComboBoxSelect(self, event):
         value = self.spComboBox.GetValue()

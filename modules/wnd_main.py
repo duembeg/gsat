@@ -1323,6 +1323,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machineJoggingPanel.UpdateSettings(self.configData)
             self.CV2Panel.UpdateSettings(self.configData)
 
+            if self.machifProgExec is not None:
+                self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
+
             # re open serial port if open
             if (self.stateData.serialPortIsOpen and (self.stateData
                .serialPort != self.machinePort or self.stateData

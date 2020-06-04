@@ -254,12 +254,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             if statusData is not None:
                 stat = statusData.get('stat')
                 if stat is not None:
-                    self.runStatus.SetLabel(stat)
+                    self.runStatus.SetValue(stat)
         else:
             # self.refreshButton.Disable()
             self.version.SetLabel("")
-            self.runStatus.SetLabel("")
             self.bufferStatus.SetLabel("")
+            self.runStatus.SetValue("")
 
         machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
@@ -274,7 +274,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         return staticBoxSizer
 
     def CreateDroBox(self, sz):
-        fGridSizer = wx.FlexGridSizer(7, 2)
+        fGridSizer = wx.FlexGridSizer(8, 2)
 
         # set font properties
         if self.configDroFontFace == "System" or self.configDroFontSize == -1:
@@ -386,6 +386,18 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         fGridSizer.Add(self.frVal, 1, flag=wx.ALL |
                        wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
 
+        # Machine status
+        st = wx.StaticText(self, label="ST")
+        st.SetFont(fontSt)
+        self.runStatus = wx.TextCtrl(
+            self, wx.ID_ANY, "", style=wx.TE_READONLY | wx.TE_RIGHT)
+        self.runStatus.SetValue("")
+        self.runStatus.SetFont(fontPos)
+        fGridSizer.Add(st, 0, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL |
+                       wx.ALIGN_RIGHT, border=5)
+        fGridSizer.Add(self.runStatus, 1, flag=wx.ALL |
+                       wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, border=5)
+
         # finish init flex grid sizer
         fGridSizer.AddGrowableCol(1)
 
@@ -418,15 +430,6 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
         flexGridSizer.Add(self.version, 0, flag=wx.ALIGN_LEFT)
 
-        # Add MachIf running status
-        st = wx.StaticText(self, label="Device state")
-        st.SetFont(font)
-        self.runStatus = wx.StaticText(self, label="Idle")
-        self.runStatus.SetForegroundColour(self.machineDataColor)
-        self.runStatus.SetFont(font)
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
-        flexGridSizer.Add(self.runStatus, 0, flag=wx.ALIGN_LEFT)
-
         # Add MachIf buffer status
         st = wx.StaticText(self, label="Device buffer")
         st.SetFont(font)
@@ -435,25 +438,6 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.bufferStatus.SetFont(font)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
         flexGridSizer.Add(self.bufferStatus, 0, flag=wx.ALIGN_LEFT)
-
-        # Add Connected Status
-        '''
-        st = wx.StaticText(self, label="Device port")
-        st.SetFont(font)
-        self.machinePort = wx.StaticText(self, label="None")
-        self.machinePort.SetForegroundColour(self.machineDataColor)
-        self.machinePort.SetFont(font)
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
-        flexGridSizer.Add(self.machinePort, 0, flag=wx.ALIGN_LEFT)
-
-        st = wx.StaticText(self, label="Device baud")
-        st.SetFont(font)
-        self.machineBaud = wx.StaticText(self, label="None")
-        self.machineBaud.SetForegroundColour(self.machineDataColor)
-        self.machineBaud.SetFont(font)
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)
-        flexGridSizer.Add(self.machineBaud, 0, flag=wx.ALIGN_LEFT)
-        '''
 
         # Add Percent sent status
         st = wx.StaticText(self, label="G-code lines")

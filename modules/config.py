@@ -128,7 +128,8 @@ EV_CMD_STEP = 1010
 EV_CMD_STOP = 1020
 EV_CMD_SEND = 1030
 EV_CMD_SEND_W_ACK = 1040
-EV_CMD_AUTO_STATUS = 1050
+# EV_CMD_AUTO_STATUS = 1050
+EV_CMD_UPDATE_CONFIG = 1050
 EV_CMD_OK_TO_POST = 1060
 EV_CMD_GET_STATUS = 1070
 EV_CMD_SER_TXDATA = 1080
@@ -501,9 +502,8 @@ class gsatConfigData(ConfigData):
             "ZJogSafeMove": False
         },
         "machine": {
-            "AutoRefresh": True,
-            "AutoRefreshPeriod": 200,
-            "AutoStatus": False,
+            "Baud": "115200",
+            "Device": "grbl",
             "DRO": {
                 "EnableX": True,
                 "EnableY": True,
@@ -515,8 +515,8 @@ class gsatConfigData(ConfigData):
                 "FontSize": -1,
                 "FontStyle": "normal",
             },
-            "Baud": "115200",
-            "Device": "grbl",
+            "FilterGcodesEnable": False,
+            "FilterGcodes": "",
             "InitScript": "",
             "InitScriptEnable": False,
             "Port": "",
@@ -536,7 +536,7 @@ class gsatConfigData(ConfigData):
                     "AutoRefreshPeriod": {
                         "Value": 200,
                         "Name": "Auto Refresh Period (msec)",
-                        "ToolTip": "How often so send request",
+                        "ToolTip": "How often so send status request",
                     }
                 }
             }
