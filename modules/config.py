@@ -490,7 +490,7 @@ class gsatConfigData(ConfigData):
                 }
             },
             "JogFeedRate": 1000,
-            "JogInteractive": False,
+            "JogInteractive": True,
             "JogRapid": True,
             "NumKeypadPendant": False,
             "ProbeDistance": 19.6,

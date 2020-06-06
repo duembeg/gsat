@@ -37,13 +37,16 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         refresh.
     """
 
-    def __init__(self, parent, config_data, state_data, **args):
+    def __init__(
+        self, parent, config_data, state_data, cmd_line_options, **args
+    ):
         wx.ScrolledWindow.__init__(self, parent, **args)
 
         self.mainWindow = parent
 
         self.configData = config_data
         self.stateData = state_data
+        self.cmdLineOptions = cmd_line_options
 
         self.machineDataColor = wx.RED
 

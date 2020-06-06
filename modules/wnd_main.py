@@ -260,11 +260,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.statusbar.SetStatusText('')
 
         self.machineStatusPanel = mc.gsatMachineStatusPanel(
-            self, self.configData, self.stateData,)
+            self, self.configData, self.stateData, self.cmdLineOptions)
         self.CV2Panel = compv.gsatCV2Panel(
             self, self.configData, self.stateData, self.cmdLineOptions)
         self.machineJoggingPanel = jog.gsatJoggingPanel(
-            self, self.configData, self.stateData)
+            self, self.configData, self.stateData, self.cmdLineOptions)
+        # self.machineJoggingPanel = jog.gsatJoggingObsoletePanel(
+        #     self, self.configData, self.stateData, self.cmdLineOptions)
         # self.cliPanel = cli.gsatCliPanel(
         #    self, self.configData, self.stateData)
 
