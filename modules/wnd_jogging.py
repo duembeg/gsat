@@ -163,6 +163,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.cliComboBox.SetToolTip(wx.ToolTip("Command Line Interface (CLI)"))
         self.cliComboBox.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter)
         self.cliComboBox.Bind(wx.EVT_KEY_DOWN, self.OnCliKeyDown)
+        self.cliComboBox.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
         vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND | wx.ALL, border=1)
 
         # Add Controls --------------------------------------------------------
@@ -240,7 +241,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             self.spindleOffButton.Enable()
             self.coolantOnButton.Enable()
             self.coolantOffButton.Enable()
-            self.cliComboBox.Enable()
+            # self.cliComboBox.Enable()
             self.homeXButton.Enable()
             self.homeYButton.Enable()
             self.homeZButton.Enable()
@@ -272,7 +273,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             self.spindleOffButton.Disable()
             self.coolantOnButton.Disable()
             self.coolantOffButton.Disable()
-            self.cliComboBox.Disable()
+            # self.cliComboBox.Disable()
             self.homeXButton.Disable()
             self.homeYButton.Disable()
             self.homeZButton.Disable()
@@ -786,21 +787,24 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         return self.cliCommand
 
     def OnCliEnter(self, e):
-        cliCommand = self.cliComboBox.GetValue()
+        if self.stateData.serialPortIsOpen and not (
+           self.stateData.swState == gc.STATE_RUN):
 
-        if cliCommand != self.cliCommand:
-            if self.cliComboBox.GetCount() > self.cliCmdMaxHistory:
-                self.cliComboBox.Delete(0)
+            cliCommand = self.cliComboBox.GetValue()
 
-            self.cliCommand = cliCommand
-            self.cliComboBox.Append(self.cliCommand)
+            if cliCommand != self.cliCommand:
+                if self.cliComboBox.GetCount() > self.cliCmdMaxHistory:
+                    self.cliComboBox.Delete(0)
 
-        self.cliComboBox.SetValue("")
+                self.cliCommand = cliCommand
+                self.cliComboBox.Append(self.cliCommand)
 
-        self.cliIndex = self.cliComboBox.GetCount()
+            self.cliComboBox.SetValue("")
 
-        self.mainWindow.eventForward2Machif(
-            gc.EV_CMD_SEND, "".join([self.cliCommand, "\n"]))
+            self.cliIndex = self.cliComboBox.GetCount()
+
+            self.mainWindow.eventForward2Machif(
+                gc.EV_CMD_SEND, "".join([self.cliCommand, "\n"]))
 
         e.Skip()
 
@@ -816,8 +820,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             if len(cliItems) > self.cliIndex + 1:
                 self.cliIndex = self.cliIndex + 1
                 self.cliComboBox.SetValue(cliItems[self.cliIndex])
-        elif keyCode in self.numKeypadPendantKeys:
-            self.OnKeyPress(e)
+        # elif keyCode in self.numKeypadPendantKeys:
+        #     self.OnKeyPress(e)
         else:
             e.Skip()
 
@@ -844,11 +848,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
     def OnKeyUp(self, e):
         # print "key up event"
-        e.skip()
+        e.Skip()
 
     def OnKeyDown(self, e):
         # print "key down event"
-        e.skip()
+        e.Skip()
 
     def OnKeyTimer(self, e):
         # print "Got Timer"
@@ -917,11 +921,10 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             wx.PostEvent(self, evt)
 
         elif (key == wx.WXK_NUMPAD_HOME):
-            # evt = wx.PyCommandEvent(
-            #   wx.EVT_BUTTON.typeId, self.homeButton.GetId())
-            # self.homeButton.SetFocus()
-            # wx.PostEvent(self, evt)
-            self.mainWindow.OnMachineCycleStart(e)
+            evt = wx.PyCommandEvent(
+              wx.EVT_BUTTON.typeId, self.homeButton.GetId())
+            self.homeButton.SetFocus()
+            wx.PostEvent(self, evt)
 
         elif (key == wx.WXK_NUMPAD_PAGEUP):
             evt = wx.PyCommandEvent(
@@ -961,16 +964,18 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             wx.PostEvent(self, evt)
 
         elif (key == wx.WXK_NUMPAD_DIVIDE):
-            evt = wx.PyCommandEvent(
-                wx.EVT_BUTTON.typeId, self.homeButton.GetId())
-            self.homeButton.SetFocus()
-            wx.PostEvent(self, evt)
+            # evt = wx.PyCommandEvent(
+            #     wx.EVT_BUTTON.typeId, self.homeButton.GetId())
+            # self.homeButton.SetFocus()
+            # wx.PostEvent(self, evt)
+            self.mainWindow.OnMachineCycleStart(e)
 
         elif (key == wx.WXK_NUMPAD_MULTIPLY):
             canRun = self.mainWindow.OnRunHelper()
 
             if canRun:
                 self.mainWindow.OnRun()
+                self.SetFocus()
 
         elif (key == wx.WXK_NUMPAD_SUBTRACT):
             evt = wx.PyCommandEvent(
@@ -1318,7 +1323,7 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
             self.spindleOffButton.Enable()
             self.coolantOnButton.Enable()
             self.coolantOffButton.Enable()
-            self.cliComboBox.Enable()
+            # self.cliComboBox.Enable()
             self.homeXButton.Enable()
             self.homeYButton.Enable()
             self.homeZButton.Enable()
@@ -1360,7 +1365,7 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
             self.spindleOffButton.Disable()
             self.coolantOnButton.Disable()
             self.coolantOffButton.Disable()
-            self.cliComboBox.Disable()
+            # self.cliComboBox.Disable()
             self.homeXButton.Disable()
             self.homeYButton.Disable()
             self.homeZButton.Disable()
@@ -2273,21 +2278,24 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
         return self.cliCommand
 
     def OnCliEnter(self, e):
-        cliCommand = self.cliComboBox.GetValue()
+        if self.stateData.serialPortIsOpen and not (
+           self.stateData.swState == gc.STATE_RUN):
 
-        if cliCommand != self.cliCommand:
-            if self.cliComboBox.GetCount() > self.cliCmdMaxHistory:
-                self.cliComboBox.Delete(0)
+            cliCommand = self.cliComboBox.GetValue()
 
-            self.cliCommand = cliCommand
-            self.cliComboBox.Append(self.cliCommand)
+            if cliCommand != self.cliCommand:
+                if self.cliComboBox.GetCount() > self.cliCmdMaxHistory:
+                    self.cliComboBox.Delete(0)
 
-        self.cliComboBox.SetValue("")
+                self.cliCommand = cliCommand
+                self.cliComboBox.Append(self.cliCommand)
 
-        self.cliIndex = self.cliComboBox.GetCount()
+            self.cliComboBox.SetValue("")
 
-        self.mainWindow.eventForward2Machif(
-            gc.EV_CMD_SEND, "".join([self.cliCommand, "\n"]))
+            self.cliIndex = self.cliComboBox.GetCount()
+
+            self.mainWindow.eventForward2Machif(
+                gc.EV_CMD_SEND, "".join([self.cliCommand, "\n"]))
 
         e.Skip()
 
@@ -2407,12 +2415,11 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
             # self.OnXPos(e)
 
         elif (key == wx.WXK_NUMPAD_HOME):
-            # evt = wx.PyCommandEvent(
-            #     wx.EVT_BUTTON.typeId, self.homeButton.GetId())
-            # self.homeButton.SetFocus()
-            # wx.PostEvent(self, evt)
+            evt = wx.PyCommandEvent(
+                wx.EVT_BUTTON.typeId, self.homeButton.GetId())
+            self.homeButton.SetFocus()
+            wx.PostEvent(self, evt)
             # self.OnHome(e)
-            self.mainWindow.OnMachineCycleStart(e)
 
         elif (key == wx.WXK_NUMPAD_PAGEUP):
             evt = wx.PyCommandEvent(
@@ -2457,11 +2464,12 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
             # self.OnSetToZero(e)
 
         elif (key == wx.WXK_NUMPAD_DIVIDE):
-            evt = wx.PyCommandEvent(
-                wx.EVT_BUTTON.typeId, self.homeButton.GetId())
-            self.homeButton.SetFocus()
-            wx.PostEvent(self, evt)
-            # self.OnHome(e)
+            # evt = wx.PyCommandEvent(
+            #     wx.EVT_BUTTON.typeId, self.homeButton.GetId())
+            # self.homeButton.SetFocus()
+            # wx.PostEvent(self, evt)
+            # # self.OnHome(e)
+            self.mainWindow.OnMachineCycleStart(e)
 
         elif (key == wx.WXK_NUMPAD_MULTIPLY):
             canRun = self.mainWindow.OnRunHelper()

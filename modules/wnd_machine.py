@@ -33,6 +33,7 @@ import modules.machif_config as mi
 
 
 class gsatMachineStatusPanel(wx.ScrolledWindow):
+# class gsatMachineStatusPanel(scrolled.ScrolledPanel):
     """ Status information about machine, controls to enable auto and manual
         refresh.
     """
@@ -41,6 +42,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self, parent, config_data, state_data, cmd_line_options, **args
     ):
         wx.ScrolledWindow.__init__(self, parent, **args)
+        # scrolled.ScrolledPanel.__init__(self, parent, -1)
 
         self.mainWindow = parent
 
@@ -99,6 +101,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
     def UpdateSettingsHandler(self, config_data=None):
         #print "top ---"
         #self.test()
+        #size = self.GetClientSize()
 
         if self.configDroEnX:
             self.xPosSt.Show()
@@ -169,12 +172,20 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         #self.sDroBoxSz.SetDimension((0, 0), self.GetClientSize())
         #self.sDroBoxSz.Layout()
+        #self.SetAutoLayout(True)
+        #self.Center()
+        #self.InvalidateBestSize()
+        #self.EnableScrolling(False, False)
+        #self.SetVirtualSize(self.GetBestVirtualSize())
         self.Layout()
+        #self.FitInside()
+        #self.SetDimensions(-1, -1, size.width, size.height, wx.SIZE_USE_EXISTING)
         #self.Update()
         #self.sDroBoxSz.FitInside(self)
         #self.Layout()
         #print "bottom ---"
         #self.test()
+        #self.SetBackgroundColour("blue")
 
     def InitUI(self):
         self.vRootBoxSz = wx.BoxSizer(wx.VERTICAL)

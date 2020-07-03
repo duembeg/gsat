@@ -340,6 +340,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.SetPC(0)
 
         self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.machineStatusPanel.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.machineJoggingPanel.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.CV2Panel.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.outputText.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.gcText.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
 
     def CreateMenu(self):
 
