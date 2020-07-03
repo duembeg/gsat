@@ -66,8 +66,8 @@ __description__ = \
 __authors__ = ['Wilhelm Duembeg']
 __author__ = ','.join(__authors__)
 __credits__ = []
-__copyright__ = 'Copyright (c) 2013-2018'
-__license__ = 'GPL v2, Copyright (c) 2013-2014'
+__copyright__ = 'Copyright (c) 2013-2020'
+__license__ = 'GPL v2, Copyright (c) 2013-2020'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
 # maintenance information

@@ -34,6 +34,7 @@ except ImportError:
     import json
 
 import os
+import time
 
 """----------------------------------------------------------------------------
    Globals:
@@ -626,3 +627,33 @@ class EventQueueIf():
     def removeEventListener(self, listener):
         if id(listener) in self._eventListeners:
             self._eventListeners.pop(id(listener))
+
+
+class TimeOut(object):
+    """ Class that implement timeout timer
+    """
+
+    def __init__(self, timeout):
+        self.timeNow = time.time()
+        self.timeout = timeout
+        self.timeoutTime = self.timeout + self.timeNow
+
+    def disable(self):
+        self.timeoutTime = 0
+
+    def enable(self):
+        self.reset()
+
+    def reset(self):
+        self.timeNow = time.time()
+        self.timeoutTime = self.timeout + self.timeNow
+
+    def timeExpired(self):
+        rcVal = False
+
+        self.timeNow = time.time()
+        if self.timeoutTime != 0 and self.timeNow > self.timeoutTime:
+            self.timeoutTime = self.timeout + self.timeNow
+            rcVal = True
+
+        return rcVal
