@@ -89,10 +89,10 @@ Screen Shoots
 ------------
 ### Main window
 ####* Linux
-![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/v1.5.0/images/screenshoot/main_window_linux.png "Main Window, Linux")
+![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux")
 
 ### Settings Dialog
-![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/v1.5.0/images/screenshoot/settings_dialog.png "Settings Dialog")
+![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog")
 
 Changelog
 ---------
