@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    config.py
 
-   Copyright (C) 2013-2014 Wilhelm Duembeg
+   Copyright (C) 2013-2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,55 +22,60 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import logging
+from logging import handlers, Formatter
 
+import Queue
 import wx
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
+import os
+import time
 
 """----------------------------------------------------------------------------
    Globals:
 ----------------------------------------------------------------------------"""
-gEdityBkColor = wx.WHITE
-gReadOnlyBkColor = wx.Colour(242, 241, 240)
+EDIT_BK_COLOR = wx.WHITE
+READ_ONLY_BK_COLOR = wx.Colour(242, 241, 240)
 
+FILE_WILDCARD = \
+    "gcode (*.ngc; *.nc; *.gcode)|*.ngc;*.nc;*.gcode|"\
+    "ngc (*.ngc)|*.ngc|" \
+    "nc (*.nc)|*.nc|" \
+    "gcode (*.gcode)|*.gcode|" \
+    "All files (*.*)|*.*"
 
-gWILDCARD = \
-   "ngc (*.ngc)|*.ngc|" \
-   "nc (*.nc)|*.nc|" \
-   "gcode (*.gcode)|*.gcode|" \
-   "All files (*.*)|*.*"
+ZERO_STRING = "0.000"
+NUMBER_FORMAT_STRING = "%0.3f"
+ON_STRING = "On"
+OFF_STRING = "Off"
 
-gZeroString = "0.000"
-gNumberFormatString = "%0.3f"
-gOnString = "On"
-gOffString = "Off"
+CMD_LINE_OPTIONS = {}
+CONFIG_DATA = None
+STATE_DATA = None
 
 # --------------------------------------------------------------------------
 # device commands
 # --------------------------------------------------------------------------
-gDEVICE_CMD_GO_TO_POS         = "G00 <AXIS><VAL>\n"
-gDEVICE_CMD_ALL_GO_TO_POS     = "G00 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gDEVICE_CMD_JOG_X             = "G00 X<VAL>\n"
-gDEVICE_CMD_JOG_Y             = "G00 Y<VAL>\n"
-gDEVICE_CMD_JOG_Z             = "G00 Z<VAL>\n"
-gDEVICE_CMD_SPINDLE_ON        = "M3\n"
-gDEVICE_CMD_SPINDLE_OFF       = "M5\n"
+DEVICE_CMD_RAPID_LINEAR_MOVE = "G0"      # G00 <AXIS><VAL>
+DEVICE_CMD_LINEAR_MOVE = "G1"      # G01 <AXIS><VAL>
+DEVICE_CMD_ARC_CW_MOVE = "G2"
+DEVICE_CMD_ARC_CCW_MOVE = "G3"
+DEVICE_CMD_SPINDLE_CW_ON = "M3"
+DEVICE_CMD_SPINDLE_CCW_ON = "M4"
+DEVICE_CMD_SPINDLE_OFF = "M5"
+DEVICE_CMD_COOLANT_ON = "M7"
+DEVICE_CMD_COOLANT_OFF = "M9"
+DEVICE_CMD_HOME_AXIS = "G28.2"   # G28.2 <AXIS>0
+DEVICE_CMD_SET_AXIS = "G28.3"   # G28.3 <AXIS><VAL>
+DEVICE_CMD_ABSOLUTE = "G90"     # G90
+DEVICE_CMD_INCREMENTAL = "G91"     # G91
+DEVICE_CMD_OFFSET_AXIS = "G92"     # G92 <AXIS><VAL>
 
-# --------------------------------------------------------------------------
-# TinyG/TinyG2 commands
-# --------------------------------------------------------------------------
-gTINYG_CMD_GET_STATUS         = "?\n"
-gTINYG_CMD_RESET_TO_VAL       = "G28.3 <AXIS><VAL>\n"
-gTINYG_CMD_ALL_RESET_TO_VAL   = "G28.3 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gTINYG_CMD_GO_HOME            = "G28.2 <AXIS>0\n"
-gTINYG_CMD_ALL_GO_HOME        = "G28.2 X0 Y0 Z0\n"
-
-# --------------------------------------------------------------------------
-# Grbl commands
-# --------------------------------------------------------------------------
-gGRBL_CMD_GET_STATUS          = "?\n"
-gGRBL_CMD_RESET_TO_VAL        = "G92 <AXIS><VAL>\n"
-gGRBL_CMD_ALL_RESET_TO_VAL    = "G92 X<XVAL> Y<YVAL> Z<ZVAL>\n"
-gGRBL_CMD_GO_HOME             = "G28.2 <AXIS>0\n"
-gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
 
 # --------------------------------------------------------------------------
 # state machine states and transition
@@ -79,31 +84,31 @@ gGRBL_CMD_ALL_GO_HOME         = "G28.2 X0 Y0 Z0\n"
 """ ------------------------------------------------------------------------
 
 STATE TABLE::
-state    | RUN UI  | PAUSE UI| STEP UI | STOP UI |  BREAK PT| ERROR   | ST END  | ABORT   |
--------------------------------------------------------------------------------------------
-ABORT    | IGNORED | IGNORE  | IGNORE  | IDLE    |  IGNORE  | IGNORE  | IGNORE  | IGNORE  |
--------------------------------------------------------------------------------------------
-IDLE     | RUN     | IGNORE  | STEP    | IGNORE  |  IGNORE  | IGNORE  | IGNORE  | ABORT   |
--------------------------------------------------------------------------------------------
-RUN      | IGNORE  | PAUSE   | IGNORE  | IDLE    |  BREAK   | IDLE    | IDLE    | ABORT   |
--------------------------------------------------------------------------------------------
-STEP     | RUN     | PAUSE   | IGNORE  | IDLE    |  IGNORE  | IDLE    | IDLE    | ABORT   |
--------------------------------------------------------------------------------------------
-BREAK    | RUN     | PAUSE   | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
--------------------------------------------------------------------------------------------
-PAUSE    | RUN     | IGNORE  | STEP    | IDLE    |  IGNORE  | IDLE    | IGNORE  | ABORT   |
--------------------------------------------------------------------------------------------
-USER     | IGNORE  | IGNORE  | IGNORE  | IGNORE  |  IGNORE  | IDLE    | IDLE    | ABORT   |
----------------------------------------------------------------------------------
+state| RUN   | PAUSE | STEP  | STOP  | BRK PT| ERROR | ST END| ABORT | SER CL|
+------------------------------------------------------------------------------
+ABORT| IGNORE| IGNORE| IGNORE| IDLE  | IGNORE| IGNORE| IGNORE| IGNORE| IDLE  |
+------------------------------------------------------------------------------
+IDLE | RUN   | IGNORE| STEP  | IGNORE| IGNORE| IGNORE| IGNORE| ABORT | IGNORE|
+------------------------------------------------------------------------------
+RUN  | IGNORE| PAUSE | IGNORE| IDLE  | BREAK | BREAK | IDLE  | ABORT | IDLE  |
+------------------------------------------------------------------------------
+STEP | RUN   | PAUSE | IGNORE| IDLE  | IGNORE| IDLE  | IDLE  | ABORT | IDLE  |
+------------------------------------------------------------------------------
+BREAK| RUN   | PAUSE | STEP  | IDLE  | IGNORE| IDLE  | IGNORE| ABORT | IDLE  |
+------------------------------------------------------------------------------
+PAUSE| RUN   | IGNORE| STEP  | IDLE  | IGNORE| IDLE  | IGNORE| ABORT | IDLE  |
+------------------------------------------------------------------------------
+USER | IGNORE| IGNORE| IGNORE| IGNORE| IGNORE| IDLE  | IDLE  | ABORT | IDLE  |
+------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------ """
 
-gSTATE_ABORT  = 001
-gSTATE_IDLE  =  100
-gSTATE_RUN   =  200
-gSTATE_STEP  =  300
-gSTATE_BREAK =  400
-gSTATE_PAUSE =  500
+STATE_ABORT = 1
+STATE_IDLE = 100
+STATE_RUN = 200
+STATE_STEP = 300
+STATE_BREAK = 400
+STATE_PAUSE = 500
 
 '''
 Notes:
@@ -116,234 +121,456 @@ open again and will start in IDLE state.
 # Thread/MainWindow communication events
 # --------------------------------------------------------------------------
 # EVENT ID             EVENT CODE
-gEV_CMD_NULL         = 0100
-gEV_CMD_EXIT         = 1000
-gEV_CMD_RUN          = 1030
-gEV_CMD_STEP         = 1040
-gEV_CMD_STOP         = 1050
-gEV_CMD_SEND         = 1060
-gEV_CMD_SEND_W_ACK   = 1062
-gEV_CMD_AUTO_STATUS  = 1070
-gEV_CMD_OK_TO_POST   = 1080
+EV_CMD_NULL = 100
+EV_CMD_EXIT = 200
+EV_CMD_OPEN = 300
+EV_CMD_RUN = 1000
+EV_CMD_STEP = 1010
+EV_CMD_STOP = 1020
+EV_CMD_SEND = 1030
+EV_CMD_SEND_W_ACK = 1040
+# EV_CMD_AUTO_STATUS = 1050
+EV_CMD_UPDATE_CONFIG = 1050
+EV_CMD_OK_TO_POST = 1060
+EV_CMD_GET_STATUS = 1070
+EV_CMD_SER_TXDATA = 1080
+EV_CMD_CYCLE_START = 1090
+EV_CMD_FEED_HOLD = 1100
+EV_CMD_QUEUE_FLUSH = 1110
+EV_CMD_RESET = 1120
+EV_CMD_MOVE = 1130
+EV_CMD_MOVE_RELATIVE = 1140
+EV_CMD_RAPID_MOVE = 1160
+EV_CMD_RAPID_MOVE_RELATIVE = 1170
+EV_CMD_CLEAR_ALARM = 1180
+EV_CMD_PROBE = 1190
+EV_CMD_SET_AXIS = 1200
+EV_CMD_HOME = 1210
+EV_CMD_JOG_MOVE = 1220
+EV_CMD_JOG_MOVE_RELATIVE = 1230
+EV_CMD_JOG_RAPID_MOVE = 1240
+EV_CMD_JOG_RAPID_MOVE_RELATIVE = 1250
+EV_CMD_JOG_STOP = 1260
 
-gEV_NULL             = 0100
-gEV_ABORT            = 2000
-gEV_RUN_END          = 2010
-gEV_STEP_END         = 2020
-gEV_DATA_OUT         = 2030
-gEV_DATA_IN          = 2040
-gEV_HIT_BRK_PT       = 2050
-gEV_PC_UPDATE        = 2060
-gEV_HIT_MSG          = 2070
-gEV_SER_RXDATA       = 2080
-gEV_TIMER            = 2090
-gEV_DATA_STATUS      = 2100
-gEV_DEVICE_DETECTED  = 2110
+
+EV_NULL = 100
+EV_HELLO = 110
+EV_GOODBY = 120
+EV_EXIT = 200
+EV_ABORT = 2000
+EV_RUN_END = 2010
+EV_STEP_END = 2020
+EV_DATA_OUT = 2030
+EV_DATA_IN = 2040
+EV_HIT_BRK_PT = 2050
+EV_PC_UPDATE = 2060
+EV_HIT_MSG = 2070
+EV_SER_RXDATA = 2080
+EV_SER_TXDATA = 2090
+EV_SER_PORT_OPEN = 2100
+EV_SER_PORT_CLOSE = 2110
+EV_TIMER = 2120
+EV_DATA_STATUS = 2130
+EV_DEVICE_DETECTED = 2140
 
 # --------------------------------------------------------------------------
-# Device type
+# VERBOSE MASK
 # --------------------------------------------------------------------------
-gDEV_NONE            = 0000
-gDEV_GRBL            = 1000
-gDEV_TINYG           = 1100
-gDEV_TINYG2          = 1200
+VERBOSE_MASK = 0
 
-gDEV_LIST = ["Grbl", "TinyG", "TinyG2"]
+VERBOSE_MASK_UI = 0x000000FF
+VERBOSE_MASK_UI_EV = 0x00000001
+VERBOSE_MASK_MACHIF = 0x0000FF00
+VERBOSE_MASK_MACHIF_EXEC = 0x00000F00
+VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000100
+VERBOSE_MASK_MACHIF_MOD = 0x0000F000
+VERBOSE_MASK_MACHIF_MOD_EV = 0x00001000
+VERBOSE_MASK_MACHIF_EV = \
+    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_EXEC_EV
+VERBOSE_MASK_SERIALIF = 0x000F0000
+VERBOSE_MASK_SERIALIF_STR = 0x00010000
+VERBOSE_MASK_SERIALIF_HEX = 0x00020000
+VERBOSE_MASK_SERIALIF_EV = 0x00040000
+VERBOSE_MASK_EVENTIF = \
+    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV |\
+    VERBOSE_MASK_SERIALIF_EV
 
-"""----------------------------------------------------------------------------
-   gsatStateData:
-   provides various data information
-----------------------------------------------------------------------------"""
+
+def decode_verbose_mask_string(verbose_mask_str):
+    """ Decode and init gc VERBOSE_MASK
+    """
+    global VERBOSE_MASK
+
+    mask_list = verbose_mask_str.split(",")
+
+    for mask in mask_list:
+        mask = str(mask).lower()
+        if "ui" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_UI
+
+        if "ui_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_UI_EV
+
+        if "machif" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF
+
+        if "machif_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EV
+
+        if "machif_exec" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EXEC
+
+        if "machif_exec_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EXEC_EV
+
+        if "machif_mod" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_MOD
+
+        if "machif_mod_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_MOD_EV
+
+        if "serialif" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF
+
+        if "serialif_str" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_STR
+
+        if "serialif_hex" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_HEX
+
+        if "serialif_ev" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_EV
+
+        if "eventif" == mask:
+            VERBOSE_MASK |= VERBOSE_MASK_EVENTIF
+
+    return VERBOSE_MASK
+
+
+# --------------------------------------------------------------------------
+# LOGGING MASK
+# --------------------------------------------------------------------------
+
+def init_logger(filename):
+    log_path = filename
+
+    logger = logging.getLogger()
+
+    ch = logging.StreamHandler()
+    # ch_format = Formatter("%(levelname)s : %(message)s")
+    ch_format = Formatter("%(asctime)s - m:%(module)s l:%(lineno)d >> "
+                          "%(levelname)s :"
+                          "%(message)s",
+                          datefmt='%Y%m%d %I:%M:%S %p')
+    ch.setFormatter(ch_format)
+    logger.addHandler(ch)
+
+    # create a rotating file handler and add it to the logger
+    # fh = handlers.RotatingFileHandler(log_path,
+    #   maxBytes=5000000, backupCount=4)
+    # fh_format = Formatter("%(asctime)s - m:%(module)s l:%(lineno)d "
+    #                       "t:%(thread)d >> %(levelname)s : %(message)s",
+    #                       datefmt='%Y%m%d %I:%M:%S %p')
+    # fh.setFormatter(log_format)
+    # logger.addHandler(handler)
+
+    # set the root logging level
+    logger.setLevel(logging.INFO)
+
+    # logger.info('>>> start')
+
+
+def init_config(cmd_line_options, config_file, log_file):
+    """ Initialize config vars
+    """
+    global CMD_LINE_OPTIONS
+    global CONFIG_DATA
+    global STATE_DATA
+
+    CMD_LINE_OPTIONS = cmd_line_options
+
+    init_logger('log_file')
+
+    CONFIG_DATA = gsatConfigData(config_file)
+    CONFIG_DATA.load()
+
+    STATE_DATA = gsatStateData()
+
+
 class gsatStateData():
-   def __init__(self):
+    """ Provides various data information
+    """
 
-      # state status
-      self.swState = gSTATE_IDLE
+    def __init__(self):
 
-      # link status
-      self.grblDetected = False
-      self.serialPortIsOpen = False
-      self.serialPort = ""
-      self.serialPortBaud = "9600"
-      self.deviceID = 0
-      self.deviceDetected = False
+        # state status
+        self.swState = STATE_IDLE
 
-      # machine status
-      self.machineStatusAutoRefresh = False
-      self.machineStatusAutoRefreshPeriod = 1
-      self.machineStatusString ="Idle"
+        # link status
+        self.serialPortIsOpen = False
+        self.serialPort = ""
+        self.serialPortBaud = "115200"
+        self.machIfId = 0
+        self.machIfName = "None"
+        self.deviceDetected = False
 
-      # program status
-      self.programCounter = 0
-      self.breakPoints = set()
-      self.fileIsOpen = False
-      self.gcodeFileName = ""
-      self.gcodeFileLines = []
+        # machine status
+        self.machineStatusString = "Idle"
 
-"""----------------------------------------------------------------------------
-   gsatStateData:
-   provides various data information
-----------------------------------------------------------------------------"""
-class gsatConfigData():
-   def __init__(self):
-      # -----------------------------------------------------------------------
-      # config keys
-
-      self.config = {
-      #  key                                 CanEval, Default Value
-      # main app keys
-         '/mainApp/DisplayRunTimeDialog'     :(True , True),
-         '/mainApp/BackupFile'               :(True , True),
-         '/mainApp/MaxFileHistory'           :(True , 8),
-         '/mainApp/RoundInch2mm'             :(True , 4),
-         '/mainApp/Roundmm2Inch'             :(True , 4),
-         #'/mainApp/DefaultLayout/Dimensions' :(False, ""),
-         #'/mainApp/DefaultLayout/Perspective':(False, ""),
-         #'/mainApp/ResetLayout/Dimensions'   :(False, ""),
-         #'/mainApp/ResetLayout/Perspective'  :(False, ""),
-
-      # code keys
-         # 0:NoAutoScroll 1:AlwaysAutoScroll 2:SmartAutoScroll 3:OnGoToPCAutoScroll
-         '/code/AutoScroll'                  :(True , 3),
-         '/code/CaretLine'                   :(True , True),
-         '/code/CaretLineForeground'         :(False, '#000000'),
-         '/code/CaretLineBackground'         :(False, '#EFEFEF'), #C299A9 #A9C299, 9D99C2
-         '/code/LineNumber'                  :(True , True),
-         '/code/LineNumberForeground'        :(False, '#000000'),
-         '/code/LineNumberBackground'        :(False, '#99A9C2'),
-         '/code/ReadOnly'                    :(True , True),
-         '/code/WindowForeground'            :(False, '#000000'),
-         '/code/WindowBackground'            :(False, '#FFFFFF'),
-         '/code/GCodeHighlight'              :(False, '#0000FF'),
-         '/code/AxisHighlight'               :(False, '#007F00'), #007F7F
-         '/code/ParametersHighlight'         :(False, '#7F0000'),
-         '/code/GCodeLineNumberHighlight'    :(False, '#BFBFBF'),
-         '/code/CommentsHighlight'           :(False, '#FFC300'),
+        # program status
+        self.programCounter = 0
+        self.breakPoints = set()
+        self.fileIsOpen = False
+        self.gcodeFileName = ""
+        self.gcodeFileLines = []
 
 
-      # output keys
-         # 0:NoAutoScroll 1:AlwaysAutoScroll 2:SmartAutoScroll
-         '/output/AutoScroll'                :(True , 2),
-         '/output/CaretLine'                 :(True , False),
-         '/output/CaretLineForeground'       :(False, '#000000'),
-         '/output/CaretLineBackground'       :(False, '#C299A9'),
-         '/output/LineNumber'                :(True , False),
-         '/output/LineNumberForeground'      :(False, '#000000'),
-         '/output/LineNumberBackground'      :(False, '#FFFFFF'),
-         '/output/ReadOnly'                  :(True , False),
-         '/output/WindowForeground'          :(False, '#000000'),
-         '/output/WindowBackground'          :(False, '#FFFFFF'),
+class ConfigData(object):
+    """ Provides various data information
+    """
+    def __init__(self, config_fname=None):
+
+        self.configFileName = config_fname
+
+        self.datastore = dict()
+
+    def add(self, key_path, val):
+        """ Add new key value pair
+        """
+        if type(key_path) is list:
+            key_list = key_path
+        else:
+            key_list = key_path.split("/")
+
+            if key_list[0] == "":
+                key_list.pop(0)
+
+        node = self.get(key_list[:-1])
+
+        if node is None:
+            node = self.datastore
+
+            for key in key_list[:-1]:
+                if key in node:
+                    node = node[key]
+                else:
+                    node[key] = dict()
+                    node = node[key]
+
+        node[key_list[-1:][0]] = val
+
+    def get(self, key_path, default_rv=None):
+        """ Get value for a given key
+        """
+        return_val = default_rv
+
+        if type(key_path) is list:
+            key_list = key_path
+        else:
+            key_list = key_path.split("/")
+
+            if key_list[0] == "":
+                key_list.pop(0)
+
+        if key_list:
+            node = self.datastore
+
+            for key in key_list:
+                if key in node:
+                    node = node[key]
+                else:
+                    key = None
+                    break
+
+            if key is not None:
+                return_val = node
+
+        return return_val
+
+    def set(self, key_path, val):
+        """ Set value for a given key
+        """
+        self.add(key_path, val)
+
+    def load(self):
+        """ Load data from config file
+        """
+        if self.configFileName is not None:
+            if os.path.exists(self.configFileName):
+                datastore = dict()
+
+                with open(self.configFileName, 'r') as f:
+                    datastore = json.load(f)
+
+                # need to do deep merge, update not sufficient
+                def deep_update(destination_dict, source_dict):
+                    for key in source_dict.keys():
+                        if isinstance(source_dict[key], dict):
+                            # get node or create one
+                            node = destination_dict.setdefault(key, {})
+                            deep_update(node, source_dict[key])
+                        else:
+                            destination_dict[key] = source_dict[key]
+
+                deep_update(self.datastore, datastore)
+
+    def save(self):
+        """ Save data to config file
+        """
+        if self.configFileName is not None:
+            with open(self.configFileName, 'w') as f:
+                json.dump(self.datastore, f, indent=3, sort_keys=True)
+
+    def dump(self):
+        """ dumps config to stdout
+        """
+        data = json.dumps(self.datastore, indent=3, sort_keys=True)
+        print data
 
 
-      # link keys
-         '/link/Port'                        :(False, ""),
-         '/link/Baud'                        :(False, "9600"),
+class gsatConfigData(ConfigData):
+    """ Provides various data information
+    """
+    configDefault = {
+        "cli": {
+            "CmdHistory": "",
+            "CmdMaxHistory": 100,
+            "SaveCmdHistory": True,
+            "FontFace": "System",
+            "FontSize": -1,
+            "FontStyle": "normal",
+        },
+        "code": {
+            "AutoScroll": 3,
+            "AxisHighlight": "#ff0000",
+            "CaretLine": True,
+            "CaretLineBackground": "#EFEFEF",
+            "CaretLineForeground": "#000000",
+            "CommentsHighlight": "#007F00",
+            "FontFace": "System",
+            "FontSize": -1,
+            "FontStyle": "normal",
+            "GCodeHighlight": "#0000ff",
+            "GCodeLineNumberHighlight": "#BFBFBF",
+            "LineNumber": True,
+            "LineNumberBackground": "#99A9C2",
+            "LineNumberForeground": "#000000",
+            "MCodeHighlight": "#7f007f",
+            "Parameters2Highlight": "#f4b730",
+            "ParametersHighlight": "#ff0000",
+            "ReadOnly": True,
+            "WindowBackground": "#FFFFFF",
+            "WindowForeground": "#000000"
+        },
+        "cv2": {
+            "CaptureDevice": 0,
+            "CaptureHeight": 480,
+            "CapturePeriod": 100,
+            "CaptureWidth": 640,
+            "Crosshair": True,
+            "Enable": False
+        },
+        "jogging": {
+            "AutoMPOS": False,
+            "CustomButtons": {
+                "Custom1": {
+                    "Label": "Custom 1",
+                    "Script": "",
+                },
+                "Custom2": {
+                    "Label": "Custom 2",
+                    "Script": "",
+                },
+                "Custom3": {
+                    "Label": "Custom 3",
+                    "Script": "",
+                },
+                "Custom4": {
+                    "Label": "Custom 4",
+                    "Script": "",
+                }
+            },
+            "JogFeedRate": 1000,
+            "JogInteractive": True,
+            "JogRapid": True,
+            "NumKeypadPendant": False,
+            "ProbeDistance": 19.6,
+            "ProbeFeedRate": 100.0,
+            "ProbeMaxDistance": -40.0,
+            "ReqUpdateOnJogSetOp": True,
+            "SpindleSpeed": 12000,
+            "XYZReadOnly": False,
+            "ZJogSafeMove": False
+        },
+        "machine": {
+            "Baud": "115200",
+            "Device": "grbl",
+            "DRO": {
+                "EnableX": True,
+                "EnableY": True,
+                "EnableZ": True,
+                "EnableA": False,
+                "EnableB": False,
+                "EnableC": False,
+                "FontFace": "System",
+                "FontSize": -1,
+                "FontStyle": "normal",
+            },
+            "FilterGcodesEnable": False,
+            "FilterGcodes": "",
+            "InitScript": "",
+            "InitScriptEnable": False,
+            "Port": "",
+            "MachIfSpecific": {
+                "grbl": {
+                    "AutoRefreshPeriod": {
+                        "Value": 200,
+                        "Name": "Auto Refresh Period (msec)",
+                        "ToolTip": "How often so send request",
+                    }
+                },
+                "TinyG": {
+                },
+                "g2core": {
+                },
+                "Smoothie":{
+                    "AutoRefreshPeriod": {
+                        "Value": 200,
+                        "Name": "Auto Refresh Period (msec)",
+                        "ToolTip": "How often so send status request",
+                    }
+                }
+            }
+        },
+        "mainApp": {
+            "BackupFile": True,
+            "DisplayRunTimeDialog": True,
+            "RoundInch2mm": 4,
+            "Roundmm2Inch": 4,
+            "FileHistory": {
+                "FilesMaxHistory": 10,
+            },
+        },
+        "output": {
+            "AutoScroll": 2,
+            "CaretLine": False,
+            "CaretLineBackground": "#C299A9",
+            "CaretLineForeground": "#000000",
+            "FontFace": "System",
+            "FontSize": -1,
+            "FontStyle": "normal",
+            "LineNumber": False,
+            "LineNumberBackground": "#FFFFFF",
+            "LineNumberForeground": "#000000",
+            "ReadOnly": False,
+            "WindowBackground": "#FFFFFF",
+            "WindowForeground": "#000000"
+        }
+    }
 
-      # cli keys
-         '/cli/SaveCmdHistory'               :(True , True),
-         '/cli/CmdMaxHistory'                :(True , 100),
-         '/cli/CmdHistory'                   :(False, ""),
-
-      # machine keys
-         '/machine/Device'                   :(False, "TinyG2"),
-         '/machine/Port'                     :(False, ""),
-         '/machine/Baud'                     :(False, "115200"),
-         '/machine/AutoStatus'               :(True , False),
-         '/machine/AutoRefresh'              :(True , False),
-         '/machine/AutoRefreshPeriod'        :(True , 1000),
-         '/machine/InitScript'               :(False, ""),
-         '/machine/GrblDroHack'              :(True , False),
-
-      # jogging keys
-         '/jogging/XYZReadOnly'              :(True , False),
-         '/jogging/AutoMPOS'                 :(True , True),
-         '/jogging/ReqUpdateOnJogSetOp'      :(True , True),
-         '/jogging/Custom1Label'             :(False, "Custom 1"),
-         '/jogging/Custom1OptPosition'       :(True , True),
-         '/jogging/Custom1OptScript'         :(True , False),
-         '/jogging/Custom1XIsOffset'         :(True , True),
-         '/jogging/Custom1XValue'            :(True , 0),
-         '/jogging/Custom1YIsOffset'         :(True , True),
-         '/jogging/Custom1YValue'            :(True , 0),
-         '/jogging/Custom1ZIsOffset'         :(True , True),
-         '/jogging/Custom1ZValue'            :(True , 0),
-         '/jogging/Custom1Script'            :(False , ""),
-         '/jogging/Custom2Label'             :(False, "Custom 2"),
-         '/jogging/Custom2OptPosition'       :(True , True),
-         '/jogging/Custom2OptScript'         :(True , False),
-         '/jogging/Custom2XIsOffset'         :(True , True),
-         '/jogging/Custom2XValue'            :(True , 0),
-         '/jogging/Custom2YIsOffset'         :(True , True),
-         '/jogging/Custom2YValue'            :(True , 0),
-         '/jogging/Custom2ZIsOffset'         :(True , True),
-         '/jogging/Custom2ZValue'            :(True , 0),
-         '/jogging/Custom2Script'            :(False , ""),
-         '/jogging/Custom3Label'             :(False, "Custom 3"),
-         '/jogging/Custom3OptPosition'       :(True , True),
-         '/jogging/Custom3OptScript'         :(True , False),
-         '/jogging/Custom3XIsOffset'         :(True , True),
-         '/jogging/Custom3XValue'            :(True , 0),
-         '/jogging/Custom3YIsOffset'         :(True , True),
-         '/jogging/Custom3YValue'            :(True , 0),
-         '/jogging/Custom3ZIsOffset'         :(True , True),
-         '/jogging/Custom3ZValue'            :(True , 0),
-         '/jogging/Custom3Script'            :(False , ""),
-         '/jogging/Custom4Label'             :(False, "Custom 4"),
-         '/jogging/Custom4OptPosition'       :(True , True),
-         '/jogging/Custom4OptScript'         :(True , False),
-         '/jogging/Custom4XIsOffset'         :(True , True),
-         '/jogging/Custom4XValue'            :(True , 0),
-         '/jogging/Custom4YIsOffset'         :(True , True),
-         '/jogging/Custom4YValue'            :(True , 0),
-         '/jogging/Custom4ZIsOffset'         :(True , True),
-         '/jogging/Custom4ZValue'            :(True , 0),
-         '/jogging/Custom4Script'            :(False , ""),
-
-
-      # CV2 keys
-         '/cv2/Enable'                       :(True , False),
-         '/cv2/Crosshair'                    :(True , True),
-         '/cv2/CaptureDevice'                :(True , 0),
-         '/cv2/CapturePeriod'                :(True , 100),
-         '/cv2/CaptureWidth'                 :(True , 640),
-         '/cv2/CaptureHeight'                :(True , 480),
-      }
-
-   def Add(self, key, val, canEval=True):
-      configEntry = self.config.get(key)
-      self.config[key] = (canEval, val)
-
-   def Get(self, key):
-      retVal = None
-      if key in self.config.keys():
-         configEntry = self.config.get(key)
-         retVal = configEntry[1]
-
-      return retVal
-
-   def Set(self, key, val):
-      if key in self.config.keys():
-         configEntry = self.config.get(key)
-         self.config[key] = (configEntry[0], val)
-
-   def Load(self, configFile):
-      for key in self.config.keys():
-         configEntry = self.config.get(key)
-         configRawData = str(configFile.Read(key))
-
-         if len(configRawData) > 0:
-            if configEntry[0]:
-               configData = eval(configRawData)
-            else:
-               configData = configRawData
-
-            self.config[key] = (configEntry[0], configData)
-
-   def Save(self, configFile):
-      keys = sorted(self.config.keys())
-      for key in keys:
-         configEntry = self.config.get(key)
-         configFile.Write(key, str(configEntry[1]))
+    def __init__(self, config_fname):
+        super(gsatConfigData, self).__init__(config_fname)
+        self.datastore.update(self.configDefault)
 
 
 """----------------------------------------------------------------------------
@@ -351,21 +578,82 @@ class gsatConfigData():
 ----------------------------------------------------------------------------"""
 EVT_THREAD_QUEQUE_EVENT_ID = 0x7ECAFE
 
-def EVT_THREAD_QUEUE_EVENT(win, func):
-   """Define thread data event."""
-   win.Connect(-1, -1, EVT_THREAD_QUEQUE_EVENT_ID, func)
 
-class threadQueueEvent(wx.PyEvent):
-   """Simple event to carry arbitrary data."""
-   def __init__(self, data):
-      """Init Result Event."""
-      wx.PyEvent.__init__(self)
-      self.SetEventType(EVT_THREAD_QUEQUE_EVENT_ID)
-      self.data = data
-
-class threadEvent():
-   def __init__(self, event_id, data):
-      self.event_id = event_id
-      self.data = data
+def reg_thread_queue_data_event(win, func):
+    """ register for thread queue data event.
+    """
+    win.Connect(-1, -1, EVT_THREAD_QUEQUE_EVENT_ID, func)
 
 
+class ThreadQueueEvent(wx.PyEvent):
+    """ Simple event to carry arbitrary data.
+    """
+
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_THREAD_QUEQUE_EVENT_ID)
+        self.data = data
+
+
+class SimpleEvent(object):
+    """ Simple event to carry arbitrary data.
+    """
+
+    def __init__(self, event_id, data, sender=None):
+        self.event_id = event_id
+        self.data = data
+        self.sender = sender
+
+
+class EventQueueIf():
+    """ Class that implement simple queue APIs
+    """
+
+    def __init__(self):
+        self._eventListeners = dict()
+        self._eventQueue = Queue.Queue()
+
+    def addEventListener(self, listener):
+        self._eventListeners[id(listener)] = listener
+
+    def eventPut(self, event_id, event_data=None, sender=None):
+        self._eventQueue.put(SimpleEvent(event_id, event_data, sender))
+
+    def notifyEventListeners(self, event_id, data=None):
+        for listener in self._eventListeners.keys():
+            self._eventListeners[listener].eventPut(event_id, data, self)
+
+    def removeEventListener(self, listener):
+        if id(listener) in self._eventListeners:
+            self._eventListeners.pop(id(listener))
+
+
+class TimeOut(object):
+    """ Class that implement timeout timer
+    """
+
+    def __init__(self, timeout):
+        self.timeNow = time.time()
+        self.timeout = timeout
+        self.timeoutTime = self.timeout + self.timeNow
+
+    def disable(self):
+        self.timeoutTime = 0
+
+    def enable(self):
+        self.reset()
+
+    def reset(self):
+        self.timeNow = time.time()
+        self.timeoutTime = self.timeout + self.timeNow
+
+    def timeExpired(self):
+        rcVal = False
+
+        self.timeNow = time.time()
+        if self.timeoutTime != 0 and self.timeNow > self.timeoutTime:
+            self.timeoutTime = self.timeout + self.timeNow
+            rcVal = True
+
+        return rcVal
