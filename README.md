@@ -105,12 +105,11 @@ Changelog
    * All machine interfaces are now separated in modules, each interface module can handle the specifics for that interface like encode/decode data, handle specific Jog, Hold, and Abort commands.
    * Better support for GRBL (for example extra axes in stm32 grbl versions),
    * Better support for TinyG2 and g2Core using JSON format to communicate with interface.
-   * GRBL and g2Core when error are sent back, extra explanation of error code will be displayed.
    * Removed any special knowledge of the UI in use, this way the underlying code can be used independently of UI.
    * Better handling of send buffers per interface, will slow down when buffer getting to full allowing interface to keep up.
 * Many UI changes.
-   * Updated icons and JOG panel, added hold and resume toolbar buttons.
-   * Added button for probing.
+   * Updated icons and JOG panel, added hold and resume toolbar buttons; added button for probing in JOG panel.
+   * GRBL and g2Core when error are sent back, extra explanation of error code will be displayed.
    * Remove special interface knowledge making it easier to add other interfaces in the future (for example Marlin).
    * Fixed run timer, now it will stop when interface finishes and not immediately after sending last command to interface.
    * DRO can now add or remove axes, by default is X, Y, and Z, but can turn on/off X, Y, Z, A, B, and C.
