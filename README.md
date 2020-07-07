@@ -17,15 +17,16 @@ Development Environment
 * [python 2.7](http://www.python.org/) or later.
 * [pySerial](http://pyserial.sourceforge.net/).
 * [wxPython 2.8](http://www.wxpython.org/) or later.
+   * Note: Up to wxPython 3.0, 4.x and beyond has too many changes that makes code not backward compatible.
 
 ### Additional dependencies if enabling OpenCV
 * [OpenCV](http://opencv.org/)
 * [numpy](http://pypi.python.org/pypi/numpy/)
 
 ### Devices
+* [grbl](https://github.com/grbl/grbl/wiki/) is a free, open source, high performance CNC milling controller that will run on a straight Arduino.
+* [g2core](https://github.com/synthetos/g2/wiki/What-is-g2core) is a cross-platform ARM Port of the TinyG motion control system that runs on the Arduino Due and on Synthetos hardware.
 * [TinyG](https://github.com/synthetos/TinyG/wiki/) is a 6 axis motion control system designed for high-performance on small to mid-sized machines.
-* [TinyG2](https://github.com/synthetos/g2/wiki/) is a cross-platform ARM Port of the TinyG motion control system that runs on the Arduino Due and on Synthetos hardware.
-* [Grbl](https://github.com/grbl/grbl/wiki/) is a free, open source, high performance CNC milling controller that will run on a straight Arduino.
 
 ### CNCs use for development
 * [ShapeOko](http://www.shapeoko.com/) is a Open-Source desktop CNC machine.
@@ -33,13 +34,12 @@ Development Environment
 * Other CNC machines that use the above devices.
 
 ### OSes:
-* [Ubuntu 16.04](http://www.ubuntu.com/)
+* [Ubuntu 16.04, 18.04](http://www.ubuntu.com/)
    * Installing dependencies:
    ```
-   sudo apt-get install python-wxgtk3.0 python-wxtools wx3.0-i18n python-pip
-   sudo pip install pyserial
+   sudo apt-get install python-wxgtk3.0 python-wxtools wx3.0-i18n python-pip python-serial
    ```
-   * Optional dependecies for OpenCV
+   * Optional dependencies for OpenCV
    ```
    sudo apt-get install python-numpy python-opencv
    ```
@@ -47,10 +47,9 @@ Development Environment
 * [Ubuntu 12.04, 12.10, 13.04, 13.10, 14.04](http://www.ubuntu.com/)
    * Installing dependencies:
    ```
-   sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip
-   sudo pip install pyserial
+   sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip python-serial
    ```
-   * Optional dependecies for OpenCV
+   * Optional dependencies for OpenCV
    ```
    sudo apt-get install python-numpy python-opencv
    ```
@@ -82,6 +81,7 @@ Development Environment
       * Note if there are errors regarding "OpenCV 2.4.8: module compiled against API version 9", go [here](http://sourceforge.net/projects/numpy/files/NumPy) for latest NumPy build.
 
 ### Editors used for development.
+* [Visual Studio Code] (https://code.visualstudio.com/)
 * [Geany] (http://www.geany.org/)
 * [Notepad ++] (http://notepad-plus-plus.org/)
 
@@ -97,15 +97,15 @@ Screen Shoots
 Changelog
 ---------
 ### 1.6.0
-* Major rewrite for underlying code
-   * All machine interfaces are now separated in modules, each interface module can handle the specifics for that interface like encode/decode data, handle specific Jog, Hold, and Abort commands.
-   * Better support for GRBL (for example extra axes in stm32 grbl versions),
-   * Better support for TinyG2 and g2Core using JSON format to communicate with interface.
-   * Removed any special knowledge of the UI in use, this way the underlying code can be used independently of UI.
-   * Better handling of send buffers per interface, will slow down when buffer getting to full allowing interface to keep up.
+* Major rewrite for underlying "working threads" code
+   * All machine interfaces are now separated in modules, each interface module can handle the specifics for that interface. For example encode/decode data, handle specific Jog, Hold, and Abort commands. Using Facade and Interface OOD patterns.
+   * Better support for grbl (for example extra axes in stm32 grbl versions).
+   * Better support for TinyG2 and g2core using JSON format to communicate with interface.
+   * Removed any special knowledge of the UI, this way the underlying code can be used independently of UI.
+   * Better handling of buffers per interface; for example slow down when buffer getting too full allowing specific interface to keep up.
 * Many UI changes.
-   * Updated icons and JOG panel, added hold and resume toolbar buttons; added button for probing in JOG panel.
-   * GRBL and g2Core when error are sent back, extra explanation of error code will be displayed.
+   * Updated icons and JOG panel, added hold and resume toolbar buttons. Added button for probing in JOG panel.
+   * grbl and g2core when error are sent back, extra explanation of error code will be displayed.
    * Remove special interface knowledge making it easier to add other interfaces in the future (for example Marlin).
    * Fixed run timer, now it will stop when interface finishes and not immediately after sending last command to interface.
    * DRO can now add or remove axes, by default is X, Y, and Z, but can turn on/off X, Y, Z, A, B, and C.
