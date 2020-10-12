@@ -652,7 +652,10 @@ class EventQueueIf():
         self._eventListeners[id(listener)] = listener
 
     def eventPut(self, event_id, event_data=None, sender=None):
-        self._eventQueue.put(SimpleEvent(event_id, event_data, sender))
+        if type(event_id) is SimpleEvent:
+            self._eventQueue.put(event_id)
+        else:
+            self._eventQueue.put(SimpleEvent(event_id, event_data, sender))
 
     def notifyEventListeners(self, event_id, data=None):
         for listener in self._eventListeners.keys():

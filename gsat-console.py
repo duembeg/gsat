@@ -110,7 +110,7 @@ if __name__ == '__main__':
         if cmd_line_options.server:
             remoteServer = remote_server.RemoteServerThread(None)
 
-        if os.path.exists(cmd_line_options.gcode):
+        elif os.path.exists(cmd_line_options.gcode):
             gcode_file = file(cmd_line_options.gcode)
             gcode_data = gcode_file.read()
 
@@ -127,6 +127,12 @@ if __name__ == '__main__':
 
             time.sleep(20)
 
+        while True:
+            time.sleep(1)
+
     finally:
+        if remoteServer is not None:
+            remoteServer.eventPut(gc.EV_CMD_EXIT)
+
         if machifProgExec is not None:
             machifProgExec.eventPut(gc.EV_CMD_EXIT)

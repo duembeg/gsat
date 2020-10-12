@@ -55,6 +55,8 @@ import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
 import modules.remote_client as remote_client
 
+from modules.version_info import *
+'''
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
@@ -82,7 +84,7 @@ __requires__ = ['pySerial', 'wxPython']
 __version_info__ = (1, 6, 0)
 __version__ = 'v%i.%i.%i' % __version_info__
 __revision__ = __version__
-
+'''
 
 """----------------------------------------------------------------------------
    Globals:
@@ -2328,11 +2330,20 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
+            elif te.event_id == gc.EV_EXIT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_EXIT from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                if id(te.sender) == id(self.machifProgExec):
+                    self.machifProgExec = None
+                elif id(te.sender) == id(self.remoteClient):
+                    self.remoteClient = None
+
             elif te.event_id == gc.EV_RMT_PORT_OPEN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data)
+                self.outputText.AppendText(te.data+"\n")
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_PORT_CLOSE:
@@ -2345,14 +2356,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
-            elif te.event_id == gc.EV_EXIT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_EXIT from 0x{:x} {}".format(id(te.sender), te.sender))
-
-                if id(te.sender) == id(self.machifProgExec):
-                    self.machifProgExec = None
-                elif id(te.sender) == id(self.remoteClient):
-                    self.remoteClient = None
+            elif te.event_id == gc.EV_RMT_HELLO:
+                self.outputText.AppendText(te.data + "\n")
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:

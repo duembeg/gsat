@@ -32,8 +32,11 @@ import socket
 import select
 import Queue
 import pickle
+import platform
 
 import modules.config as gc
+
+from modules.version_info import *
 
 
 def verbose_data_ascii(direction, data):
@@ -134,6 +137,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 soc = self.inputs.pop()
                 soc.close()
 
+            self.server = None
+
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info("close clients and server port")
 
@@ -181,8 +186,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
+            msg = "sever listening on {}:{}".format(self.host, self.port)
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                msg = "sever listening on {}:{}".format(self.host, self.port)
                 self.logger.info(msg)
 
             # sending directly to who created us
@@ -412,7 +417,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                             # welcome message
                             self.messageQueues[connection].put(gc.SimpleEvent(
-                                gc.EV_RMT_HELLO, "Welcome to {}".format(self.host), id(self)))
+                                gc.EV_RMT_HELLO,
+                                "Welcome to gsat server {}, on {}:{} [{}]".format(
+                                    __version__, self.host, self.port, platform.processor()),
+                                id(self)))
 
                             if connection not in self.outputs:
                                 self.outputs.append(connection)

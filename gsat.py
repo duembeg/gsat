@@ -32,6 +32,9 @@ import wx
 import modules.config as gc
 import modules.wnd_main as mw
 
+from modules.version_info import *
+
+'''
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
@@ -39,7 +42,7 @@ __description__ = \
     "debug/step for grbl like GCODE interpreters. With features similar to "\
     "software debuggers. Features Such as breakpoint, change current program "\
     "counter, inspection and modification of variables."
-
+'''
 
 def get_cli_params():
     ''' define, retrieve and error check command line interface (cli) params
@@ -48,7 +51,7 @@ def get_cli_params():
     usage = \
         "usage: %prog [options]"
 
-    parser = OptionParser(usage=usage, version="%prog " + mw.__revision__)
+    parser = OptionParser(usage=usage, version="%prog " + __revision__)
     parser.add_option("-c", "--config",
                       dest="config",
                       help="Use alternate configuration file name, location "

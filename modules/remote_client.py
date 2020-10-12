@@ -122,11 +122,11 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         """ Close serial port
         """
         if self.socket is not None:
-            self.socket.close()
-            self.socket = None
-
             while len(self.inputs):
                 soc = self.inputs.pop()
+                soc.close()
+
+            self.socket = None
 
             msg = "close remote connection to {}:{}".format(self.remoteHost, self.remotePort)
 
@@ -176,7 +176,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "open remote connection to {}:{}".format(self.remoteHost, self.remotePort)
+            msg = "Open remote connection to {}:{}".format(self.remoteHost, self.remotePort)
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg)
@@ -212,7 +212,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                             "recv msg len:{} data:{} from {}".format(msglen, str(data), soc.getpeername()))
                     break
 
-
         except socket.error as e:
             exMsg = "** socket.error exception: {}\n".format(str(e))
             exFlag = True
@@ -243,102 +242,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         # return data
         return data
-
-    def read(self):
-        exFlag = False
-        exMsg = ""
-        serialData = ""
-
-        try:
-            self.socket.recv(10)
-
-        except IOError as e:
-            exMsg = "** IOError exception: %s\n" % str(e)
-            exFlag = True
-
-        except:
-            e = sys.exc_info()[0]
-            exMsg = "** Unexpected exception: %s\n" % str(e)
-            exFlag = True
-
-        if exFlag:
-            # make sure we stop processing any states...
-            self.swState = gc.STATE_ABORT
-
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-            self.logger.error(exMsg.strip())
-
-            # add data to queue
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
-            self.close()
-
-        return
-
-        try:
-            inDataCnt = self.serialPort.inWaiting()
-
-            while inDataCnt > 0 and not exFlag:
-
-                # # read data from port
-                # # Was running with performance issues using readline(), move
-                # # to read() using "".join() as performance is much better
-                # # then "+="
-                # serialData = self.serialPort.readline()
-                # self.rxBuffer += self.serialPort.read(inDataCnt)
-                self.rxBuffer = "".join(
-                    [self.rxBuffer, self.serialPort.read(inDataCnt)])
-
-                while '\n' in self.rxBuffer:
-                    serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
-
-                    if serialData:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-
-                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                                self.logger.info(verbose_data_hex("<-",
-                                                 serialData))
-
-                            elif (gc.VERBOSE_MASK &
-                                  gc.VERBOSE_MASK_REMOTEIF_STR):
-                                self.logger.info(verbose_data_ascii("<-",
-                                                 serialData))
-
-                        self.notifyEventListeners(gc.EV_RXDATA,
-                                                  "%s\n" % serialData)
-
-                        # attempt to reduce starvation on other threads
-                        # when serial traffic is constant
-                        time.sleep(0.01)
-
-                inDataCnt = self.serialPort.inWaiting()
-
-        except serial.SerialException as e:
-            exMsg = "** PySerial exception: %s\n" % e.message
-            exFlag = True
-
-        except OSError as e:
-            exMsg = "** OSError exception: %s\n" % str(e)
-            exFlag = True
-
-        except IOError as e:
-            exMsg = "** IOError exception: %s\n" % str(e)
-            exFlag = True
-
-        # except:
-        #     e = sys.exc_info()[0]
-        #     exMsg = "** Unexpected exception: %s\n" % str(e)
-        #     exFlag = True
-
-        if exFlag:
-            # make sure we stop processing any states...
-            self.swState = gc.STATE_ABORT
-
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-            self.logger.error(exMsg.strip())
-
-            # add data to queue
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
-            self.close()
 
     def send(self, soc, data):
         exFlag = False
@@ -379,55 +282,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # self.notifyEventListeners(gc.EV_ABORT, exMsg)
             # self.close()
 
-    def write(self, serialData):
-        exFlag = False
-        exMsg = ""
-
-        if len(serialData) == 0:
-            return
-
-        if self.serialPort.isOpen():
-
-            try:
-                # send command
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("->", serialData))
-
-                    elif (gc.VERBOSE_MASK &
-                          gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("->", serialData))
-
-                self.serialPort.write(serialData)
-
-            except serial.SerialException as e:
-                exMsg = "** PySerial exception: %s\n" % e.message
-                exFlag = True
-
-            except OSError as e:
-                exMsg = "** OSError exception: %s\n" % str(e)
-                exFlag = True
-
-            except IOError as e:
-                exMsg = "** IOError exception: %s\n" % str(e)
-                exFlag = True
-
-            # except:
-            #     e = sys.exc_info()[0]
-            #     exMsg = "** Unexpected exception: %s\n" % str(e)
-            #     exFlag = True
-
-            if exFlag:
-                # make sure we stop processing any states...
-                self.swState = gc.STATE_ABORT
-
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.error(exMsg.strip())
-
-                # add data to queue
-                self.notifyEventListeners(gc.EV_ABORT, exMsg)
-                self.close()
-
     def run(self):
         """Run Worker Thread."""
         # This is the code executing in the new thread.
@@ -454,7 +308,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     for soc in readable:
                         data = self.recv(soc)
                         if data:
-                            print 'got "%s" from %s' % (data, soc.getpeername())
+                            self.notifyEventListeners(data)
                         else:
                             pass
 
@@ -466,7 +320,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                             pass
                         else:
                             print >>sys.stderr, 'sending "%s" to %s' % (msg, soc.getpeername())
-                            soc.send(msg)
+                            self.send(msg)
 
                 elif self.swState == gc.STATE_ABORT:
                     # do nothing, wait to be terminated
