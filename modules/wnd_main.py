@@ -45,6 +45,7 @@ from wx.lib import scrolledpanel as scrolled
 import modules.config as gc
 import modules.machif_config as mi
 import images.icons as ico
+
 import modules.wnd_main_config as mwc
 import modules.wnd_editor as ed
 import modules.wnd_machine as mc
@@ -52,6 +53,7 @@ import modules.wnd_jogging as jog
 import modules.wnd_cli as cli
 import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
+import modules.remote_client as remote_client
 
 __appname__ = "Gcode Step and Alignment Tool"
 
@@ -90,8 +92,10 @@ __revision__ = __version__
 # MENU & TOOL BAR IDs
 # -----------------------------------------------------------------------------
 gID_TOOLBAR_OPEN = wx.NewId()
+gID_TOOLBAR_SETTINGS = wx.NewId()
 gID_TOOLBAR_LINK_STATUS = wx.NewId()
 gID_TOOLBAR_PROGRAM_STATUS = wx.NewId()
+gID_TOOLBAR_REMOTE = wx.NewId()
 gID_MENU_MAIN_TOOLBAR = wx.NewId()
 gID_MENU_SEARCH_TOOLBAR = wx.NewId()
 gID_MENU_RUN_TOOLBAR = wx.NewId()
@@ -192,6 +196,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # init some variables
         self.machifProgExec = None
+        self.remoteClient = None
         self.runTimer = None
         self.runStartTime = 0
         self.runEndTime = 0
@@ -709,7 +714,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # ---------------------------------------------------------------------
         # Status tool bar
+        self.Bind(wx.EVT_MENU, self.OnSettings, id=gID_TOOLBAR_SETTINGS)
         self.Bind(wx.EVT_MENU, self.OnLinkStatus, id=gID_TOOLBAR_LINK_STATUS)
+        self.Bind(wx.EVT_MENU, self.OnRemote, id=gID_TOOLBAR_REMOTE)
 
         # ---------------------------------------------------------------------
         # Create shortcut keys for menu
@@ -947,25 +954,35 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.statusToolBar.SetToolBitmapSize(iconSize)
 
-        self.statusToolBar.AddSimpleTool(gID_TOOLBAR_LINK_STATUS, "123456789",
-                                         ico.imgPlugDisconnect.GetBitmap(),
-                                         "Open/Close Device port")
-        self.statusToolBar.SetToolDisabledBitmap(gID_MENU_RUN,
-                                                 ico.imgPlugDisconnect
-                                                 .GetBitmap())
+        self.statusToolBar.AddSimpleTool(
+            gID_TOOLBAR_SETTINGS, "Settings",
+            ico.imgSettings.GetBitmap(), "Settings")
+        self.statusToolBar.SetToolDisabledBitmap(
+            gID_TOOLBAR_SETTINGS, ico.imgSettings.GetBitmap())
 
-        self.statusToolBar.AddSimpleTool(gID_TOOLBAR_PROGRAM_STATUS, "123456",
-                                         ico.imgProgram.GetBitmap(),
-                                         "Program Status")
-        self.statusToolBar.SetToolDisabledBitmap(gID_TOOLBAR_PROGRAM_STATUS,
-                                                 ico.imgProgram.GetBitmap())
+        self.statusToolBar.AddSimpleTool(
+            gID_TOOLBAR_LINK_STATUS, "12345",
+            ico.imgPlugDisconnect.GetBitmap(), "Open/Close Device port")
+        self.statusToolBar.SetToolDisabledBitmap(
+            gID_TOOLBAR_LINK_STATUS, ico.imgPlugDisconnect.GetBitmap())
+
+        self.statusToolBar.AddSimpleTool(
+            gID_TOOLBAR_PROGRAM_STATUS, "12345",
+            ico.imgProgram.GetBitmap(), "Program Status")
+        self.statusToolBar.SetToolDisabledBitmap(
+            gID_TOOLBAR_PROGRAM_STATUS, ico.imgProgram.GetBitmap())
+
+        self.statusToolBar.AddSimpleTool(
+            gID_TOOLBAR_REMOTE, "Remote",
+            ico.imgRemote.GetBitmap(), "Connect to remote server")
+        self.statusToolBar.SetToolDisabledBitmap(
+            gID_TOOLBAR_REMOTE, ico.imgRemote.GetBitmap())
 
         self.statusToolBar.Realize()
 
-        self.aui_mgr.AddPane(self.statusToolBar, aui.AuiPaneInfo()
-                             .Name("STATUS_TOOLBAR")
-                             .Caption("Status Tool Bar").ToolbarPane()
-                             .Top().Gripper())
+        self.aui_mgr.AddPane(
+            self.statusToolBar, aui.AuiPaneInfo().Name("STATUS_TOOLBAR")
+            .Caption("Status Tool Bar").ToolbarPane().Top().Gripper())
 
         # finish up
         self.appToolBar.Refresh()
@@ -1309,6 +1326,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnResetDefaultLayout(self, e):
         self.LoadLayoutData('/mainApp/Layout/Reset')
         self.SaveLayoutData('/mainApp/Layout/Default')
+
+    def OnRemote(self, e):
+        self.RemoteOpen()
 
     def OnSettings(self, e):
         # do settings dialog
@@ -1824,12 +1844,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     # -------------------------------------------------------------------------
     def OnClose(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+            self.SerialClose()
+
+        if self.remoteClient is not None:
+            self.RemoteClose()
 
         time.sleep(1)
-
-        if self.stateData.serialPortIsOpen:
-            self.SerialClose()
 
         # self.cliPanel.SaveCli()
         self.machineJoggingPanel.SaveCli()
@@ -1908,10 +1928,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     serial.Serial(i)
                     spList.append('COM'+str(i + 1))
                     # s.close()
-                except serial.SerialException, e:
+                except serial.SerialException as e:
                     if e:
                         pass
-                except OSError, e:
+                except OSError as e:
                     if e:
                         pass
         else:
@@ -1932,6 +1952,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.machifProgExec is not None:
             self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
+            self.stateData.serialPortIsOpen = False
+
     def SerialOpen(self):
         self.machinePort = self.stateData.serialPort
         self.machineBaud = self.stateData.serialPortBaud
@@ -1950,8 +1972,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 # # self.mainWndOutQueue.join()
 
         elif self.cmdLineOptions.verbose:
-            print "gsatMainWindow ERROR: attempt serial write with port "\
-                "closed!!"
+            print ("gsatMainWindow ERROR: attempt serial write with port closed!!")
 
     def SerialWriteWaitForAck(self, serialData):
         if self.stateData.serialPortIsOpen:
@@ -1960,8 +1981,15 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machifProgExec.eventPut(gc.EV_CMD_SEND_W_ACK, serialData)
 
         elif self.cmdLineOptions.verbose:
-            print "gsatMainWindow ERROR: attempt serial write with port "\
-                "closed!!"
+            print ("gsatMainWindow ERROR: attempt serial write with port closed!!")
+
+    def RemoteOpen(self):
+        if self.remoteClient is None:
+            self.remoteClient = remote_client.RemoteClientThread(self)
+
+    def RemoteClose(self):
+        if self.remoteClient is not None:
+            self.remoteClient.eventPut(gc.EV_CMD_EXIT)
 
     def Stop(self, toState=gc.STATE_IDLE):
         if self.machifProgExec is not None:
@@ -1982,19 +2010,18 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machifProgExec.eventPut(gc.EV_CMD_GET_STATUS)
 
         elif self.cmdLineOptions.verbose:
-            print "gsatMainWindow ERROR: attempt GetMachineStatus without "\
-                "progExecTread!!"
+            print ("gsatMainWindow ERROR: attempt GetMachineStatus without progExecTread!!")
 
     def LoadLayoutData(self, key, update=True):
-        dimesnionsData = layoutData = self.configData.get(
+        dimensionsData = layoutData = self.configData.get(
             "".join([key, "/Dimensions"]), "")
-        if dimesnionsData:
-            dimesnionsData = dimesnionsData.split("|")
+        if dimensionsData:
+            dimensionsData = dimensionsData.split("|")
 
-            winPposition = eval(dimesnionsData[0])
-            winSize = eval(dimesnionsData[1])
-            winIsMaximized = eval(dimesnionsData[2])
-            winIsIconized = eval(dimesnionsData[3])
+            winPosition = eval(dimensionsData[0])
+            winSize = eval(dimensionsData[1])
+            winIsMaximized = eval(dimensionsData[2])
+            winIsIconized = eval(dimensionsData[3])
 
             if winIsMaximized:
                 self.Maximize(True)
@@ -2003,7 +2030,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             else:
                 self.Maximize(False)
                 self.Iconize(False)
-                self.SetPosition(winPposition)
+                self.SetPosition(winPosition)
                 self.SetSize(winSize)
 
         layoutData = self.configData.get("".join([key, "/Perspective"]), "")
@@ -2013,13 +2040,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def SaveLayoutData(self, key):
         layoutData = self.aui_mgr.SavePerspective()
 
-        winPposition = self.GetPosition()
+        winPosition = self.GetPosition()
         winSize = self.GetSize()
         winIsIconized = self.IsIconized()
         winIsMaximized = self.IsMaximized()
 
         dimensionsData = "|".join([
-            str(winPposition),
+            str(winPosition),
             str(winSize),
             str(winIsMaximized),
             str(winIsIconized)
@@ -2032,7 +2059,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def ConvertInchAndmm(self, lines, in_to_mm=True, round_to=-1):
         ret_lienes = []
 
-        # itarate input lines
+        # iterate input lines
         for line in lines:
 
             # check for G20/G21 anc hange accordingly
@@ -2136,13 +2163,21 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             if te.event_id == gc.EV_ABORT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_ABORT")
+                    self.logger.info("EV_ABORT from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.outputText.AppendText(te.data)
-                self.machifProgExec = None
-                self.stateData.serialPortIsOpen = False
+
+                if id(te.sender) == id(self.machifProgExec):
+                    self.SerialClose()
+                    self.machifProgExec = None
+                    self.stateData.serialPortIsOpen = False
+                elif id(te.sender) == id(self.remoteClient):
+                    self.RemoteClose()
+                    self.remoteClient = None
+
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
+
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_DATA_STATUS:
@@ -2279,15 +2314,32 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             elif te.event_id == gc.EV_SER_PORT_OPEN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_SER_PORT_OPEN")
+                    self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.stateData.serialPortIsOpen = True
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_SER_PORT_CLOSE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_SER_PORT_CLOSE")
+                    self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(te.sender), te.sender))
 
+                self.stateData.serialPortIsOpen = False
+                self.stateData.deviceDetected = False
+                self.stateData.swState = gc.STATE_IDLE
+                self.UpdateUI()
+
+            elif te.event_id == gc.EV_RMT_PORT_OPEN:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                self.outputText.AppendText(te.data)
+                self.UpdateUI()
+
+            elif te.event_id == gc.EV_RMT_PORT_CLOSE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                self.outputText.AppendText(te.data)
                 self.stateData.serialPortIsOpen = False
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
@@ -2295,13 +2347,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             elif te.event_id == gc.EV_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_EXIT")
+                    self.logger.info("EV_EXIT from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.machifProgExec = None
+                if id(te.sender) == id(self.machifProgExec):
+                    self.machifProgExec = None
+                elif id(te.sender) == id(self.remoteClient):
+                    self.remoteClient = None
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.error("got UKNOWN event id[%d]" % te.event_id)
+                    self.logger.error(
+                        "got UKNOWN event id[{}] from 0x{:x} {}".format(te.event_id, id(te.sender), te.sender))
 
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
@@ -2388,7 +2444,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             if len(initScript) > 0:
                 if self.cmdLineOptions.verbose:
-                    print "gsatMainWindow queuing machine init script..."
+                    print ("gsatMainWindow queuing machine init script...")
 
                 self.outputText.AppendText("Queuing machine init script...\n")
                 for initLine in initScript:

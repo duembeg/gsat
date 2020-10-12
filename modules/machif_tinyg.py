@@ -358,7 +358,7 @@ class MachIf_TinyG(mi.MachIf_Base):
                         stat_code,
                         TINYG_STAT_CODE_2_STR_DICT.get(
                             stat_code, "Unknown"))
-                    self.eventPut(gc.EV_SER_RXDATA, stat_str)
+                    self.eventPut(gc.EV_RXDATA, stat_str)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                         error_msg = "found error [%s]" % stat_str

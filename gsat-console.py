@@ -31,6 +31,7 @@ import time
 
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
+import modules.remote_server as remote_server
 
 __appname__ = "Gcode Step and Alignment Tool"
 
@@ -72,6 +73,12 @@ def get_cli_params():
                       "MACHIF_EXEC, SERIALIF, SERIALIF_STR, SERIALIF_HEX",
                       metavar="")
 
+    parser.add_option("-s", "--server",
+                      dest="server",
+                      action="store_true",
+                      default=False,
+                      help="run gsat server")
+
     (options, args) = parser.parse_args()
 
     if options.verbose_mask is not None:
@@ -87,6 +94,7 @@ def get_cli_params():
 if __name__ == '__main__':
 
     machifProgExec = None
+    remoteSever = None
     gcodeFileLines = []
     (cmd_line_options, cli_args) = get_cli_params()
 
@@ -99,22 +107,25 @@ if __name__ == '__main__':
 
         gc.init_config(cmd_line_options, config_fname, "foo")
 
+        if cmd_line_options.server:
+            remoteServer = remote_server.RemoteServerThread(None)
+
         if os.path.exists(cmd_line_options.gcode):
             gcode_file = file(cmd_line_options.gcode)
             gcode_data = gcode_file.read()
 
             gcodeFileLines = gcode_data.splitlines(True)
 
-        machifProgExec = mi_progexec.MachIfExecuteThread(None)
+            machifProgExec = mi_progexec.MachIfExecuteThread(None)
 
-        # TODO: need code to check port is open
-        time.sleep(2)
+            # TODO: need code to check port is open
+            time.sleep(2)
 
-        machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM)
+            machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM)
 
-        machifProgExec.eventPut(gc.EV_CMD_RUN, [gcodeFileLines, 0, set()])
+            machifProgExec.eventPut(gc.EV_CMD_RUN, [gcodeFileLines, 0, set()])
 
-        time.sleep(20)
+            time.sleep(20)
 
     finally:
         if machifProgExec is not None:

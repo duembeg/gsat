@@ -282,9 +282,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.addEventListener(e.sender)
 
-            elif e.event_id == gc.EV_GOODBY:
+            elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_GOODBY from 0x%x" % id(e.sender))
+                    self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
 
                 self.removeEventListener(e.sender)
 

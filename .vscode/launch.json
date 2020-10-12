@@ -10,8 +10,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/gsat-console.py",
             "args": [
-                "-g../test.gcode",
-                "--vm=machif,serialif"
+                // "-g../test.gcode",
+                "--vm=machif,serialif,remoteif",
+                "--server"
             ]
         },
         {
@@ -44,7 +45,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/gsat.py",
             "args": [
-                "--vm=machif,ui,serialif"
+                "--vm=machif,ui,serialif,remoteif,evenif"
             ]
         },
         {

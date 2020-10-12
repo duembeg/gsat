@@ -12,5 +12,13 @@
         "scminput": {
             "parser": "plain"
         }
-    }
+    },
+    "cSpell.words": [
+        "EVENTIF",
+        "REMOTEIF",
+        "SERIALIF",
+        "TXDATA",
+        "gsat",
+        "machif"
+    ],
 }

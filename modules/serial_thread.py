@@ -76,7 +76,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         # start thread
         self.start()
 
-    def processQueue(self):
+    def process_queue(self):
         """ Event handlers
         """
         # process events from queue
@@ -84,11 +84,11 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             # get item from queue
             e = self._eventQueue.get()
 
-            if e.event_id == gc.EV_CMD_SER_TXDATA:
+            if e.event_id == gc.EV_CMD_TXDATA:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
-                    self.logger.info("EV_CMD_SER_TXDATA")
+                    self.logger.info("EV_CMD_TXDATA")
 
-                self.serialWrite(e.data)
+                self.write(e.data)
 
             elif e.event_id == gc.EV_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
@@ -96,9 +96,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
                 self.addEventListener(e.sender)
 
-            elif e.event_id == gc.EV_GOODBY:
+            elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
-                    self.logger.info("EV_GOODBY from 0x%x" % id(e.sender))
+                    self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
 
                 self.removeEventListener(e.sender)
 
@@ -106,7 +106,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
                     self.logger.info("EV_CMD_EXIT")
 
-                self.serialClose()
+                self.close()
 
                 self.endThread = True
 
@@ -115,7 +115,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.logger.error("EV_?? got unknown event!! [%s]" %
                                   str(e.event_id))
 
-    def serialClose(self):
+    def close(self):
         """ Close serial port
         """
         if self.serialPort is not None:
@@ -128,13 +128,13 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
                 self.notifyEventListeners(gc.EV_SER_PORT_CLOSE, 0)
 
-    def serialOpen(self):
+    def open(self):
         """ Open serial port
         """
         exFlag = False
         exMsg = ""
 
-        self.serialClose()
+        self.close()
 
         port = self.serialPortName
         baud = self.serialPortBaud
@@ -206,7 +206,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
 
-    def serialRead(self):
+    def read(self):
         exFlag = False
         exMsg = ""
         serialData = ""
@@ -240,7 +240,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                                 self.logger.info(verbose_data_ascii("<-",
                                                  serialData))
 
-                        self.notifyEventListeners(gc.EV_SER_RXDATA,
+                        self.notifyEventListeners(gc.EV_RXDATA,
                                                   "%s\n" % serialData)
 
                         # attempt to reduce starvation on other threads
@@ -275,9 +275,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
             # add data to queue
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
-            self.serialClose()
+            self.close()
 
-    def serialWrite(self, serialData):
+    def write(self, serialData):
         exFlag = False
         exMsg = ""
 
@@ -324,7 +324,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
                 # add data to queue
                 self.notifyEventListeners(gc.EV_ABORT, exMsg)
-                self.serialClose()
+                self.close()
 
     def run(self):
         """Run Worker Thread."""
@@ -334,12 +334,12 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
             self.logger.info("thread start")
 
-        self.serialOpen()
+        self.open()
 
         while (not self.endThread) and (self.serialPort is not None):
 
             # process input queue for new commands or actions
-            self.processQueue()
+            self.process_queue()
 
             # check if we need to exit now
             if (self.endThread):
@@ -347,7 +347,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
             if self.serialPort.isOpen():
                 if self.swState == gc.STATE_RUN:
-                    self.serialRead()
+                    self.read()
                 elif self.swState == gc.STATE_ABORT:
                     # do nothing, wait to be terminated
                     pass
