@@ -15,7 +15,9 @@
     },
     "cSpell.words": [
         "EVENTIF",
+        "INET",
         "REMOTEIF",
+        "REUSEADDR",
         "SERIALIF",
         "TXDATA",
         "gsat",

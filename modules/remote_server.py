@@ -68,6 +68,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.host = "river"
         self.server = None
         self.inputs = []
+        self.inputs_addr = {}
         self.outputs = []
         self.messageQueues = {}
         self.broadcastQueue = Queue.Queue()
@@ -90,14 +91,33 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
     def process_queue(self):
         """ Event handlers
         """
-
         # process events from queue
         try:
             e = self._eventQueue.get_nowait()
         except Queue.Empty:
             pass
         else:
-            if e.event_id == gc.EV_CMD_TXDATA:
+            # this message came from clients
+            if e.sender in self.inputs:
+                if e.event_id == gc.EV_CMD_TXDATA:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_CMD_TXDATA from client{}".format(self.inputs_addr[e.sender]))
+
+                elif e.event_id == gc.EV_CMD_OPEN:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_CMD_OPEN from client{}".format(self.inputs_addr[e.sender]))
+
+                elif e.event_id == gc.EV_CMD_GET_CONFIG:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_CMD_GET_CONFIG from client{}".format(self.inputs_addr[e.sender]))
+
+                else:
+                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.error(
+                        "EV_?? got unknown event!! {} from client{}".format(e.event_id, self.inputs_addr[e.sender]))
+
+            # local messageing
+            elif e.event_id == gc.EV_CMD_TXDATA:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_TXDATA")
 
@@ -140,7 +160,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.server = None
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.info("close clients and server port")
+                self.logger.info("Close clients and server port")
 
             self.notifyEventListeners(gc.EV_SER_PORT_CLOSE, 0)
 
@@ -154,6 +174,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server.setblocking(0)
             self.server.bind((self.host, self.port))
             self.server.listen(5)
@@ -186,115 +207,80 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "sever listening on {}:{}".format(self.host, self.port)
+            msg = "Sever listening on {}{}\n".format(self.host, self.server.getsockname())
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.info(msg)
+                self.logger.info(msg.strip())
 
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_RMT_PORT_OPEN, msg)
 
-    def read(self):
+    def recv(self, soc):
         exFlag = False
         exMsg = ""
-        serialData = ""
+        data = None
 
         try:
-            self.server.recv(10)
+            msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
+
+            if len(msg_header):
+                msglen = int(msg_header.decode('utf-8'))
+
+            data_buffer = b""
+            while len(msg_header):
+                msg = soc.recv(gc.SOCK_DATA_SIZE)
+                data_buffer += msg
+
+                if len(data_buffer) == msglen:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                        self.logger.info(verbose_data_hex("<-", data_buffer))
+
+                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                        self.logger.info(verbose_data_ascii("<-", data_buffer))
+
+                    data = pickle.loads(data_buffer)
+
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                        self.logger.info(
+                            "Recv msg len:{} data:{} from {}".format(msglen, str(data), soc.getpeername()))
+                    break
+
+        except socket.error as e:
+            exMsg = "** socket.error exception: {}\n".format(str(e))
+            exFlag = True
+
+        except OSError as e:
+            exMsg = "** OSError exception: {}\n".format(str(e))
+            exFlag = True
 
         except IOError as e:
             exMsg = "** IOError exception: {}\n".format(str(e))
             exFlag = True
 
-        except:
-            e = sys.exc_info()[0]
-            exMsg = "** Unexpected exception: {}\n".format(str(e))
-            exFlag = True
-
-        if exFlag:
-            # make sure we stop processing any states...
-            self.swState = gc.STATE_ABORT
-
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-            self.logger.error(exMsg.strip())
-
-            # add data to queue
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
-            self.close()
-
-        return
-
-        try:
-            inDataCnt = self.serialPort.inWaiting()
-
-            while inDataCnt > 0 and not exFlag:
-
-                # # read data from port
-                # # Was running with performance issues using readline(), move
-                # # to read() using "".join() as performance is much better
-                # # then "+="
-                # serialData = self.serialPort.readline()
-                # self.rxBuffer += self.serialPort.read(inDataCnt)
-                self.rxBuffer = "".join(
-                    [self.rxBuffer, self.serialPort.read(inDataCnt)])
-
-                while '\n' in self.rxBuffer:
-                    serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
-
-                    if serialData:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-
-                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                                self.logger.info(verbose_data_hex("<-",
-                                                 serialData))
-
-                            elif (gc.VERBOSE_MASK &
-                                  gc.VERBOSE_MASK_REMOTEIF_STR):
-                                self.logger.info(verbose_data_ascii("<-",
-                                                 serialData))
-
-                        self.notifyEventListeners(gc.EV_RXDATA,
-                                                  "%s\n" % serialData)
-
-                        # attempt to reduce starvation on other threads
-                        # when serial traffic is constant
-                        time.sleep(0.01)
-
-                inDataCnt = self.serialPort.inWaiting()
-
-        except serial.SerialException, e:
-            exMsg = "** PySerial exception: %s\n" % e.message
-            exFlag = True
-
-        except OSError, e:
-            exMsg = "** OSError exception: %s\n" % str(e)
-            exFlag = True
-
-        except IOError, e:
-            exMsg = "** IOError exception: %s\n" % str(e)
-            exFlag = True
-
         # except:
         #     e = sys.exc_info()[0]
-        #     exMsg = "** Unexpected exception: %s\n" % str(e)
+        #     exMsg = "** Unexpected exception: {}\n".format(str(e))
         #     exFlag = True
 
         if exFlag:
             # make sure we stop processing any states...
-            self.swState = gc.STATE_ABORT
+            # self.swState = gc.STATE_ABORT
 
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-            self.logger.error(exMsg.strip())
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                self.logger.error(exMsg.strip())
 
             # add data to queue
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
-            self.close()
+            # self.notifyEventListeners(gc.EV_ABORT, exMsg)
+            # self.close()
+
+        # return data
+        return data
 
     def send(self, soc, data):
         exFlag = False
         exMsg = ""
 
         pickle_data = pickle.dumps(data)
-        msg = "{:{header_size}}".format(len(pickle_data), header_size=gc.SOCK_HEADER_SIZE)
+        msg = "{:{header_size}}".format(len(pickle_data), header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
 
         try:
@@ -328,55 +314,18 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             # self.notifyEventListeners(gc.EV_ABORT, exMsg)
             # self.close()
 
+    def clean_up(self, soc):
+        if soc in self.outputs:
+            self.outputs.remove(soc)
 
-    def write(self, serialData):
-        exFlag = False
-        exMsg = ""
+        self.inputs.remove(soc)
 
-        if len(serialData) == 0:
-            return
+        if soc in self.outputs:
+            self.outputs.remove(soc)
 
-        if self.serialPort.isOpen():
-
-            try:
-                # send command
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("->", serialData))
-
-                    elif (gc.VERBOSE_MASK &
-                          gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("->", serialData))
-
-                self.serialPort.write(serialData)
-
-            except serial.SerialException, e:
-                exMsg = "** PySerial exception: %s\n" % e.message
-                exFlag = True
-
-            except OSError, e:
-                exMsg = "** OSError exception: %s\n" % str(e)
-                exFlag = True
-
-            except IOError, e:
-                exMsg = "** IOError exception: %s\n" % str(e)
-                exFlag = True
-
-            # except:
-            #     e = sys.exc_info()[0]
-            #     exMsg = "** Unexpected exception: %s\n" % str(e)
-            #     exFlag = True
-
-            if exFlag:
-                # make sure we stop processing any states...
-                self.swState = gc.STATE_ABORT
-
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.error(exMsg.strip())
-
-                # add data to queue
-                self.notifyEventListeners(gc.EV_ABORT, exMsg)
-                self.close()
+        del self.inputs_addr[soc]
+        del self.messageQueues[soc]
+        soc.close()
 
     def run(self):
         """Run Worker Thread."""
@@ -403,39 +352,48 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     for soc in readable:
                         if soc is self.server:
+                            # register new client
                             connection, client_address = soc.accept()
                             connection.setblocking(0)
                             self.inputs.append(connection)
+                            self.inputs_addr[connection] = client_address
                             self.messageQueues[connection] = Queue.Queue()
 
-                            msg = "sever got connection from {}".format(connection.getpeername())
+
+                            msg = "Sever stablish connection to client{}\n".format(self.inputs_addr[connection])
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                                self.logger.info(msg)
+                                self.logger.info(msg.strip())
 
                             # notify local lisensers
                             self.notifyEventListeners(gc.EV_RMT_HELLO, msg)
 
-                            # welcome message
+                            # send welcome message, only to new client
                             self.messageQueues[connection].put(gc.SimpleEvent(
                                 gc.EV_RMT_HELLO,
-                                "Welcome to gsat server {}, on {}:{} [{}]".format(
-                                    __version__, self.host, self.port, platform.processor()),
+                                "Welcome to gsat server {}, on {}{} [{}]\n".format(
+                                    __version__, self.host, self.server.getsockname(), platform.processor()),
                                 id(self)))
 
                             if connection not in self.outputs:
                                 self.outputs.append(connection)
                         else:
-                            data = soc.recv(1024)
+                            # read data from client
+                            data = self.recv(soc)
+
                             if data:
-                                # message_queues[s].put(data)
-                                if soc not in self.outputs:
-                                    self.outputs.append(soc)
+                                # add data to self queue to handle
+                                data.sender = soc
+                                self.eventPut(data)
+
                             else:
-                                if soc in self.outputs:
-                                    self.outputs.remove(soc)
-                                self.inputs.remove(soc)
-                                soc.close()
-                                # del message_queues[s]
+                                # no data client disconnected, clean up
+                                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                    self.logger.info("Connection reset by peer, client{}".format(self.inputs_addr[soc]))
+
+                                if soc in writable:
+                                    writable.remove(soc)
+
+                                self.clean_up(soc)
 
                     # Handle outputs
                     for soc in writable:
@@ -451,8 +409,14 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                         except Queue.Empty:
                             pass
                         else:
-                            print >>sys.stderr, 'sending "%s" to %s' % (msg, soc.getpeername())
-                            soc.send(msg)
+                            self.send(soc, msg)
+
+                    # handle exceptions
+                    for soc in exceptional:
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                            self.logger.info("Unknown exception from client{}".format(self.inputs_addr[soc]))
+
+                        self.clean_up(soc)
 
                 elif self.swState == gc.STATE_ABORT:
                     # do nothing, wait to be terminated
@@ -467,7 +431,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.notifyEventListeners(gc.EV_ABORT, exMsg)
                     break
             else:
-                message = "remote port is close, terminating.\n"
+                message = "Remote port is close, terminating.\n"
 
                 # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.error(message.strip())

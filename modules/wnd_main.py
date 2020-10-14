@@ -2158,11 +2158,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         """ program execution thread event handlers handle events
         """
         self.eventHandleCount = self.eventHandleCount + 1
-        # process events from queue
-        if not self._eventQueue.empty():
-            # get item from queue
-            te = self._eventQueue.get()
 
+        # process events from queue
+        try:
+            te = self._eventQueue.get_nowait()
+        except Queue.Empty:
+            pass
+
+        else:
             if te.event_id == gc.EV_ABORT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_ABORT from 0x{:x} {}".format(id(te.sender), te.sender))
@@ -2343,7 +2346,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data+"\n")
+                self.outputText.AppendText(te.data)
+
+                if self.remoteClient is not None:
+                    self.remoteClient.eventPut(gc.EV_CMD_GET_CONFIG)
+
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_PORT_CLOSE:
@@ -2357,12 +2364,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_HELLO:
-                self.outputText.AppendText(te.data + "\n")
+                self.outputText.AppendText(te.data)
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.error(
-                        "got UKNOWN event id[{}] from 0x{:x} {}".format(te.event_id, id(te.sender), te.sender))
+                        "got UNKNOWN event id[{}] from 0x{:x} {}".format(te.event_id, id(te.sender), te.sender))
 
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()

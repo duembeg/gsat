@@ -31,6 +31,7 @@ import time
 import logging
 import socket
 import select
+import Queue
 
 import modules.config as gc
 
@@ -62,6 +63,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.remoteHost = "river"
         self.socket = None
         self.inputs = []
+        self.inputs_addr = {}
         self.outputs = []
         self.messageQueues = {}
 
@@ -84,10 +86,11 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         """ Event handlers
         """
         # process events from queue
-        if not self._eventQueue.empty():
-            # get item from queue
-            e = self._eventQueue.get()
-
+        try:
+            e = self._eventQueue.get_nowait()
+        except Queue.Empty:
+            pass
+        else:
             if e.event_id == gc.EV_CMD_TXDATA:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_TXDATA")
@@ -116,22 +119,27 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
             else:
                 # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                self.logger.error("EV_?? got unknown event!! from 0x{:x} {}".format(id(e.sender), e.sender))
+                # self.logger.error("EV_?? got unknown event!! from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                # commands that we don't handle forward to server
+                e.sender = id(e.sender)
+                self.send(self.socket, e)
 
     def close(self):
         """ Close serial port
         """
         if self.socket is not None:
+
+            msg = "Close remote connection to {}{}\n".format(self.remoteHost, self.socket.getpeername())
+
             while len(self.inputs):
                 soc = self.inputs.pop()
                 soc.close()
 
             self.socket = None
 
-            msg = "close remote connection to {}:{}".format(self.remoteHost, self.remotePort)
-
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.info(msg)
+                self.logger.info(msg.strip())
 
             self.notifyEventListeners(gc.EV_RMT_PORT_CLOSE, msg)
 
@@ -176,10 +184,10 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "Open remote connection to {}:{}".format(self.remoteHost, self.remotePort)
+            msg = "Open remote connection to {}{}\n".format(self.remoteHost, self.socket.getpeername())
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.info(msg)
+                self.logger.info(msg.strip())
 
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_RMT_PORT_OPEN, msg)
@@ -190,11 +198,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         data = None
 
         try:
-            msg = soc.recv(gc.SOCK_HEADER_SIZE)
-            msglen = int (msg)
+            msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
+
+            if len(msg_header):
+                msglen = int (msg_header.decode('utf-8'))
 
             data_buffer = b""
-            while True:
+            while len(msg_header):
                 msg = soc.recv(gc.SOCK_DATA_SIZE)
                 data_buffer += msg
 
@@ -248,7 +258,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         exMsg = ""
 
         pickle_data = pickle.dumps(data)
-        msg = "{:{header_size}}".format(len(pickle_data), header_size=gc.SOCK_HEADER_SIZE)
+        msg = "{:{header_size}}".format(len(pickle_data), header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
 
         try:
@@ -310,7 +320,15 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         if data:
                             self.notifyEventListeners(data)
                         else:
-                            pass
+                            msg = "Connection reset by peer, server {}{}\n".format(
+                                self.remoteHost, self.socket.getpeername())
+
+                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                self.logger.info(msg.strip())
+
+                            self.swState = gc.STATE_ABORT
+
+                            self.notifyEventListeners(gc.EV_ABORT, msg)
 
                     # Handle outputs
                     for soc in writable:
@@ -326,7 +344,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     # do nothing, wait to be terminated
                     pass
                 else:
-                    exMsg = "unexpected state [%d], Aborting..." \
+                    exMsg = "Unexpected state [%d], Aborting..." \
                             % (self.swState)
 
                     # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
@@ -335,7 +353,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     self.notifyEventListeners(gc.EV_ABORT, exMsg)
                     break
             else:
-                message = "remote port is close, terminating.\n"
+                message = "Remote port is close, terminating.\n"
 
                 # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.error(message.strip())
