@@ -158,9 +158,7 @@ EV_CMD_JOG_STOP = 1260
 
 EV_NULL = 100
 EV_HELLO = 110
-EV_RMT_HELLO = 111
 EV_GOOD_BYE = 120
-EV_RMT_GOOD_BYE = 121
 EV_EXIT = 200
 EV_ABORT = 2000
 EV_RUN_END = 2010
@@ -173,12 +171,16 @@ EV_HIT_MSG = 2070
 EV_RXDATA = 2080
 EV_TXDATA = 2090
 EV_SER_PORT_OPEN = 2100
-EV_RMT_PORT_OPEN = 2101
 EV_SER_PORT_CLOSE = 2110
-EV_RMT_PORT_CLOSE = 2111
 EV_TIMER = 2120
 EV_DATA_STATUS = 2130
 EV_DEVICE_DETECTED = 2140
+EV_CONFIG_DATA = 2150
+EV_RMT_HELLO = 2160
+EV_RMT_GOOD_BYE = 2170
+EV_RMT_PORT_OPEN = 2180
+EV_RMT_PORT_CLOSE = 2190
+EV_RMT_CONFIG_DATA = 2200
 
 # --------------------------------------------------------------------------
 # VERBOSE MASK
@@ -408,6 +410,7 @@ class ConfigData(object):
 
         if key_list:
             node = self.datastore
+            key = None
 
             for key in key_list:
                 if key in node:
@@ -459,7 +462,7 @@ class ConfigData(object):
         """ dumps config to stdout
         """
         data = json.dumps(self.datastore, indent=3, sort_keys=True)
-        print data
+        print (data)
 
 
 class gsatConfigData(ConfigData):

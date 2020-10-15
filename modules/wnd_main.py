@@ -31,6 +31,7 @@ import re
 import time
 import shutil
 import logging
+import Queue
 import wx
 import wx.combo
 # from wx import stc as stc
@@ -56,6 +57,7 @@ import modules.machif_progexec as mi_progexec
 import modules.remote_client as remote_client
 
 from modules.version_info import *
+
 '''
 __appname__ = "Gcode Step and Alignment Tool"
 
@@ -1058,7 +1060,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         '/mainApp/FileHistory/File%d' % (index+1),
                         self.fileHistory.GetHistoryFile(index)
                     )
-                self.configData.save()
+
+                if self.remoteClient is None:
+                    # only save locally if NOT using remote config data
+                    # TODO: save only partial info like file history
+                    self.configData.save()
 
             self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
@@ -1120,7 +1126,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     '/mainApp/FileHistory/File%d' % (index+1),
                     self.fileHistory.GetHistoryFile(index)
                 )
-            self.configData.save()
+            if self.remoteClient is None:
+                # only save locally if NOT using remote config data
+                # TODO: save only partial info like file history
+                self.configData.save()
 
         self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
@@ -1201,7 +1210,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         '/mainApp/FileHistory/File%d' % (index+1),
                         self.fileHistory.GetHistoryFile(index)
                     )
-                self.configData.save()
+
+                if self.remoteClient is None:
+                    # only save locally if NOT using remote config data
+                    # TODO: save only partial info like file history
+                    self.configData.save()
 
             self.gcText.SaveFile(self.stateData.gcodeFileName)
 
@@ -1330,7 +1343,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.SaveLayoutData('/mainApp/Layout/Default')
 
     def OnRemote(self, e):
-        self.RemoteOpen()
+        if self.remoteClient is None:
+            self.RemoteOpen()
+        else:
+            self.RemoteClose()
 
     def OnSettings(self, e):
         # do settings dialog
@@ -1341,7 +1357,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if result == wx.ID_OK:
             dlg.UpdateConfigData()
 
-            self.configData.save()
+            if self.remoteClient is None:
+                # only save locally if NOT using remote config data
+                # TODO: send updated data to remote server
+                self.configData.save()
 
             self.InitConfig()
 
@@ -1845,6 +1864,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     # Other UI Handlers
     # -------------------------------------------------------------------------
     def OnClose(self, e):
+
+        self.machineJoggingPanel.SaveCli()
+
+        if self.remoteClient is None:
+            # only save locally if NOT using remote config data
+            self.configData.save()
+
         if self.machifProgExec is not None:
             self.SerialClose()
 
@@ -1853,11 +1879,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         time.sleep(1)
 
-        # self.cliPanel.SaveCli()
-        self.machineJoggingPanel.SaveCli()
-        self.configData.save()
         self.aui_mgr.UnInit()
-
         self.Destroy()
         e.Skip()
 
@@ -2056,7 +2078,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.configData.set("".join([key, "/Dimensions"]), dimensionsData)
         self.configData.set("".join([key, "/Perspective"]), layoutData)
-        self.configData.save()
+
+        if self.remoteClient is None:
+            # only save locally if NOT using remote config data
+            # TODO: save only partial info like UI settings
+            self.configData.save()
 
     def ConvertInchAndmm(self, lines, in_to_mm=True, round_to=-1):
         ret_lienes = []
@@ -2362,6 +2388,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
+
+            elif  te.event_id == gc.EV_RMT_CONFIG_DATA:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                self.configData = te.data
 
             elif te.event_id == gc.EV_RMT_HELLO:
                 self.outputText.AppendText(te.data)

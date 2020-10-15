@@ -65,7 +65,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         # self.remotePort = None
         # self.remoteHost = None
         self.port = 61801
-        self.host = "river"
+        self.host = socket.gethostname()
         self.server = None
         self.inputs = []
         self.inputs_addr = {}
@@ -111,6 +111,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                         self.logger.info("EV_CMD_GET_CONFIG from client{}".format(self.inputs_addr[e.sender]))
 
+                    self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.server)))
                 else:
                     # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.error(
@@ -221,16 +222,17 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         try:
             msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
+            msg_len = 0
 
             if len(msg_header):
-                msglen = int(msg_header.decode('utf-8'))
+                msg_len = int(msg_header.decode('utf-8'))
 
             data_buffer = b""
             while len(msg_header):
                 msg = soc.recv(gc.SOCK_DATA_SIZE)
                 data_buffer += msg
 
-                if len(data_buffer) == msglen:
+                if len(data_buffer) == msg_len:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
                         self.logger.info(verbose_data_hex("<-", data_buffer))
 
@@ -241,7 +243,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "Recv msg len:{} data:{} from {}".format(msglen, str(data), soc.getpeername()))
+                            "Recv msg len:{} data:{} from {}".format(msg_len, str(data), soc.getpeername()))
                     break
 
         except socket.error as e:
@@ -280,11 +282,16 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         exMsg = ""
 
         pickle_data = pickle.dumps(data)
-        msg = "{:{header_size}}".format(len(pickle_data), header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
+        msg_len = len(pickle_data)
+        msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
 
         try:
             soc.send(bytes(msg.encode('utf-8')))
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                self.logger.info(
+                    "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
 
         except socket.error as e:
             exMsg = "** socket.error exception: {}\n".format(str(e))

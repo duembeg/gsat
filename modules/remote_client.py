@@ -199,16 +199,17 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         try:
             msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
+            msg_len = 0
 
             if len(msg_header):
-                msglen = int (msg_header.decode('utf-8'))
+                msg_len = int (msg_header.decode('utf-8'))
 
             data_buffer = b""
             while len(msg_header):
                 msg = soc.recv(gc.SOCK_DATA_SIZE)
                 data_buffer += msg
 
-                if len(data_buffer) == msglen:
+                if len(data_buffer) == msg_len:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
                         self.logger.info(verbose_data_hex("<-", data_buffer))
 
@@ -219,7 +220,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "recv msg len:{} data:{} from {}".format(msglen, str(data), soc.getpeername()))
+                            "recv msg len:{} data:{} from {}".format(msg_len, str(data), soc.getpeername()))
                     break
 
         except socket.error as e:
@@ -258,11 +259,16 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         exMsg = ""
 
         pickle_data = pickle.dumps(data)
-        msg = "{:{header_size}}".format(len(pickle_data), header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
+        msg_len = len(pickle_data)
+        msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
 
         try:
             soc.send(bytes(msg.encode('utf-8')))
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                self.logger.info(
+                    "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
 
         except socket.error as e:
             exMsg = "** socket.error exception: {}\n".format(str(e))
@@ -318,6 +324,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     for soc in readable:
                         data = self.recv(soc)
                         if data:
+                            data.sender = self
                             self.notifyEventListeners(data)
                         else:
                             msg = "Connection reset by peer, server {}{}\n".format(
@@ -339,6 +346,16 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         else:
                             print >>sys.stderr, 'sending "%s" to %s' % (msg, soc.getpeername())
                             self.send(msg)
+
+                    # handle exceptions
+                    for soc in exceptional:
+                        msg = "Unknown exception from client{}\n".format(self.inputs_addr[soc])
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                            self.logger.info(msg.strip())
+
+                        self.swState = gc.STATE_ABORT
+
+                        self.notifyEventListeners(gc.EV_ABORT, msg)
 
                 elif self.swState == gc.STATE_ABORT:
                     # do nothing, wait to be terminated
