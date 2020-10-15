@@ -59,8 +59,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.remotePort = 61801
-        self.remoteHost = "raspberrypi"
+        self.port = 61801
+        self.host = "raspberrypi"
         self.socket = None
         self.inputs = []
         self.inputs_addr = {}
@@ -130,7 +130,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         """
         if self.socket is not None:
 
-            msg = "Close remote connection to {}{}\n".format(self.remoteHost, self.socket.getpeername())
+            msg = "Close remote connection to {}{}\n".format(self.host, self.socket.getpeername())
 
             while len(self.inputs):
                 soc = self.inputs.pop()
@@ -153,24 +153,24 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((self.remoteHost, self.remotePort))
+            self.socket.connect((self.host, self.port))
             self.inputs.append(self.socket)
 
         except socket.error as e:
-            exMsg = "** socket.error exception: %s\n" % str(e)
+            exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         except OSError as e:
-            exMsg = "** OSError exception: %s\n" % str(e)
+            exMsg = "** OSError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         except IOError as e:
-            exMsg = "** IOError exception: %s\n" % str(e)
+            exMsg = "** IOError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         # except:
         #     e = sys.exc_info()[0]
-        #     exMsg = "** Unexpected exception: %s\n" % str(e)
+        #     exMsg = "** Unexpected exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
         #     exFlag = True
 
         if exFlag:
@@ -185,7 +185,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "Open remote connection to {}{}\n".format(self.remoteHost, self.socket.getpeername())
+            msg = "Open remote connection to {}{}\n".format(self.host, self.socket.getpeername())
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
@@ -225,20 +225,20 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     break
 
         except socket.error as e:
-            exMsg = "** socket.error exception: {}\n".format(str(e))
+            exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         except OSError as e:
-            exMsg = "** OSError exception: {}\n".format(str(e))
+            exMsg = "** OSError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         except IOError as e:
-            exMsg = "** IOError exception: {}\n".format(str(e))
+            exMsg = "** IOError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         except:
             e = sys.exc_info()[0]
-            exMsg = "** Unexpected exception: {}\n".format(str(e))
+            exMsg = "** Unexpected exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
             exFlag = True
 
         if exFlag:
@@ -329,7 +329,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                             self.notifyEventListeners(data)
                         else:
                             msg = "Connection reset by peer, server {}{}\n".format(
-                                self.remoteHost, self.socket.getpeername())
+                                self.host, self.socket.getpeername())
 
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                 self.logger.info(msg.strip())

@@ -32,7 +32,6 @@ import socket
 import select
 import Queue
 import pickle
-import platform
 
 import modules.config as gc
 
@@ -177,7 +176,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server.setblocking(0)
-            self.server.bind(("{}.local".format(self.host), self.port))
+            self.server.bind(("", self.port))
             self.server.listen(5)
             self.inputs.append(self.server)
 
@@ -375,14 +374,11 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             self.notifyEventListeners(gc.EV_RMT_HELLO, msg)
 
                             # send welcome message, only to new client
-                            self.messageQueues[connection].put(gc.SimpleEvent(
-                                gc.EV_RMT_HELLO,
-                                "Welcome to gsat server {}, on {}{} [{}]\n".format(
-                                    __version__, self.host, self.server.getsockname(), platform.processor()),
-                                id(self)))
+                            msg = gc.SimpleEvent(gc.EV_RMT_HELLO, "Welcome to gsat server {}, on {}{} {}\n".format(
+                                    __version__, self.host, self.server.getsockname(),
+                                    os.uname()), id(self))
 
-                            if connection not in self.outputs:
-                                self.outputs.append(connection)
+                            self.send(connection, msg)
                         else:
                             # read data from client
                             data = self.recv(soc)
