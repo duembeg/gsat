@@ -16,10 +16,13 @@
     "cSpell.words": [
         "EVENTIF",
         "INET",
+        "MPOS",
         "REMOTEIF",
         "REUSEADDR",
+        "RXDATA",
         "SERIALIF",
         "TXDATA",
+        "datefmt",
         "gsat",
         "machif"
     ],
