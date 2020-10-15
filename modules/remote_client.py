@@ -60,7 +60,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         # init local variables
         self.remotePort = 61801
-        self.remoteHost = "river"
+        self.remoteHost = "raspberrypi"
         self.socket = None
         self.inputs = []
         self.inputs_addr = {}
@@ -176,7 +176,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         if exFlag:
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
-            self.close()
+            self.socket.close()
+            self.socket = None
 
             # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.error(exMsg.strip())
