@@ -162,12 +162,13 @@ class gsatSettingsDialog(wx.Dialog):
     """ Dialog to control program settings
     """
 
-    def __init__(self, parent, configData, id=wx.ID_ANY, title="Settings",
+    def __init__(self, parent, config_data, config_remote_data=None, id=wx.ID_ANY, title="Settings",
                  style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER):
 
         wx.Dialog.__init__(self, parent, id, title, style=style)
 
-        self.configData = configData
+        self.configData = config_data
+        self.configRemoteData = config_remote_data
 
         self.InitUI()
 
@@ -253,7 +254,7 @@ class gsatSettingsDialog(wx.Dialog):
 
     def AddMachinePage(self, page):
         self.machinePage = mcc.gsatMachineSettingsPanel(
-            self.noteBook, self.configData)
+            self.noteBook, self.configData, self.configRemoteData)
         self.noteBook.AddPage(self.machinePage, "Machine")
         self.noteBook.SetPageImage(page, page)
 

@@ -32,8 +32,10 @@ import socket
 import select
 import Queue
 import pickle
+import errno
 
 import modules.config as gc
+import modules.machif_progexec as mi_progexec
 
 from modules.version_info import *
 
@@ -71,8 +73,14 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.outputs = []
         self.messageQueues = {}
         self.broadcastQueue = Queue.Queue()
+        self.machifProgExec = None
+        self.serialPortIsOpen = False
 
-        self.rxBuffer = ""
+        self.rxBuffer = b""
+        self.rxBufferLen = 0
+        self.allMsgLenRecv = 0
+
+        self.clientEventQueue = gc.EventQueueIf()
 
         self.swState = gc.STATE_RUN
 
@@ -96,33 +104,46 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         except Queue.Empty:
             pass
         else:
-            # this message came from clients
-            if e.sender in self.inputs:
-                if e.event_id == gc.EV_CMD_TXDATA:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                        self.logger.info("EV_CMD_TXDATA from client{}".format(self.inputs_addr[e.sender]))
+            # this message came from progexec tread
+            if e.sender is self.machifProgExec:
 
-                elif e.event_id == gc.EV_CMD_OPEN:
+                if e.event_id == gc.EV_SER_PORT_OPEN:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                        self.logger.info("EV_CMD_OPEN from client{}".format(self.inputs_addr[e.sender]))
+                        self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                elif e.event_id == gc.EV_CMD_GET_CONFIG:
+                    self.serialPortIsOpen = True
+                    e.sender = id(self)
+                    self.send_broadcast(e)
+
+                elif e.event_id == gc.EV_SER_PORT_CLOSE:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                        self.logger.info("EV_CMD_GET_CONFIG from client{}".format(self.inputs_addr[e.sender]))
+                        self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                    self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.server)))
+                    self.serialPortIsOpen = False
+                    e.sender = id(self)
+                    self.send_broadcast(e)
+
+                elif e.event_id == gc.EV_CMD_EXIT:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_CMD_EXIT from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                    self.machifProgExec = None
+
+                elif e.event_id == gc.EV_ABORT:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_ABORT from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                    if self.machifProgExec is not None:
+                        self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+
                 else:
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                    self.logger.error(
-                        "EV_?? got unknown event!! {} from client{}".format(e.event_id, self.inputs_addr[e.sender]))
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_[{}] from 0x{:x} {}".format(e.event_id, id(e.sender), e.sender))
+
+                    e.sender = id(self)
+                    self.send_broadcast(e)
 
             # local messageing
-            elif e.event_id == gc.EV_CMD_TXDATA:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                    self.logger.info("EV_CMD_TXDATA")
-
-                self.write(e.data)
-
             elif e.event_id == gc.EV_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
@@ -137,7 +158,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_CMD_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                    self.logger.info("EV_CMD_EXIT")
+                    self.logger.info("EV_CMD_EXIT from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                if self.machifProgExec is not None:
+                    self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
                 self.close()
 
@@ -147,6 +171,46 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                 self.logger.error(
                     "EV_?? got unknown event!! {} from 0x{:x} {}".format(e.event_id, id(e.sender), e.sender))
+
+        # process socket events
+        try:
+            e = self.clientEventQueue._eventQueue.get_nowait()
+        except Queue.Empty:
+            pass
+        else:
+            # this message came from clients
+            if e.event_id == gc.EV_CMD_TXDATA:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_TXDATA from client{}".format(self.inputs_addr[e.sender]))
+
+            elif e.event_id == gc.EV_CMD_OPEN:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_OPEN from client{}".format(self.inputs_addr[e.sender]))
+
+                if self.machifProgExec is None:
+                    self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
+
+            elif e.event_id == gc.EV_CMD_CLOSE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_CLOSE from client{}".format(self.inputs_addr[e.sender]))
+
+                if self.machifProgExec is not None:
+                    self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+
+            elif e.event_id == gc.EV_CMD_GET_CONFIG:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_GET_CONFIG from client{}".format(self.inputs_addr[e.sender]))
+
+                self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.server)))
+            else:
+                # # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                # self.logger.error(
+                #     "EV_?? got unknown event!! {} from client{}".format(e.event_id, self.inputs_addr[e.sender]))
+
+                if self.machifProgExec is not None:
+                    e.sender = self
+                    self.machifProgExec.eventPut(e)
+
 
     def close(self):
         """ Close serial port
@@ -162,7 +226,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info("Close clients and server port")
 
-            self.notifyEventListeners(gc.EV_SER_PORT_CLOSE, 0)
+            self.notifyEventListeners(gc.EV_RMT_PORT_CLOSE)
 
     def open(self):
         """ Open serial port
@@ -175,7 +239,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server.setblocking(0)
+            # self.server.setblocking(0)
             self.server.bind(("", self.port))
             self.server.listen(5)
             self.inputs.append(self.server)
@@ -220,41 +284,75 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         data = None
 
         try:
-            msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
-            msg_len = 0
+            if not len(self.rxBuffer):
+                msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
+                msg_len = 0
 
-            if len(msg_header):
-                msg_len = int(msg_header.decode('utf-8'))
+                if len(msg_header):
+                    msg_len = int(msg_header.decode('utf-8'))
+                    self.rxBufferLen = msg_len
+                    self.allMsgLenRecv += msg_len
 
-            data_buffer = b""
-            while len(msg_header):
+            msg = b""
+            if self.rxBufferLen > gc.SOCK_DATA_SIZE:
                 msg = soc.recv(gc.SOCK_DATA_SIZE)
-                data_buffer += msg
+            else:
+                msg = soc.recv(self.rxBufferLen)
 
-                if len(data_buffer) == msg_len:
+            if len(msg):
+                self.rxBufferLen -= len(msg)
+                self.rxBuffer += msg
+
+                # got the entire mesage decode
+                if self.rxBufferLen <= 0:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("<-", data_buffer))
+                        self.logger.info(verbose_data_hex("<-", self.rxBuffer))
 
                     elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("<-", data_buffer))
+                        self.logger.info(verbose_data_ascii("<-", self.rxBuffer))
 
-                    data = pickle.loads(data_buffer)
+                    data = pickle.loads(self.rxBuffer)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "Recv msg len:{} data:{} from {}".format(msg_len, str(data), soc.getpeername()))
-                    break
+                            "Recv msg len:{} data:{} from {}".format(len(self.rxBuffer), str(data), soc.getpeername()))
 
-        except socket.error as e:
-            exMsg = "** socket.error exception: {}\n".format(str(e))
-            exFlag = True
+                    # init rxBuffer last
+                    self.rxBuffer = b""
+
+            # while len(msg_header):
+            #     msg = soc.recv(gc.SOCK_DATA_SIZE)
+            #     data_buffer += msg
+
+            #     if len(data_buffer) == msg_len:
+            #         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+            #             self.logger.info(verbose_data_hex("<-", data_buffer))
+
+            #         elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+            #             self.logger.info(verbose_data_ascii("<-", data_buffer))
+
+            #         data = pickle.loads(data_buffer)
+
+            #         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            #             self.logger.info(
+            #                 "Recv msg len:{} data:{} from {}".format(msg_len, str(data), soc.getpeername()))
+            #         break
 
         except OSError as e:
             exMsg = "** OSError exception: {}\n".format(str(e))
             exFlag = True
 
         except IOError as e:
-            exMsg = "** IOError exception: {}\n".format(str(e))
+            # This is normal on non blocking connections - when there are no incoming data error is going to be raised
+            # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
+            # If we got different error code - something happened
+            if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                exMsg = "** IOError exception: {}\n".format(str(e))
+                exFlag = True
+
+        except socket.error as e:
+            exMsg = "** socket.error exception: {}\n".format(str(e))
             exFlag = True
 
         # except:
@@ -310,15 +408,15 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         #     exFlag = True
 
         if exFlag:
-            # make sure we stop processing any states...
-            # self.swState = gc.STATE_ABORT
-
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.error(exMsg.strip())
 
-            # add data to queue
-            # self.notifyEventListeners(gc.EV_ABORT, exMsg)
-            # self.close()
+            self.clean_up(soc)
+
+    def send_broadcast(self, data):
+        for soc in self.inputs:
+            if soc is not self.server:
+                self.send(soc, data)
 
     def clean_up(self, soc):
         if soc in self.outputs:
@@ -365,7 +463,6 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             self.inputs_addr[connection] = client_address
                             self.messageQueues[connection] = Queue.Queue()
 
-
                             msg = "Sever stablish connection to client{}\n".format(self.inputs_addr[connection])
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                 self.logger.info(msg.strip())
@@ -379,6 +476,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                     os.uname()), id(self))
 
                             self.send(connection, msg)
+
+                            if self.serialPortIsOpen:
+                                msg = gc.SimpleEvent(gc.EV_SER_PORT_OPEN, 0, id(self))
+                                self.send(connection, msg)
                         else:
                             # read data from client
                             data = self.recv(soc)
@@ -386,33 +487,33 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             if data:
                                 # add data to self queue to handle
                                 data.sender = soc
-                                self.eventPut(data)
+                                #self.eventPut(data)
+                                self.clientEventQueue.eventPut(data)
 
                             else:
-                                # no data client disconnected, clean up
-                                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                                    self.logger.info("Connection reset by peer, client{}".format(self.inputs_addr[soc]))
+                                if not self.rxBufferLen:
+                                    # no data client disconnected, clean up
+                                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                        self.logger.info(
+                                            "Connection reset by peer, client{}".format(self.inputs_addr[soc]))
 
-                                if soc in writable:
-                                    writable.remove(soc)
+                                    self.clean_up(soc)
 
-                                self.clean_up(soc)
+                    # # Handle outputs
+                    # for soc in writable:
+                    #     try:
+                    #         msg = self.messageQueues[soc].get_nowait()
+                    #     except Queue.Empty:
+                    #         pass
+                    #     else:
+                    #         self.send(soc, msg)
 
-                    # Handle outputs
-                    for soc in writable:
-                        try:
-                            msg = self.messageQueues[soc].get_nowait()
-                        except Queue.Empty:
-                            pass
-                        else:
-                            self.send(soc, msg)
-
-                        try:
-                            msg = self.broadcastQueue.get_nowait()
-                        except Queue.Empty:
-                            pass
-                        else:
-                            self.send(soc, msg)
+                    #     try:
+                    #         msg = self.broadcastQueue.get_nowait()
+                    #     except Queue.Empty:
+                    #         pass
+                    #     else:
+                    #         self.send(soc, msg)
 
                     # handle exceptions
                     for soc in exceptional:

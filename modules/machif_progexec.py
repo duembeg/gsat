@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif_progexec.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013-2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -372,6 +372,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if 'init' in rxData['r']:
                     # notify listeners
                     self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r'])
+
+                if 'sys' in rxData['r']:
+                    # notify listeners
+                    self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r']['sys'])
 
                 if 'f' in rxData:
                     if (rxData['f'][1] != 0 and

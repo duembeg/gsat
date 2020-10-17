@@ -36,12 +36,16 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
     """ Machine panel settings
     """
 
-    def __init__(self, parent, config_data, **args):
+    def __init__(self, parent, config_data, config_remote_data, **args):
         scrolled.ScrolledPanel.__init__(self, parent,
                                         style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
+        self.configRemoteData = config_remote_data
         self.lastSpecificProperty = ""
+
+        if self.configRemoteData is not None:
+            self.configData = self.configRemoteData
 
         self.InitConfig()
         self.InitUI()

@@ -191,6 +191,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # get app data obj
         self.configData = gc.CONFIG_DATA
+        self.configRemoteData = None
 
         self.logger = logging.getLogger()
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI:
@@ -1061,10 +1062,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         self.fileHistory.GetHistoryFile(index)
                     )
 
-                if self.remoteClient is None:
-                    # only save locally if NOT using remote config data
-                    # TODO: save only partial info like file history
-                    self.configData.save()
+                self.configData.save()
 
             self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
@@ -1126,10 +1124,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     '/mainApp/FileHistory/File%d' % (index+1),
                     self.fileHistory.GetHistoryFile(index)
                 )
-            if self.remoteClient is None:
-                # only save locally if NOT using remote config data
-                # TODO: save only partial info like file history
-                self.configData.save()
+
+            self.configData.save()
 
         self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
@@ -1211,10 +1207,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         self.fileHistory.GetHistoryFile(index)
                     )
 
-                if self.remoteClient is None:
-                    # only save locally if NOT using remote config data
-                    # TODO: save only partial info like file history
-                    self.configData.save()
+                self.configData.save()
 
             self.gcText.SaveFile(self.stateData.gcodeFileName)
 
@@ -1350,7 +1343,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnSettings(self, e):
         # do settings dialog
-        dlg = mwc.gsatSettingsDialog(self, self.configData)
+        dlg = mwc.gsatSettingsDialog(self, self.configData, self.configRemoteData)
 
         result = dlg.ShowModal()
 
@@ -1867,15 +1860,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.machineJoggingPanel.SaveCli()
 
-        if self.remoteClient is None:
-            # only save locally if NOT using remote config data
-            self.configData.save()
-
-        if self.machifProgExec is not None:
-            self.SerialClose()
+        self.configData.save()
 
         if self.remoteClient is not None:
             self.RemoteClose()
+        elif self.machifProgExec is not None:
+            self.SerialClose()
 
         time.sleep(1)
 
@@ -1974,7 +1964,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def SerialClose(self):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+            if self.remoteClient is None:
+                self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+            else:
+                self.machifProgExec.eventPut(gc.EV_CMD_CLOSE)
 
             self.stateData.serialPortIsOpen = False
 
@@ -1982,7 +1975,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.machinePort = self.stateData.serialPort
         self.machineBaud = self.stateData.serialPortBaud
 
-        self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
+        if self.remoteClient is None:
+            self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
+        else:
+            self.machifProgExec.eventPut(gc.EV_CMD_OPEN)
 
         self.UpdateUI()
 
@@ -2009,7 +2005,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def RemoteOpen(self):
         if self.remoteClient is None:
+            if self.machifProgExec is not None:
+                self.SerialClose()
+
             self.remoteClient = remote_client.RemoteClientThread(self)
+            self.machifProgExec = self.remoteClient
 
     def RemoteClose(self):
         if self.remoteClient is not None:
@@ -2079,10 +2079,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.configData.set("".join([key, "/Dimensions"]), dimensionsData)
         self.configData.set("".join([key, "/Perspective"]), layoutData)
 
-        if self.remoteClient is None:
-            # only save locally if NOT using remote config data
-            # TODO: save only partial info like UI settings
-            self.configData.save()
+        self.configData.save()
 
     def ConvertInchAndmm(self, lines, in_to_mm=True, round_to=-1):
         ret_lienes = []
@@ -2198,13 +2195,15 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.outputText.AppendText(te.data)
 
-                if id(te.sender) == id(self.machifProgExec):
+                if te.sender is self.remoteClient:
+                    self.RemoteClose()
+                    self.remoteClient = None
+                    self.configRemoteData = None
+                    self.stateData.serialPortIsOpen = False
+                elif te.sender is self.machifProgExec:
                     self.SerialClose()
                     self.machifProgExec = None
                     self.stateData.serialPortIsOpen = False
-                elif id(te.sender) == id(self.remoteClient):
-                    self.RemoteClose()
-                    self.remoteClient = None
 
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
@@ -2285,7 +2284,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machineStatusPanel.UpdateUI(
                     self.stateData, dict({'prcnt': prcnt}))
 
-
             elif te.event_id == gc.EV_STEP_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_STEP_END")
@@ -2348,6 +2346,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.stateData.serialPortIsOpen = True
+
+                if self.remoteClient is not None:
+                    self.remoteClient.eventPut(gc.EV_CMD_GET_STATUS)
+
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_SER_PORT_CLOSE:
@@ -2363,10 +2365,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_EXIT from 0x{:x} {}".format(id(te.sender), te.sender))
 
+                if id(te.sender) == id(self.remoteClient):
+                    self.remoteClient = None
+                    self.configRemoteData = None
+
                 if id(te.sender) == id(self.machifProgExec):
                     self.machifProgExec = None
-                elif id(te.sender) == id(self.remoteClient):
-                    self.remoteClient = None
 
             elif te.event_id == gc.EV_RMT_PORT_OPEN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2393,7 +2397,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.configData = te.data
+                self.configRemoteData = te.data
 
             elif te.event_id == gc.EV_RMT_HELLO:
                 self.outputText.AppendText(te.data)
@@ -2511,3 +2515,5 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def eventForward2Machif(self, id, data=None, sender=None):
         if self.machifProgExec is not None:
             self.machifProgExec.eventPut(id, data, sender)
+        elif self.remoteClient is not none:
+            self.remoteClient.eventPut(id, data, sender)

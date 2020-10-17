@@ -67,7 +67,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.outputs = []
         self.messageQueues = {}
 
-        self.rxBuffer = ""
+        self.rxBuffer = b""
+        self.rxBufferLen = 0
+        self.allMsgLenRecv = 0
 
         self.swState = gc.STATE_RUN
 
@@ -130,7 +132,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         """
         if self.socket is not None:
 
-            msg = "Close remote connection to {}{}\n".format(self.host, self.socket.getpeername())
+            msg = "Close remote connection to {}{}\n".format(self.host, self.inputs_addr[self.socket])
 
             while len(self.inputs):
                 soc = self.inputs.pop()
@@ -155,6 +157,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
             self.inputs.append(self.socket)
+            self.inputs_addr[self.socket] = self.socket.getpeername()
 
         except socket.error as e:
             exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
@@ -185,7 +188,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "Open remote connection to {}{}\n".format(self.host, self.socket.getpeername())
+            msg = "Open remote connection to {}{}\n".format(self.host, self.inputs_addr[self.socket])
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
@@ -194,52 +197,70 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.notifyEventListeners(gc.EV_RMT_PORT_OPEN, msg)
 
     def recv(self, soc):
+
         exFlag = False
         exMsg = ""
         data = None
 
         try:
-            msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
-            msg_len = 0
+            if not len(self.rxBuffer):
+                msg_header = soc.recv(gc.SOCK_HEADER_SIZE)
+                msg_len = 0
 
-            if len(msg_header):
-                msg_len = int (msg_header.decode('utf-8'))
+                if len(msg_header):
+                    msg_len = int(msg_header.decode('utf-8'))
+                    self.rxBufferLen = msg_len
+                    self.allMsgLenRecv += msg_len
 
-            data_buffer = b""
-            while len(msg_header):
+            msg = b""
+            if self.rxBufferLen > gc.SOCK_DATA_SIZE:
                 msg = soc.recv(gc.SOCK_DATA_SIZE)
-                data_buffer += msg
+            else:
+                msg = soc.recv(self.rxBufferLen)
 
-                if len(data_buffer) == msg_len:
+            if len(msg):
+                self.rxBufferLen -= len(msg)
+                self.rxBuffer += msg
+
+                # got the entire mesage decode
+                if self.rxBufferLen <= 0:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("<-", data_buffer))
+                        self.logger.info(verbose_data_hex("<-", self.rxBuffer))
 
                     elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("<-", data_buffer))
+                        self.logger.info(verbose_data_ascii("<-", self.rxBuffer))
 
-                    data = pickle.loads(data_buffer)
+                    data = pickle.loads(self.rxBuffer)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "recv msg len:{} data:{} from {}".format(msg_len, str(data), soc.getpeername()))
-                    break
+                            "Recv msg len:{} data:{} from {}".format(len(self.rxBuffer), str(data), soc.getpeername()))
 
-        except socket.error as e:
-            exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
-            exFlag = True
+                    # init rxBuffer last
+                    self.rxBuffer = b""
 
         except OSError as e:
-            exMsg = "** OSError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
+            exMsg = "** OSError exception: {}\n".format(str(e))
             exFlag = True
 
         except IOError as e:
-            exMsg = "** IOError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
+            # This is normal on non blocking connections - when there are no incoming data error is going to be raised
+            # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
+            # If we got different error code - something happened
+            if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                exMsg = "** IOError exception: {}\n".format(str(e))
+                exFlag = True
+            print "************* IOError exception: {} {} {}\n".format(str(e), self.rxBufferLen, self.allMsgLenRecv)
+
+        except socket.error as e:
+            exMsg = "** socket.error exception: {}\n".format(str(e))
             exFlag = True
 
-        except:
-            e = sys.exc_info()[0]
-            exMsg = "** Unexpected exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
-            exFlag = True
+        # except:
+        #     e = sys.exc_info()[0]
+        #     exMsg = "** Unexpected exception: {}\n".format(str(e))
+        #     exFlag = True
 
         if exFlag:
             # make sure we stop processing any states...
@@ -328,25 +349,26 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                             data.sender = self
                             self.notifyEventListeners(data)
                         else:
-                            msg = "Connection reset by peer, server {}{}\n".format(
-                                self.host, self.socket.getpeername())
+                            if not self.rxBufferLen:
+                                msg = "Connection reset by peer, server {}{}\n".format(
+                                    self.host, self.socket.getpeername())
 
-                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                                self.logger.info(msg.strip())
+                                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                    self.logger.info(msg.strip())
 
-                            self.swState = gc.STATE_ABORT
+                                self.swState = gc.STATE_ABORT
 
-                            self.notifyEventListeners(gc.EV_ABORT, msg)
+                                self.notifyEventListeners(gc.EV_ABORT, msg)
 
-                    # Handle outputs
-                    for soc in writable:
-                        try:
-                            msg = self.messageQueues[soc].get_nowait()
-                        except Queue.Empty:
-                            pass
-                        else:
-                            print >>sys.stderr, 'sending "%s" to %s' % (msg, soc.getpeername())
-                            self.send(msg)
+                    # # Handle outputs
+                    # for soc in writable:
+                    #     try:
+                    #         msg = self.messageQueues[soc].get_nowait()
+                    #     except Queue.Empty:
+                    #         pass
+                    #     else:
+                    #         print >>sys.stderr, 'sending "%s" to %s' % (msg, soc.getpeername())
+                    #         self.send(msg)
 
                     # handle exceptions
                     for soc in exceptional:
