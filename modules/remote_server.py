@@ -33,6 +33,7 @@ import select
 import Queue
 import pickle
 import errno
+import re
 
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
@@ -75,6 +76,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.broadcastQueue = Queue.Queue()
         self.machifProgExec = None
         self.serialPortIsOpen = False
+        self.deviceDetected = False
 
         self.rxBuffer = b""
         self.rxBufferLen = 0
@@ -135,6 +137,23 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     if self.machifProgExec is not None:
                         self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+
+                    e.sender = id(self)
+                    e.event_id = gc.EV_DATA_IN
+                    e.data = "remote machifProgExec {}".format(e.data)
+                    self.send_broadcast(e)
+
+                elif e.event_id == gc.EV_DEVICE_DETECTED:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                        self.logger.info("EV_DEVICE_DETECTED from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                    self.deviceDetected = True
+
+                    self.run_device_init_script()
+
+                    e.sender = id(self)
+                    self.send_broadcast(e)
+
 
                 else:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
@@ -201,7 +220,20 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_GET_CONFIG from client{}".format(self.inputs_addr[e.sender]))
 
+                port_list = self.get_serial_ports()
+                gc.CONFIG_DATA.add('/temp/SerialPorts', port_list)
                 self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.server)))
+
+            elif e.event_id == gc.EV_CMD_UPDATE_CONFIG:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_UPDATE_CONFIG from client{}".format(self.inputs_addr[e.sender]))
+
+                gc.CONFIG_DATA = e.data
+                gc.CONFIG_DATA.save()
+
+                if self.machifProgExec is not None:
+                    self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
+
             else:
                 # # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                 # self.logger.error(
@@ -210,7 +242,6 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 if self.machifProgExec is not None:
                     e.sender = self
                     self.machifProgExec.eventPut(e)
-
 
     def close(self):
         """ Close serial port
@@ -228,6 +259,52 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
             self.notifyEventListeners(gc.EV_RMT_PORT_CLOSE)
 
+    def get_serial_ports(self):
+        ser_list = []
+        port_search_fail_safe = False
+
+        try:
+            import glob
+            import serial.tools.list_ports
+
+            ser_list_info = serial.tools.list_ports.comports()
+
+            if len(ser_list_info) > 0:
+                if type(ser_list_info[0]) == tuple:
+                    ser_list = ["%s, %s, %s" %
+                               (i[0], i[1], i[2]) for i in ser_list_info]
+                else:
+                    ser_list = ["%s, %s" % (i.device, i.description)
+                               for i in ser_list_info]
+
+                ser_list.sort()
+
+        except ImportError:
+            port_search_fail_safe = True
+
+        if port_search_fail_safe:
+            ser_list = []
+
+            if os.name == 'nt':
+                # Scan for available ports.
+                for i in range(256):
+                    try:
+                        serial.Serial(i)
+                        serList.append('COM'+str(i + 1))
+                    except serial.SerialException, e:
+                        pass
+                    except OSError, e:
+                        pass
+            else:
+                ser_list = glob.glob('/dev/ttyUSB*') + \
+                    glob.glob('/dev/ttyACM*') + \
+                    glob.glob('/dev/cu*')
+
+            if not len(ser_list):
+                ser_list = ['None']
+
+        return ser_list
+
     def open(self):
         """ Open serial port
         """
@@ -239,7 +316,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            # self.server.setblocking(0)
+            self.server.setblocking(0)
             self.server.bind(("", self.port))
             self.server.listen(5)
             self.inputs.append(self.server)
@@ -319,24 +396,6 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     # init rxBuffer last
                     self.rxBuffer = b""
-
-            # while len(msg_header):
-            #     msg = soc.recv(gc.SOCK_DATA_SIZE)
-            #     data_buffer += msg
-
-            #     if len(data_buffer) == msg_len:
-            #         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-            #             self.logger.info(verbose_data_hex("<-", data_buffer))
-
-            #         elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-            #             self.logger.info(verbose_data_ascii("<-", data_buffer))
-
-            #         data = pickle.loads(data_buffer)
-
-            #         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-            #             self.logger.info(
-            #                 "Recv msg len:{} data:{} from {}".format(msg_len, str(data), soc.getpeername()))
-            #         break
 
         except OSError as e:
             exMsg = "** OSError exception: {}\n".format(str(e))
@@ -430,6 +489,34 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         del self.inputs_addr[soc]
         del self.messageQueues[soc]
         soc.close()
+
+    def run_device_init_script(self):
+        init_script_en = gc.CONFIG_DATA.get('/machine/InitScriptEnable')
+
+        if init_script_en:
+            # comments example "( comment string )" or "; comment string"
+            re_gcode_comments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
+
+            # run init script
+            init_script = str(gc.CONFIG_DATA.get('/machine/InitScript')).splitlines()
+
+            if len(init_script) > 0:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                    self.logger.info("RemoteServerThread queuing machine init script...")
+
+                for init_line in init_script:
+
+                    for re_comments in re_gcode_comments:
+                        init_line = re_comments.sub("", init_line)
+
+                    init_line = "".join([init_line, "\n"])
+
+                    if len(init_line.strip()):
+                        if self.machifProgExec is not None:
+                            self.machifProgExec.eventPut(gc.EV_CMD_SEND, init_line)
+
+                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                self.logger.info(init_line.strip())
 
     def run(self):
         """Run Worker Thread."""
@@ -553,3 +640,4 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("thread exit")
 
         self.notifyEventListeners(gc.EV_EXIT, "")
+

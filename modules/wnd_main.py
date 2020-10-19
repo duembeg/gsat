@@ -1350,21 +1350,20 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if result == wx.ID_OK:
             dlg.UpdateConfigData()
 
-            if self.remoteClient is None:
-                # only save locally if NOT using remote config data
-                # TODO: send updated data to remote server
-                self.configData.save()
+            self.configData.save()
 
             self.InitConfig()
 
             self.gcText.UpdateSettings(self.configData)
             self.outputText.UpdateSettings(self.configData)
             # self.cliPanel(self.configData)
-            self.machineStatusPanel.UpdateSettings(self.configData)
+            self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
             self.machineJoggingPanel.UpdateSettings(self.configData)
             self.CV2Panel.UpdateSettings(self.configData)
 
-            if self.machifProgExec is not None:
+            if self.remoteClient is not None:
+                self.remoteClient.eventPut(gc.EV_CMD_UPDATE_CONFIG, self.configRemoteData)
+            elif self.machifProgExec is not None:
                 self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
 
             # re open serial port if open
@@ -2208,6 +2207,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
 
+                self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_DATA_STATUS:
@@ -2216,15 +2216,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 if 'stat' in te.data:
                     self.stateData.machineStatusString = te.data['stat']
-
-                # TODO: this doesn't belong here put in machif_proexec
-                if 'init' in te.data:
-                    # if self.cmdLineOptions.vverbose:
-                    #     print "gsatMainWindow device detected via version " \
-                    #         "string [%s]." % te.data['fb']
-                    self.stateData.deviceDetected = True
-                    self.GetMachineStatus()
-                    self.RunDeviceInitScript()
 
                 if self.stateData.swState != gc.STATE_IDLE and len(
                     self.stateData.gcodeFileLines):
@@ -2267,7 +2258,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 # TODO: this doesn't belong here put in machif_proexec
                 self.GetMachineStatus()
-                self.RunDeviceInitScript()
+
+                if self.remoteClient is None:
+                    self.RunDeviceInitScript()
 
             elif te.event_id == gc.EV_RUN_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2369,6 +2362,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.remoteClient = None
                     self.configRemoteData = None
 
+                    self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
+
                 if id(te.sender) == id(self.machifProgExec):
                     self.machifProgExec = None
 
@@ -2391,6 +2386,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.serialPortIsOpen = False
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
+                self.configRemoteData = None
+
+                self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
                 self.UpdateUI()
 
             elif  te.event_id == gc.EV_RMT_CONFIG_DATA:
@@ -2398,6 +2396,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.configRemoteData = te.data
+                self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
 
             elif te.event_id == gc.EV_RMT_HELLO:
                 self.outputText.AppendText(te.data)
@@ -2515,5 +2514,3 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def eventForward2Machif(self, id, data=None, sender=None):
         if self.machifProgExec is not None:
             self.machifProgExec.eventPut(id, data, sender)
-        elif self.remoteClient is not none:
-            self.remoteClient.eventPut(id, data, sender)

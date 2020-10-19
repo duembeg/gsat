@@ -349,45 +349,48 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         serList = ['None']
         portSearchFailSafe = False
 
-        try:
-            import glob
-            import serial.tools.list_ports
+        if self.configRemoteData is not None:
+            serList = self.configRemoteData.get('/temp/SerialPorts')
+        else:
+            try:
+                import glob
+                import serial.tools.list_ports
 
-            serListInfo = serial.tools.list_ports.comports()
+                serListInfo = serial.tools.list_ports.comports()
 
-            if len(serListInfo) > 0:
-                if type(serListInfo[0]) == tuple:
-                    serList = ["%s, %s, %s" %
-                               (i[0], i[1], i[2]) for i in serListInfo]
+                if len(serListInfo) > 0:
+                    if type(serListInfo[0]) == tuple:
+                        serList = ["%s, %s, %s" %
+                                (i[0], i[1], i[2]) for i in serListInfo]
+                    else:
+                        serList = ["%s, %s" % (i.device, i.description)
+                                for i in serListInfo]
+
+                    serList.sort()
+
+            except ImportError:
+                portSearchFailSafe = True
+
+            if portSearchFailSafe:
+                serList = []
+
+                if os.name == 'nt':
+                    # Scan for available ports.
+                    for i in range(256):
+                        try:
+                            serial.Serial(i)
+                            serList.append('COM'+str(i + 1))
+                        except serial.SerialException, e:
+                            pass
+                        except OSError, e:
+                            pass
                 else:
-                    serList = ["%s, %s" % (i.device, i.description)
-                               for i in serListInfo]
+                    serList = glob.glob('/dev/ttyUSB*') + \
+                        glob.glob('/dev/ttyACM*') + \
+                        glob.glob('/dev/cu*')
 
-                serList.sort()
-
-        except ImportError:
-            portSearchFailSafe = True
-
-        if portSearchFailSafe:
-            serList = []
-
-            if os.name == 'nt':
-                # Scan for available ports.
-                for i in range(256):
-                    try:
-                        serial.Serial(i)
-                        serList.append('COM'+str(i + 1))
-                    except serial.SerialException, e:
-                        pass
-                    except OSError, e:
-                        pass
-            else:
-                serList = glob.glob('/dev/ttyUSB*') + \
-                    glob.glob('/dev/ttyACM*') + \
-                    glob.glob('/dev/cu*')
-
-            if len(serList) < 1:
-                serList = ['None']
+                if len(serList) < 1:
+                    serList = ['None']
 
         self.spComboBox.SetItems(serList)
 

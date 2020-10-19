@@ -61,6 +61,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         # init local variables
         self.port = 61801
         self.host = "raspberrypi"
+        # self.host = "river"
         self.socket = None
         self.inputs = []
         self.inputs_addr = {}
@@ -251,7 +252,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** IOError exception: {}\n".format(str(e))
                 exFlag = True
-            print "************* IOError exception: {} {} {}\n".format(str(e), self.rxBufferLen, self.allMsgLenRecv)
 
         except socket.error as e:
             exMsg = "** socket.error exception: {}\n".format(str(e))

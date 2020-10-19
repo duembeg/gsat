@@ -27,6 +27,7 @@ import re
 import threading
 import time
 import logging
+import Queue
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -102,10 +103,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         """ Handle events coming from main UI
         """
         # process events from queue
-        if not self._eventQueue.empty():
-            # get item from queue
-            e = self._eventQueue.get()
-
+        try:
+            e = self._eventQueue.get_nowait()
+        except Queue.Empty:
+            pass
+        else:
         # check output queue and notify UI if is not empty
         # if not self.progExecOutQueue.empty():
         #     # if self.okToPostEvents:
@@ -371,7 +373,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 if 'init' in rxData['r']:
                     # notify listeners
-                    self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r'])
+                    self.notifyEventListeners(gc.EV_DEVICE_DETECTED, rxData['r'])
 
                 if 'sys' in rxData['r']:
                     # notify listeners

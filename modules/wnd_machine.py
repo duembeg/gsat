@@ -47,6 +47,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.mainWindow = parent
 
         self.configData = config_data
+        self.configRemoteData = None
         self.stateData = state_data
         self.cmdLineOptions = cmd_line_options
 
@@ -86,12 +87,14 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         print self.sDroBoxSz.ComputeFittingClientSize(self)
 
 
-    def UpdateSettings(self, config_data=None):
+    def UpdateSettings(self, config_data=None, config_remote_data=None):
         #print "update settings ---"
         #self.test()
 
         if config_data is not None:
             self.configData = config_data
+
+        self.configRemoteData = config_remote_data
 
         self.InitConfig()
 
@@ -275,7 +278,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             self.bufferStatus.SetLabel("")
             self.runStatus.SetValue("")
 
-        machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
+        configMachIfId = self.configData.get('/machine/Device')
+
+        if self.configRemoteData is not None:
+            configMachIfId = self.configRemoteData.get('/machine/Device')
+
+        machIfId = mi.GetMachIfId(configMachIfId)
         self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
 
         self.Update()

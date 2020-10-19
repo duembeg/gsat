@@ -133,7 +133,8 @@ EV_CMD_STEP = 1010
 EV_CMD_STOP = 1020
 EV_CMD_SEND = 1030
 EV_CMD_SEND_W_ACK = 1040
-EV_CMD_GET_CONFIG = 1045
+EV_CMD_GET_CONFIG = 1042
+EV_CMD_GET_SERIAL_PORTS = 1044
 EV_CMD_UPDATE_CONFIG = 1050
 EV_CMD_OK_TO_POST = 1060
 EV_CMD_GET_STATUS = 1070
@@ -177,11 +178,13 @@ EV_TIMER = 2120
 EV_DATA_STATUS = 2130
 EV_DEVICE_DETECTED = 2140
 EV_CONFIG_DATA = 2150
+EV_SERIAL_PORTS = 2152
 EV_RMT_HELLO = 2160
 EV_RMT_GOOD_BYE = 2170
 EV_RMT_PORT_OPEN = 2180
 EV_RMT_PORT_CLOSE = 2190
 EV_RMT_CONFIG_DATA = 2200
+EV_RMT_SERIAL_PORTS = 2200
 
 # --------------------------------------------------------------------------
 # VERBOSE MASK
@@ -456,8 +459,16 @@ class ConfigData(object):
         """ Save data to config file
         """
         if self.configFileName is not None:
+            temp_store = None
+            if 'temp' in self.datastore:
+                temp_store = self.datastore
+                del self.datastore['temp']
+
             with open(self.configFileName, 'w') as f:
                 json.dump(self.datastore, f, indent=3, sort_keys=True)
+
+            if temp_store is not None:
+                self.datastore = temp_store
 
     def dump(self):
         """ dumps config to stdout
