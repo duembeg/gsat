@@ -202,9 +202,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # init some variables
         self.machifProgExec = None
         self.remoteClient = None
-        self.runTimer = None
         self.runStartTime = 0
         self.runEndTime = 0
+        self.progexecRunTime = 0
         self.runEndWaitingForMachIfIdle = False
         self.eventInCount = 0
         self.eventHandleCount = 0
@@ -1417,7 +1417,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.runStartTime = int(time.time())
                 self.runEndTime = 0
 
-            self.RunTimerStart()
+            # self.RunTimerStart()
 
             self.gcText.GoToPC()
             self.stateData.swState = gc.STATE_RUN
@@ -1496,6 +1496,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         state = False
         if self.stateData.serialPortIsOpen and \
            self.stateData.swState != gc.STATE_IDLE:
+        # if self.stateData.serialPortIsOpen:
 
             state = True
 
@@ -1884,52 +1885,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
    gsatMainWindow: General Functions
    ------------------------------------------------------------------------"""
 
-    def RunTimerStart(self):
-        if self.runTimer is not None:
-            self.runTimer.Stop()
-        else:
-            t = self.runTimer = wx.Timer(self, gID_TIMER_RUN)
-            self.Bind(wx.EVT_TIMER, self.OnRunTimerAction, t)
-
-        self.runTimer.Start(1000)
-
-    def RunTimerStop(self):
-        if self.runTimer is not None:
-            self.runTimer.Stop()
-
-    def OnRunTimerAction(self, e):
-        # calculate run time
-        runTimeStr = "00:00:00"
-
-        self.runEndTime = int(time.time())
-        runTime = self.runEndTime - self.runStartTime
-        hours, reminder = divmod(runTime, 3600)
-        minutes, reminder = divmod(reminder, 60)
-        seconds, mseconds = divmod(reminder, 1)
-        runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
-
-        if (mseconds):
-            pass
-
-        if self.stateData.swState != gc.STATE_RUN and \
-           self.stateData.swState != gc.STATE_PAUSE and \
-           self.stateData.swState != gc.STATE_BREAK and \
-           not self.runEndWaitingForMachIfIdle:
-
-            self.RunTimerStop()
-
-        self.machineStatusPanel.UpdateUI(
-            self.stateData, dict({'rtime': runTimeStr}))
-
-    def OnAutoRefreshTimerAction(self, e):
-        if self.stateData.deviceDetected:
-            # this is know to cause problems with Grbl 0.8c (maybe fixed in
-            # 0.9), if too many request are sent Grbl behaves erratically,
-            # this is really not require needed with TinyG(2) as its purpose
-            # is to update status panel, and TinyG(2) already provides this
-            # information at run time.
-            self.GetMachineStatus()
-
     def GetSerialPortList(self):
         spList = []
 
@@ -2214,20 +2169,36 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_DATA_STATUS")
 
-                if 'stat' in te.data:
-                    self.stateData.machineStatusString = te.data['stat']
+                if 'sr' in te.data:
+                    sr = te.data['sr']
 
-                if self.stateData.swState != gc.STATE_IDLE and len(
-                    self.stateData.gcodeFileLines):
-                    prcnt = "%d/%d (%.2f%%)" % (
-                        self.stateData.programCounter,
-                        len(self.stateData.gcodeFileLines),
-                        abs((float(self.stateData.programCounter)/float(len(
-                            self.stateData.gcodeFileLines)) * 100)))
-                    te.data['prcnt'] = prcnt
+                    if 'rtime' in sr:
+                        self.progexecRunTime = sr['rtime']
 
-                self.machineStatusPanel.UpdateUI(self.stateData, te.data)
-                self.machineJoggingPanel.UpdateUI(self.stateData, te.data)
+                    if 'stat' in sr:
+                        self.stateData.machineStatusString = sr['stat']
+
+                    # if self.stateData.swState != gc.STATE_IDLE and len(
+                    #     self.stateData.gcodeFileLines):
+                    #     prcnt = "%d/%d (%.2f%%)" % (
+                    #         self.stateData.programCounter,
+                    #         len(self.stateData.gcodeFileLines),
+                    #         abs((float(self.stateData.programCounter)/float(len(
+                    #             self.stateData.gcodeFileLines)) * 100)))
+                    #     sr['prcnt'] = prcnt
+
+                    self.machineStatusPanel.UpdateUI(self.stateData, sr)
+                    self.machineJoggingPanel.UpdateUI(self.stateData, sr)
+
+                if 'rx_data' in te.data:
+                    self.outputText.AppendText("{}".format(te.data['rx_data']))
+
+                if 'pc' in te.data:
+                    if self.stateData.programCounter != te.data['pc']:
+                        self.SetPC(te.data['pc'])
+
+                if 'fv' in te.data or 'fb' in te.data:
+                    self.machineStatusPanel.UpdateUI(self.stateData, te.data)
 
             elif te.event_id == gc.EV_DATA_IN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2246,7 +2217,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             elif te.event_id == gc.EV_PC_UPDATE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_PC_UPDATE [%s]." % str(te.data))
+                    self.logger.info("EV_PC_UPDATE [%s]" % str(te.data))
 
                 self.SetPC(te.data)
 
@@ -2269,13 +2240,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.swState = gc.STATE_IDLE
                 self.runEndWaitingForMachIfIdle = True
 
-                prcnt = "%d/%d (%.2f%%)" % (
-                    len(self.stateData.gcodeFileLines),
-                    len(self.stateData.gcodeFileLines),
-                    100)
+                # prcnt = "%d/%d (%.2f%%)" % (
+                #     len(self.stateData.gcodeFileLines),
+                #     len(self.stateData.gcodeFileLines),
+                #     100)
 
-                self.machineStatusPanel.UpdateUI(
-                    self.stateData, dict({'prcnt': prcnt}))
+                # self.machineStatusPanel.UpdateUI(
+                #     self.stateData, dict({'prcnt': prcnt}))
 
             elif te.event_id == gc.EV_STEP_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2376,6 +2347,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if self.remoteClient is not None:
                     self.remoteClient.eventPut(gc.EV_CMD_GET_CONFIG)
 
+                if self.machifProgExec is not None:
+                    self.remoteClient.eventPut(gc.EV_CMD_GET_SYSTEM_INFO)
+                    self.remoteClient.eventPut(gc.EV_CMD_GET_SW_STATE)
+
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_PORT_CLOSE:
@@ -2399,7 +2374,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
 
             elif te.event_id == gc.EV_RMT_HELLO:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(te.sender), te.sender))
+
                 self.outputText.AppendText(te.data)
+
+            elif te.event_id == gc.EV_SW_STATE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_SW_STATE from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                if self.remoteClient is not None:
+                    self.stateData.swState = te.data
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2409,13 +2394,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
-        # # tell program exec thread that our queue is empty, ok to post more
-        # # event
-        # self.mainWndOutQueue.put(gc.threadEvent(gc.gEV_CMD_OK_TO_POST, None))
-
-        if not self._eventQueue.empty():
-            pass  # timed post again
-
         # deal with delay between sw-run-end and machif-end
         # definition: software send all gcode lines ot machif, but machine
         # still executing on them. UI should be re-anabled, any new command
@@ -2424,13 +2402,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if self.stateData.machineStatusString in [
                "Idle", "idle", "Stop", "stop", "End", "end"]:
                 self.runEndWaitingForMachIfIdle = False
-                self.RunTimerStop()
+                # self.RunTimerStop()
 
                 # calculate run time
                 if self.runEndTime == 0:
-                    self.runEndTime = int(time.time())
+                    self.runEndTime = self.progexecRunTime + self.runStartTime
 
-                runTime = self.runEndTime - self.runStartTime
+                # runTime = self.runEndTime - self.runStartTime
+                runTime = self.progexecRunTime
                 hours, reminder = divmod(runTime, 3600)
                 minutes, reminder = divmod(reminder, 60)
                 seconds, mseconds = divmod(reminder, 1)
@@ -2439,23 +2418,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     "%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
                 runEndTimeStr = time.strftime(
                     "%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
-
-                if (mseconds):
-                    pass
-
-                self.SetPC(0)
-
-                prcnt = "%d/%d (%.2f%%)" % (
-                    len(self.stateData.gcodeFileLines),
-                    len(self.stateData.gcodeFileLines),
-                    100)
-
-                self.machineStatusPanel.UpdateUI(
-                    self.stateData, dict(
-                        {
-                            'rtime': runTimeStr,
-                            'prcnt': prcnt
-                        }))
 
                 self.Refresh()
                 self.UpdateUI()

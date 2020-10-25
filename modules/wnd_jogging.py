@@ -658,43 +658,31 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
     def OnSpindleCWOn(self, e):
         speed = self.spindleSpeedSpinCtrl.GetValue()
-        spped_cmd = "".join([gc.DEVICE_CMD_SPINDLE_CW_ON,
-                             " S", "%d" % round(speed), "\n"])
-        self.mainWindow.SerialWrite(spped_cmd)
+        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CW_ON, round(speed))
+        self.mainWindow.SerialWrite(speed_cmd)
 
     def OnSpindleCCWOn(self, e):
         speed = self.spindleSpeedSpinCtrl.GetValue()
-        spped_cmd = "".join([gc.DEVICE_CMD_SPINDLE_CCW_ON,
-                             " S", "%d" % round(speed), "\n"])
-        self.mainWindow.SerialWrite(spped_cmd)
+        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CCW_ON, round(speed))
+        self.mainWindow.SerialWrite(speed_cmd)
 
     def OnSpindleOff(self, e):
-        self.mainWindow.SerialWrite(
-            "".join([gc.DEVICE_CMD_SPINDLE_OFF, "\n"]))
+        self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_SPINDLE_OFF))
 
     def OnCoolantOn(self, e):
-        self.mainWindow.SerialWrite(
-            "".join([gc.DEVICE_CMD_COOLANT_ON, "\n"]))
+        self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_COOLANT_ON))
 
     def OnCoolantOff(self, e):
-        self.mainWindow.SerialWrite(
-            "".join([gc.DEVICE_CMD_COOLANT_OFF, "\n"]))
+        self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_COOLANT_OFF))
 
     def OnProbeZ(self, e):
         mim = mi.GetMachIfModule(self.stateData.machIfId)
 
-        self.mainWindow.SerialWrite(
-            "".join([
-                mim.getProbeAxisCmd(),
-                " Z%f" % self.configProbeMaxDistance,
-                " F%f" % self.configProbeFeedRate,
-                "\n"]))
+        self.mainWindow.SerialWrite("{} Z{:f} F{:f}\n".format(
+                mim.getProbeAxisCmd(), self.configProbeMaxDistance, self.configProbeFeedRate))
 
-        self.mainWindow.SerialWrite(
-            "".join([
-                mim.getSetAxisCmd(),
-                " Z%f" % self.configProbeDistance,
-                "\n"]))
+        dictAxisCoor = {'z': self.configProbeDistance}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
     def OnHomeX(self, e):
         """ Home X axis

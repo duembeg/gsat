@@ -289,6 +289,7 @@ class MachIf_g2core(mi.MachIf_Base):
         self.cmdClearAlarm = '{"clr":null}\n'
         self.cmdQueueFlush = '%'
         self.cmdStatus = '{"sr":null}\n'
+        self.cmdSystemInfo = '{"sys":null}\n'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw

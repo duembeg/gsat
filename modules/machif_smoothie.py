@@ -127,6 +127,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
         # list of commads
         self.cmdStatus = '?'
         self.cmdInitComm = '\nversion\n'
+        self.cmdSystemInfo = '$I\n'
 
         # no way to clean quque, this will do soft reset
         # *stoping coolean and spindle with it.

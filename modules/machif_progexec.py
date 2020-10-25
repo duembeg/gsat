@@ -58,21 +58,27 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.initConfig()
         self.okToPostEvents = True
 
         self.gcodeDataLines = []
         self.breakPointSet = set()
         self.initialProgramCounter = 0
-        self.workingCounterWorking = 0
-        self.lastWorkingCounterWorking = -1
+        self.workingProgramCounter = 0
+        self.lastWorkingProgramCounter = -1
 
         self.swState = gc.STATE_IDLE
         self.lastEventID = gc.EV_CMD_NULL
 
         self.serialWriteQueue = []
 
+        self.machIfId = None
         self.machIfModule = None
+        self.machIfState = None
+
+        self.runTimeStart = 0
+        self.runTimeElapse = 0
+
+        self.initConfig()
 
         if event_handler is not None:
             self.addEventListener(event_handler)
@@ -136,6 +142,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.workingProgramCounter = self.initialProgramCounter
                 self.breakPointSet = e.data[2]
                 self.swState = gc.STATE_RUN
+                self.runTimeStart = int(time.time())
 
             elif e.event_id == gc.EV_CMD_STOP:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -145,13 +152,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_CMD_SEND:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_SEND %s" % e.data)
+                    self.logger.info("EV_CMD_SEND {}".format(str(e.data).strip()))
 
                 self.serialWriteQueue.append((e.data, False))
 
             elif e.event_id == gc.EV_CMD_SEND_W_ACK:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_SEND_W_ACK %s" % e.data)
+                    self.logger.info("EV_CMD_SEND_W_ACK {}".format(e.data))
 
                 self.serialWriteQueue.append((e.data, True))
 
@@ -165,6 +172,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_GET_STATUS")
 
                 self.machIfModule.doGetStatus()
+
+            elif e.event_id == gc.EV_CMD_GET_SYSTEM_INFO:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_GET_SYSTEM_INFO")
+
+                self.machIfModule.doGetSystemInfo()
 
             elif e.event_id == gc.EV_CMD_CYCLE_START:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -203,62 +216,62 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_CMD_MOVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_MOVE %s" % e.data)
+                    self.logger.info("EV_CMD_MOVE {}".format(e.data))
 
                 self.machIfModule.doMove(e.data)
 
             elif e.event_id == gc.EV_CMD_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_MOVE_RELATIVE %s" % e.data)
+                    self.logger.info("EV_CMD_MOVE_RELATIVE {}".format(e.data))
 
                 self.machIfModule.doMoveRelative(e.data)
 
             elif e.event_id == gc.EV_CMD_RAPID_MOVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_RAPID_MOVE %s" % e.data)
+                    self.logger.info("EV_CMD_RAPID_MOVE {}".format(e.data))
 
                 self.machIfModule.doFastMove(e.data)
 
             elif e.event_id == gc.EV_CMD_RAPID_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_RAPID_MOVE_RELATIVE %s" % e.data)
+                    self.logger.info("EV_CMD_RAPID_MOVE_RELATIVE {}".format(e.data))
 
                 self.machIfModule.doFastMoveRelative(e.data)
 
             elif e.event_id == gc.EV_CMD_JOG_MOVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_MOVE %s" % e.data)
+                    self.logger.info("EV_CMD_JOG_MOVE {}".format(e.data))
 
                 self.machIfModule.doJogMove(e.data)
 
             elif e.event_id == gc.EV_CMD_JOG_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE %s" % e.data)
+                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE ".format(e.data))
 
                 self.machIfModule.doJogMoveRelative(e.data)
 
             elif e.event_id == gc.EV_CMD_JOG_RAPID_MOVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_RAPID_MOVE %s" % e.data)
+                    self.logger.info("EV_CMD_JOG_RAPID_MOVE {}".format(e.data))
 
                 self.machIfModule.doJogFastMove(e.data)
 
             elif e.event_id == gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info(
-                        "EV_CMD_JOG_RAPID_MOVE_RELATIVE %s" % e.data)
+                        "EV_CMD_JOG_RAPID_MOVE_RELATIVE {}".format(e.data))
 
                 self.machIfModule.doJogFastMoveRelative(e.data)
 
             elif e.event_id == gc.EV_CMD_JOG_STOP:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_STOP %s" % e.data)
+                    self.logger.info("EV_CMD_JOG_STOP {}".format(e.data))
 
                 self.machIfModule.doJogStop()
 
             elif e.event_id == gc.EV_CMD_SET_AXIS:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_SET_AXIS")
+                    self.logger.info("EV_CMD_SET_AXIS {}".format(e.data))
 
                 self.machIfModule.doSetAxis(e.data)
 
@@ -280,19 +293,19 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
+                    self.logger.info("EV_HELLO from 0x{:x}".format(id(e.sender)))
 
                 self.addEventListener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
+                    self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
 
                 self.removeEventListener(e.sender)
 
             elif e.event_id == gc.EV_CMD_PROBE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_PROBE %s" % e.data)
+                    self.logger.info("EV_CMD_PROBE {}".format(e.data))
 
                 self.machIfModule.doProbe(e.data)
 
@@ -302,10 +315,15 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.initConfig(run_time_safe_only=True)
 
+            elif e.event_id == gc.EV_CMD_GET_SW_STATE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_GET_SW_STATE")
+
+                self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.error("got unknown event!! [%s]." %
-                                      str(e.event_id))
+                    self.logger.error("got unknown event!! [{}]".format(str(e.event_id)))
 
     """-------------------------------------------------------------------------
    programExecuteThread: General Functions
@@ -340,19 +358,56 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.notifyEventListeners(e['id'], e['data'])
 
         else:
-            if 'rx_data' in rxData:
-                rx_data = rxData['rx_data']
+            rxData['pc'] = self.workingProgramCounter
 
-                if len(rx_data) > 0:
+            rxDataKeys = rxData.keys()
 
-                    if 'rx_data_info' in rxData:
-                        rx_data_info = rxData['rx_data_info']
-                        rx_data = "".join(
-                            [rx_data.strip(), " ", rx_data_info]
-                        )
+            if set(['rx_data', 'sr']) & set(rxDataKeys):
+
+                try:
+                    rx_data = rxData['rx_data']
+
+                    if len(rx_data):
+                        if 'rx_data_info' in rxData:
+                            rx_data_info = rxData['rx_data_info']
+                            rx_data = "".join(
+                                [rx_data.strip(), " ", rx_data_info])
+                            rxData['rx_data'] = rx_data
+                except KeyError:
+                    pass
 
                     # notify listeners
-                    self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
+                    #self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
+
+                if 'sr' in rxData:
+                    if self.swState != gc.STATE_IDLE and len(self.gcodeDataLines):
+                        # at this point wew have nto completed added progaram counter
+                        # we need to +1, also array starts at 0 and gcode page starts at 1
+                        # nee another +1
+                        gcode_lines_len = len(self.gcodeDataLines)
+                        adj_prog_counter = self.workingProgramCounter + 2
+
+                        if adj_prog_counter > gcode_lines_len:
+                            adj_prog_counter = gcode_lines_len
+
+                        prcnt = "{}/{} {:.2f}%".format(
+                            adj_prog_counter, gcode_lines_len,
+                            abs((float(adj_prog_counter)/float(gcode_lines_len) * 100)))
+                        rxData['sr']['prcnt'] = prcnt
+
+                    if 'stat' in rxData['sr']:
+                        self.machIfState = rxData['sr']['stat']
+
+                    if self.runTimeStart:
+                        runTimeNow = int(time.time())
+                        self.runTimeElapse = runTimeNow - self.runTimeStart
+                        rxData['sr']['rtime'] = self.runTimeElapse
+
+                        if self.swState == gc.STATE_IDLE and self.machIfState in [
+                            "Idle", "idle", "Stop", "stop", "End", "end"]:
+                            self.runTimeStart = 0
+
+                self.notifyEventListeners(gc.EV_DATA_STATUS, rxData)
 
             if 'tx_data' in rxData:
                 tx_data = rxData['tx_data']
@@ -362,9 +417,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     # notify listeners
                     self.notifyEventListeners(gc.EV_DATA_OUT, tx_data)
 
-            if 'sr' in rxData:
-                # notify listeners
-                self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['sr'])
+            # if 'sr' in rxData:
+            #     # notify listeners
+            #     self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['sr'])
 
             if 'r' in rxData:
                 if 'fb' in rxData['r']:
@@ -528,10 +583,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.workingProgramCounter += 1
 
             # if we stop early make sure to update PC to main UI
-            if self.swState == gc.STATE_IDLE:
-                # notify listeners
-                self.notifyEventListeners(gc.EV_PC_UPDATE,
-                                          self.workingProgramCounter)
+            # if self.swState == gc.STATE_IDLE:
+            #     # notify listeners
+            #     self.notifyEventListeners(gc.EV_PC_UPDATE,
+            #                               self.workingProgramCounter)
 
         return rc_error
 
@@ -552,11 +607,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             return
 
         # update PC
-        if self.lastWorkingCounterWorking != self.workingProgramCounter:
-            # notify listeners
-            self.notifyEventListeners(gc.EV_PC_UPDATE,
-                                      self.workingProgramCounter)
-            self.lastWorkingCounterWorking = self.workingProgramCounter
+        if self.lastWorkingProgramCounter != self.workingProgramCounter:
+        #     # notify listeners
+        #     self.notifyEventListeners(gc.EV_PC_UPDATE,
+        #                               self.workingProgramCounter)
+            self.lastWorkingProgramCounter = self.workingProgramCounter
 
         # check for break point hit
         if (self.workingProgramCounter in self.breakPointSet and
@@ -632,7 +687,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             return
 
         # update PC
-        self.notifyEventListeners(gc.EV_PC_UPDATE, self.workingProgramCounter)
+        # self.notifyEventListeners(gc.EV_PC_UPDATE, self.workingProgramCounter)
+        self.notifyEventListeners(gc.EV_DATA_STATUS, {'pc':self.workingProgramCounter})
 
         # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:

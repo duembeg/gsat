@@ -45,7 +45,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/gsat.py",
             "args": [
-                "--vm=machif,ui,serialif,remoteif,evenif"
+                "--vm=ui,ui_ev"
+                // "--vm=machif,ui,serialif,remoteif,evenif"
             ]
         },
         {

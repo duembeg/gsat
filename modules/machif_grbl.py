@@ -307,6 +307,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         self.cmdPostInit = '$I\n'
         self.cmdStatus = '?'
+        self.cmdSystemInfo = '$I\n'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw

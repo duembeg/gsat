@@ -78,6 +78,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         self.cmdReset = '\x18'
         self.cmdSetAxis = 'G92'
         self.cmdStatus = ''
+        self.cmdSystemInfo = ''
 
     @abstractmethod
     def _init(self):
@@ -199,6 +200,11 @@ class MachIf_Base(object, gc.EventQueueIf):
             self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdStatus.strip())
             self.write(self.cmdStatus)
 
+    def doGetSystemInfo(self):
+        if self.okToSend(self.cmdSystemInfo):
+            self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdSystemInfo.strip())
+            self.write(self.cmdSystemInfo)
+
     def doHome(self, dict_axis):
         self._sendAxisCmd(self.cmdHome, dict_axis)
 
@@ -301,6 +307,9 @@ class MachIf_Base(object, gc.EventQueueIf):
 
     def getStatusCmd(self):
         return self.cmdStatus
+
+    def getSystemInfoCmd(self):
+        return self.cmdSystemInfo
 
     def init(self):
         self.serialName = gc.CONFIG_DATA.get('/machine/Port')

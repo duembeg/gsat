@@ -218,7 +218,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
             rtime = statusData.get('rtime')
             if rtime is not None:
-                self.runTimeStatus.SetLabel(rtime)
+                hours, reminder = divmod(rtime, 3600)
+                minutes, reminder = divmod(reminder, 60)
+                seconds, mseconds = divmod(reminder, 1)
+                runTimeStr = "{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds)
+
+                self.runTimeStatus.SetLabel(runTimeStr)
 
             if self.configDroEnX:
                 x = statusData.get('posx')
@@ -433,7 +438,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
 
         # Add MachIf name
-        st = wx.StaticText(self, label="Device name")
+        #                               01234567890123456789
+        st = wx.StaticText(self, label="Device name       ")
         st.SetFont(font)
         machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
         self.machIfStatus = wx.StaticText(
@@ -453,6 +459,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         flexGridSizer.Add(self.version, 0, flag=wx.ALIGN_LEFT)
 
         # Add MachIf buffer status
+        #                               01234567890123456789
         st = wx.StaticText(self, label="Device buffer")
         st.SetFont(font)
         self.bufferStatus = wx.StaticText(self, label="-/-")
@@ -462,7 +469,8 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         flexGridSizer.Add(self.bufferStatus, 0, flag=wx.ALIGN_LEFT)
 
         # Add Percent sent status
-        st = wx.StaticText(self, label="G-code lines")
+        #                               01234567890123456789
+        st = wx.StaticText(self, label="PC loc in G-code")
         st.SetFont(font)
         self.prcntStatus = wx.StaticText(self, label="-/- (0.00%)")
         self.prcntStatus.SetForegroundColour(self.machineDataColor)
