@@ -24,7 +24,6 @@
 ----------------------------------------------------------------------------"""
 
 import os
-import pickle
 import sys
 import threading
 import time
@@ -34,6 +33,11 @@ import select
 import Queue
 
 import modules.config as gc
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 
 def verbose_data_ascii(direction, data):
@@ -59,14 +63,17 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.port = 61801
+        self.tcpPort = 61801
+        self.udpPort = 61802
         self.host = "raspberrypi"
         # self.host = "river"
-        self.socket = None
+        self.socClient = None
+        self.socBroadcast = None
         self.inputs = []
-        self.inputs_addr = {}
+        self.inputsAddr = {}
         self.outputs = []
         self.messageQueues = {}
+        self.useUdpBroadcast = True
 
         self.rxBuffer = b""
         self.rxBufferLen = 0
@@ -94,13 +101,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except Queue.Empty:
             pass
         else:
-            if e.event_id == gc.EV_CMD_TXDATA:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                    self.logger.info("EV_CMD_TXDATA")
-
-                self.write(e.data)
-
-            elif e.event_id == gc.EV_HELLO:
+            if e.event_id == gc.EV_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
@@ -126,25 +127,29 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                 # commands that we don't handle forward to server
                 e.sender = id(e.sender)
-                self.send(self.socket, e)
+                self.send(self.socClient, e)
 
     def close(self):
         """ Close serial port
         """
-        if self.socket is not None:
+        if self.socClient is not None:
 
-            msg = "Close remote connection to {}{}\n".format(self.host, self.inputs_addr[self.socket])
+            msg = "Close remote connection to {}{}\n".format(self.host, self.inputsAddr[self.socClient])
 
             while len(self.inputs):
                 soc = self.inputs.pop()
                 soc.close()
 
-            self.socket = None
+            self.socClient = None
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
 
             self.notifyEventListeners(gc.EV_RMT_PORT_CLOSE, msg)
+
+        if self.socBroadcast is not None:
+            self.socBroadcast.close()
+            self.socBroadcast = None
 
     def open(self):
         """ Open serial port
@@ -155,21 +160,29 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.close()
 
         try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((self.host, self.port))
-            self.inputs.append(self.socket)
-            self.inputs_addr[self.socket] = self.socket.getpeername()
+            self.socClient = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Internet, TCP
+            #self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
+            self.socClient.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # for TCP
+            self.socClient.connect((self.host, self.tcpPort))
+            self.inputs.append(self.socClient)
+            self.inputsAddr[self.socClient] = self.socClient.getpeername()
+
+            if self.useUdpBroadcast:
+                self.socBroadcast = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
+                self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                self.socBroadcast.bind(("", self.udpPort))
 
         except socket.error as e:
-            exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
+            exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.tcpPort, str(e))
             exFlag = True
 
         except OSError as e:
-            exMsg = "** OSError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
+            exMsg = "** OSError exception: socket:{}:{} err:{}\n".format(self.host, self.tcpPort, str(e))
             exFlag = True
 
         except IOError as e:
-            exMsg = "** IOError exception: socket:{}:{} err:{}\n".format(self.host, self.port, str(e))
+            exMsg = "** IOError exception: socket:{}:{} err:{}\n".format(self.host, self.tcpPort, str(e))
             exFlag = True
 
         # except:
@@ -180,8 +193,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         if exFlag:
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
-            self.socket.close()
-            self.socket = None
+            self.socClient.close()
+            self.socClient = None
 
             # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.error(exMsg.strip())
@@ -189,7 +202,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notifyEventListeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "Open remote connection to {}{}\n".format(self.host, self.inputs_addr[self.socket])
+            msg = "Open remote connection to {}{}\n".format(self.host, self.inputsAddr[self.socClient])
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
@@ -276,6 +289,72 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         # return data
         return data
 
+    def recv_from(self):
+
+        exFlag = False
+        exMsg = ""
+        data = None
+
+        try:
+            data, from_data = self.socBroadcast.recvfrom(gc.SOCK_DATA_SIZE)
+            msg_header = data[:gc.SOCK_HEADER_SIZE]
+
+            if len(msg_header):
+                msg_len = int(msg_header.decode('utf-8'))
+                self.allMsgLenRecv += msg_len
+
+            msg = data[gc.SOCK_HEADER_SIZE:]
+
+            if len(msg):
+                # got the entire mesage decode
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                    self.logger.info(verbose_data_hex("<-", msg))
+
+                elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                    self.logger.info(verbose_data_ascii("<-", msg))
+
+                data = pickle.loads(msg)
+
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                    self.logger.info(
+                        "Recv msg len:{} data:{} from {}".format(len(msg), str(data), from_data))
+
+        except OSError as e:
+            exMsg = "** OSError exception: {}\n".format(str(e))
+            exFlag = True
+
+        except IOError as e:
+            # This is normal on non blocking connections - when there are no incoming data error is going to be raised
+            # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
+            # If we got different error code - something happened
+            if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                exMsg = "** IOError exception: {}\n".format(str(e))
+                exFlag = True
+
+        except socket.error as e:
+            exMsg = "** socket.error exception: {}\n".format(str(e))
+            exFlag = True
+
+        # except:
+        #     e = sys.exc_info()[0]
+        #     exMsg = "** Unexpected exception: {}\n".format(str(e))
+        #     exFlag = True
+
+        if exFlag:
+            # make sure we stop processing any states...
+            # self.swState = gc.STATE_ABORT
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                self.logger.error(exMsg.strip())
+
+            # add data to queue
+            # self.notifyEventListeners(gc.EV_ABORT, exMsg)
+            # self.close()
+
+        # return data
+        return data
+
     def send(self, soc, data):
         exFlag = False
         exMsg = ""
@@ -286,7 +365,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         msg += pickle_data
 
         try:
-            soc.send(bytes(msg.encode('utf-8')))
+            soc.send(bytes(msg))
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(
@@ -341,7 +420,10 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
             if len(self.inputs):
                 if self.swState == gc.STATE_RUN:
-                    readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs, 0.1)
+                    readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs, 0)
+
+                    if self.useUdpBroadcast:
+                        udp_readable, udp_writable, udp_exceptional = select.select([self.socBroadcast], self.outputs, self.inputs, 0)
 
                     for soc in readable:
                         data = self.recv(soc)
@@ -351,7 +433,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         else:
                             if not self.rxBufferLen:
                                 msg = "Connection reset by peer, server {}{}\n".format(
-                                    self.host, self.socket.getpeername())
+                                    self.host, self.socClient.getpeername())
 
                                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                     self.logger.info(msg.strip())
@@ -359,6 +441,12 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                                 self.swState = gc.STATE_ABORT
 
                                 self.notifyEventListeners(gc.EV_ABORT, msg)
+
+                    if self.useUdpBroadcast and len(udp_readable):
+                        data = self.recv_from()
+                        if data:
+                            data.sender = self
+                            self.notifyEventListeners(data)
 
                     # # Handle outputs
                     # for soc in writable:
@@ -372,7 +460,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                     # handle exceptions
                     for soc in exceptional:
-                        msg = "Unknown exception from client{}\n".format(self.inputs_addr[soc])
+                        msg = "Unknown exception from client{}\n".format(self.inputsAddr[soc])
                         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                             self.logger.info(msg.strip())
 

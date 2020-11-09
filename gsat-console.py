@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
             machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM, 0, self)
 
-            machifProgExec.eventPut(gc.EV_CMD_RUN, [gcodeFileLines, 0, set()], self)
+            machifProgExec.eventPut(gc.EV_CMD_RUN, [gcodeFileLines, 0, set(), ""], self)
 
             time.sleep(20)
 

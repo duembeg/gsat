@@ -97,13 +97,11 @@ __revision__ = __version__
 # -----------------------------------------------------------------------------
 gID_TOOLBAR_OPEN = wx.NewId()
 gID_TOOLBAR_SETTINGS = wx.NewId()
-gID_TOOLBAR_LINK_STATUS = wx.NewId()
-gID_TOOLBAR_PROGRAM_STATUS = wx.NewId()
-gID_TOOLBAR_REMOTE = wx.NewId()
 gID_MENU_MAIN_TOOLBAR = wx.NewId()
 gID_MENU_SEARCH_TOOLBAR = wx.NewId()
-gID_MENU_RUN_TOOLBAR = wx.NewId()
-gID_MENU_STATUS_TOOLBAR = wx.NewId()
+gID_MENU_PROGRAM_TOOLBAR = wx.NewId()
+gID_MENU_MACHINE_TOOLBAR = wx.NewId()
+gID_MENU_REMOTE_TOOLBAR = wx.NewId()
 gID_MENU_OUTPUT_PANEL = wx.NewId()
 gID_MENU_CLI_PANEL = wx.NewId()
 gID_MENU_MACHINE_STATUS_PANEL = wx.NewId()
@@ -123,6 +121,7 @@ gID_MENU_BREAK_REMOVE_ALL = wx.NewId()
 gID_MENU_SET_PC = wx.NewId()
 gID_MENU_RESET_PC = wx.NewId()
 gID_MENU_GOTO_PC = wx.NewId()
+gID_MENU_MACHINE_CONNECT = wx.NewId()
 gID_MENU_MACHINE_REFRESH = wx.NewId()
 gID_MENU_MACHINE_CYCLE_START = wx.NewId()
 gID_MENU_MACHINE_FEED_HOLD = wx.NewId()
@@ -135,6 +134,9 @@ gID_MENU_MM2IN = wx.NewId()
 gID_MENU_G812G01 = wx.NewId()
 gID_MENU_FIND = wx.NewId()
 gID_MENU_GOTOLINE = wx.NewId()
+gID_MENU_REMOTE_CONNECT = wx.NewId()
+gID_MENU_REMOTE_GET_GCODE = wx.NewId()
+gID_MENU_REMOTE_SETTINGS = wx.NewId()
 
 
 gID_TIMER_MACHINE_REFRESH = wx.NewId()
@@ -266,7 +268,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.aui_mgr.SetManagedWindow(self)
 
         # experiment with status bar
-        self.statusbar = self.CreateStatusBar(1)
+        self.statusbar = self.CreateStatusBar(2)
+        self.statusbar.SetStatusWidths([-1,100])
         self.statusbar.SetStatusText('')
 
         self.machineStatusPanel = mc.gsatMachineStatusPanel(
@@ -417,15 +420,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         viewMenu.AppendCheckItem(gID_MENU_MAIN_TOOLBAR, "&Main Tool Bar")
         viewMenu.AppendCheckItem(gID_MENU_SEARCH_TOOLBAR, "&Search Tool Bar")
-        viewMenu.AppendCheckItem(gID_MENU_RUN_TOOLBAR, "&Run Tool Bar")
-        viewMenu.AppendCheckItem(gID_MENU_STATUS_TOOLBAR, "Status &Tool Bar")
+        viewMenu.AppendCheckItem(gID_MENU_PROGRAM_TOOLBAR, "&Program Tool Bar")
+        viewMenu.AppendCheckItem(gID_MENU_MACHINE_TOOLBAR, "M&achine Tool Bar")
+        viewMenu.AppendCheckItem(gID_MENU_REMOTE_TOOLBAR, "&Remote Tool Bar")
         viewMenu.AppendSeparator()
         viewMenu.AppendCheckItem(gID_MENU_OUTPUT_PANEL, "&Output")
         # viewMenu.AppendCheckItem(gID_MENU_CLI_PANEL, "&CLI")
-        viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL,
-                                 "Machine &Status")
-        viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL,
-                                 "Machine &Jogging")
+        viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL, "Machine &Status")
+        viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
         viewMenu.AppendCheckItem(gID_MENU_CV2_PANEL, "Computer &Vision")
         viewMenu.AppendSeparator()
         viewMenu.Append(gID_MENU_LOAD_DEFAULT_LAYOUT, "&Load Layout")
@@ -490,48 +492,58 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         runMenu.AppendSeparator()
 
-        machineRefresh = wx.MenuItem(
-            runMenu, gID_MENU_MACHINE_REFRESH, "Machine &Refresh\tCtrl+R")
+        # ---------------------------------------------------------------------
+        # Machine menu
+        machineMenu = wx.Menu()
+        self.menuBar.Append(machineMenu, "&Machine")
+
+        machineMenu.AppendCheckItem(gID_MENU_MACHINE_CONNECT, "&Connect")
+
+        machineRefresh = wx.MenuItem(machineMenu, gID_MENU_MACHINE_REFRESH, "Machine &Refresh\tCtrl+R")
         if os.name != 'nt':
             machineRefresh.SetBitmap(ico.imgMachineRefresh.GetBitmap())
-        runMenu.AppendItem(machineRefresh)
+        machineMenu.AppendItem(machineRefresh)
 
-        machineCycleStart = wx.MenuItem(
-            runMenu, gID_MENU_MACHINE_CYCLE_START, "Machine &Cycle Start")
+        machineCycleStart = wx.MenuItem(machineMenu, gID_MENU_MACHINE_CYCLE_START, "Machine &Cycle Start")
         if os.name != 'nt':
             machineCycleStart.SetBitmap(ico.imgCycleStart.GetBitmap())
-        runMenu.AppendItem(machineCycleStart)
+        machineMenu.AppendItem(machineCycleStart)
 
-        machineFeedHold = wx.MenuItem(
-            runMenu, gID_MENU_MACHINE_FEED_HOLD, "Machine &Feed Hold")
+        machineFeedHold = wx.MenuItem(machineMenu, gID_MENU_MACHINE_FEED_HOLD, "Machine &Feed Hold")
         if os.name != 'nt':
             machineFeedHold.SetBitmap(ico.imgFeedHold.GetBitmap())
-        runMenu.AppendItem(machineFeedHold)
+        machineMenu.AppendItem(machineFeedHold)
 
-        machineQueueFlush = wx.MenuItem(
-            runMenu, gID_MENU_MACHINE_QUEUE_FLUSH, "Machine &Queue Flush")
+        machineQueueFlush = wx.MenuItem(machineMenu, gID_MENU_MACHINE_QUEUE_FLUSH, "Machine &Queue Flush")
         if os.name != 'nt':
             machineQueueFlush.SetBitmap(ico.imgQueueFlush.GetBitmap())
-        runMenu.AppendItem(machineQueueFlush)
+        machineMenu.AppendItem(machineQueueFlush)
 
-        machineReset = wx.MenuItem(
-            runMenu, gID_MENU_MACHINE_RESET, "Machine Reset")
+        machineReset = wx.MenuItem(machineMenu, gID_MENU_MACHINE_RESET, "Machine Reset")
         if os.name != 'nt':
             machineReset.SetBitmap(ico.imgMachineReset.GetBitmap())
-        runMenu.AppendItem(machineReset)
+        machineMenu.AppendItem(machineReset)
 
-        machineClearAlarm = wx.MenuItem(
-            runMenu, gID_MENU_MACHINE_CLEAR_ALARM, "Machine Clear Alarm")
+        machineClearAlarm = wx.MenuItem(machineMenu, gID_MENU_MACHINE_CLEAR_ALARM, "Machine Clear Alarm")
         if os.name != 'nt':
             machineReset.SetBitmap(ico.imgClearAlarm.GetBitmap())
-        runMenu.AppendItem(machineClearAlarm)
+        machineMenu.AppendItem(machineClearAlarm)
 
-        runMenu.AppendSeparator()
+        machineMenu.AppendSeparator()
 
-        abortItem = wx.MenuItem(runMenu, gID_MENU_ABORT, "&Abort")
+        abortItem = wx.MenuItem(machineMenu, gID_MENU_ABORT, "&Abort")
         if os.name != 'nt':
             abortItem.SetBitmap(ico.imgAbort.GetBitmap())
-        runMenu.AppendItem(abortItem)
+        machineMenu.AppendItem(abortItem)
+
+        # ---------------------------------------------------------------------
+        # Remote menu
+        remoteMenu = wx.Menu()
+        self.menuBar.Append(remoteMenu, "R&emote")
+
+        remoteMenu.AppendCheckItem(gID_MENU_REMOTE_CONNECT, "&Connect")
+        remoteMenu.Append(gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
+        remoteMenu.Append(gID_MENU_REMOTE_SETTINGS, "&Settings")
 
         # ---------------------------------------------------------------------
         # Tool menu
@@ -579,52 +591,32 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # ---------------------------------------------------------------------
         # View menu bind
-        self.Bind(wx.EVT_MENU, self.OnMainToolBar,
-                  id=gID_MENU_MAIN_TOOLBAR)
-        self.Bind(wx.EVT_MENU, self.OnSearchToolBar,
-                  id=gID_MENU_SEARCH_TOOLBAR)
-        self.Bind(wx.EVT_MENU, self.OnRunToolBar,
-                  id=gID_MENU_RUN_TOOLBAR)
-        self.Bind(wx.EVT_MENU, self.OnStatusToolBar,
-                  id=gID_MENU_STATUS_TOOLBAR)
-        self.Bind(wx.EVT_MENU, self.OnOutput,
-                  id=gID_MENU_OUTPUT_PANEL)
-        # self.Bind(wx.EVT_MENU, self.OnCli,
-        #           id=gID_MENU_CLI_PANEL)
-        self.Bind(wx.EVT_MENU, self.OnMachineStatus,
-                  id=gID_MENU_MACHINE_STATUS_PANEL)
-        self.Bind(wx.EVT_MENU, self.OnMachineJogging,
-                  id=gID_MENU_MACHINE_JOGGING_PANEL)
-        self.Bind(wx.EVT_MENU, self.OnComputerVision,
-                  id=gID_MENU_CV2_PANEL)
-        self.Bind(wx.EVT_MENU, self.OnLoadDefaultLayout,
-                  id=gID_MENU_LOAD_DEFAULT_LAYOUT)
-        self.Bind(wx.EVT_MENU, self.OnSaveDefaultLayout,
-                  id=gID_MENU_SAVE_DEFAULT_LAYOUT)
-        self.Bind(wx.EVT_MENU, self.OnResetDefaultLayout,
-                  id=gID_MENU_RESET_DEFAULT_LAYOUT)
+        self.Bind(wx.EVT_MENU, self.OnMainToolBar, id=gID_MENU_MAIN_TOOLBAR)
+        self.Bind(wx.EVT_MENU, self.OnSearchToolBar, id=gID_MENU_SEARCH_TOOLBAR)
+        self.Bind(wx.EVT_MENU, self.OnProgramToolBar, id=gID_MENU_PROGRAM_TOOLBAR)
+        self.Bind(wx.EVT_MENU, self.OnMachineToolBar, id=gID_MENU_MACHINE_TOOLBAR)
+        self.Bind(wx.EVT_MENU, self.OnRemoteToolBar, id=gID_MENU_REMOTE_TOOLBAR)
+        self.Bind(wx.EVT_MENU, self.OnOutput, id=gID_MENU_OUTPUT_PANEL)
+        # self.Bind(wx.EVT_MENU, self.OnCli, id=gID_MENU_CLI_PANEL)
+        self.Bind(wx.EVT_MENU, self.OnMachineStatus, id=gID_MENU_MACHINE_STATUS_PANEL)
+        self.Bind(wx.EVT_MENU, self.OnMachineJogging, id=gID_MENU_MACHINE_JOGGING_PANEL)
+        self.Bind(wx.EVT_MENU, self.OnComputerVision, id=gID_MENU_CV2_PANEL)
+        self.Bind(wx.EVT_MENU, self.OnLoadDefaultLayout, id=gID_MENU_LOAD_DEFAULT_LAYOUT)
+        self.Bind(wx.EVT_MENU, self.OnSaveDefaultLayout, id=gID_MENU_SAVE_DEFAULT_LAYOUT)
+        self.Bind(wx.EVT_MENU, self.OnResetDefaultLayout, id=gID_MENU_RESET_DEFAULT_LAYOUT)
 
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMainToolBarUpdate,
-                  id=gID_MENU_MAIN_TOOLBAR)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnSearchToolBarUpdate,
-                  id=gID_MENU_SEARCH_TOOLBAR)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnRunToolBarUpdate,
-                  id=gID_MENU_RUN_TOOLBAR)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnStatusToolBarUpdate,
-                  id=gID_MENU_STATUS_TOOLBAR)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnOutputUpdate,
-                  id=gID_MENU_OUTPUT_PANEL)
-        # self.Bind(wx.EVT_UPDATE_UI, self.OnCliUpdate,
-        #           id=gID_MENU_CLI_PANEL)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineStatusUpdate,
-                  id=gID_MENU_MACHINE_STATUS_PANEL)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineJoggingUpdate,
-                  id=gID_MENU_MACHINE_JOGGING_PANEL)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnComputerVisionUpdate,
-                  id=gID_MENU_CV2_PANEL)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMainToolBarUpdate, id=gID_MENU_MAIN_TOOLBAR)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnSearchToolBarUpdate, id=gID_MENU_SEARCH_TOOLBAR)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnProgramToolBarUpdate, id=gID_MENU_PROGRAM_TOOLBAR)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineToolBarUpdate, id=gID_MENU_MACHINE_TOOLBAR)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnRemoteToolBarUpdate, id=gID_MENU_REMOTE_TOOLBAR)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnOutputUpdate, id=gID_MENU_OUTPUT_PANEL)
+        # self.Bind(wx.EVT_UPDATE_UI, self.OnCliUpdate, id=gID_MENU_CLI_PANEL)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineStatusUpdate, id=gID_MENU_MACHINE_STATUS_PANEL)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineJoggingUpdate, id=gID_MENU_MACHINE_JOGGING_PANEL)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnComputerVisionUpdate, id=gID_MENU_CV2_PANEL)
 
-        self.Bind(wx.EVT_MENU, self.OnSettings,
-                  id=wx.ID_PREFERENCES)
+        self.Bind(wx.EVT_MENU, self.OnSettings, id=wx.ID_PREFERENCES)
 
         # ---------------------------------------------------------------------
         # Run menu bind
@@ -632,76 +624,69 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.Bind(wx.EVT_MENU, self.OnPause, id=gID_MENU_PAUSE)
         self.Bind(wx.EVT_MENU, self.OnStep, id=gID_MENU_STEP)
         self.Bind(wx.EVT_MENU, self.OnStop, id=gID_MENU_STOP)
-        self.Bind(wx.EVT_MENU, self.OnBreakToggle,
-                  id=gID_MENU_BREAK_TOGGLE)
-        self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll,
-                  id=gID_MENU_BREAK_REMOVE_ALL)
+        self.Bind(wx.EVT_MENU, self.OnBreakToggle, id=gID_MENU_BREAK_TOGGLE)
+        self.Bind(wx.EVT_MENU, self.OnBreakRemoveAll, id=gID_MENU_BREAK_REMOVE_ALL)
         self.Bind(wx.EVT_MENU, self.OnSetPC, id=gID_MENU_SET_PC)
-        self.Bind(wx.EVT_MENU, self.OnResetPC,
-                  id=gID_MENU_RESET_PC)
+        self.Bind(wx.EVT_MENU, self.OnResetPC, id=gID_MENU_RESET_PC)
         self.Bind(wx.EVT_MENU, self.OnGoToPC, id=gID_MENU_GOTO_PC)
-        self.Bind(wx.EVT_MENU, self.OnMachineRefresh,
-                  id=gID_MENU_MACHINE_REFRESH)
-        self.Bind(wx.EVT_MENU, self.OnMachineCycleStart,
-                  id=gID_MENU_MACHINE_CYCLE_START)
-        self.Bind(wx.EVT_MENU, self.OnMachineFeedHold,
-                  id=gID_MENU_MACHINE_FEED_HOLD)
-        self.Bind(wx.EVT_MENU, self.OnMachineQueueFlush,
-                  id=gID_MENU_MACHINE_QUEUE_FLUSH)
-        self.Bind(wx.EVT_MENU, self.OnMachineReset,
-                  id=gID_MENU_MACHINE_RESET)
-        self.Bind(wx.EVT_MENU, self.OnMachineClearAlarm,
-                  id=gID_MENU_MACHINE_CLEAR_ALARM)
-        self.Bind(wx.EVT_MENU, self.OnAbort, id=gID_MENU_ABORT)
 
         self.Bind(wx.EVT_BUTTON, self.OnRun, id=gID_MENU_RUN)
         self.Bind(wx.EVT_BUTTON, self.OnPause, id=gID_MENU_PAUSE)
         self.Bind(wx.EVT_BUTTON, self.OnStep, id=gID_MENU_STEP)
         self.Bind(wx.EVT_BUTTON, self.OnStop, id=gID_MENU_STOP)
-        self.Bind(wx.EVT_BUTTON, self.OnBreakToggle,
-                  id=gID_MENU_BREAK_TOGGLE)
+        self.Bind(wx.EVT_BUTTON, self.OnBreakToggle, id=gID_MENU_BREAK_TOGGLE)
         self.Bind(wx.EVT_BUTTON, self.OnSetPC, id=gID_MENU_SET_PC)
-        self.Bind(wx.EVT_BUTTON, self.OnResetPC,
-                  id=gID_MENU_RESET_PC)
+        self.Bind(wx.EVT_BUTTON, self.OnResetPC, id=gID_MENU_RESET_PC)
         self.Bind(wx.EVT_BUTTON, self.OnGoToPC, id=gID_MENU_GOTO_PC)
-        self.Bind(wx.EVT_BUTTON, self.OnMachineRefresh,
-                  id=gID_MENU_MACHINE_REFRESH)
-        self.Bind(wx.EVT_BUTTON, self.OnMachineCycleStart,
-                  id=gID_MENU_MACHINE_CYCLE_START)
-        self.Bind(wx.EVT_BUTTON, self.OnMachineFeedHold,
-                  id=gID_MENU_MACHINE_FEED_HOLD)
-        self.Bind(wx.EVT_BUTTON, self.OnMachineQueueFlush,
-                  id=gID_MENU_MACHINE_QUEUE_FLUSH)
-        self.Bind(wx.EVT_BUTTON, self.OnMachineReset,
-                  id=gID_MENU_MACHINE_RESET)
-        self.Bind(wx.EVT_BUTTON, self.OnMachineClearAlarm,
-                  id=gID_MENU_MACHINE_CLEAR_ALARM)
-        self.Bind(wx.EVT_BUTTON, self.OnAbort, id=gID_MENU_ABORT)
 
         self.Bind(wx.EVT_UPDATE_UI, self.OnRunUpdate, id=gID_MENU_RUN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnPauseUpdate, id=gID_MENU_PAUSE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnStepUpdate, id=gID_MENU_STEP)
         self.Bind(wx.EVT_UPDATE_UI, self.OnStopUpdate, id=gID_MENU_STOP)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnBreakToggleUpdate,
-                  id=gID_MENU_BREAK_TOGGLE)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnBreakRemoveAllUpdate,
-                  id=gID_MENU_BREAK_REMOVE_ALL)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnBreakToggleUpdate, id=gID_MENU_BREAK_TOGGLE)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnBreakRemoveAllUpdate, id=gID_MENU_BREAK_REMOVE_ALL)
         self.Bind(wx.EVT_UPDATE_UI, self.OnSetPCUpdate, id=gID_MENU_SET_PC)
         self.Bind(wx.EVT_UPDATE_UI, self.OnResetPCUpdate, id=gID_MENU_RESET_PC)
         self.Bind(wx.EVT_UPDATE_UI, self.OnGoToPCUpdate, id=gID_MENU_GOTO_PC)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineRefreshUpdate,
-                  id=gID_MENU_MACHINE_REFRESH)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineCycleStartUpdate,
-                  id=gID_MENU_MACHINE_CYCLE_START)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHoldUpdate,
-                  id=gID_MENU_MACHINE_FEED_HOLD)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineQueueFlushUpdate,
-                  id=gID_MENU_MACHINE_QUEUE_FLUSH)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineResetUpdate,
-                  id=gID_MENU_MACHINE_RESET)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineClearAlarmUpdate,
-                  id=gID_MENU_MACHINE_CLEAR_ALARM)
+
+        # ---------------------------------------------------------------------
+        # Machine menu bind
+        self.Bind(wx.EVT_MENU, self.OnMachineConnect, id=gID_MENU_MACHINE_CONNECT)
+        self.Bind(wx.EVT_MENU, self.OnMachineRefresh, id=gID_MENU_MACHINE_REFRESH)
+        self.Bind(wx.EVT_MENU, self.OnMachineCycleStart, id=gID_MENU_MACHINE_CYCLE_START)
+        self.Bind(wx.EVT_MENU, self.OnMachineFeedHold, id=gID_MENU_MACHINE_FEED_HOLD)
+        self.Bind(wx.EVT_MENU, self.OnMachineQueueFlush, id=gID_MENU_MACHINE_QUEUE_FLUSH)
+        self.Bind(wx.EVT_MENU, self.OnMachineReset, id=gID_MENU_MACHINE_RESET)
+        self.Bind(wx.EVT_MENU, self.OnMachineClearAlarm, id=gID_MENU_MACHINE_CLEAR_ALARM)
+        self.Bind(wx.EVT_MENU, self.OnAbort, id=gID_MENU_ABORT)
+
+        self.Bind(wx.EVT_BUTTON, self.OnMachineConnect, id=gID_MENU_MACHINE_CONNECT)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineRefresh, id=gID_MENU_MACHINE_REFRESH)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineCycleStart, id=gID_MENU_MACHINE_CYCLE_START)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineFeedHold, id=gID_MENU_MACHINE_FEED_HOLD)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineQueueFlush, id=gID_MENU_MACHINE_QUEUE_FLUSH)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineReset, id=gID_MENU_MACHINE_RESET)
+        self.Bind(wx.EVT_BUTTON, self.OnMachineClearAlarm, id=gID_MENU_MACHINE_CLEAR_ALARM)
+        self.Bind(wx.EVT_BUTTON, self.OnAbort, id=gID_MENU_ABORT)
+
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineConnectUpdate, id=gID_MENU_MACHINE_CONNECT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineRefreshUpdate, id=gID_MENU_MACHINE_REFRESH)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineCycleStartUpdate, id=gID_MENU_MACHINE_CYCLE_START)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineFeedHoldUpdate, id=gID_MENU_MACHINE_FEED_HOLD)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineQueueFlushUpdate, id=gID_MENU_MACHINE_QUEUE_FLUSH)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineResetUpdate, id=gID_MENU_MACHINE_RESET)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnMachineClearAlarmUpdate, id=gID_MENU_MACHINE_CLEAR_ALARM)
         self.Bind(wx.EVT_UPDATE_UI, self.OnAbortUpdate, id=gID_MENU_ABORT)
+
+        # ---------------------------------------------------------------------
+        # remote menu bind
+        self.Bind(wx.EVT_MENU, self.OnRemoteConnect, id=gID_MENU_REMOTE_CONNECT)
+        self.Bind(wx.EVT_MENU, self.OnRemoteGetGcode, id=gID_MENU_REMOTE_GET_GCODE)
+        self.Bind(wx.EVT_MENU, self.OnRemoteSettings, id=gID_MENU_REMOTE_SETTINGS)
+
+        self.Bind(wx.EVT_UPDATE_UI, self.OnRemoteConnectUpdate, id=gID_MENU_REMOTE_CONNECT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnRemoteGetGcodeUpdate, id=gID_MENU_REMOTE_GET_GCODE)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnRemoteSettingsUpdate, id=gID_MENU_REMOTE_SETTINGS)
 
         # ---------------------------------------------------------------------
         # tools menu bind
@@ -720,8 +705,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # ---------------------------------------------------------------------
         # Status tool bar
         self.Bind(wx.EVT_MENU, self.OnSettings, id=gID_TOOLBAR_SETTINGS)
-        self.Bind(wx.EVT_MENU, self.OnLinkStatus, id=gID_TOOLBAR_LINK_STATUS)
-        self.Bind(wx.EVT_MENU, self.OnRemote, id=gID_TOOLBAR_REMOTE)
 
         # ---------------------------------------------------------------------
         # Create shortcut keys for menu
@@ -759,14 +742,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.appToolBar.AddSimpleTool(wx.ID_SAVE, "Save",
                                       ico.imgSave.GetBitmap(), "Save\tCtrl+S")
-        self.appToolBar.SetToolDisabledBitmap(
-            wx.ID_SAVE, ico.imgSaveDisabled.GetBitmap())
+        self.appToolBar.SetToolDisabledBitmap(wx.ID_SAVE, ico.imgSaveDisabled.GetBitmap())
 
-        self.appToolBar.AddSimpleTool(wx.ID_SAVEAS, "Save As",
-                                      ico.imgSave.GetBitmap(),
-                                      "Save As")
-        self.appToolBar.SetToolDisabledBitmap(
-            wx.ID_SAVEAS, ico.imgSaveDisabled.GetBitmap())
+        self.appToolBar.AddSimpleTool(wx.ID_SAVEAS, "Save As", ico.imgSave.GetBitmap(), "Save As")
+        self.appToolBar.SetToolDisabledBitmap(wx.ID_SAVEAS, ico.imgSaveDisabled.GetBitmap())
+
+        self.appToolBar.AddSimpleTool(gID_TOOLBAR_SETTINGS, "Settings", ico.imgSettings.GetBitmap(), "Settings")
+        self.appToolBar.SetToolDisabledBitmap(gID_TOOLBAR_SETTINGS, ico.imgSettings.GetBitmap())
+
 
         self.appToolBar.SetToolDropDown(gID_TOOLBAR_OPEN, True)
 
@@ -776,6 +759,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              aui.AuiPaneInfo().Name("MAIN_TOOLBAR")
                              .Caption("Main Tool Bar").ToolbarPane()
                              .Top().Gripper())
+
 
         # ---------------------------------------------------------------------
         # Search Tool Bar
@@ -883,62 +867,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.SetToolDisabledBitmap(
             gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSeparator()
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_REFRESH,
-                                        "Machine Refresh",
-                                        ico.imgMachineRefresh.GetBitmap(),
-                                        "Machine Refresh")
-        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_REFRESH,
-                                                ico.imgMachineRefreshDisabled
-                                                .GetBitmap())
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_CYCLE_START,
-                                        "Cycle Start",
-                                        ico.imgCycleStart.GetBitmap(),
-                                        "Machine Cycle Start")
-        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CYCLE_START,
-                                                ico.imgCycleStartDisabled
-                                                .GetBitmap())
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_FEED_HOLD,
-                                        "Feed Hold",
-                                        ico.imgFeedHold.GetBitmap(),
-                                        "Machine Feed Hold")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_MACHINE_FEED_HOLD, ico.imgFeedHoldDisabled.GetBitmap())
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_QUEUE_FLUSH,
-                                        "Queue Flush",
-                                        ico.imgQueueFlush.GetBitmap(),
-                                        "Machine Queue Flush")
-        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_QUEUE_FLUSH,
-                                                ico.imgQueueFlushDisabled
-                                                .GetBitmap())
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_RESET, "Reset",
-                                        ico.imgMachineReset.GetBitmap(),
-                                        "Machine Reset")
-        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_RESET,
-                                                ico.imgMachineResetDisabled
-                                                .GetBitmap())
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_MACHINE_CLEAR_ALARM,
-                                        "Clear Alarm",
-                                        ico.imgClearAlarm.GetBitmap(),
-                                        "Machine Clear Alarm")
-        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CLEAR_ALARM,
-                                                ico.imgClearAlarmDisabled
-                                                .GetBitmap())
-        self.gcodeToolBar.AddSeparator()
-
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_ABORT, "Abort",
-                                        ico.imgAbort.GetBitmap(),
-                                        "Abort")
-        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_ABORT,
-                                                ico.imgAbortDisabled
-                                                .GetBitmap())
-
         self.gcodeToolBar.Realize()
 
         self.aui_mgr.AddPane(self.gcodeToolBar,
@@ -947,52 +875,94 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              .Top().Gripper())
 
         # ---------------------------------------------------------------------
-        # Status Tool Bar
-        self.statusToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition,
-                                            wx.DefaultSize,
-                                            agwStyle=aui.AUI_TB_GRIPPER |
-                                            aui.AUI_TB_OVERFLOW |
-                                            # aui.AUI_TB_TEXT |
-                                            aui.AUI_TB_HORZ_TEXT |
-                                            # aui.AUI_TB_PLAIN_BACKGROUND
-                                            aui.AUI_TB_DEFAULT_STYLE)
+        # Machine Tool Bar
+        self.machineToolBar = aui.AuiToolBar(
+            self, -1, wx.DefaultPosition, wx.DefaultSize,
+            agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            # aui.AUI_TB_TEXT |
+            # aui.AUI_TB_HORZ_TEXT |
+            # aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_DEFAULT_STYLE)
 
-        self.statusToolBar.SetToolBitmapSize(iconSize)
+        self.machineToolBar.SetToolBitmapSize(iconSize)
 
-        self.statusToolBar.AddSimpleTool(
-            gID_TOOLBAR_SETTINGS, "Settings",
-            ico.imgSettings.GetBitmap(), "Settings")
-        self.statusToolBar.SetToolDisabledBitmap(
-            gID_TOOLBAR_SETTINGS, ico.imgSettings.GetBitmap())
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_CONNECT, "Machine Connect", ico.imgPlugDisconnect.GetBitmap(), "Machine Connect")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
 
-        self.statusToolBar.AddSimpleTool(
-            gID_TOOLBAR_LINK_STATUS, "12345",
-            ico.imgPlugDisconnect.GetBitmap(), "Open/Close Device port")
-        self.statusToolBar.SetToolDisabledBitmap(
-            gID_TOOLBAR_LINK_STATUS, ico.imgPlugDisconnect.GetBitmap())
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_REFRESH, "Machine Refresh", ico.imgMachineRefresh.GetBitmap(), "Machine Refresh")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_REFRESH, ico.imgMachineRefreshDisabled.GetBitmap())
 
-        self.statusToolBar.AddSimpleTool(
-            gID_TOOLBAR_PROGRAM_STATUS, "12345",
-            ico.imgProgram.GetBitmap(), "Program Status")
-        self.statusToolBar.SetToolDisabledBitmap(
-            gID_TOOLBAR_PROGRAM_STATUS, ico.imgProgram.GetBitmap())
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_CYCLE_START, "Cycle Start", ico.imgCycleStart.GetBitmap(), "Machine Cycle Start")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CYCLE_START, ico.imgCycleStartDisabled.GetBitmap())
 
-        self.statusToolBar.AddSimpleTool(
-            gID_TOOLBAR_REMOTE, "Remote",
-            ico.imgRemote.GetBitmap(), "Connect to remote server")
-        self.statusToolBar.SetToolDisabledBitmap(
-            gID_TOOLBAR_REMOTE, ico.imgRemote.GetBitmap())
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_FEED_HOLD, "Feed Hold", ico.imgFeedHold.GetBitmap(), "Machine Feed Hold")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_FEED_HOLD, ico.imgFeedHoldDisabled.GetBitmap())
 
-        self.statusToolBar.Realize()
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_QUEUE_FLUSH, "Queue Flush", ico.imgQueueFlush.GetBitmap(), "Machine Queue Flush")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_QUEUE_FLUSH, ico.imgQueueFlushDisabled.GetBitmap())
+
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_RESET, "Reset", ico.imgMachineReset.GetBitmap(), "Machine Reset")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_RESET, ico.imgMachineResetDisabled.GetBitmap())
+
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_MACHINE_CLEAR_ALARM, "Clear Alarm",ico.imgClearAlarm.GetBitmap(), "Machine Clear Alarm")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CLEAR_ALARM, ico.imgClearAlarmDisabled.GetBitmap())
+
+        self.machineToolBar.AddSeparator()
+
+        self.machineToolBar.AddSimpleTool(
+            gID_MENU_ABORT, "Abort", ico.imgAbort.GetBitmap(), "Abort")
+        self.machineToolBar.SetToolDisabledBitmap(gID_MENU_ABORT, ico.imgAbortDisabled.GetBitmap())
+
+        self.machineToolBar.Realize()
+
+        self.aui_mgr.AddPane(self.machineToolBar,
+                             aui.AuiPaneInfo().Name("MACHINE_TOOLBAR")
+                             .Caption("Machine Tool Bar").ToolbarPane()
+                             .Top().Gripper())
+
+        # ---------------------------------------------------------------------
+        # Remote Tool Bar
+        self.remoteToolBar = aui.AuiToolBar(
+            self, -1, wx.DefaultPosition, wx.DefaultSize,
+            agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            # aui.AUI_TB_TEXT |
+            #aui.AUI_TB_HORZ_TEXT |
+            # aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_DEFAULT_STYLE)
+
+        self.remoteToolBar.SetToolBitmapSize(iconSize)
+
+        self.remoteToolBar.AddSimpleTool(
+            gID_MENU_REMOTE_CONNECT, "Remote", ico.imgRemote.GetBitmap(), "Connect to remote server")
+        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_CONNECT, ico.imgRemote.GetBitmap())
+
+        self.remoteToolBar.AddSimpleTool(
+            gID_MENU_REMOTE_GET_GCODE, "Remote Get G-code", ico.imgRemote.GetBitmap(), "Get G-code from remote server")
+        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_GET_GCODE, ico.imgRemote.GetBitmap())
+
+        self.remoteToolBar.AddSimpleTool(
+            gID_MENU_REMOTE_SETTINGS, "Remore Settings", ico.imgRemote.GetBitmap(), "Settings on remote server")
+        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_SETTINGS, ico.imgRemote.GetBitmap())
+
+        self.remoteToolBar.Realize()
 
         self.aui_mgr.AddPane(
-            self.statusToolBar, aui.AuiPaneInfo().Name("STATUS_TOOLBAR")
-            .Caption("Status Tool Bar").ToolbarPane().Top().Gripper())
+            self.remoteToolBar, aui.AuiPaneInfo().Name("REMOTE_TOOLBAR")
+            .Caption("Remote Tool Bar").ToolbarPane().Top().Gripper())
 
         # finish up
         self.appToolBar.Refresh()
         self.gcodeToolBar.Refresh()
-        self.statusToolBar.Refresh()
+        self.machineToolBar.Refresh()
 
     def UpdateUI(self):
         self.gcText.UpdateUI(self.stateData)
@@ -1139,15 +1109,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.gcText.SetReadOnly(readOnly)
 
             self.stateData.fileIsOpen = True
-            self.SetTitle("%s - %s" % (os.path.basename(
-                          self.stateData.gcodeFileName), __appname__))
+            self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
 
             self.stateData.breakPoints = set()
             self.SetPC(0)
             self.gcText.GoToPC()
             self.UpdateUI()
 
-            self.statusbar.SetStatusText(os.path.basename(fileName))
+            self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
         else:
             dlg = wx.MessageDialog(self,
                                    "The file doesn't exits.\n"
@@ -1282,17 +1251,23 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnSearchToolBarUpdate(self, e):
         self.OnViewMenuUpdate(e, self.searchToolBar)
 
-    def OnRunToolBar(self, e):
+    def OnProgramToolBar(self, e):
         self.OnViewMenuToolBar(e, self.gcodeToolBar)
 
-    def OnRunToolBarUpdate(self, e):
+    def OnProgramToolBarUpdate(self, e):
         self.OnViewMenuUpdate(e, self.gcodeToolBar)
 
-    def OnStatusToolBar(self, e):
-        self.OnViewMenuToolBar(e, self.statusToolBar)
+    def OnMachineToolBar(self, e):
+        self.OnViewMenuToolBar(e, self.machineToolBar)
 
-    def OnStatusToolBarUpdate(self, e):
-        self.OnViewMenuUpdate(e, self.statusToolBar)
+    def OnMachineToolBarUpdate(self, e):
+        self.OnViewMenuUpdate(e, self.machineToolBar)
+
+    def OnRemoteToolBar(self, e):
+        self.OnViewMenuToolBar(e, self.remoteToolBar)
+
+    def OnRemoteToolBarUpdate(self, e):
+        self.OnViewMenuUpdate(e, self.remoteToolBar)
 
     def OnOutput(self, e):
         self.OnViewMenu(e, self.outputText)
@@ -1334,12 +1309,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnResetDefaultLayout(self, e):
         self.LoadLayoutData('/mainApp/Layout/Reset')
         self.SaveLayoutData('/mainApp/Layout/Default')
-
-    def OnRemote(self, e):
-        if self.remoteClient is None:
-            self.RemoteOpen()
-        else:
-            self.RemoteClose()
 
     def OnSettings(self, e):
         # do settings dialog
@@ -1397,6 +1366,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnMachineClearAlarmUpdate()
         self.OnAbortUpdate()
         self.gcodeToolBar.Refresh()
+        self.machineToolBar.Refresh()
 
     def OnRun(self, e=None):
         if self.machifProgExec is not None:
@@ -1408,7 +1378,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 [
                     self.stateData.gcodeFileLines,
                     self.stateData.programCounter,
-                    self.stateData.breakPoints
+                    self.stateData.breakPoints,
+                    self.stateData.gcodeFileName
                 ]
             )
 
@@ -1469,7 +1440,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 [
                     self.stateData.gcodeFileLines,
                     self.stateData.programCounter,
-                    self.stateData.breakPoints
+                    self.stateData.breakPoints,
+                    self.stateData.gcodeFileName
                 ]
             )
             self.stateData.swState = gc.STATE_STEP
@@ -1585,6 +1557,21 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             e.Enable(state)
 
         self.gcodeToolBar.EnableTool(gID_MENU_GOTO_PC, state)
+
+    # -------------------------------------------------------------------------
+    # Machine Menu Handlers
+    # -------------------------------------------------------------------------
+    def OnMachineConnect(self, e):
+        if self.stateData.serialPortIsOpen:
+            self.SerialClose()
+        else:
+            self.SerialOpen()
+
+    def OnMachineConnectUpdate(self, e=None):
+        if self.machifProgExec is None:
+            e.Check(False)
+        else:
+            e.Check(True)
 
     def OnMachineRefresh(self, e):
         self.GetMachineStatus()
@@ -1704,6 +1691,41 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_ABORT, state)
 
     # -------------------------------------------------------------------------
+    # Remote Menu Handlers
+    # -------------------------------------------------------------------------
+    def OnRemoteConnect(self, e):
+        if self.remoteClient is None:
+            self.RemoteOpen()
+        else:
+            self.RemoteClose()
+
+    def OnRemoteConnectUpdate(self, e):
+        if self.remoteClient is None:
+            e.Check(False)
+        else:
+            e.Check(True)
+
+    def OnRemoteGetGcode(self, e):
+        if self.remoteClient is not None:
+            pass
+
+    def OnRemoteGetGcodeUpdate(self, e):
+        if self.remoteClient is None:
+            e.Enable(False)
+        else:
+            e.Enable(True)
+
+    def OnRemoteSettings(self, e):
+        if self.remoteClient is not None:
+            pass
+
+    def OnRemoteSettingsUpdate(self, e):
+        if self.remoteClient is None:
+            e.Enable(False)
+        else:
+            e.Enable(True)
+
+    # -------------------------------------------------------------------------
     # Tools Menu Handlers
     # -------------------------------------------------------------------------
     def OnToolUpdateIdle(self, e):
@@ -1794,42 +1816,25 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnStatusToolBarForceUpdate(self):
         # Link status
         if self.stateData.serialPortIsOpen:
-            self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Close")
-            self.statusToolBar.SetToolBitmap(
-                gID_TOOLBAR_LINK_STATUS, ico.imgPlugConnect.GetBitmap())
-            self.statusToolBar.SetToolDisabledBitmap(
-                gID_TOOLBAR_LINK_STATUS, ico.imgPlugConnect.GetBitmap())
+            self.machineToolBar.SetToolBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugConnect.GetBitmap())
+            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugConnect.GetBitmap())
         else:
-            self.statusToolBar.SetToolLabel(gID_TOOLBAR_LINK_STATUS, "Open")
-            self.statusToolBar.SetToolBitmap(
-                gID_TOOLBAR_LINK_STATUS, ico.imgPlugDisconnect.GetBitmap())
-            self.statusToolBar.SetToolDisabledBitmap(
-                gID_TOOLBAR_LINK_STATUS, ico.imgPlugDisconnect.GetBitmap())
+            self.machineToolBar.SetToolBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
+            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
 
         # Program status
         if self.stateData.swState == gc.STATE_IDLE:
-            self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Idle")
+            self.statusbar.SetStatusText("Idle", 1)
         elif self.stateData.swState == gc.STATE_RUN:
-            self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Run")
+            self.statusbar.SetStatusText("Run", 1)
         elif self.stateData.swState == gc.STATE_PAUSE:
-            self.statusToolBar.SetToolLabel(
-                gID_TOOLBAR_PROGRAM_STATUS, "Pause")
+            self.statusbar.SetStatusText("Pause", 1)
         elif self.stateData.swState == gc.STATE_STEP:
-            self.statusToolBar.SetToolLabel(gID_TOOLBAR_PROGRAM_STATUS, "Step")
+            self.statusbar.SetStatusText("Step", 1)
         elif self.stateData.swState == gc.STATE_BREAK:
-            self.statusToolBar.SetToolLabel(
-                gID_TOOLBAR_PROGRAM_STATUS, "Break")
+            self.statusbar.SetStatusText("Break", 1)
         elif self.stateData.swState == gc.STATE_ABORT:
-            self.statusToolBar.SetToolLabel(
-                gID_TOOLBAR_PROGRAM_STATUS, "ABORT")
-
-        self.statusToolBar.Refresh()
-
-    def OnLinkStatus(self, e):
-        if self.stateData.serialPortIsOpen:
-            self.SerialClose()
-        else:
-            self.SerialOpen()
+            self.statusbar.SetStatusText("ABORT", 1)
 
     # -------------------------------------------------------------------------
     # Help Menu Handlers
@@ -2177,15 +2182,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                     if 'stat' in sr:
                         self.stateData.machineStatusString = sr['stat']
-
-                    # if self.stateData.swState != gc.STATE_IDLE and len(
-                    #     self.stateData.gcodeFileLines):
-                    #     prcnt = "%d/%d (%.2f%%)" % (
-                    #         self.stateData.programCounter,
-                    #         len(self.stateData.gcodeFileLines),
-                    #         abs((float(self.stateData.programCounter)/float(len(
-                    #             self.stateData.gcodeFileLines)) * 100)))
-                    #     sr['prcnt'] = prcnt
 
                     self.machineStatusPanel.UpdateUI(self.stateData, sr)
                     self.machineJoggingPanel.UpdateUI(self.stateData, sr)

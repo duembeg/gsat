@@ -61,6 +61,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.okToPostEvents = True
 
         self.gcodeDataLines = []
+        self.gcodeFileName = ""
         self.breakPointSet = set()
         self.initialProgramCounter = 0
         self.workingProgramCounter = 0
@@ -128,6 +129,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_STEP")
 
                 self.gcodeDataLines = e.data[0]
+                self.gcodeFileName = e.data[3]
                 self.initialProgramCounter = e.data[1]
                 self.workingProgramCounter = self.initialProgramCounter
                 self.breakPointSet = e.data[2]
@@ -138,6 +140,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_RUN")
 
                 self.gcodeDataLines = e.data[0]
+                self.gcodeFileName = e.data[3]
                 self.initialProgramCounter = e.data[1]
                 self.workingProgramCounter = self.initialProgramCounter
                 self.breakPointSet = e.data[2]
@@ -777,7 +780,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.processIdleSate()
                 self.swState = gc.STATE_IDLE
 
-            time.sleep(0.01)
+            time.sleep(0.010)
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
             self.logger.info("thread exit")
