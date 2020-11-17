@@ -24,21 +24,25 @@
 ----------------------------------------------------------------------------"""
 
 import os
+from os import tcsetpgrp
 import sys
 import threading
 import time
 import logging
 import socket
 import select
-import Queue
 
-import modules.config as gc
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 try:
     import cPickle as pickle
 except:
     import pickle
 
+import modules.config as gc
 
 def verbose_data_ascii(direction, data):
     return "[%03d] %s %s" % (len(data), direction, data.strip())
@@ -98,7 +102,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         # process events from queue
         try:
             e = self._eventQueue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             pass
         else:
             if e.event_id == gc.EV_HELLO:

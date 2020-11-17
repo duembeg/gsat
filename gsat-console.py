@@ -123,7 +123,13 @@ if __name__ == '__main__':
 
             machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM, 0, self)
 
-            machifProgExec.eventPut(gc.EV_CMD_RUN, [gcodeFileLines, 0, set(), ""], self)
+            runDict = dict({
+                'gcodeFileName': cmd_line_options.gcode,
+                'gcodeLines': gcodeFileLines,
+                'gcodePC': 0,
+                'brakePoints': set()})
+
+            machifProgExec.eventPut(gc.EV_CMD_RUN, runDict, self)
 
             time.sleep(20)
 

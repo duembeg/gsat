@@ -31,7 +31,6 @@ import re
 import time
 import shutil
 import logging
-import Queue
 import wx
 import wx.combo
 # from wx import stc as stc
@@ -42,6 +41,11 @@ from wx.lib.agw import genericmessagedialog as gmd
 # from wx.lib.agw import flatmenu as fm
 from wx.lib.wordwrap import wordwrap
 from wx.lib import scrolledpanel as scrolled
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -148,6 +152,17 @@ gID_TIMER_RUN = wx.NewId()
 gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
 idle_count = 0
+
+
+class ThreadQueueEvent(wx.PyEvent):
+    """ Simple event to carry arbitrary data.
+    """
+
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_THREAD_QUEQUE_EVENT_ID)
+        self.data = data
 
 
 class gsatLog(wx.PyLog):
@@ -1358,6 +1373,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnSetPCUpdate()
         self.OnResetPCUpdate()
         self.OnGoToPCUpdate()
+        # self.OnStatusToolBarForceUpdate()
+        self.OnMachineConnectUpdate()
         self.OnMachineRefreshUpdate()
         self.OnMachineCycleStartUpdate()
         self.OnMachineFeedHoldUpdate()
@@ -1373,15 +1390,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             rawText = self.gcText.GetText()
             self.stateData.gcodeFileLines = rawText.splitlines(True)
 
-            self.machifProgExec.eventPut(
-                gc.EV_CMD_RUN,
-                [
-                    self.stateData.gcodeFileLines,
-                    self.stateData.programCounter,
-                    self.stateData.breakPoints,
-                    self.stateData.gcodeFileName
-                ]
-            )
+            runDict = dict()
+
+            if len(self.stateData.gcodeFileLines):
+                if len(self.stateData.gcodeFileName):
+                    runDict['gcodeFileName'] = self.stateData.gcodeFileName
+
+                runDict['gcodeLines'] = self.stateData.gcodeFileLines
+                runDict['gcodePC'] = self.stateData.programCounter
+                runDict['brakePoints'] = self.stateData.breakPoints
+
+            self.machifProgExec.eventPut(gc.EV_CMD_RUN, runDict, self)
 
             if self.stateData.swState != gc.STATE_PAUSE and \
                self.stateData.swState != gc.STATE_BREAK:
@@ -1391,8 +1410,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             # self.RunTimerStart()
 
             self.gcText.GoToPC()
-            self.stateData.swState = gc.STATE_RUN
-            self.UpdateUI()
+            # self.stateData.swState = gc.STATE_RUN
+            # self.UpdateUI()
 
     def OnRunHelper(self):
         state = False
@@ -1414,7 +1433,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_RUN, state)
 
     def OnPause(self, e):
-        self.Stop(gc.STATE_PAUSE)
+        #self.Stop(gc.STATE_PAUSE)
+        self.machifProgExec.eventPut(gc.EV_CMD_PAUSE, None, self)
+        # self.stateData.swState = gc.STATE_PAUSE
+        # self.UpdateUI()
 
     def OnPauseUpdate(self, e=None):
         state = False
@@ -1435,17 +1457,20 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             rawText = self.gcText.GetText()
             self.stateData.gcodeFileLines = rawText.splitlines(True)
 
-            self.machifProgExec.eventPut(
-                gc.EV_CMD_STEP,
-                [
-                    self.stateData.gcodeFileLines,
-                    self.stateData.programCounter,
-                    self.stateData.breakPoints,
-                    self.stateData.gcodeFileName
-                ]
-            )
-            self.stateData.swState = gc.STATE_STEP
-            self.UpdateUI()
+            runDict = dict()
+
+            if len(self.stateData.gcodeFileLines):
+                if len(self.stateData.gcodeFileName):
+                    runDict['gcodeFileName'] = self.stateData.gcodeFileName
+
+                runDict['gcodeLines'] = self.stateData.gcodeFileLines
+                runDict['gcodePC'] = self.stateData.programCounter
+                runDict['brakePoints'] = self.stateData.breakPoints
+
+            self.machifProgExec.eventPut(gc.EV_CMD_STEP, runDict, self)
+
+            # self.stateData.swState = gc.STATE_STEP
+            # self.UpdateUI()
 
     def OnStepUpdate(self, e=None):
         state = False
@@ -1568,10 +1593,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.SerialOpen()
 
     def OnMachineConnectUpdate(self, e=None):
-        if self.machifProgExec is None:
-            e.Check(False)
-        else:
-            e.Check(True)
+        if e is not None:
+            if self.machifProgExec is None:
+                e.Check(False)
+            else:
+                e.Check(True)
+
+        # self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_CONNECT, state)
 
     def OnMachineRefresh(self, e):
         self.GetMachineStatus()
@@ -1590,8 +1618,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.machifProgExec is not None:
             self.machifProgExec.eventPut(gc.EV_CMD_CYCLE_START)
 
-            if (self.stateData.swState == gc.STATE_PAUSE):
-                self.OnRun(e)
+            # if (self.stateData.swState == gc.STATE_PAUSE):
+            #     self.OnRun(e)
 
     def OnMachineCycleStartUpdate(self, e=None):
         state = False
@@ -1606,8 +1634,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnMachineFeedHold(self, e):
         if self.machifProgExec is not None:
 
-            if (self.stateData.swState == gc.STATE_RUN):
-                self.OnPause(e)
+            # if (self.stateData.swState == gc.STATE_RUN):
+            #     self.OnPause(e)
 
             self.machifProgExec.eventPut(gc.EV_CMD_FEED_HOLD)
 
@@ -1978,8 +2006,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.machifProgExec is not None:
             self.machifProgExec.eventPut(gc.EV_CMD_STOP)
 
-            self.stateData.swState = toState
-            self.UpdateUI()
+            # self.stateData.swState = toState
+            # self.UpdateUI()
 
     def SetPC(self, pc=None):
         if pc is None:
@@ -2144,7 +2172,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # process events from queue
         try:
             te = self._eventQueue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         else:
@@ -2193,6 +2221,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     if self.stateData.programCounter != te.data['pc']:
                         self.SetPC(te.data['pc'])
 
+                if 'swstate' in te.data:
+                    if self.stateData.swState != int(te.data['swstate']):
+                        self.stateData.swState = int(te.data['swstate'])
+                        self.UpdateUI()
+
                 if 'fv' in te.data or 'fb' in te.data:
                     self.machineStatusPanel.UpdateUI(self.stateData, te.data)
 
@@ -2233,38 +2266,31 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RUN_END")
 
-                self.stateData.swState = gc.STATE_IDLE
-                self.runEndWaitingForMachIfIdle = True
-
-                # prcnt = "%d/%d (%.2f%%)" % (
-                #     len(self.stateData.gcodeFileLines),
-                #     len(self.stateData.gcodeFileLines),
-                #     100)
-
-                # self.machineStatusPanel.UpdateUI(
-                #     self.stateData, dict({'prcnt': prcnt}))
+                # self.stateData.swState = gc.STATE_IDLE
+                # self.runEndWaitingForMachIfIdle = True
+                self.UpdateUI()
 
             elif te.event_id == gc.EV_STEP_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_STEP_END")
 
-                self.stateData.swState = gc.STATE_IDLE
+                # self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_HIT_BRK_PT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_HIT_BRK_PT")
 
-                self.stateData.swState = gc.STATE_BREAK
-                self.UpdateUI()
+                # self.stateData.swState = gc.STATE_BREAK
+                # self.UpdateUI()
 
             elif te.event_id == gc.EV_HIT_MSG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_HIT_MSG [%s]" % te.data.strip())
 
                 lastSwState = self.stateData.swState
-                self.stateData.swState = gc.STATE_PAUSE
-                self.UpdateUI()
+                # self.stateData.swState = gc.STATE_PAUSE
+                # self.UpdateUI()
 
                 self.outputText.AppendText("** MSG: %s" % te.data.strip())
 
@@ -2318,7 +2344,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.stateData.serialPortIsOpen = False
                 self.stateData.deviceDetected = False
-                self.stateData.swState = gc.STATE_IDLE
+                # self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_EXIT:
@@ -2377,17 +2403,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             elif te.event_id == gc.EV_SW_STATE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_SW_STATE from 0x{:x} {}".format(id(te.sender), te.sender))
+                    self.logger.info("EV_SW_STATE")
 
-                if self.remoteClient is not None:
-                    self.stateData.swState = te.data
+                self.stateData.swState = te.data
+                self.UpdateUI()
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.error(
                         "got UNKNOWN event id[{}] from 0x{:x} {}".format(te.event_id, id(te.sender), te.sender))
 
-                self.stateData.swState = gc.STATE_IDLE
+                # self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
         # deal with delay between sw-run-end and machif-end
@@ -2467,7 +2493,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def eventPut(self, id, data=None, sender=None):
         gc.EventQueueIf.eventPut(self, id, data, sender)
         self.eventInCount = self.eventInCount + 1
-        wx.PostEvent(self, gc.ThreadQueueEvent(None))
+        wx.PostEvent(self, ThreadQueueEvent(None))
 
     def eventForward2Machif(self, id, data=None, sender=None):
         if self.machifProgExec is not None:

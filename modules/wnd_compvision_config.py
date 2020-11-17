@@ -24,10 +24,14 @@
 ----------------------------------------------------------------------------"""
 
 import threading
-import Queue
 import time
 import wx
 from wx.lib import scrolledpanel as scrolled
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import modules.config as gc
 

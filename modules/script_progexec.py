@@ -157,4 +157,4 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
             print "** scriptExecuteThread exit."
 
         self.eventHandler.eveventPut(gc.EV_EXIT, "")
-        # wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
+

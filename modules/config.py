@@ -25,8 +25,10 @@
 import logging
 from logging import handlers, Formatter
 
-import Queue
-import wx
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 try:
     import simplejson as json
@@ -36,12 +38,10 @@ except ImportError:
 import os
 import time
 
+
 """----------------------------------------------------------------------------
    Globals:
 ----------------------------------------------------------------------------"""
-EDIT_BK_COLOR = wx.WHITE
-READ_ONLY_BK_COLOR = wx.Colour(242, 241, 240)
-
 FILE_WILDCARD = \
     "gcode (*.ngc; *.nc; *.gcode)|*.ngc;*.nc;*.gcode|"\
     "ngc (*.ngc)|*.ngc|" \
@@ -59,7 +59,7 @@ CONFIG_DATA = None
 STATE_DATA = None
 
 SOCK_HEADER_SIZE = 10
-SOCK_DATA_SIZE = 1000
+SOCK_DATA_SIZE = 2048
 
 # --------------------------------------------------------------------------
 # device commands
@@ -130,6 +130,7 @@ EV_CMD_OPEN = 300
 EV_CMD_CLOSE = 310
 EV_CMD_RUN = 1000
 EV_CMD_STEP = 1010
+EV_CMD_PAUSE = 1012
 EV_CMD_STOP = 1020
 EV_CMD_SEND = 1030
 EV_CMD_SEND_W_ACK = 1040
@@ -640,18 +641,6 @@ def reg_thread_queue_data_event(win, func):
     """
     win.Connect(-1, -1, EVT_THREAD_QUEQUE_EVENT_ID, func)
 
-
-class ThreadQueueEvent(wx.PyEvent):
-    """ Simple event to carry arbitrary data.
-    """
-
-    def __init__(self, data):
-        """Init Result Event."""
-        wx.PyEvent.__init__(self)
-        self.SetEventType(EVT_THREAD_QUEQUE_EVENT_ID)
-        self.data = data
-
-
 class SimpleEvent(object):
     """ Simple event to carry arbitrary data.
     """
@@ -668,7 +657,7 @@ class EventQueueIf():
 
     def __init__(self):
         self._eventListeners = dict()
-        self._eventQueue = Queue.Queue()
+        self._eventQueue = queue.Queue()
 
     def addEventListener(self, listener):
         self._eventListeners[id(listener)] = listener

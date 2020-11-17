@@ -1174,18 +1174,18 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
 
         if self.configXYZReadOnly:
             self.jX.SetEditable(False)
-            self.jX.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+            self.jX.SetBackgroundColour(wx.Colour(242, 241, 240))
             self.jY.SetEditable(False)
-            self.jY.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+            self.jY.SetBackgroundColour(wx.Colour(242, 241, 240))
             self.jZ.SetEditable(False)
-            self.jZ.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+            self.jZ.SetBackgroundColour(wx.Colour(242, 241, 240))
         else:
             self.jX.SetEditable(True)
-            self.jX.SetBackgroundColour(gc.EDIT_BK_COLOR)
+            self.jX.SetBackgroundColour(wx.WHITE)
             self.jY.SetEditable(True)
-            self.jY.SetBackgroundColour(gc.EDIT_BK_COLOR)
+            self.jY.SetBackgroundColour(wx.WHITE)
             self.jZ.SetEditable(True)
-            self.jZ.SetBackgroundColour(gc.EDIT_BK_COLOR)
+            self.jZ.SetBackgroundColour(wx.WHITE)
 
         self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
         self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
@@ -1687,14 +1687,14 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
         st = wx.StaticText(self, label="SP")
         self.jSpindle = wx.TextCtrl(
             self, value=gc.OFF_STRING, style=wx.TE_READONLY)
-        self.jSpindle.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+        self.jSpindle.SetBackgroundColour(wx.Colour(242, 241, 240))
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
         st = wx.StaticText(self, label="CO")
         self.jCoolant = wx.TextCtrl(
             self, value=gc.OFF_STRING, style=wx.TE_READONLY)
-        self.jCoolant.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+        self.jCoolant.SetBackgroundColour(wx.Colour(242, 241, 240))
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.jCoolant, 1, flag=wx.EXPAND)
 

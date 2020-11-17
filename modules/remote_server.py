@@ -30,19 +30,23 @@ import time
 import logging
 import socket
 import select
-import Queue
 import errno
 import re
 
-import modules.config as gc
-import modules.machif_progexec as mi_progexec
-
-from modules.version_info import *
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 try:
     import cPickle as pickle
 except:
     import pickle
+
+import modules.config as gc
+import modules.machif_progexec as mi_progexec
+
+from modules.version_info import *
 
 
 def verbose_data_ascii(direction, data):
@@ -79,7 +83,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.inputsAddr = {}
         self.outputs = []
         self.messageQueues = {}
-        self.broadcastQueue = Queue.Queue()
+        self.broadcastQueue = queue.Queue()
         self.machifProgExec = None
         self.serialPortIsOpen = False
         self.deviceDetected = False
@@ -110,7 +114,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         # process events from queue
         try:
             e = self._eventQueue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             pass
         else:
             # this message came from progexec tread
@@ -211,7 +215,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         # process socket events
         try:
             e = self.clientEventQueue._eventQueue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             pass
         else:
             # this message came from clients
@@ -626,7 +630,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             connection.setblocking(0)
                             self.inputs.append(connection)
                             self.inputsAddr[connection] = client_address
-                            self.messageQueues[connection] = Queue.Queue()
+                            self.messageQueues[connection] = queue.Queue()
 
                             msg = "Sever stablish connection to client{}\n".format(self.inputsAddr[connection])
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:

@@ -155,15 +155,15 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                                                 rtscts=False,
                                                 dsrdtr=False)
 
-            except serial.SerialException, e:
+            except serial.SerialException as e:
                 exMsg = "** PySerial exception: %s\n" % str(e)
                 exFlag = True
 
-            except OSError, e:
+            except OSError as e:
                 exMsg = "** OSError exception: %s\n" % str(e)
                 exFlag = True
 
-            except IOError, e:
+            except IOError as e:
                 exMsg = "** IOError exception: %s\n" % str(e)
                 exFlag = True
 
@@ -249,15 +249,15 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
                 inDataCnt = self.serialPort.inWaiting()
 
-        except serial.SerialException, e:
+        except serial.SerialException as e:
             exMsg = "** PySerial exception: %s\n" % e.message
             exFlag = True
 
-        except OSError, e:
+        except OSError as e:
             exMsg = "** OSError exception: %s\n" % str(e)
             exFlag = True
 
-        except IOError, e:
+        except IOError as e:
             exMsg = "** IOError exception: %s\n" % str(e)
             exFlag = True
 
@@ -298,15 +298,15 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
                 self.serialPort.write(serialData)
 
-            except serial.SerialException, e:
+            except serial.SerialException as e:
                 exMsg = "** PySerial exception: %s\n" % e.message
                 exFlag = True
 
-            except OSError, e:
+            except OSError as e:
                 exMsg = "** OSError exception: %s\n" % str(e)
                 exFlag = True
 
-            except IOError, e:
+            except IOError as e:
                 exMsg = "** IOError exception: %s\n" % str(e)
                 exFlag = True
 

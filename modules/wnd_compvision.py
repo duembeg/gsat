@@ -24,10 +24,14 @@
 ----------------------------------------------------------------------------"""
 
 import threading
-import Queue
 import time
 import wx
 from wx.lib import scrolledpanel as scrolled
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import modules.config as gc
 
@@ -62,8 +66,8 @@ class gsatCV2Panel(wx.ScrolledWindow):
         self.scrollUnit = 10
 
         # thread communication queues
-        self.cvw2tQueue = Queue.Queue()
-        self.t2cvwQueue = Queue.Queue()
+        self.cvw2tQueue = queue.Queue()
+        self.t2cvwQueue = queue.Queue()
 
         self.visionThread = None
         self.captureTimer = wx.Timer(self, ID_CV2_CAPTURE_TIMER)
@@ -420,7 +424,6 @@ class gsatComputerVisionThread(threading.Thread):
             frame = self.CaptureFrame()
 
             # send frame to window, and wait...
-            # wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
             self.t2cvwQueue.put(gc.SimpleEvent(EV_CMD_CV_IMAGE, frame))
             self.t2cvwQueue.join()
 

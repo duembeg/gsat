@@ -308,6 +308,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.cmdPostInit = '$I\n'
         self.cmdStatus = '?'
         self.cmdSystemInfo = '$I\n'
+        self.systemInfo = ""
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw
@@ -484,6 +485,7 @@ class MachIf_GRBL(mi.MachIf_Base):
             dataDict['r']['fb'] = version.group(1)
             dataDict['f'] = [0, 0, 0]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
+            self.systemInfo = data
 
         initStr = self.reGrblInitStr.match(data)
         if initStr is not None:
@@ -509,6 +511,10 @@ class MachIf_GRBL(mi.MachIf_Base):
             )
 
         return dataDict
+
+    def doGetSystemInfo(self):
+        if self._serialTxRxThread is not None:
+           self.eventPut(gc.EV_RXDATA, self.systemInfo)
 
     def doHome(self, dict_axis):
         if 'x' in dict_axis and 'y' in dict_axis and 'z' in dict_axis:

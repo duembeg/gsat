@@ -27,10 +27,16 @@ import re
 import threading
 import time
 import logging
-import Queue
+import hashlib
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import modules.config as gc
 import modules.machif_config as mi
+
 
 # -----------------------------------------------------------------------------
 # regular expressions
@@ -112,15 +118,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         # process events from queue
         try:
             e = self._eventQueue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             pass
         else:
-        # check output queue and notify UI if is not empty
-        # if not self.progExecOutQueue.empty():
-        #     # if self.okToPostEvents:
-        #     #   self.okToPostEvents = False
-        #     #   wx.PostEvent(self.notifyWindow, gc.threadQueueEvent(None))
-        #     wx.PostEvent(self.notifyWindow, gc.ThreadQueueEvent(None))
 
             self.lastEventID = e.event_id
 
@@ -128,30 +128,71 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_STEP")
 
-                self.gcodeDataLines = e.data[0]
-                self.gcodeFileName = e.data[3]
-                self.initialProgramCounter = e.data[1]
-                self.workingProgramCounter = self.initialProgramCounter
-                self.breakPointSet = e.data[2]
+                if 'gcodeFileName' in e.data:
+                    self.gcodeFileName = e.data['gcodeFileName']
+
+                if 'gcodeLines' in e.data:
+                    self.gcodeDataLines = e.data['gcodeLines']
+
+                if 'gcodePC' in e.data:
+                    self.initialProgramCounter = e.data['gcodePC']
+                    self.workingProgramCounter = self.initialProgramCounter
+                else:
+                    self.initialProgramCounter = self.workingProgramCounter
+                    # self.workingProgramCounter = self.initialProgramCounter
+
+                if 'brakePoints' in e.data:
+                    self.breakPointSet = e.data['brakePoints']
+
                 self.swState = gc.STATE_STEP
 
             elif e.event_id == gc.EV_CMD_RUN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_RUN")
 
-                self.gcodeDataLines = e.data[0]
-                self.gcodeFileName = e.data[3]
-                self.initialProgramCounter = e.data[1]
-                self.workingProgramCounter = self.initialProgramCounter
-                self.breakPointSet = e.data[2]
+                h1 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+
+                if 'gcodeFileName' in e.data:
+                    self.gcodeFileName = e.data['gcodeFileName']
+
+                if 'gcodeLines' in e.data:
+                    self.gcodeDataLines = e.data['gcodeLines']
+
+                if 'gcodePC' in e.data:
+                    self.initialProgramCounter = e.data['gcodePC']
+                    self.workingProgramCounter = self.initialProgramCounter
+
+                if 'brakePoints' in e.data:
+                    self.breakPointSet = e.data['brakePoints']
+
+                # init time only if we got new lines or previous satate was
+                # IDLE (if we stop or step operations)
+                h2 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                if h1 != h2 or self.swState == gc.STATE_IDLE:
+                    self.runTimeStart = int(time.time())
+
                 self.swState = gc.STATE_RUN
-                self.runTimeStart = int(time.time())
+
+            elif e.event_id == gc.EV_CMD_PAUSE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_PAUSE")
+
+                self.swState = gc.STATE_PAUSE
 
             elif e.event_id == gc.EV_CMD_STOP:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_STOP")
 
-                self.swState = gc.STATE_IDLE
+                force_update = False
+
+                if self.swState != gc.STATE_IDLE:
+                    force_update = True
+                    self.swState = gc.STATE_IDLE
+
+                self.runTimeStart = 0
+
+                if force_update:
+                    self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
 
             elif e.event_id == gc.EV_CMD_SEND:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -362,6 +403,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         else:
             rxData['pc'] = self.workingProgramCounter
+            rxData['swstate'] = "{}".format(self.swState)
 
             rxDataKeys = rxData.keys()
 
@@ -384,7 +426,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 if 'sr' in rxData:
                     if self.swState != gc.STATE_IDLE and len(self.gcodeDataLines):
-                        # at this point wew have nto completed added progaram counter
+                        # at this point we haven't completed and added progaram counter
                         # we need to +1, also array starts at 0 and gcode page starts at 1
                         # nee another +1
                         gcode_lines_len = len(self.gcodeDataLines)
@@ -607,6 +649,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # notify listeners
             self.notifyEventListeners(gc.EV_RUN_END)
+            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
             return
 
         # update PC
@@ -627,6 +670,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.swState = gc.STATE_BREAK
             # notify listeners
             self.notifyEventListeners(gc.EV_HIT_BRK_PT)
+            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
             return
 
         # get gcode line
@@ -671,6 +715,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # notify listeners
             self.notifyEventListeners(gc.EV_HIT_BRK_PT)
+            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
             return
 
     def processStepSate(self):
@@ -687,6 +732,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # notify listeners
             self.notifyEventListeners(gc.EV_STEP_END)
+            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
             return
 
         # update PC
@@ -702,6 +748,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # notify listeners
             self.notifyEventListeners(gc.EV_STEP_END)
+            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
             return
 
         gcode = self.gcodeDataLines[self.workingProgramCounter]
@@ -719,6 +766,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             # notify listeners
             self.notifyEventListeners(gc.EV_STEP_END)
+            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
             return
 
     def processIdleSate(self):
@@ -763,7 +811,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.processRunSate()
             elif self.swState == gc.STATE_STEP:
                 self.processStepSate()
-            elif self.swState == gc.STATE_IDLE:
+            elif self.swState == gc.STATE_IDLE or self.swState == gc.STATE_PAUSE:
                 self.processIdleSate()
             elif self.swState == gc.STATE_BREAK:
                 self.processIdleSate()
