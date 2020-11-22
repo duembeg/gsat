@@ -167,8 +167,12 @@ class gsatSettingsDialog(wx.Dialog):
 
         wx.Dialog.__init__(self, parent, id, title, style=style)
 
-        self.configData = config_data
         self.configRemoteData = config_remote_data
+
+        if self.configRemoteData:
+            self.configData = self.configRemoteData
+        else:
+            self.configData = config_data
 
         self.InitUI()
 
@@ -177,14 +181,17 @@ class gsatSettingsDialog(wx.Dialog):
 
         # init note book
         self.imageList = wx.ImageList(16, 16)
-        self.imageList.Add(ico.imgGeneralSettings.GetBitmap())
-        # self.imageList.Add(ico.imgPlugConnect.GetBitmap())
-        self.imageList.Add(ico.imgProgram.GetBitmap())
-        self.imageList.Add(ico.imgLog.GetBitmap())
-        self.imageList.Add(ico.imgCli.GetBitmap())
-        self.imageList.Add(ico.imgMachine.GetBitmap())
-        self.imageList.Add(ico.imgMove.GetBitmap())
-        self.imageList.Add(ico.imgEye.GetBitmap())
+        if self.configRemoteData:
+            self.imageList.Add(ico.imgMachine.GetBitmap())
+        else:
+            self.imageList.Add(ico.imgGeneralSettings.GetBitmap())
+            # self.imageList.Add(ico.imgPlugConnect.GetBitmap())
+            self.imageList.Add(ico.imgProgram.GetBitmap())
+            self.imageList.Add(ico.imgLog.GetBitmap())
+            self.imageList.Add(ico.imgCli.GetBitmap())
+            self.imageList.Add(ico.imgMachine.GetBitmap())
+            self.imageList.Add(ico.imgMove.GetBitmap())
+            self.imageList.Add(ico.imgEye.GetBitmap())
 
         # for Windows and OS X, tabbed on the left don't work as well
         if sys.platform.startswith('linux'):
@@ -196,13 +203,16 @@ class gsatSettingsDialog(wx.Dialog):
         self.noteBook.AssignImageList(self.imageList)
 
         # add pages
-        self.AddGeneralPage(0)
-        self.AddProgramPage(1)
-        self.AddOutputPage(2)
-        self.AddCliPage(3)
-        self.AddMachinePage(4)
-        self.AddJoggingPage(5)
-        self.AddCV2Panel(6)
+        if self.configRemoteData:
+            self.AddMachinePage(0)
+        else:
+            self.AddGeneralPage(0)
+            self.AddProgramPage(1)
+            self.AddOutputPage(2)
+            self.AddCliPage(3)
+            self.AddMachinePage(4)
+            self.AddJoggingPage(5)
+            self.AddCV2Panel(6)
 
         # self.noteBook.Layout()
         sizer.Add(self.noteBook, 1, wx.ALL | wx.EXPAND, 5)
@@ -254,7 +264,7 @@ class gsatSettingsDialog(wx.Dialog):
 
     def AddMachinePage(self, page):
         self.machinePage = mcc.gsatMachineSettingsPanel(
-            self.noteBook, self.configData, self.configRemoteData)
+            self.noteBook, self.configData)
         self.noteBook.AddPage(self.machinePage, "Machine")
         self.noteBook.SetPageImage(page, page)
 
@@ -271,10 +281,13 @@ class gsatSettingsDialog(wx.Dialog):
         self.noteBook.SetPageImage(page, page)
 
     def UpdateConfigData(self):
-        self.generalPage.UpdateConfigData()
-        self.programPage.UpdateConfigData()
-        self.outputPage.UpdateConfigData()
-        self.cliPage.UpdateConfigData()
-        self.machinePage.UpdateConfigData()
-        self.jogPage.UpdateConfigData()
-        self.CV2Page.UpdateConfigData()
+        if not self.configRemoteData:
+            self.generalPage.UpdateConfigData()
+            self.programPage.UpdateConfigData()
+            self.outputPage.UpdateConfigData()
+            self.cliPage.UpdateConfigData()
+            self.machinePage.UpdateConfigData()
+            self.jogPage.UpdateConfigData()
+            self.CV2Page.UpdateConfigData()
+        else:
+            self.machinePage.UpdateConfigData()

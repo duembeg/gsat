@@ -153,7 +153,6 @@ gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
 idle_count = 0
 
-
 class ThreadQueueEvent(wx.PyEvent):
     """ Simple event to carry arbitrary data.
     """
@@ -161,9 +160,8 @@ class ThreadQueueEvent(wx.PyEvent):
     def __init__(self, data):
         """Init Result Event."""
         wx.PyEvent.__init__(self)
-        self.SetEventType(EVT_THREAD_QUEQUE_EVENT_ID)
+        self.SetEventType(gc.EVT_THREAD_QUEQUE_EVENT_ID)
         self.data = data
-
 
 class gsatLog(wx.PyLog):
     """ custom wxLog
@@ -211,7 +209,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.configRemoteData = None
 
         self.logger = logging.getLogger()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_ALL:
             self.logger.info("init logging id:0x%x" % id(self))
 
         self.InitConfig()
@@ -230,9 +228,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         # self.Bind(wx.EVT_IDLE, self.OnIdle)
 
-        self.machinePort = ""
-        self.machineBaud = 0
-
         self.InitUI()
         self.Centre()
         self.Show()
@@ -248,12 +243,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.stateData.machIfId = mi.GetMachIfId(
             self.configData.get('/machine/Device'))
         self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
-        self.stateData.serialPort = self.configData.get('/machine/Port')
-        self.stateData.serialPortBaud = self.configData.get('/machine/Baud')
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
             self.logger.info("Init config values...")
-            self.logger.info("wxVersion:                %s" % wx.version())
+            self.logger.info("Pyhon Version:            %s" % sys.version)
+            self.logger.info("wx Version:               %s" % wx.version())
             self.logger.info("displayRuntimeDialog:     %s" %
                              self.displayRuntimeDialog)
             self.logger.info("saveBackupFile:           %s" %
@@ -264,14 +258,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                              self.roundInch2mm)
             self.logger.info("roundmm2Inch:             %s" %
                              self.roundmm2Inch)
-            self.logger.info("machIfName:               %s" %
-                             self.stateData.machIfName)
-            self.logger.info("machIfId:                 %s" %
-                             self.stateData.machIfId)
-            self.logger.info("machIfPort:               %s" %
-                             self.stateData.serialPort)
-            self.logger.info("machIfBaud:               %s" %
-                             self.stateData.serialPortBaud)
 
     def InitUI(self):
         """ Init main UI """
@@ -1326,8 +1312,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.SaveLayoutData('/mainApp/Layout/Default')
 
     def OnSettings(self, e):
+        # save port settings
+        machine_port = self.configData.get('/machine/Port')
+        machine_baud = self.configData.get('/machine/Baud')
+
         # do settings dialog
-        dlg = mwc.gsatSettingsDialog(self, self.configData, self.configRemoteData)
+        dlg = mwc.gsatSettingsDialog(self, self.configData)
 
         result = dlg.ShowModal()
 
@@ -1341,20 +1331,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.gcText.UpdateSettings(self.configData)
             self.outputText.UpdateSettings(self.configData)
             # self.cliPanel(self.configData)
-            self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
+            self.machineStatusPanel.UpdateSettings(self.configData)
             self.machineJoggingPanel.UpdateSettings(self.configData)
             self.CV2Panel.UpdateSettings(self.configData)
 
-            if self.remoteClient is not None:
-                self.remoteClient.eventPut(gc.EV_CMD_UPDATE_CONFIG, self.configRemoteData)
-            elif self.machifProgExec is not None:
+            if self.machifProgExec is not None:
                 self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
 
             # re open serial port if open
-            if (self.stateData.serialPortIsOpen and (self.stateData
-               .serialPort != self.machinePort or self.stateData
-               .serialPortBaud != self.machineBaud)):
-
+            if self.stateData.serialPortIsOpen and (
+                machine_port != self.configData.get('/machine/Port') or
+                machine_baud != self.configData.get('/machine/Baud')):
                 self.SerialClose()
 
         # refresh UIs after settings updates
@@ -1745,7 +1732,30 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnRemoteSettings(self, e):
         if self.remoteClient is not None:
-            pass
+            # save port settings
+            machine_port = self.configRemoteData.get('/machine/Port')
+            machine_baud = self.configRemoteData.get('/machine/Baud')
+
+            # do settings dialog
+            dlg = mwc.gsatSettingsDialog(self, self.configData, self.configRemoteData, title="Remote Settings")
+
+            result = dlg.ShowModal()
+
+            if result == wx.ID_OK:
+                dlg.UpdateConfigData()
+
+                self.remoteClient.eventPut(gc.EV_CMD_UPDATE_CONFIG, self.configRemoteData)
+
+                # re open serial port if open
+                if self.stateData.serialPortIsOpen and (
+                    machine_port != self.configRemoteData.get('/machine/Port') or
+                    machine_baud != self.configRemoteData.get('/machine/Baud')):
+                    self.SerialClose()
+
+            # refresh UIs after settings updates
+            self.UpdateUI()
+
+            dlg.Destroy()
 
     def OnRemoteSettingsUpdate(self, e):
         if self.remoteClient is None:
@@ -1959,9 +1969,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.stateData.serialPortIsOpen = False
 
     def SerialOpen(self):
-        self.machinePort = self.stateData.serialPort
-        self.machineBaud = self.stateData.serialPortBaud
-
         if self.remoteClient is None:
             self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
         else:

@@ -36,16 +36,12 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
     """ Machine panel settings
     """
 
-    def __init__(self, parent, config_data, config_remote_data, **args):
+    def __init__(self, parent, config_data, **args):
         scrolled.ScrolledPanel.__init__(self, parent,
                                         style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
-        self.configRemoteData = config_remote_data
         self.lastSpecificProperty = ""
-
-        if self.configRemoteData is not None:
-            self.configData = self.configRemoteData
 
         self.InitConfig()
         self.InitUI()
@@ -346,12 +342,13 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.spComboBox.SetValue(port)
 
     def OnSpComboBoxDropDown(self, event):
-        serList = ['None']
         portSearchFailSafe = False
 
-        if self.configRemoteData is not None:
-            serList = self.configRemoteData.get('/temp/SerialPorts')
-        else:
+        serList = self.configData.get('/temp/SerialPorts')
+
+        if not serList:
+            serList = ['None']
+
             try:
                 import glob
                 import serial.tools.list_ports

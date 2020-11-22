@@ -198,16 +198,15 @@ EV_RMT_GCODE = 2220
 # --------------------------------------------------------------------------
 VERBOSE_MASK = 0
 
-VERBOSE_MASK_UI = 0x000000FF
+VERBOSE_MASK_UI_ALL = 0x000000FF
 VERBOSE_MASK_UI_EV = 0x00000001
 
-VERBOSE_MASK_MACHIF = 0x0000FF00
+VERBOSE_MASK_MACHIF_ALL = 0x0000FF00
 VERBOSE_MASK_MACHIF_EXEC = 0x00000F00
 VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000100
 VERBOSE_MASK_MACHIF_MOD = 0x0000F000
 VERBOSE_MASK_MACHIF_MOD_EV = 0x00001000
-VERBOSE_MASK_MACHIF_EV = \
-    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_EXEC_EV
+VERBOSE_MASK_MACHIF_EV = VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV
 
 VERBOSE_MASK_SERIALIF_STR = 0x00010000
 VERBOSE_MASK_SERIALIF_HEX = 0x00020000
@@ -225,6 +224,27 @@ VERBOSE_MASK_EVENTIF = \
     VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV |\
     VERBOSE_MASK_SERIALIF_EV | VERBOSE_MASK_REMOTEIF_EV
 
+VERBOSE_MASK_DICT = {
+    "ui_all": VERBOSE_MASK_UI_ALL,
+    "ui_ev": VERBOSE_MASK_UI_EV,
+    "machif_all": VERBOSE_MASK_MACHIF_ALL,
+    "machif_ev": VERBOSE_MASK_MACHIF_EV,
+    "machif_exec": VERBOSE_MASK_MACHIF_EXEC,
+    "machif_exec_ev": VERBOSE_MASK_MACHIF_EXEC_EV,
+    "machif_mod": VERBOSE_MASK_MACHIF_MOD,
+    "machif_mod_ev": VERBOSE_MASK_MACHIF_MOD_EV,
+    "serialif": VERBOSE_MASK_SERIALIF,
+    "serialif_str": VERBOSE_MASK_SERIALIF_STR,
+    "serialif_hex": VERBOSE_MASK_SERIALIF_HEX,
+    "serialif_ev": VERBOSE_MASK_SERIALIF_EV,
+    "serialif_all": VERBOSE_MASK_SERIALIF_ALL,
+    "remoteif": VERBOSE_MASK_REMOTEIF,
+    "remoteif_str": VERBOSE_MASK_REMOTEIF_STR,
+    "remoteif_hex": VERBOSE_MASK_REMOTEIF_HEX,
+    "remoteif_ev": VERBOSE_MASK_REMOTEIF_EV,
+    "remoteif_all": VERBOSE_MASK_REMOTEIF_ALL,
+    "eventif": VERBOSE_MASK_EVENTIF,
+}
 
 def decode_verbose_mask_string(verbose_mask_str):
     """ Decode and init gc VERBOSE_MASK
@@ -235,62 +255,8 @@ def decode_verbose_mask_string(verbose_mask_str):
 
     for mask in mask_list:
         mask = str(mask).lower()
-        if "ui" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_UI
-
-        if "ui_ev" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_UI_EV
-
-        if "machif" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_MACHIF
-
-        if "machif_ev" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EV
-
-        if "machif_exec" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EXEC
-
-        if "machif_exec_ev" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_EXEC_EV
-
-        if "machif_mod" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_MOD
-
-        if "machif_mod_ev" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_MACHIF_MOD_EV
-
-        if "serialif" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF
-
-        if "serialif_str" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_STR
-
-        if "serialif_hex" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_HEX
-
-        if "serialif_ev" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_EV
-
-        if "serialif_all" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_SERIALIF_ALL
-
-        if "remoteif" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_REMOTEIF
-
-        if "remoteif_str" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_REMOTEIF_STR
-
-        if "remoteif_hex" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_REMOTEIF_HEX
-
-        if "remoteif_ev" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_REMOTEIF_EV
-
-        if "remoteif_all" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_REMOTEIF_ALL
-
-        if "eventif" == mask:
-            VERBOSE_MASK |= VERBOSE_MASK_EVENTIF
+        if mask in VERBOSE_MASK_DICT:
+            VERBOSE_MASK |= VERBOSE_MASK_DICT[mask]
 
     return VERBOSE_MASK
 

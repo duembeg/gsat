@@ -72,11 +72,11 @@ def get_cli_params():
                       help="print extra extra information while processing "
                       "input file.")
 
+    mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
     parser.add_option("--vm", "--verbose_mask",
                       dest="verbose_mask",
                       default=None,
-                      help="select verbose mask. UI, MACHIF, MACHIF_MOD, "
-                      "MACHIF_EXEC, SERIALIF, SERIALIF_STR, SERIALIF_HEX",
+                      help="select verbose mask(s) separated by ',' options are {}".format(mask_str),
                       metavar="")
 
     (options, args) = parser.parse_args()
