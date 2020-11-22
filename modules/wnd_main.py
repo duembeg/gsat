@@ -947,12 +947,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_CONNECT, ico.imgRemote.GetBitmap())
 
         self.remoteToolBar.AddSimpleTool(
-            gID_MENU_REMOTE_GET_GCODE, "Remote Get G-code", ico.imgRemote.GetBitmap(), "Get G-code from remote server")
-        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_GET_GCODE, ico.imgRemote.GetBitmap())
+            gID_MENU_REMOTE_GET_GCODE, "Remote Get G-code", ico.imgRemoteGcode.GetBitmap(), "Get G-code from remote server")
+        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_GET_GCODE, ico.imgRemoteGcodeDisabled.GetBitmap())
 
         self.remoteToolBar.AddSimpleTool(
-            gID_MENU_REMOTE_SETTINGS, "Remore Settings", ico.imgRemote.GetBitmap(), "Settings on remote server")
-        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_SETTINGS, ico.imgRemote.GetBitmap())
+            gID_MENU_REMOTE_SETTINGS, "Remore Settings", ico.imgRemoteSettings.GetBitmap(), "Settings on remote server")
+        self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_SETTINGS, ico.imgRemoteSettingsDisabled.GetBitmap())
 
         self.remoteToolBar.Realize()
 
