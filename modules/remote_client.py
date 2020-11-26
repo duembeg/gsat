@@ -133,6 +133,16 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 e.sender = id(e.sender)
                 self.send(self.socClient, e)
 
+    def get_hostname(self):
+        """ Get server hot info
+        """
+        hostname = ""
+
+        if self.socClient is not None:
+            hostname = "{}{}".format(self.host, self.inputsAddr[self.socClient])
+
+        return hostname
+
     def close(self):
         """ Close serial port
         """

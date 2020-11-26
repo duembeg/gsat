@@ -269,8 +269,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.aui_mgr.SetManagedWindow(self)
 
         # experiment with status bar
-        self.statusbar = self.CreateStatusBar(2)
-        self.statusbar.SetStatusWidths([-1,100])
+        self.statusbar = self.CreateStatusBar(4)
+        self.statusbar.SetStatusWidths([-1, 350, 150, 100])
         self.statusbar.SetStatusText('')
 
         self.machineStatusPanel = mc.gsatMachineStatusPanel(
@@ -977,6 +977,31 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnStatusToolBarForceUpdate()
         self.OnRunToolBarForceUpdate()
 
+        # Program status
+        if self.stateData.swState == gc.STATE_IDLE:
+            self.statusbar.SetStatusText("SWST: Idle", 3)
+        elif self.stateData.swState == gc.STATE_RUN:
+            self.statusbar.SetStatusText("SWST: Run", 3)
+        elif self.stateData.swState == gc.STATE_PAUSE:
+            self.statusbar.SetStatusText("SWST: Pause", 3)
+        elif self.stateData.swState == gc.STATE_STEP:
+            self.statusbar.SetStatusText("SWST: Step", 3)
+        elif self.stateData.swState == gc.STATE_BREAK:
+            self.statusbar.SetStatusText("SWST: Break", 3)
+        elif self.stateData.swState == gc.STATE_ABORT:
+            self.statusbar.SetStatusText("SWST: ABORT", 3)
+
+        # machif status
+        if self.remoteClient:
+            self.statusbar.SetStatusText("Remote: {}".format(self.remoteClient.get_hostname()), 1)
+        else:
+            self.statusbar.SetStatusText("", 1)
+
+        if self.stateData.serialPortIsOpen:
+            self.statusbar.SetStatusText("Device: Connected", 2)
+        else:
+            self.statusbar.SetStatusText("Device: Disconnected", 2)
+
         self.aui_mgr.Update()
 
     """------------------------------------------------------------------------
@@ -1186,8 +1211,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 "%s - %s" %
                 (os.path.basename(self.stateData.gcodeFileName), __appname__))
 
-            self.statusbar.SetStatusText(
-                os.path.basename(self.stateData.gcodeFileName))
+            self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
 
             self.UpdateUI()
 
@@ -1860,19 +1884,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machineToolBar.SetToolBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
             self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
 
-        # Program status
-        if self.stateData.swState == gc.STATE_IDLE:
-            self.statusbar.SetStatusText("Idle", 1)
-        elif self.stateData.swState == gc.STATE_RUN:
-            self.statusbar.SetStatusText("Run", 1)
-        elif self.stateData.swState == gc.STATE_PAUSE:
-            self.statusbar.SetStatusText("Pause", 1)
-        elif self.stateData.swState == gc.STATE_STEP:
-            self.statusbar.SetStatusText("Step", 1)
-        elif self.stateData.swState == gc.STATE_BREAK:
-            self.statusbar.SetStatusText("Break", 1)
-        elif self.stateData.swState == gc.STATE_ABORT:
-            self.statusbar.SetStatusText("ABORT", 1)
 
     # -------------------------------------------------------------------------
     # Help Menu Handlers
@@ -1967,6 +1978,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machifProgExec.eventPut(gc.EV_CMD_CLOSE)
 
             self.stateData.serialPortIsOpen = False
+            self.UpdateUI()
 
     def SerialOpen(self):
         if self.remoteClient is None:
@@ -2183,29 +2195,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             pass
 
         else:
-            if te.event_id == gc.EV_ABORT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_ABORT from 0x{:x} {}".format(id(te.sender), te.sender))
-
-                self.outputText.AppendText(te.data)
-
-                if te.sender is self.remoteClient:
-                    self.RemoteClose()
-                    self.remoteClient = None
-                    self.configRemoteData = None
-                    self.stateData.serialPortIsOpen = False
-                elif te.sender is self.machifProgExec:
-                    self.SerialClose()
-                    self.machifProgExec = None
-                    self.stateData.serialPortIsOpen = False
-
-                self.stateData.deviceDetected = False
-                self.stateData.swState = gc.STATE_IDLE
-
-                self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
-                self.UpdateUI()
-
-            elif te.event_id == gc.EV_DATA_STATUS:
+            if te.event_id == gc.EV_DATA_STATUS:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_DATA_STATUS")
 
@@ -2366,6 +2356,30 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 if id(te.sender) == id(self.machifProgExec):
                     self.machifProgExec = None
+
+                self.UpdateUI()
+
+            elif te.event_id == gc.EV_ABORT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_ABORT from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                self.outputText.AppendText(te.data)
+
+                if te.sender is self.remoteClient:
+                    self.RemoteClose()
+                    self.remoteClient = None
+                    self.configRemoteData = None
+                    self.stateData.serialPortIsOpen = False
+                elif te.sender is self.machifProgExec:
+                    self.SerialClose()
+                    self.machifProgExec = None
+                    self.stateData.serialPortIsOpen = False
+
+                self.stateData.deviceDetected = False
+                self.stateData.swState = gc.STATE_IDLE
+
+                self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
+                self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_PORT_OPEN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
