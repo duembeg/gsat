@@ -257,11 +257,22 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_UPDATE_CONFIG from client{}".format(self.inputsAddr[e.sender]))
 
-                gc.CONFIG_DATA = e.data
-                gc.CONFIG_DATA.save()
+                machine_device = gc.CONFIG_DATA.get('/machine/Device')
+                machine_port = gc.CONFIG_DATA.get('/machine/Port')
+                machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
+
+                if e.data is not None:
+                    gc.CONFIG_DATA = e.data
+                    gc.CONFIG_DATA.save()
 
                 if self.machifProgExec is not None:
                     self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
+
+                    # re open serial port if open
+                    if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
+                        machine_port != gc.CONFIG_DATA.get('/machine/Port') or
+                        machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
+                        self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
 
             else:
                 # # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:

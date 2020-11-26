@@ -207,6 +207,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # get app data obj
         self.configData = gc.CONFIG_DATA
         self.configRemoteData = None
+        self.stateData.machineStatusString = "None"
 
         self.logger = logging.getLogger()
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_ALL:
@@ -217,8 +218,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # init some variables
         self.machifProgExec = None
         self.remoteClient = None
-        self.runStartTime = 0
-        self.runEndTime = 0
         self.progexecRunTime = 0
         self.runEndWaitingForMachIfIdle = False
         self.eventInCount = 0
@@ -1359,7 +1358,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machineJoggingPanel.UpdateSettings(self.configData)
             self.CV2Panel.UpdateSettings(self.configData)
 
-            if self.machifProgExec is not None:
+            if self.machifProgExec is not None and self.remoteClient is None:
                 self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
 
             # re open serial port if open
@@ -1413,16 +1412,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             self.machifProgExec.eventPut(gc.EV_CMD_RUN, runDict, self)
 
-            if self.stateData.swState != gc.STATE_PAUSE and \
-               self.stateData.swState != gc.STATE_BREAK:
-                self.runStartTime = int(time.time())
-                self.runEndTime = 0
-
-            # self.RunTimerStart()
-
             self.gcText.GoToPC()
-            # self.stateData.swState = gc.STATE_RUN
-            # self.UpdateUI()
 
     def OnRunHelper(self):
         state = False
@@ -1770,12 +1760,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.remoteClient.eventPut(gc.EV_CMD_UPDATE_CONFIG, self.configRemoteData)
 
-                # re open serial port if open
-                if self.stateData.serialPortIsOpen and (
-                    machine_port != self.configRemoteData.get('/machine/Port') or
-                    machine_baud != self.configRemoteData.get('/machine/Baud')):
-                    self.SerialClose()
-
             # refresh UIs after settings updates
             self.UpdateUI()
 
@@ -1966,8 +1950,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         return spList
 
     def GetSerialBaudRateList(self):
-        sbList = ['1200', '2400', '4800', '9600',
-                  '19200', '38400', '57600', '115200']
+        sbList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200', '230400']
         return sbList
 
     def SerialClose(self):
@@ -2264,7 +2247,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.logger.info("EV_RUN_END")
 
                 # self.stateData.swState = gc.STATE_IDLE
-                # self.runEndWaitingForMachIfIdle = True
+                self.runEndWaitingForMachIfIdle = True
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_STEP_END:
@@ -2448,19 +2431,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 # self.RunTimerStop()
 
                 # calculate run time
-                if self.runEndTime == 0:
-                    self.runEndTime = self.progexecRunTime + self.runStartTime
-
-                # runTime = self.runEndTime - self.runStartTime
+                runStartTime = time.time() - self.progexecRunTime
                 runTime = self.progexecRunTime
+
                 hours, reminder = divmod(runTime, 3600)
                 minutes, reminder = divmod(reminder, 60)
                 seconds, mseconds = divmod(reminder, 1)
                 runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
                 runStartTimeStr = time.strftime(
-                    "%a, %d %b %Y %H:%M:%S", time.localtime(self.runStartTime))
+                    "%a, %d %b %Y %H:%M:%S", time.localtime(runStartTime))
                 runEndTimeStr = time.strftime(
-                    "%a, %d %b %Y %H:%M:%S", time.localtime(self.runEndTime))
+                    "%a, %d %b %Y %H:%M:%S", time.localtime(runStartTime + runTime))
 
                 self.Refresh()
                 self.UpdateUI()

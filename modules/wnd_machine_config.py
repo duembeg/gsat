@@ -75,8 +75,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             wx.EVT_COMBOBOX, self.OnDeviceComboBoxSelect, self.deviceComboBox)
 
         # get serial port list and baud rate speeds
-        brList = ['1200', '2400', '4800', '9600',
-                  '19200', '38400', '57600', '115200']
+        brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200', '230400']
 
         # Add serial port controls
         st = wx.StaticText(self, label="Serial Port")
@@ -137,27 +136,27 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         st = wx.StaticText(self, label="DRO Axes")
         hBoxSz = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X")
+        self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X   ")
         self.cbDroEnX.SetValue(self.configData.get('/machine/DRO/EnableX'))
         self.cbDroEnX.SetToolTip(wx.ToolTip("DRO Enable X axis"))
 
-        self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y")
+        self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y   ")
         self.cbDroEnY.SetValue(self.configData.get('/machine/DRO/EnableY'))
         self.cbDroEnY.SetToolTip(wx.ToolTip("DRO Enable Y axis"))
 
-        self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z")
+        self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z   ")
         self.cbDroEnZ.SetValue(self.configData.get('/machine/DRO/EnableZ'))
         self.cbDroEnZ.SetToolTip(wx.ToolTip("DRO Enable Z axis"))
 
-        self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A")
+        self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A   ")
         self.cbDroEnA.SetValue(self.configData.get('/machine/DRO/EnableA'))
         self.cbDroEnA.SetToolTip(wx.ToolTip("DRO Enable A axis"))
 
-        self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B")
+        self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B   ")
         self.cbDroEnB.SetValue(self.configData.get('/machine/DRO/EnableB'))
         self.cbDroEnB.SetToolTip(wx.ToolTip("DRO Enable B axis"))
 
-        self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C")
+        self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C   ")
         self.cbDroEnC.SetValue(self.configData.get('/machine/DRO/EnableC'))
         self.cbDroEnC.SetToolTip(wx.ToolTip("DRO Enable C axis"))
 
