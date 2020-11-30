@@ -106,8 +106,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         if not run_time_safe_only:
             self.machIfId = mi.GetMachIfId(gc.CONFIG_DATA.get('/machine/Device'))
 
-        self.filterGCodesEnable = gc.CONFIG_DATA.get(
-            '/machine/FilterGcodesEnable')
+        self.filterGCodesEnable = gc.CONFIG_DATA.get('/machine/FilterGcodesEnable')
         self.filterGCodes = gc.CONFIG_DATA.get('/machine/FilterGcodes')
         filterGcodeList = self.filterGCodes.split(',')
         self.filterGCodesList = [x.strip() for x in filterGcodeList]

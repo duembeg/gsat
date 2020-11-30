@@ -2405,6 +2405,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.outputText.AppendText(te.data)
 
+            elif te.event_id == gc.EV_RMT_GOOD_BYE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_GOOD_BYE from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                self.outputText.AppendText(te.data)
+
             elif te.event_id == gc.EV_SW_STATE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_SW_STATE")

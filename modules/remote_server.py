@@ -72,10 +72,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        # self.remotePort = None
-        # self.remoteHost = None
-        self.tcpPort = 61801
-        self.udpPort = 61802
+        self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+        self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
         self.host = socket.gethostname()
         self.socServer = None
         self.socBroadcast = None
@@ -87,7 +85,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.machifProgExec = None
         self.serialPortIsOpen = False
         self.deviceDetected = False
-        self.useUdpBroadcast = True
+        self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/udpBroadcast', True)
 
         self.rxBuffer = b""
         self.rxBufferLen = 0
@@ -243,6 +241,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                 port_list = self.get_serial_ports()
                 gc.CONFIG_DATA.add('/temp/SerialPorts', port_list)
+                gc.CONFIG_DATA.add('/temp/RemoteServer', True)
                 self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.socServer)))
 
             elif e.event_id == gc.EV_CMD_GET_GCODE:
@@ -261,6 +260,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 machine_port = gc.CONFIG_DATA.get('/machine/Port')
                 machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
 
+                tcp_port = gc.CONFIG_DATA.get('/remote/TcpPort')
+                udp_port  = gc.CONFIG_DATA.get('/remote/UdpPort')
+                udp_broadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast')
+
                 if e.data is not None:
                     gc.CONFIG_DATA = e.data
                     gc.CONFIG_DATA.save()
@@ -268,11 +271,25 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 if self.machifProgExec is not None:
                     self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
 
-                    # re open serial port if open
+                    # close serial port if settings changed
                     if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
                         machine_port != gc.CONFIG_DATA.get('/machine/Port') or
                         machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
                         self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+
+                # re start server if settings changed
+                if (tcp_port != gc.CONFIG_DATA.get('/remote/TcpPort') or
+                    udp_port != gc.CONFIG_DATA.get('/remote/UdpPort') or
+                    udp_broadcast != gc.CONFIG_DATA.get('/remote/UdpBroadcast')):
+
+                    self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort')
+                    self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort')
+                    self.udpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast')
+
+                    msg = gc.SimpleEvent(gc.EV_RMT_GOOD_BYE, "** Server settings changing, restart...\n")
+                    self.send_broadcast(msg)
+                    self.close()
+                    self.open()
 
             else:
                 # # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:

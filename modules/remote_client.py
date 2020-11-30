@@ -67,9 +67,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.tcpPort = 61801
-        self.udpPort = 61802
-        self.host = "raspberrypi"
+        self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+        self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
+        self.host = gc.CONFIG_DATA.get('/remote/Host', "")
         # self.host = "river"
         self.socClient = None
         self.socBroadcast = None
@@ -77,7 +77,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.inputsAddr = {}
         self.outputs = []
         self.messageQueues = {}
-        self.useUdpBroadcast = True
+        self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/udpBroadcast', True)
 
         self.rxBuffer = b""
         self.rxBufferLen = 0

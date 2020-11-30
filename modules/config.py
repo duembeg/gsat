@@ -590,6 +590,12 @@ class gsatConfigData(ConfigData):
             "ReadOnly": False,
             "WindowBackground": "#FFFFFF",
             "WindowForeground": "#000000"
+        },
+        "remote": {
+            "Host": "host",
+            "TcpPort": 61801,
+            "UdpPort": 61802,
+            "UdpBroadcast": True
         }
     }
 

@@ -45,11 +45,34 @@ from wx.lib import scrolledpanel as scrolled
 import modules.config as gc
 import modules.machif_config as mi
 import images.icons as ico
-import modules.wnd_editor_config as edc
-import modules.wnd_machine_config as mcc
-import modules.wnd_jogging_config as jogc
-import modules.wnd_cli_config as clic
-import modules.wnd_compvision_config as compvc
+
+main_wnd_c = sys.modules[__name__]
+import modules.wnd_gcode_config as gcode_c
+import modules.wnd_output_config as output_c
+import modules.wnd_machine_config as machine_c
+import modules.wnd_jogging_config as jog_c
+import modules.wnd_cli_config as cli_c
+import modules.wnd_compvision_config as compvision_c
+import modules.wnd_remote_config as remote_c
+
+
+class Factory():
+    """ Factory class to init config page
+    """
+
+    @staticmethod
+    def GetIcon():
+        return ico.imgGeneralSettings.GetBitmap()
+
+    @staticmethod
+    def AddPage(parent_wnd, config, page):
+        ''' Function to create and inti settings page
+        '''
+        settings_page = gsatGeneralSettingsPanel(parent_wnd, config)
+        parent_wnd.AddPage(settings_page, "General")
+        parent_wnd.SetPageImage(page, page)
+
+        return settings_page
 
 
 class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
@@ -164,8 +187,7 @@ class gsatSettingsDialog(wx.Dialog):
 
     def __init__(self, parent, config_data, config_remote_data=None, id=wx.ID_ANY, title="Settings",
                  style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER):
-
-        wx.Dialog.__init__(self, parent, id, title, style=style)
+        super(gsatSettingsDialog, self).__init__(parent, id, title, style=style)
 
         self.configRemoteData = config_remote_data
 
@@ -174,45 +196,38 @@ class gsatSettingsDialog(wx.Dialog):
         else:
             self.configData = config_data
 
+        self.settings_pages = []
+
         self.InitUI()
 
     def InitUI(self):
         sizer = wx.BoxSizer(wx.VERTICAL)
 
+        # add pages
+        if self.configRemoteData:
+            mod_settings = [machine_c, remote_c]
+        else:
+            mod_settings = [main_wnd_c, gcode_c, output_c, cli_c, machine_c, jog_c, compvision_c, remote_c]
+
         # init note book
         self.imageList = wx.ImageList(16, 16)
-        if self.configRemoteData:
-            self.imageList.Add(ico.imgMachine.GetBitmap())
-        else:
-            self.imageList.Add(ico.imgGeneralSettings.GetBitmap())
-            # self.imageList.Add(ico.imgPlugConnect.GetBitmap())
-            self.imageList.Add(ico.imgProgram.GetBitmap())
-            self.imageList.Add(ico.imgLog.GetBitmap())
-            self.imageList.Add(ico.imgCli.GetBitmap())
-            self.imageList.Add(ico.imgMachine.GetBitmap())
-            self.imageList.Add(ico.imgMove.GetBitmap())
-            self.imageList.Add(ico.imgEye.GetBitmap())
+
+        for m in mod_settings:
+            self.imageList.Add(m.Factory.GetIcon())
 
         # for Windows and OS X, tabbed on the left don't work as well
         if sys.platform.startswith('linux'):
-            self.noteBook = wx.Notebook(
-                self, size=(700, 400), style=wx.BK_LEFT)
+            self.noteBook = wx.Notebook(self, size=(700, 400), style=wx.BK_LEFT)
         else:
             self.noteBook = wx.Notebook(self, size=(700, 400))
 
         self.noteBook.AssignImageList(self.imageList)
 
         # add pages
-        if self.configRemoteData:
-            self.AddMachinePage(0)
-        else:
-            self.AddGeneralPage(0)
-            self.AddProgramPage(1)
-            self.AddOutputPage(2)
-            self.AddCliPage(3)
-            self.AddMachinePage(4)
-            self.AddJoggingPage(5)
-            self.AddCV2Panel(6)
+        index = 0
+        for m in mod_settings:
+            self.settings_pages.append(m.Factory.AddPage(self.noteBook, self.configData, index))
+            index = index + 1
 
         # self.noteBook.Layout()
         sizer.Add(self.noteBook, 1, wx.ALL | wx.EXPAND, 5)
@@ -239,55 +254,6 @@ class gsatSettingsDialog(wx.Dialog):
         # self.SetAutoLayout(True)
         self.Layout()
 
-    def AddGeneralPage(self, page):
-        self.generalPage = gsatGeneralSettingsPanel(
-            self.noteBook, self.configData)
-        self.noteBook.AddPage(self.generalPage, "General")
-        self.noteBook.SetPageImage(page, page)
-
-    def AddProgramPage(self, page):
-        self.programPage = edc.gsatStyledTextCtrlSettingsPanel(
-            self.noteBook, self.configData, "code")
-        self.noteBook.AddPage(self.programPage, "Program")
-        self.noteBook.SetPageImage(page, page)
-
-    def AddOutputPage(self, page):
-        self.outputPage = edc.gsatStyledTextCtrlSettingsPanel(
-            self.noteBook, self.configData, "output")
-        self.noteBook.AddPage(self.outputPage, "Output")
-        self.noteBook.SetPageImage(page, page)
-
-    def AddCliPage(self, page):
-        self.cliPage = clic.gsatCliSettingsPanel(self.noteBook, self.configData)
-        self.noteBook.AddPage(self.cliPage, "Cli")
-        self.noteBook.SetPageImage(page, page)
-
-    def AddMachinePage(self, page):
-        self.machinePage = mcc.gsatMachineSettingsPanel(
-            self.noteBook, self.configData)
-        self.noteBook.AddPage(self.machinePage, "Machine")
-        self.noteBook.SetPageImage(page, page)
-
-    def AddJoggingPage(self, page):
-        self.jogPage = jogc.gsatJoggingSettingsPanel(
-            self.noteBook, self.configData)
-        self.noteBook.AddPage(self.jogPage, "Jogging")
-        self.noteBook.SetPageImage(page, page)
-
-    def AddCV2Panel(self, page):
-        self.CV2Page = compvc.gsatCV2SettingsPanel(
-            self.noteBook, self.configData)
-        self.noteBook.AddPage(self.CV2Page, " OpenCV2")
-        self.noteBook.SetPageImage(page, page)
-
     def UpdateConfigData(self):
-        if not self.configRemoteData:
-            self.generalPage.UpdateConfigData()
-            self.programPage.UpdateConfigData()
-            self.outputPage.UpdateConfigData()
-            self.cliPage.UpdateConfigData()
-            self.machinePage.UpdateConfigData()
-            self.jogPage.UpdateConfigData()
-            self.CV2Page.UpdateConfigData()
-        else:
-            self.machinePage.UpdateConfigData()
+        for page in self.settings_pages:
+            page.UpdateConfigData()
