@@ -31,6 +31,7 @@ import re
 import time
 import shutil
 import logging
+import hashlib
 import wx
 import wx.combo
 # from wx import stc as stc
@@ -217,6 +218,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # init some variables
         self.machifProgExec = None
+        self.machifProgExecGcodeMd5 = 0
         self.remoteClient = None
         self.progexecRunTime = 0
         self.runEndWaitingForMachIfIdle = False
@@ -1359,7 +1361,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.CV2Panel.UpdateSettings(self.configData)
 
             if self.machifProgExec is not None and self.remoteClient is None:
-                self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
+                self.machifProgExec.add_event(gc.EV_CMD_UPDATE_CONFIG)
 
             # re open serial port if open
             if self.stateData.serialPortIsOpen and (
@@ -1406,11 +1408,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if len(self.stateData.gcodeFileName):
                     runDict['gcodeFileName'] = self.stateData.gcodeFileName
 
-                runDict['gcodeLines'] = self.stateData.gcodeFileLines
+                h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                if self.machifProgExecGcodeMd5 != h:
+                    runDict['gcodeLines'] = self.stateData.gcodeFileLines
+
                 runDict['gcodePC'] = self.stateData.programCounter
                 runDict['brakePoints'] = self.stateData.breakPoints
 
-            self.machifProgExec.eventPut(gc.EV_CMD_RUN, runDict, self)
+            self.machifProgExec.add_event(gc.EV_CMD_RUN, runDict, self)
 
             self.gcText.GoToPC()
 
@@ -1435,7 +1440,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnPause(self, e):
         #self.Stop(gc.STATE_PAUSE)
-        self.machifProgExec.eventPut(gc.EV_CMD_PAUSE, None, self)
+        self.machifProgExec.add_event(gc.EV_CMD_PAUSE, None, self)
         # self.stateData.swState = gc.STATE_PAUSE
         # self.UpdateUI()
 
@@ -1464,11 +1469,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if len(self.stateData.gcodeFileName):
                     runDict['gcodeFileName'] = self.stateData.gcodeFileName
 
-                runDict['gcodeLines'] = self.stateData.gcodeFileLines
+                h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                if self.machifProgExecGcodeMd5 != h:
+                    runDict['gcodeLines'] = self.stateData.gcodeFileLines
+
                 runDict['gcodePC'] = self.stateData.programCounter
                 runDict['brakePoints'] = self.stateData.breakPoints
 
-            self.machifProgExec.eventPut(gc.EV_CMD_STEP, runDict, self)
+            self.machifProgExec.add_event(gc.EV_CMD_STEP, runDict, self)
 
             # self.stateData.swState = gc.STATE_STEP
             # self.UpdateUI()
@@ -1617,7 +1625,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnMachineCycleStart(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_CYCLE_START)
+            self.machifProgExec.add_event(gc.EV_CMD_CYCLE_START)
 
             # if (self.stateData.swState == gc.STATE_PAUSE):
             #     self.OnRun(e)
@@ -1638,7 +1646,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             # if (self.stateData.swState == gc.STATE_RUN):
             #     self.OnPause(e)
 
-            self.machifProgExec.eventPut(gc.EV_CMD_FEED_HOLD)
+            self.machifProgExec.add_event(gc.EV_CMD_FEED_HOLD)
 
     def OnMachineFeedHoldUpdate(self, e=None):
         state = False
@@ -1652,7 +1660,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnMachineQueueFlush(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_QUEUE_FLUSH)
+            self.machifProgExec.add_event(gc.EV_CMD_QUEUE_FLUSH)
 
     def OnMachineQueueFlushUpdate(self, e=None):
         state = False
@@ -1666,7 +1674,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnMachineReset(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_RESET)
+            self.machifProgExec.add_event(gc.EV_CMD_RESET)
 
     def OnMachineResetUpdate(self, e=None):
         state = False
@@ -1681,7 +1689,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnMachineClearAlarm(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM)
+            self.machifProgExec.add_event(gc.EV_CMD_CLEAR_ALARM)
 
     def OnMachineClearAlarmUpdate(self, e=None):
         state = False
@@ -1696,7 +1704,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnAbort(self, e):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_FEED_HOLD)
+            self.machifProgExec.add_event(gc.EV_CMD_FEED_HOLD)
 
         self.Stop()
 
@@ -1758,7 +1766,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if result == wx.ID_OK:
                 dlg.UpdateConfigData()
 
-                self.remoteClient.eventPut(gc.EV_CMD_UPDATE_CONFIG, self.configRemoteData)
+                self.remoteClient.add_event(gc.EV_CMD_UPDATE_CONFIG, self.configRemoteData)
 
             # refresh UIs after settings updates
             self.UpdateUI()
@@ -1956,9 +1964,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def SerialClose(self):
         if self.machifProgExec is not None:
             if self.remoteClient is None:
-                self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+                self.machifProgExec.add_event(gc.EV_CMD_EXIT)
             else:
-                self.machifProgExec.eventPut(gc.EV_CMD_CLOSE)
+                self.machifProgExec.add_event(gc.EV_CMD_CLOSE)
 
             self.stateData.serialPortIsOpen = False
             self.UpdateUI()
@@ -1967,7 +1975,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.remoteClient is None:
             self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
         else:
-            self.machifProgExec.eventPut(gc.EV_CMD_OPEN)
+            self.machifProgExec.add_event(gc.EV_CMD_OPEN)
 
         self.UpdateUI()
 
@@ -1975,7 +1983,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.stateData.serialPortIsOpen:
 
             if self.machifProgExec is not None:
-                self.machifProgExec.eventPut(gc.EV_CMD_SEND, serialData)
+                self.machifProgExec.add_event(gc.EV_CMD_SEND, serialData)
                 # self.mainWndOutQueue.put(
                 #     gc.SimpleEvent(gc.EV_CMD_SEND, serialData))
                 # # self.mainWndOutQueue.join()
@@ -1987,7 +1995,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.stateData.serialPortIsOpen:
 
             if self.machifProgExec is not None:
-                self.machifProgExec.eventPut(gc.EV_CMD_SEND_W_ACK, serialData)
+                self.machifProgExec.add_event(gc.EV_CMD_SEND_W_ACK, serialData)
 
         elif self.cmdLineOptions.verbose:
             print ("gsatMainWindow ERROR: attempt serial write with port closed!!")
@@ -2002,11 +2010,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def RemoteClose(self):
         if self.remoteClient is not None:
-            self.remoteClient.eventPut(gc.EV_CMD_EXIT)
+            self.remoteClient.add_event(gc.EV_CMD_EXIT)
 
     def Stop(self, toState=gc.STATE_IDLE):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_STOP)
+            self.machifProgExec.add_event(gc.EV_CMD_STOP)
 
             # self.stateData.swState = toState
             # self.UpdateUI()
@@ -2020,7 +2028,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def GetMachineStatus(self):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(gc.EV_CMD_GET_STATUS)
+            self.machifProgExec.add_event(gc.EV_CMD_GET_STATUS)
 
         elif self.cmdLineOptions.verbose:
             print ("gsatMainWindow ERROR: attempt GetMachineStatus without progExecTread!!")
@@ -2230,17 +2238,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.SetPC(te.data)
 
-            elif te.event_id == gc.EV_DEVICE_DETECTED:
+            elif te.event_id == gc.EV_GCODE_MD5:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_DEVICE_DETECTED")
+                    self.logger.info("EV_GCODE_MD5")
 
-                self.stateData.deviceDetected = True
-
-                # TODO: this doesn't belong here put in machif_proexec
-                self.GetMachineStatus()
-
-                if self.remoteClient is None:
-                    self.RunDeviceInitScript()
+                self.machifProgExecGcodeMd5 = te.data
 
             elif te.event_id == gc.EV_RUN_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2314,7 +2316,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.serialPortIsOpen = True
 
                 if self.remoteClient is not None:
-                    self.remoteClient.eventPut(gc.EV_CMD_GET_STATUS)
+                    self.remoteClient.add_event(gc.EV_CMD_GET_STATUS)
 
                 self.UpdateUI()
 
@@ -2341,6 +2343,18 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.machifProgExec = None
 
                 self.UpdateUI()
+
+            elif te.event_id == gc.EV_DEVICE_DETECTED:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_DEVICE_DETECTED")
+
+                self.stateData.deviceDetected = True
+
+                # TODO: this doesn't belong here put in machif_proexec
+                self.GetMachineStatus()
+
+                if self.remoteClient is None:
+                    self.RunDeviceInitScript()
 
             elif te.event_id == gc.EV_ABORT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -2371,11 +2385,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.outputText.AppendText(te.data)
 
                 if self.remoteClient is not None:
-                    self.remoteClient.eventPut(gc.EV_CMD_GET_CONFIG)
+                    self.remoteClient.add_event(gc.EV_CMD_GET_CONFIG)
 
                 if self.machifProgExec is not None:
-                    self.remoteClient.eventPut(gc.EV_CMD_GET_SYSTEM_INFO)
-                    self.remoteClient.eventPut(gc.EV_CMD_GET_SW_STATE)
+                    self.remoteClient.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
+                    self.remoteClient.add_event(gc.EV_CMD_GET_SW_STATE)
 
                 self.UpdateUI()
 
@@ -2498,11 +2512,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         # self.SerialWriteWaitForAck(initLine)
                         self.outputText.AppendText(initLine)
 
-    def eventPut(self, id, data=None, sender=None):
-        gc.EventQueueIf.eventPut(self, id, data, sender)
+    def add_event(self, id, data=None, sender=None):
+        gc.EventQueueIf.add_event(self, id, data, sender)
         self.eventInCount = self.eventInCount + 1
         wx.PostEvent(self, ThreadQueueEvent(None))
 
     def eventForward2Machif(self, id, data=None, sender=None):
         if self.machifProgExec is not None:
-            self.machifProgExec.eventPut(id, data, sender)
+            self.machifProgExec.add_event(id, data, sender)

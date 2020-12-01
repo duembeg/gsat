@@ -91,7 +91,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
 
         if event_handler is not None:
-            self.addEventListener(event_handler)
+            self.add_event_listener(event_handler)
 
         # start thread
         self.start()
@@ -109,13 +109,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                self.addEventListener(e.sender)
+                self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_GOOD_BYE from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                self.removeEventListener(e.sender)
+                self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
@@ -159,7 +159,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
 
-            self.notifyEventListeners(gc.EV_RMT_PORT_CLOSE, msg)
+            self.notify_event_listeners(gc.EV_RMT_PORT_CLOSE, msg)
 
         if self.socBroadcast is not None:
             self.socBroadcast.close()
@@ -214,7 +214,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
+            self.notify_event_listeners(gc.EV_ABORT, exMsg)
         else:
             msg = "Open remote connection to {}{}\n".format(self.host, self.inputsAddr[self.socClient])
 
@@ -222,7 +222,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.logger.info(msg.strip())
 
             # sending directly to who created us
-            self.notifyEventListeners(gc.EV_RMT_PORT_OPEN, msg)
+            self.notify_event_listeners(gc.EV_RMT_PORT_OPEN, msg)
 
     def recv(self, soc):
 
@@ -443,7 +443,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         data = self.recv(soc)
                         if data:
                             data.sender = self
-                            self.notifyEventListeners(data)
+                            self.notify_event_listeners(data)
                         else:
                             if not self.rxBufferLen:
                                 msg = "Connection reset by peer, server {}{}\n".format(
@@ -454,13 +454,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                                 self.swState = gc.STATE_ABORT
 
-                                self.notifyEventListeners(gc.EV_ABORT, msg)
+                                self.notify_event_listeners(gc.EV_ABORT, msg)
 
                     if self.useUdpBroadcast and len(udp_readable):
                         data = self.recv_from()
                         if data:
                             data.sender = self
-                            self.notifyEventListeners(data)
+                            self.notify_event_listeners(data)
 
                     # # Handle outputs
                     # for soc in writable:
@@ -480,7 +480,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                         self.swState = gc.STATE_ABORT
 
-                        self.notifyEventListeners(gc.EV_ABORT, msg)
+                        self.notify_event_listeners(gc.EV_ABORT, msg)
 
                 elif self.swState == gc.STATE_ABORT:
                     # do nothing, wait to be terminated
@@ -492,7 +492,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                     self.logger.error(exMsg.strip())
 
-                    self.notifyEventListeners(gc.EV_ABORT, exMsg)
+                    self.notify_event_listeners(gc.EV_ABORT, exMsg)
                     break
             else:
                 message = "Remote port is close, terminating.\n"
@@ -504,7 +504,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.swState = gc.STATE_ABORT
 
                 # add data to queue
-                self.notifyEventListeners(gc.EV_ABORT, message)
+                self.notify_event_listeners(gc.EV_ABORT, message)
                 break
 
         # exit thread
@@ -512,5 +512,5 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.info("thread exit")
 
-        self.notifyEventListeners(gc.EV_EXIT, "")
+        self.notify_event_listeners(gc.EV_EXIT, "")
 

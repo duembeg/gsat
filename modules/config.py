@@ -185,6 +185,7 @@ EV_DEVICE_DETECTED = 2140
 EV_CONFIG_DATA = 2150
 EV_SERIAL_PORTS = 2152
 EV_GCODE = 2154
+EV_GCODE_MD5 = 2156
 EV_SW_STATE = 2154
 EV_RMT_HELLO = 2160
 EV_RMT_GOOD_BYE = 2170
@@ -193,7 +194,6 @@ EV_RMT_PORT_CLOSE = 2190
 EV_RMT_CONFIG_DATA = 2200
 EV_RMT_SERIAL_PORTS = 2210
 EV_RMT_GCODE = 2220
-EV_RMT_GCODE_MD5 = 2230
 
 # --------------------------------------------------------------------------
 # VERBOSE MASK
@@ -625,7 +625,7 @@ class SimpleEvent(object):
         self.sender = sender
 
 
-class EventQueueIf():
+class EventQueueIf(object):
     """ Class that implement simple queue APIs
     """
 
@@ -633,23 +633,28 @@ class EventQueueIf():
         self._eventListeners = dict()
         self._eventQueue = queue.Queue()
 
-    def addEventListener(self, listener):
+    def add_event_listener(self, listener):
         self._eventListeners[id(listener)] = listener
 
-    def eventPut(self, event_id, event_data=None, sender=None):
+    def add_event(self, event_id, event_data=None, sender=None):
         if type(event_id) is SimpleEvent:
             self._eventQueue.put(event_id)
         else:
             self._eventQueue.put(SimpleEvent(event_id, event_data, sender))
 
-    def notifyEventListeners(self, event_id, data=None):
+    def notify_event_listeners(self, event_id, data=None):
         for listener in self._eventListeners.keys():
-            self._eventListeners[listener].eventPut(event_id, data, self)
+            self._eventListeners[listener].add_event(event_id, data, self)
 
-    def removeEventListener(self, listener):
+    def remove_event_listener(self, listener):
         if id(listener) in self._eventListeners:
             self._eventListeners.pop(id(listener))
 
+    def send_event(self, other, event_id, event_data=None, sender=None):
+        if type(event_id) is SimpleEvent:
+            other.add_event(event_id)
+        else:
+            other.add_event(event_id, event_data, self)
 
 class TimeOut(object):
     """ Class that implement timeout timer
@@ -670,7 +675,7 @@ class TimeOut(object):
         self.timeNow = time.time()
         self.timeoutTime = self.timeout + self.timeNow
 
-    def timeExpired(self):
+    def time_expired(self):
         rcVal = False
 
         self.timeNow = time.time()

@@ -101,7 +101,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
 
         if event_handler is not None:
-            self.addEventListener(event_handler)
+            self.add_event_listener(event_handler)
 
         # start thread
         self.start()
@@ -153,7 +153,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                         self.logger.info("EV_ABORT from 0x{:x} {}".format(id(e.sender), e.sender))
 
                     if self.machifProgExec is not None:
-                        self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+                        self.machifProgExec.add_event(gc.EV_CMD_EXIT)
 
                     e.sender = id(self)
                     e.event_id = gc.EV_DATA_IN
@@ -184,20 +184,20 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                self.addEventListener(e.sender)
+                self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_GOOD_BYE from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                self.removeEventListener(e.sender)
+                self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_EXIT from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 if self.machifProgExec is not None:
-                    self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+                    self.machifProgExec.add_event(gc.EV_CMD_EXIT)
 
                 self.close()
 
@@ -233,7 +233,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_CLOSE from client{}".format(self.inputsAddr[e.sender]))
 
                 if self.machifProgExec is not None:
-                    self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+                    self.machifProgExec.add_event(gc.EV_CMD_EXIT)
 
             elif e.event_id == gc.EV_CMD_GET_CONFIG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
@@ -269,13 +269,13 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     gc.CONFIG_DATA.save()
 
                 if self.machifProgExec is not None:
-                    self.machifProgExec.eventPut(gc.EV_CMD_UPDATE_CONFIG)
+                    self.machifProgExec.add_event(gc.EV_CMD_UPDATE_CONFIG)
 
                     # close serial port if settings changed
                     if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
                         machine_port != gc.CONFIG_DATA.get('/machine/Port') or
                         machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
-                        self.machifProgExec.eventPut(gc.EV_CMD_EXIT)
+                        self.machifProgExec.add_event(gc.EV_CMD_EXIT)
 
                 # re start server if settings changed
                 if (tcp_port != gc.CONFIG_DATA.get('/remote/TcpPort') or
@@ -298,7 +298,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                 if self.machifProgExec is not None:
                     e.sender = self
-                    self.machifProgExec.eventPut(e)
+                    self.machifProgExec.add_event(e)
 
     def close(self):
         """ Close serial port
@@ -314,7 +314,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info("Close clients and server port")
 
-            self.notifyEventListeners(gc.EV_RMT_PORT_CLOSE)
+            self.notify_event_listeners(gc.EV_RMT_PORT_CLOSE)
 
         if self.socBroadcast is not None:
             self.socBroadcast.close()
@@ -414,14 +414,14 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
+            self.notify_event_listeners(gc.EV_ABORT, exMsg)
         else:
             msg = "Sever listening on {}{}\n".format(self.host, self.socServer.getsockname())
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
 
             # sending directly to who created us
-            self.notifyEventListeners(gc.EV_RMT_PORT_OPEN, msg)
+            self.notify_event_listeners(gc.EV_RMT_PORT_OPEN, msg)
 
     def recv(self, soc):
         exFlag = False
@@ -622,7 +622,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     if len(init_line.strip()):
                         if self.machifProgExec is not None:
-                            self.machifProgExec.eventPut(gc.EV_CMD_SEND, init_line)
+                            self.machifProgExec.add_event(gc.EV_CMD_SEND, init_line)
 
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                 self.logger.info(init_line.strip())
@@ -665,7 +665,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                 self.logger.info(msg.strip())
 
                             # notify local lisensers
-                            self.notifyEventListeners(gc.EV_RMT_HELLO, msg)
+                            self.notify_event_listeners(gc.EV_RMT_HELLO, msg)
 
                             # send welcome message, only to new client
                             msg = gc.SimpleEvent(gc.EV_RMT_HELLO, "Welcome to gsat server {}, on {}{} {}\n".format(
@@ -685,7 +685,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                 # add data to self queue to handle
                                 data.sender = soc
                                 #self.eventPut(data)
-                                self.clientEventQueue.eventPut(data)
+                                self.clientEventQueue.add_event(data)
 
                             else:
                                 if not self.rxBufferLen:
@@ -729,7 +729,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                     self.logger.error(exMsg.strip())
 
-                    self.notifyEventListeners(gc.EV_ABORT, exMsg)
+                    self.notify_event_listeners(gc.EV_ABORT, exMsg)
                     break
             else:
                 message = "Remote port is close, terminating.\n"
@@ -741,7 +741,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 self.swState = gc.STATE_ABORT
 
                 # add data to queue
-                self.notifyEventListeners(gc.EV_ABORT, message)
+                self.notify_event_listeners(gc.EV_ABORT, message)
                 break
 
             time.sleep(0.010)
@@ -751,5 +751,5 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.info("thread exit")
 
-        self.notifyEventListeners(gc.EV_EXIT, "")
+        self.notify_event_listeners(gc.EV_EXIT, "")
 

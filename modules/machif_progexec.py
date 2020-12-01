@@ -88,7 +88,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.initConfig()
 
         if event_handler is not None:
-            self.addEventListener(event_handler)
+            self.add_event_listener(event_handler)
 
         self.logger = logging.getLogger()
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
@@ -127,6 +127,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_STEP")
 
+                h1 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+
                 if 'gcodeFileName' in e.data:
                     self.gcodeFileName = e.data['gcodeFileName']
 
@@ -142,6 +144,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 if 'brakePoints' in e.data:
                     self.breakPointSet = e.data['brakePoints']
+
+                # if gcode lines change update listeners of new md5
+                h2 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                if h1 != h2:
+                    self.notify_event_listeners(gc.EV_GCODE_MD5, h2)
 
                 self.swState = gc.STATE_STEP
 
@@ -170,6 +177,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if h1 != h2 or self.swState == gc.STATE_IDLE:
                     self.runTimeStart = int(time.time())
 
+                # if gcode lines change update listeners of new md5
+                if h1 != h2:
+                    self.notify_event_listeners(gc.EV_GCODE_MD5, h2)
+
                 self.swState = gc.STATE_RUN
 
             elif e.event_id == gc.EV_CMD_PAUSE:
@@ -191,7 +202,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.runTimeStart = 0
 
                 if force_update:
-                    self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+                    self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
 
             elif e.event_id == gc.EV_CMD_SEND:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -338,13 +349,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_HELLO from 0x{:x}".format(id(e.sender)))
 
-                self.addEventListener(e.sender)
+                self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
 
-                self.removeEventListener(e.sender)
+                self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_PROBE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -362,7 +373,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_GET_SW_STATE")
 
-                self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+                self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -398,7 +409,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             if forwardEvent:
                 # notify listeners
-                self.notifyEventListeners(e['id'], e['data'])
+                self.notify_event_listeners(e['id'], e['data'])
 
         else:
             rxData['pc'] = self.workingProgramCounter
@@ -451,7 +462,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                             "Idle", "idle", "Stop", "stop", "End", "end"]:
                             self.runTimeStart = 0
 
-                self.notifyEventListeners(gc.EV_DATA_STATUS, rxData)
+                self.notify_event_listeners(gc.EV_DATA_STATUS, rxData)
 
             if 'tx_data' in rxData:
                 tx_data = rxData['tx_data']
@@ -459,7 +470,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if len(tx_data) > 0:
 
                     # notify listeners
-                    self.notifyEventListeners(gc.EV_DATA_OUT, tx_data)
+                    self.notify_event_listeners(gc.EV_DATA_OUT, tx_data)
 
             # if 'sr' in rxData:
             #     # notify listeners
@@ -468,15 +479,15 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             if 'r' in rxData:
                 if 'fb' in rxData['r']:
                     # notify listeners
-                    self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r'])
+                    self.notify_event_listeners(gc.EV_DATA_STATUS, rxData['r'])
 
                 if 'init' in rxData['r']:
                     # notify listeners
-                    self.notifyEventListeners(gc.EV_DEVICE_DETECTED, rxData['r'])
+                    self.notify_event_listeners(gc.EV_DEVICE_DETECTED, rxData['r'])
 
                 if 'sys' in rxData['r']:
                     # notify listeners
-                    self.notifyEventListeners(gc.EV_DATA_STATUS, rxData['r']['sys'])
+                    self.notify_event_listeners(gc.EV_DATA_STATUS, rxData['r']['sys'])
 
                 if 'f' in rxData:
                     if (rxData['f'][1] != 0 and
@@ -506,7 +517,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             # sent data to UI
             if bytes_sent > 0:
                 # notify listeners
-                self.notifyEventListeners(gc.EV_DATA_OUT, line)
+                self.notify_event_listeners(gc.EV_DATA_OUT, line)
 
             bytesSent = bytesSent + bytes_sent
 
@@ -647,8 +658,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.swState = gc.STATE_IDLE
 
             # notify listeners
-            self.notifyEventListeners(gc.EV_RUN_END)
-            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+            self.notify_event_listeners(gc.EV_RUN_END)
+            self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
         # update PC
@@ -668,8 +679,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             self.swState = gc.STATE_BREAK
             # notify listeners
-            self.notifyEventListeners(gc.EV_HIT_BRK_PT)
-            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+            self.notify_event_listeners(gc.EV_HIT_BRK_PT)
+            self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
         # get gcode line
@@ -688,7 +699,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.swState = gc.STATE_BREAK
 
             # notify listeners
-            self.notifyEventListeners(gc.EV_HIT_MSG, reMsgSearch.group(1))
+            self.notify_event_listeners(gc.EV_HIT_MSG, reMsgSearch.group(1))
             return
 
         # don't sent unnecessary data save the bits for speed
@@ -713,8 +724,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.errorFlag = False
 
             # notify listeners
-            self.notifyEventListeners(gc.EV_HIT_BRK_PT)
-            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+            self.notify_event_listeners(gc.EV_HIT_BRK_PT)
+            self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
     def processStepSate(self):
@@ -730,13 +741,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.swState = gc.STATE_IDLE
 
             # notify listeners
-            self.notifyEventListeners(gc.EV_STEP_END)
-            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+            self.notify_event_listeners(gc.EV_STEP_END)
+            self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
         # update PC
         # self.notifyEventListeners(gc.EV_PC_UPDATE, self.workingProgramCounter)
-        self.notifyEventListeners(gc.EV_DATA_STATUS, {'pc':self.workingProgramCounter})
+        self.notify_event_listeners(gc.EV_DATA_STATUS, {'pc':self.workingProgramCounter})
 
         # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
@@ -746,8 +757,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.swState = gc.STATE_IDLE
 
             # notify listeners
-            self.notifyEventListeners(gc.EV_STEP_END)
-            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+            self.notify_event_listeners(gc.EV_STEP_END)
+            self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
         gcode = self.gcodeDataLines[self.workingProgramCounter]
@@ -764,8 +775,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 self.logger.info("error event, moving to gc.STATE_IDLE")
 
             # notify listeners
-            self.notifyEventListeners(gc.EV_STEP_END)
-            self.notifyEventListeners(gc.EV_SW_STATE, self.swState)
+            self.notify_event_listeners(gc.EV_STEP_END)
+            self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
     def processIdleSate(self):
@@ -833,4 +844,4 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("thread exit")
 
         # notify listeners
-        self.notifyEventListeners(gc.EV_EXIT)
+        self.notify_event_listeners(gc.EV_EXIT)

@@ -71,7 +71,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("init logging id:0x%x" % id(self))
 
         if event_handler is not None:
-            self.addEventListener(event_handler)
+            self.add_event_listener(event_handler)
 
         # start thread
         self.start()
@@ -94,13 +94,13 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
                     self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
 
-                self.addEventListener(e.sender)
+                self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
                     self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
 
-                self.removeEventListener(e.sender)
+                self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
@@ -126,7 +126,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                     self.logger.info("close serial port")
 
-                self.notifyEventListeners(gc.EV_SER_PORT_CLOSE, 0)
+                self.notify_event_listeners(gc.EV_SER_PORT_CLOSE, 0)
 
     def open(self):
         """ Open serial port
@@ -190,7 +190,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                     # no exceptions report serial port open
 
                     # sending directly to who created us
-                    self.notifyEventListeners(gc.EV_SER_PORT_OPEN, port)
+                    self.notify_event_listeners(gc.EV_SER_PORT_OPEN, port)
 
         else:
             exMsg = "There is no valid serial port detected {%s}." % str(port)
@@ -204,7 +204,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
+            self.notify_event_listeners(gc.EV_ABORT, exMsg)
 
     def read(self):
         exFlag = False
@@ -240,7 +240,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                                 self.logger.info(verbose_data_ascii("<-",
                                                  serialData))
 
-                        self.notifyEventListeners(gc.EV_RXDATA,
+                        self.notify_event_listeners(gc.EV_RXDATA,
                                                   "%s\n" % serialData)
 
                         # attempt to reduce starvation on other threads
@@ -274,7 +274,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             self.logger.error(exMsg.strip())
 
             # add data to queue
-            self.notifyEventListeners(gc.EV_ABORT, exMsg)
+            self.notify_event_listeners(gc.EV_ABORT, exMsg)
             self.close()
 
     def write(self, serialData):
@@ -323,7 +323,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.logger.error(exMsg.strip())
 
                 # add data to queue
-                self.notifyEventListeners(gc.EV_ABORT, exMsg)
+                self.notify_event_listeners(gc.EV_ABORT, exMsg)
                 self.close()
 
     def run(self):
@@ -358,7 +358,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                     # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                     self.logger.error(exMsg.strip())
 
-                    self.notifyEventListeners(gc.EV_ABORT, exMsg)
+                    self.notify_event_listeners(gc.EV_ABORT, exMsg)
                     break
             else:
                 message = "serial port is close, terminating.\n"
@@ -370,7 +370,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.swState = gc.STATE_ABORT
 
                 # add data to queue
-                self.notifyEventListeners(gc.EV_ABORT, message)
+                self.notify_event_listeners(gc.EV_ABORT, message)
                 # wx.LogMessage(message)
                 break
 
@@ -379,4 +379,4 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
             self.logger.info("thread exit")
 
-        self.notifyEventListeners(gc.EV_EXIT, "")
+        self.notify_event_listeners(gc.EV_EXIT, "")

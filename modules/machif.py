@@ -36,7 +36,7 @@ import modules.config as gc
 import modules.serial_thread as st
 
 
-class MachIf_Base(object, gc.EventQueueIf):
+class MachIf_Base(gc.EventQueueIf):
     """ Machine interface base class to provide a unified API for specific
         devices (g2core, TinyG, grbl, etc).
     """
@@ -54,8 +54,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         self.name = name
         self._inputBufferMaxSize = input_buffer_max_size
         self._inputBufferWatermarkPrcnt = input_buffer_watermark_prcnt
-        self._inputBufferWatermark = float(
-            self._inputBufferMaxSize) * self._inputBufferWatermarkPrcnt
+        self._inputBufferWatermark = float(self._inputBufferMaxSize) * self._inputBufferWatermarkPrcnt
         self._inputBufferInitVal = input_buffer_init_val
         self._inputBufferSize = self._inputBufferInitVal
 
@@ -98,9 +97,7 @@ class MachIf_Base(object, gc.EventQueueIf):
 
         if machine_current_position_mode != self.machinePositionMode and\
            resert_pos_mode:
-            self.eventPut(
-                gc.EV_TXDATA, "%s\n" % machine_current_position_mode
-            )
+            self.add_event(gc.EV_TXDATA, "{}\n".format(machine_current_position_mode))
             self.write("".join([machine_current_position_mode, "\n"]))
 
     def _reset(
@@ -108,8 +105,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         input_buffer_watermark_prcnt
     ):
         self._inputBufferMaxSize = input_buffer_max_size
-        self._inputBufferWatermark = float(
-            self._inputBufferMaxSize) * input_buffer_watermark_prcnt
+        self._inputBufferWatermark = float(self._inputBufferMaxSize) * input_buffer_watermark_prcnt
         self._inputBufferSize = input_buffer_init_val
 
     def _sendAxisCmd(self, code, dict_axis_coor):
@@ -118,46 +114,32 @@ class MachIf_Base(object, gc.EventQueueIf):
         machine_code = code
 
         if 'x' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " X", str(dict_axis_coor.get('x'))
-                ])
+            machine_code = "".join([machine_code, " X", str(dict_axis_coor.get('x'))])
 
         if 'y' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " Y", str(dict_axis_coor.get('y'))
-                ])
+            machine_code = "".join([machine_code, " Y", str(dict_axis_coor.get('y'))])
 
         if 'z' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " Z", str(dict_axis_coor.get('z'))
-                ])
+            machine_code = "".join([machine_code, " Z", str(dict_axis_coor.get('z'))])
 
         if 'a' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " A", str(dict_axis_coor.get('a'))
-                ])
+            machine_code = "".join([machine_code, " A", str(dict_axis_coor.get('a'))])
 
         if 'b' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " B", str(dict_axis_coor.get('b'))
-                ])
+            machine_code = "".join([machine_code, " B", str(dict_axis_coor.get('b'))])
 
         if 'c' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " C", str(dict_axis_coor.get('c'))
-                ])
+            machine_code = "".join([machine_code, " C", str(dict_axis_coor.get('c'))])
 
         if 'feed' in dict_axis_coor:
-            machine_code = "".join([
-                machine_code, " F", str(dict_axis_coor.get('feed'))
-                ])
+            machine_code = "".join([machine_code, " F", str(dict_axis_coor.get('feed'))])
 
-        self.eventPut(gc.EV_TXDATA, "%s\n" % machine_code)
+        self.add_event(gc.EV_TXDATA, "{}\n".format(machine_code))
         self.write("".join([machine_code, "\n"]))
 
     def close(self):
         if self._serialTxRxThread is not None:
-            self._serialTxRxThread.eventPut(gc.EV_CMD_EXIT, None)
+            self._serialTxRxThread.add_event(gc.EV_CMD_EXIT, None)
 
     @abstractmethod
     def decode(self, data):
@@ -168,14 +150,14 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doClearAlarm(self):
         """ Clears alarm condition
         """
-        self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdClearAlarm.strip())
+        self.add_event(gc.EV_TXDATA, "{}\n".format(self.cmdClearAlarm.strip()))
         self.write(self.cmdClearAlarm)
         self.write(self.getStatusCmd())
 
     def doCycleStartResume(self):
         """ send cycle resume command
         """
-        self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdCycleStart.strip())
+        self.add_event(gc.EV_TXDATA, "{}\n".format(self.cmdCycleStart.strip()))
         self.write(self.cmdCycleStart)
 
     def doFastMove(self, dict_axis_coor):
@@ -197,17 +179,17 @@ class MachIf_Base(object, gc.EventQueueIf):
     def doFeedHold(self):
         """ send feed hold command
         """
-        self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdFeedHold.strip())
+        self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdFeedHold.strip())
         self.write(self.cmdFeedHold)
 
     def doGetStatus(self):
         if self.okToSend(self.cmdStatus):
-            self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdStatus.strip())
+            self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdStatus.strip())
             self.write(self.cmdStatus)
 
     def doGetSystemInfo(self):
         if self.okToSend(self.cmdSystemInfo):
-            self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdSystemInfo.strip())
+            self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdSystemInfo.strip())
             self.write(self.cmdSystemInfo)
 
     def doHome(self, dict_axis):
@@ -255,7 +237,7 @@ class MachIf_Base(object, gc.EventQueueIf):
         self._sendAxisCmd(self.cmdProbeAxis, dict_axis_coor)
 
     def doQueueFlush(self):
-        self.eventPut(gc.EV_TXDATA, "%s\n" % self.cmdQueueFlush.strip())
+        self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdQueueFlush.strip())
         self.write(self.cmdQueueFlush)
         self._init()
 
@@ -348,7 +330,7 @@ class MachIf_Base(object, gc.EventQueueIf):
                                                          self.serialBaud)
 
             if self._serialTxRxThread is not None:
-                self._serialTxRxThread.eventPut(gc.EV_HELLO, None, self)
+                self._serialTxRxThread.add_event(gc.EV_HELLO, None, self)
                 self.doInitComm()
 
     def read(self):
@@ -382,13 +364,13 @@ class MachIf_Base(object, gc.EventQueueIf):
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
                         self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
 
-                    self.addEventListener(e.sender)
+                    self.add_event_listener(e.sender)
 
                 elif e.event_id == gc.EV_GOOD_BYE:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
                         self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
 
-                    self.removeEventListener(e.sender)
+                    self.remove_event_listener(e.sender)
 
                 elif e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
                                     gc.EV_SER_PORT_CLOSE]:
@@ -434,7 +416,7 @@ class MachIf_Base(object, gc.EventQueueIf):
 
             if raw_write:
                 # self._serialTxRxThread.serialWrite(txData)
-                self._serialTxRxThread.eventPut(gc.EV_CMD_TXDATA, txData)
+                self._serialTxRxThread.add_event(gc.EV_CMD_TXDATA, txData)
             else:
                 lines = txData.splitlines(True)
 
@@ -449,7 +431,7 @@ class MachIf_Base(object, gc.EventQueueIf):
                     *** UPDATE: there was no observable benefit nor issues
                     Leaving this here to revisit in future ."""
                     # self._serialTxRxThread.serialWrite(line)
-                    self._serialTxRxThread.eventPut(gc.EV_CMD_TXDATA, line)
+                    self._serialTxRxThread.add_event(gc.EV_CMD_TXDATA, line)
 
                     bytesSent = bytesSent + len(line)
 

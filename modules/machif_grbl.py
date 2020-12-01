@@ -514,16 +514,16 @@ class MachIf_GRBL(mi.MachIf_Base):
 
     def doGetSystemInfo(self):
         if self._serialTxRxThread is not None:
-           self.eventPut(gc.EV_RXDATA, self.systemInfo)
+           self.add_event(gc.EV_RXDATA, self.systemInfo)
 
     def doHome(self, dict_axis):
         if 'x' in dict_axis and 'y' in dict_axis and 'z' in dict_axis:
-            self.eventPut(gc.EV_TXDATA, self.cmdHome)
+            self.add_event(gc.EV_TXDATA, self.cmdHome)
             self.write(self.cmdHome)
             self.write(self.cmdStatus)
         else:
             msg = "!! grbl doesn't support single/partial axis homing."
-            self.eventPut(gc.EV_RXDATA, msg)
+            self.add_event(gc.EV_RXDATA, msg)
 
     def doInitComm(self):
         """ soft reset grbl to get it to talk to is hw version info

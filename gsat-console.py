@@ -121,7 +121,7 @@ if __name__ == '__main__':
             # TODO: need code to check port is open
             time.sleep(2)
 
-            machifProgExec.eventPut(gc.EV_CMD_CLEAR_ALARM, 0, self)
+            machifProgExec.add_event(gc.EV_CMD_CLEAR_ALARM, 0, self)
 
             runDict = dict({
                 'gcodeFileName': cmd_line_options.gcode,
@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 'gcodePC': 0,
                 'brakePoints': set()})
 
-            machifProgExec.eventPut(gc.EV_CMD_RUN, runDict, self)
+            machifProgExec.add_event(gc.EV_CMD_RUN, runDict, self)
 
             time.sleep(20)
 
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
     finally:
         if remoteServer is not None:
-            remoteServer.eventPut(gc.EV_CMD_EXIT, 0, -1)
+            remoteServer.add_event(gc.EV_CMD_EXIT, 0, -1)
 
         if machifProgExec is not None:
-            machifProgExec.eventPut(gc.EV_CMD_EXIT, 0, -1)
+            machifProgExec.add_event(gc.EV_CMD_EXIT, 0, -1)
