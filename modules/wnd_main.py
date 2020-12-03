@@ -1138,7 +1138,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.stateData.fileIsOpen = True
             self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
 
-            self.stateData.breakPoints = set()
+            self.gcText.DeleteAllBreakPoints()
             self.SetPC(0)
             self.gcText.GoToPC()
             self.UpdateUI()
@@ -1413,7 +1413,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     runDict['gcodeLines'] = self.stateData.gcodeFileLines
 
                 runDict['gcodePC'] = self.stateData.programCounter
-                runDict['brakePoints'] = self.stateData.breakPoints
+                runDict['breakPoints'] = self.gcText.GetBreakPoints()
 
             self.machifProgExec.add_event(gc.EV_CMD_RUN, runDict, self)
 
@@ -1474,7 +1474,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     runDict['gcodeLines'] = self.stateData.gcodeFileLines
 
                 runDict['gcodePC'] = self.stateData.programCounter
-                runDict['brakePoints'] = self.stateData.breakPoints
+                runDict['breakPoints'] = self.gcText.GetBreakPoints()
 
             self.machifProgExec.add_event(gc.EV_CMD_STEP, runDict, self)
 
@@ -1515,13 +1515,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         pc = self.gcText.GetCurrentLine()
         enable = False
 
-        if pc in self.stateData.breakPoints:
-            self.stateData.breakPoints.remove(pc)
-        else:
-            self.stateData.breakPoints.add(pc)
-            enable = True
+        break_points = self.gcText.GetBreakPoints()
 
-        self.gcText.UpdateBreakPoint(pc, enable)
+        if pc in break_points:
+            self.gcText.UpdateBreakPoint(pc, False)
+        else:
+            self.gcText.UpdateBreakPoint(pc, True)
 
     def OnBreakToggleUpdate(self, e=None):
         state = False
@@ -1537,8 +1536,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_BREAK_TOGGLE, state)
 
     def OnBreakRemoveAll(self, e):
-        self.breakPoints = set()
-        self.gcText.UpdateBreakPoint(-1, False)
+        self.gcText.DeleteAllBreakPoints()
 
     def OnBreakRemoveAllUpdate(self, e):
         if (self.stateData.swState == gc.STATE_IDLE or
@@ -2467,12 +2465,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 else:
                     self.SetPC(0)
 
-                if 'brakePoints' in te.data:
-                    self.stateData.breakPoints = te.data['brakePoints']
-                    for pc in self.stateData.breakPoints:
+                if 'breakPoints' in te.data:
+                    break_points = te.data['breakPoints']
+                    for pc in break_points:
                         self.gcText.UpdateBreakPoint(pc, True)
                 else:
-                    self.stateData.breakPoints = set()
+                    self.gcText.DeleteAllBreakPoints()
 
                 self.gcText.GoToPC()
                 self.UpdateUI()

@@ -259,6 +259,8 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         gsatStcStyledTextCtrl.__init__(
             self, parent, config_data, state_data, id, pos, size, style, name)
 
+        self.breakPoints = set()
+
         self.InitConfig()
         self.InitUI()
 
@@ -311,6 +313,8 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
             self.configData.set('/code/FontSize', self.configFontSize)
             self.configData.set('/code/FontStyle', self.configFontStyle)
 
+        self.Bind(wx.stc.EVT_STC_MARGINCLICK, self.OnMarginClick)
+
         '''
         # global default style
         if wx.Platform == '__WXMSW__':
@@ -355,6 +359,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         # margin 1 for markers
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
         self.SetMarginWidth(1, 16)
+        self.SetMarginSensitive(1, True)
 
         # margin 2 for markers
         self.SetMarginType(2, stc.STC_MARGIN_SYMBOL)
@@ -525,12 +530,32 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         self.GotoLine(pc)
 
+    def GetBreakPoints(self):
+        return self.breakPoints
+
+    def DeleteAllBreakPoints(self):
+        self.MarkerDeleteAll(self.markerBreakpoint)
+        self.breakPoints = set()
+
     def UpdateBreakPoint(self, pc, enable):
-        if pc == -1 and not enable:
-            self.MarkerDeleteAll(self.markerBreakpoint)
+        if enable:
+            self.MarkerAdd(pc, self.markerBreakpoint)
+            self.breakPoints.add(pc)
         else:
-            markerBits = self.MarkerGet(pc)
-            if (markerBits & pow(2, self.markerBreakpoint)):
-                self.MarkerDelete(pc, self.markerBreakpoint)
-            else:
-                self.MarkerAdd(pc, self.markerBreakpoint)
+            self.MarkerDelete(pc, self.markerBreakpoint)
+            self.breakPoints.remove(pc)
+
+    def ToggleBreakPoint(self, pc):
+        markerBits = self.MarkerGet(pc)
+        if (markerBits & pow(2, self.markerBreakpoint)):
+            self.MarkerDelete(pc, self.markerBreakpoint)
+            self.breakPoints.remove(pc)
+        else:
+            self.MarkerAdd(pc, self.markerBreakpoint)
+            self.breakPoints.add(pc)
+
+    def OnMarginClick(self, evt):
+        if evt.GetMargin() == self.markerBreakpoint:
+            line_clicked = self.LineFromPosition(evt.GetPosition())
+            self.ToggleBreakPoint(line_clicked)
+

@@ -127,7 +127,7 @@ if __name__ == '__main__':
                 'gcodeFileName': cmd_line_options.gcode,
                 'gcodeLines': gcodeFileLines,
                 'gcodePC': 0,
-                'brakePoints': set()})
+                'breakPoints': set()})
 
             machifProgExec.add_event(gc.EV_CMD_RUN, runDict, self)
 

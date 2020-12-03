@@ -142,8 +142,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.initialProgramCounter = self.workingProgramCounter
                     # self.workingProgramCounter = self.initialProgramCounter
 
-                if 'brakePoints' in e.data:
-                    self.breakPointSet = e.data['brakePoints']
+                if 'breakPoints' in e.data:
+                    self.breakPointSet = e.data['breakPoints']
 
                 # if gcode lines change update listeners of new md5
                 h2 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
@@ -168,8 +168,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.initialProgramCounter = e.data['gcodePC']
                     self.workingProgramCounter = self.initialProgramCounter
 
-                if 'brakePoints' in e.data:
-                    self.breakPointSet = e.data['brakePoints']
+                if 'breakPoints' in e.data:
+                    self.breakPointSet = e.data['breakPoints']
 
                 # init time only if we got new lines or previous satate was
                 # IDLE (if we stop or step operations)
@@ -407,7 +407,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         gcodeDict['gcodeFileName'] = self.gcodeFileName
         gcodeDict['gcodeLines'] = self.gcodeDataLines
         gcodeDict['gcodePC'] = self.workingProgramCounter
-        gcodeDict['brakePoints'] = self.breakPointSet
+        gcodeDict['breakPoints'] = self.breakPointSet
         return gcodeDict
 
     def serialRead(self):
