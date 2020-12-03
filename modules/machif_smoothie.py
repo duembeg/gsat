@@ -175,13 +175,11 @@ class MachIf_Smoothie(mi.MachIf_Base):
             dataDict['sr'] = sr
 
             if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie re Smoothie status match %s" % str(
-                    statusData)
-                print "** MachIf_Smoothie str match from %s" % str(
-                    data.strip())
-                print "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                    (bufferPart, self._inputBufferSize,
-                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+                print ("** MachIf_Smoothie re Smoothie status match {}".format(str(statusData)))
+                print ("** MachIf_Smoothie str match from {}".format(str(data.strip())))
+                print ("** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full"
+                    % (bufferPart, self._inputBufferSize, (100 * (float(
+                        self._inputBufferSize)/self._inputBufferMaxSize))))
 
             # check on status change
             decodedStatus = self.stat_dict.get(

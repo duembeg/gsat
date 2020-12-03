@@ -349,7 +349,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_HELLO from 0x{:x}".format(id(e.sender)))
 
-                self.add_event_listener(e.sender)
+                listener = e.sender
+                self.add_event_listener(listener)
+                h = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                listener.add_event(gc.EV_GCODE_MD5, h)
 
             elif e.event_id == gc.EV_GOOD_BYE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -375,6 +378,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
 
+            elif e.event_id == gc.EV_CMD_GET_GCODE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_GET_GCODE")
+
+                listener = e.sender
+                listener.add_event(gc.EV_GCODE, self.gcodeDataLines)
+
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.error("got unknown event!! [{}]".format(str(e.event_id)))
@@ -391,6 +401,14 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.logger.info(msg)
 
         self.machIfModule.init()
+
+    def getGcodeDict(self):
+        gcodeDict = dict()
+        gcodeDict['gcodeFileName'] = self.gcodeFileName
+        gcodeDict['gcodeLines'] = self.gcodeDataLines
+        gcodeDict['gcodePC'] = self.workingProgramCounter
+        gcodeDict['brakePoints'] = self.breakPointSet
+        return gcodeDict
 
     def serialRead(self):
         rxData = self.machIfModule.read()
@@ -804,6 +822,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # inti machine interface
         self.machIfModule.open()
+
+        # initial report of GCode MD5
+        h = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+        self.notify_event_listeners(gc.EV_GCODE_MD5, h)
 
         while not self.endThread:
 

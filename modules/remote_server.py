@@ -248,9 +248,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_GET_GCODE from client{}".format(self.inputsAddr[e.sender]))
 
-                #port_list = self.get_serial_ports()
-                #gc.CONFIG_DATA.add('/temp/SerialPorts', port_list)
-                #self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.server)))
+                if self.machifProgExec is not None:
+                    gcode_dict = self.machifProgExec.getGcodeDict()
+                    self.send(e.sender, gc.SimpleEvent(gc.EV_GCODE, gcode_dict, id(self.socServer)))
 
             elif e.event_id == gc.EV_CMD_UPDATE_CONFIG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
@@ -439,10 +439,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.allMsgLenRecv += msg_len
 
             msg = b""
-            if self.rxBufferLen > gc.SOCK_DATA_SIZE:
-                msg = soc.recv(gc.SOCK_DATA_SIZE)
-            else:
-                msg = soc.recv(self.rxBufferLen)
+            msg = soc.recv(self.rxBufferLen)
 
             if len(msg):
                 self.rxBufferLen -= len(msg)
@@ -509,30 +506,38 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
+        data_len = len(msg)
+        data_sent_len = 0
 
-        try:
-            soc.send(bytes(msg))
+        while (not exFlag and data_sent_len<data_len):
+            try:
+                data_sent_len += soc.send(bytes(msg[data_sent_len:]))
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.info(
-                    "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
+            except OSError as e:
+                exMsg = "** OSError exception: {}\n".format(str(e))
+                exFlag = True
 
-        except socket.error as e:
-            exMsg = "** socket.error exception: {}\n".format(str(e))
-            exFlag = True
+            except IOError as e:
+                # This is normal on non blocking connections - when there are no incoming data error is going to be
+                # raised. Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+                # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+                # as normal. If we got different error code - something happened
+                if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                    exMsg = "** IOError exception: {}\n".format(str(e))
+                    exFlag = True
 
-        except OSError as e:
-            exMsg = "** OSError exception: {}\n".format(str(e))
-            exFlag = True
+            except socket.error as e:
+                exMsg = "** socket.error exception: {}\n".format(str(e))
+                exFlag = True
 
-        except IOError as e:
-            exMsg = "** IOError exception: {}\n".format(str(e))
-            exFlag = True
+            # except:
+            #     e = sys.exc_info()[0]
+            #     exMsg = "** Unexpected exception: {}\n".format(str(e))
+            #     exFlag = True
 
-        # except:
-        #     e = sys.exc_info()[0]
-        #     exMsg = "** Unexpected exception: {}\n".format(str(e))
-        #     exFlag = True
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            self.logger.info(
+                "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
 
         if exFlag:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
@@ -556,16 +561,16 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 self.logger.info(
                     "Send broadcast msg len:{} data:{}".format(msg_len, str(data)))
 
-        except socket.error as e:
-            exMsg = "** socket.error exception: {}\n".format(str(e))
-            exFlag = True
-
         except OSError as e:
             exMsg = "** OSError exception: {}\n".format(str(e))
             exFlag = True
 
         except IOError as e:
             exMsg = "** IOError exception: {}\n".format(str(e))
+            exFlag = True
+
+        except socket.error as e:
+            exMsg = "** socket.error exception: {}\n".format(str(e))
             exFlag = True
 
         # except:

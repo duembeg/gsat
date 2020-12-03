@@ -1744,7 +1744,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnRemoteGetGcode(self, e):
         if self.remoteClient is not None:
-            pass
+            self.remoteClient.add_event(gc.EV_CMD_GET_GCODE)
 
     def OnRemoteGetGcodeUpdate(self, e):
         if self.remoteClient is None:
@@ -2430,6 +2430,51 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.logger.info("EV_SW_STATE")
 
                 self.stateData.swState = te.data
+                self.UpdateUI()
+
+            elif te.event_id == gc.EV_GCODE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_GCODE")
+
+                if 'gcodeFileName' in te.data:
+                    self.stateData.gcodeFileName = te.data['gcodeFileName']
+                else:
+                    self.stateData.gcodeFileName = ""
+
+                self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
+                self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
+                self.stateData.fileIsOpen = False
+
+                if 'gcodeLines' in te.data:
+                    readOnly = self.gcText.GetReadOnly()
+                    self.gcText.SetReadOnly(False)
+                    self.gcText.ClearAll()
+                    self.gcText.AddText("".join(te.data['gcodeLines']))
+                    self.gcText.SetReadOnly(readOnly)
+                else:
+                    readOnly = self.gcText.GetReadOnly()
+                    self.gcText.SetReadOnly(False)
+                    self.gcText.ClearAll()
+                    self.gcText.SetReadOnly(readOnly)
+
+                rawText = self.gcText.GetText()
+                self.stateData.gcodeFileLines = rawText.splitlines(True)
+                h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                self.machifProgExecGcodeMd5 = h
+
+                if 'gcodePC' in te.data:
+                    self.SetPC(te.data['gcodePC'])
+                else:
+                    self.SetPC(0)
+
+                if 'brakePoints' in te.data:
+                    self.stateData.breakPoints = te.data['brakePoints']
+                    for pc in self.stateData.breakPoints:
+                        self.gcText.UpdateBreakPoint(pc, True)
+                else:
+                    self.stateData.breakPoints = set()
+
+                self.gcText.GoToPC()
                 self.UpdateUI()
 
             else:

@@ -65,6 +65,7 @@ class gsatRemoteSettingsPanel(scrolled.ScrolledPanel):
         #gridSizer = wx.FlexGridSizer(7, 2)
         gridSizer = wx.GridBagSizer()
 
+        row = 0
         # add hostname
         if not self.configData.get('/temp/RemoteServer', False):
             tool_tip = "Host name or ip address"
@@ -72,29 +73,29 @@ class gsatRemoteSettingsPanel(scrolled.ScrolledPanel):
             st.SetToolTip(wx.ToolTip(tool_tip))
             self.host = wx.TextCtrl(self, -1, self.configData.get('/remote/Host', ""))
             self.host.SetToolTip(wx.ToolTip(tool_tip))
-            gridSizer.Add(st, pos=(0,0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
-            gridSizer.Add(self.host, pos=(0,1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
+            gridSizer.Add(st, pos=(row,0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
+            gridSizer.Add(self.host, pos=(row,1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
+            row += 1
 
         # add TCP port
         st = wx.StaticText(self, wx.ID_ANY, "TCP port")
         self.tcpPort = wx.TextCtrl(self, -1, str(self.configData.get('/remote/TcpPort', "")))
-        gridSizer.Add(st, pos=(1,0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
-        gridSizer.Add(self.tcpPort, pos=(1,1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
+        gridSizer.Add(st, pos=(row,0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
+        gridSizer.Add(self.tcpPort, pos=(row,1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
+        row += 1
 
         # add UDP port
         st = wx.StaticText(self, wx.ID_ANY, "UDP port")
         self.udpPort = wx.TextCtrl(self, -1, str(self.configData.get('/remote/UdpPort', "")))
-        gridSizer.Add(st, pos=(2,0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
-        gridSizer.Add(self.udpPort, pos=(2,1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
-
+        gridSizer.Add(st, pos=(row,0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
+        gridSizer.Add(self.udpPort, pos=(row,1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
+        row += 1
 
         # Add UDP broadcast check box
-        self.udpBroadcast = wx.CheckBox(self, wx.ID_ANY, "Enable UDP broadcast")
+        self.udpBroadcast = wx.CheckBox(self, wx.ID_ANY, "Enable UDP broadcast              ")
         self.udpBroadcast.SetValue(self.configData.get('/remote/UdpBroadcast', False))
-        gridSizer.Add(
-            self.udpBroadcast, pos=(3,0), span=(1,2), flag=wx.ALL | wx.LEFT | wx.ALIGN_CENTER_VERTICAL,
-            border=5
-        )
+        gridSizer.Add(self.udpBroadcast, pos=(row,0), span=(1,2), flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+        row += 1
 
         vBoxSizer.Add(gridSizer, 0, flag=wx.ALL | wx.EXPAND, border=20)
 

@@ -225,7 +225,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.notify_event_listeners(gc.EV_RMT_PORT_OPEN, msg)
 
     def recv(self, soc):
-
         exFlag = False
         exMsg = ""
         data = None
@@ -241,10 +240,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     self.allMsgLenRecv += msg_len
 
             msg = b""
-            if self.rxBufferLen > gc.SOCK_DATA_SIZE:
-                msg = soc.recv(gc.SOCK_DATA_SIZE)
-            else:
-                msg = soc.recv(self.rxBufferLen)
+            msg = soc.recv(self.rxBufferLen)
 
             if len(msg):
                 self.rxBufferLen -= len(msg)
@@ -304,7 +300,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         return data
 
     def recv_from(self):
-
         exFlag = False
         exMsg = ""
         data = None
@@ -377,30 +372,39 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
+        data_len = len(msg)
+        data_sent_len = 0
 
-        try:
-            soc.send(bytes(msg))
+        while (not exFlag and data_sent_len<data_len):
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                self.logger.info(
-                    "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
+            try:
+                data_sent_len += soc.send(bytes(msg[data_sent_len:]))
 
-        except socket.error as e:
-            exMsg = "** socket.error exception: {}\n".format(str(e))
-            exFlag = True
+            except OSError as e:
+                exMsg = "** OSError exception: {}\n".format(str(e))
+                exFlag = True
 
-        except OSError as e:
-            exMsg = "** OSError exception: {}\n".format(str(e))
-            exFlag = True
+            except IOError as e:
+                # This is normal on non blocking connections - when there are no incoming data error is going to be
+                # raised. Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+                # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+                # as normal. If we got different error code - something happened
+                if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                    exMsg = "** IOError exception: {}\n".format(str(e))
+                    exFlag = True
 
-        except IOError as e:
-            exMsg = "** IOError exception: {}\n".format(str(e))
-            exFlag = True
+            except socket.error as e:
+                exMsg = "** socket.error exception: {}\n".format(str(e))
+                exFlag = True
 
-        # except:
-        #     e = sys.exc_info()[0]
-        #     exMsg = "** Unexpected exception: {}\n".format(str(e))
-        #     exFlag = True
+            # except:
+            #     e = sys.exc_info()[0]
+            #     exMsg = "** Unexpected exception: {}\n".format(str(e))
+            #     exFlag = True
+
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            self.logger.info(
+                "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
 
         if exFlag:
             # make sure we stop processing any states...
@@ -436,9 +440,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 if self.swState == gc.STATE_RUN:
                     readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs, 0)
 
-                    if self.useUdpBroadcast:
-                        udp_readable, udp_writable, udp_exceptional = select.select([self.socBroadcast], self.outputs, self.inputs, 0)
-
                     for soc in readable:
                         data = self.recv(soc)
                         if data:
@@ -456,11 +457,17 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                                 self.notify_event_listeners(gc.EV_ABORT, msg)
 
-                    if self.useUdpBroadcast and len(udp_readable):
-                        data = self.recv_from()
-                        if data:
-                            data.sender = self
-                            self.notify_event_listeners(data)
+                    if len(exceptional):
+                        pass
+
+                    if self.useUdpBroadcast:
+                        udp_readable, udp_writable, udp_exceptional = select.select([self.socBroadcast], self.outputs, self.inputs, 0)
+
+                        if len(udp_readable):
+                            data = self.recv_from()
+                            if data:
+                                data.sender = self
+                                self.notify_event_listeners(data)
 
                     # # Handle outputs
                     # for soc in writable:
