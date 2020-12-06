@@ -252,6 +252,14 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     gcode_dict = self.machifProgExec.getGcodeDict()
                     self.send(e.sender, gc.SimpleEvent(gc.EV_GCODE, gcode_dict, id(self.socServer)))
 
+            elif e.event_id == gc.EV_CMD_GET_BRK_PT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_GET_BRK_PT from client{}".format(self.inputsAddr[e.sender]))
+
+                if self.machifProgExec is not None:
+                    gcode_dict = self.machifProgExec.getGcodeDict()
+                    self.send(e.sender, gc.SimpleEvent(gc.EV_BRK_PT, gcode_dict['breakPoints'], id(self.socServer)))
+
             elif e.event_id == gc.EV_CMD_UPDATE_CONFIG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_CMD_UPDATE_CONFIG from client{}".format(self.inputsAddr[e.sender]))

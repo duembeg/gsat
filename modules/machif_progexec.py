@@ -142,6 +142,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.initialProgramCounter = self.workingProgramCounter
                     # self.workingProgramCounter = self.initialProgramCounter
 
+                last_brk_pt_set = self.breakPointSet
                 if 'breakPoints' in e.data:
                     self.breakPointSet = e.data['breakPoints']
 
@@ -149,6 +150,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 h2 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
                 if h1 != h2:
                     self.notify_event_listeners(gc.EV_GCODE_MD5, h2)
+                elif last_brk_pt_set != self.breakPointSet:
+                    self.notify_event_listeners(gc.EV_BRK_PT_CHG)
 
                 self.swState = gc.STATE_STEP
 
@@ -168,6 +171,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.initialProgramCounter = e.data['gcodePC']
                     self.workingProgramCounter = self.initialProgramCounter
 
+                last_brk_pt_set = self.breakPointSet
                 if 'breakPoints' in e.data:
                     self.breakPointSet = e.data['breakPoints']
 
@@ -180,6 +184,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 # if gcode lines change update listeners of new md5
                 if h1 != h2:
                     self.notify_event_listeners(gc.EV_GCODE_MD5, h2)
+                elif last_brk_pt_set != self.breakPointSet:
+                    self.notify_event_listeners(gc.EV_BRK_PT_CHG)
 
                 self.swState = gc.STATE_RUN
 
@@ -384,6 +390,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 listener = e.sender
                 listener.add_event(gc.EV_GCODE, self.gcodeDataLines)
+
+            elif e.event_id == gc.EV_CMD_GET_BRK_PT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_GET_BRK_PT")
+
+                listener = e.sender
+                listener.add_event(gc.EV_BRK_PT, self.breakPointSet)
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -697,7 +710,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             self.swState = gc.STATE_BREAK
             # notify listeners
-            self.notify_event_listeners(gc.EV_HIT_BRK_PT)
+            self.notify_event_listeners(gc.EV_BRK_PT_STOP)
             self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 
@@ -717,7 +730,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.swState = gc.STATE_BREAK
 
             # notify listeners
-            self.notify_event_listeners(gc.EV_HIT_MSG, reMsgSearch.group(1))
+            self.notify_event_listeners(gc.EV_GCODE_MSG, reMsgSearch.group(1))
             return
 
         # don't sent unnecessary data save the bits for speed
@@ -742,7 +755,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.errorFlag = False
 
             # notify listeners
-            self.notify_event_listeners(gc.EV_HIT_BRK_PT)
+            self.notify_event_listeners(gc.EV_BRK_PT_STOP)
             self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
             return
 

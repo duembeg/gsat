@@ -1792,9 +1792,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnInch2mm(self, e):
         dlg = wx.MessageDialog(self,
                                "Your about to convert the current file from "
-                               "inches to metric.\nThis is an experimental "
+                               "inches to millimeter.\nThis is an experimental "
                                "feature, do you want to continue?",
-                               "",
+                               "inch to millimeter",
                                wx.OK | wx.CANCEL | wx.ICON_WARNING)
 
         if dlg.ShowModal() == wx.ID_OK:
@@ -1817,9 +1817,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def Onmm2Inch(self, e):
         dlg = wx.MessageDialog(self,
                                "Your about to convert the current file from "
-                               "metric to inches.\nThis is an experimental "
+                               "millimeter to inches.\nThis is an experimental "
                                "feature, do you want to continue?",
-                               "",
+                               "millimeter to inch",
                                wx.OK | wx.CANCEL | wx.ICON_WARNING)
 
         if dlg.ShowModal() == wx.ID_OK:
@@ -2236,12 +2236,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.SetPC(te.data)
 
-            elif te.event_id == gc.EV_GCODE_MD5:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_GCODE_MD5")
-
-                self.machifProgExecGcodeMd5 = te.data
-
             elif te.event_id == gc.EV_RUN_END:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RUN_END")
@@ -2257,14 +2251,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 # self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
-            elif te.event_id == gc.EV_HIT_BRK_PT:
+            elif te.event_id == gc.EV_BRK_PT_STOP:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_HIT_BRK_PT")
 
                 # self.stateData.swState = gc.STATE_BREAK
                 # self.UpdateUI()
 
-            elif te.event_id == gc.EV_HIT_MSG:
+            elif te.event_id == gc.EV_GCODE_MSG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_HIT_MSG [%s]" % te.data.strip())
 
@@ -2430,9 +2424,42 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.stateData.swState = te.data
                 self.UpdateUI()
 
+            elif te.event_id == gc.EV_GCODE_MD5:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_GCODE_MD5")
+
+                self.machifProgExecGcodeMd5 = te.data
+
+                h = hashlib.md5(str([])).hexdigest()
+                if h != te.data and self.machifProgExec is not None:
+                    h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                    if h != te.data:
+                        self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
+
             elif te.event_id == gc.EV_GCODE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_GCODE")
+
+                if self.gcText.GetModify():
+                    if sys.platform in 'darwin':
+                        # because dialog icons where not working correctly in
+                        # Mac OS X
+                        dlg = gmd.GenericMessageDialog(
+                            self,
+                            "Current G-code has been modified, save before overide?",
+                            "Get Remote G-code",
+                            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION)
+                    else:
+                        dlg = wx.MessageDialog(
+                            self,
+                            "Current G-code has been modified, save before overide?",
+                            "Get Remote G-code",
+                            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION)
+
+                    if dlg.ShowModal() == wx.ID_YES:
+                        self.OnFileSaveAs(None)
+
+                    dlg.Destroy()
 
                 if 'gcodeFileName' in te.data:
                     self.stateData.gcodeFileName = te.data['gcodeFileName']
@@ -2449,11 +2476,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.gcText.ClearAll()
                     self.gcText.AddText("".join(te.data['gcodeLines']))
                     self.gcText.SetReadOnly(readOnly)
+                    self.gcText.DiscardEdits()
                 else:
                     readOnly = self.gcText.GetReadOnly()
                     self.gcText.SetReadOnly(False)
                     self.gcText.ClearAll()
                     self.gcText.SetReadOnly(readOnly)
+                    self.gcText.DiscardEdits()
 
                 rawText = self.gcText.GetText()
                 self.stateData.gcodeFileLines = rawText.splitlines(True)
@@ -2467,13 +2496,32 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 if 'breakPoints' in te.data:
                     break_points = te.data['breakPoints']
-                    for pc in break_points:
-                        self.gcText.UpdateBreakPoint(pc, True)
+                    self.gcText.DeleteAllBreakPoints()
+                    for bp in break_points:
+                        self.gcText.UpdateBreakPoint(bp, True)
                 else:
                     self.gcText.DeleteAllBreakPoints()
 
                 self.gcText.GoToPC()
                 self.UpdateUI()
+
+            elif te.event_id == gc.EV_BRK_PT_CHG:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_BRK_PT_CHG")
+
+                if self.machifProgExec is not None:
+                    self.machifProgExec.add_event(gc.EV_CMD_GET_BRK_PT)
+
+            elif te.event_id == gc.EV_BRK_PT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_BRK_PT")
+
+                break_points = te.data
+
+                if self.gcText.GetBreakPoints() != break_points:
+                    self.gcText.DeleteAllBreakPoints()
+                    for bp in break_points:
+                        self.gcText.UpdateBreakPoint(bp, True)
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
