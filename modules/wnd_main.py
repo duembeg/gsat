@@ -2380,8 +2380,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.remoteClient.add_event(gc.EV_CMD_GET_CONFIG)
 
                 if self.machifProgExec is not None:
-                    self.remoteClient.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
-                    self.remoteClient.add_event(gc.EV_CMD_GET_SW_STATE)
+                    self.machifProgExec.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
+                    self.machifProgExec.add_event(gc.EV_CMD_GET_SW_STATE)
+
+                    if self.configData.get('/remote/AutoGcodeRequest', False):
+                        self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
 
                 self.UpdateUI()
 
@@ -2440,70 +2443,78 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_GCODE")
 
-                if self.gcText.GetModify():
-                    if sys.platform in 'darwin':
-                        # because dialog icons where not working correctly in
-                        # Mac OS X
-                        dlg = gmd.GenericMessageDialog(
-                            self,
-                            "Current G-code has been modified, save before overide?",
-                            "Get Remote G-code",
-                            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION)
+                # only if there is gcode we should do do something
+                if te.data.get('gcodeLines', []):
+                    user_response = wx.ID_YES
+
+                    if self.gcText.GetModify():
+                        title = "Get Remote G-code"
+                        prompt = "Current G-code has been modified, save before overide?"
+                        if sys.platform in 'darwin':
+                            # because dialog icons where not working correctly in
+                            # Mac OS X
+                            dlg = gmd.GenericMessageDialog(
+                                self, prompt, title,
+                                wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
+                        else:
+                            dlg = wx.MessageDialog(
+                                self, prompt, title,
+                                wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
+
+
+                        user_response = dlg.ShowModal()
+                        if user_response == wx.ID_YES:
+                            self.OnFileSaveAs(None)
+
+                        dlg.Destroy()
+
+                    if user_response == wx.ID_CANCEL:
+                        # cancel G-code update from remote server
+                        pass
                     else:
-                        dlg = wx.MessageDialog(
-                            self,
-                            "Current G-code has been modified, save before overide?",
-                            "Get Remote G-code",
-                            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION)
+                        if 'gcodeFileName' in te.data:
+                            self.stateData.gcodeFileName = te.data['gcodeFileName']
+                        else:
+                            self.stateData.gcodeFileName = ""
 
-                    if dlg.ShowModal() == wx.ID_YES:
-                        self.OnFileSaveAs(None)
+                        self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
+                        self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
+                        self.stateData.fileIsOpen = False
 
-                    dlg.Destroy()
+                        if 'gcodeLines' in te.data:
+                            readOnly = self.gcText.GetReadOnly()
+                            self.gcText.SetReadOnly(False)
+                            self.gcText.ClearAll()
+                            self.gcText.AddText("".join(te.data['gcodeLines']))
+                            self.gcText.SetReadOnly(readOnly)
+                            self.gcText.DiscardEdits()
+                        else:
+                            readOnly = self.gcText.GetReadOnly()
+                            self.gcText.SetReadOnly(False)
+                            self.gcText.ClearAll()
+                            self.gcText.SetReadOnly(readOnly)
+                            self.gcText.DiscardEdits()
 
-                if 'gcodeFileName' in te.data:
-                    self.stateData.gcodeFileName = te.data['gcodeFileName']
-                else:
-                    self.stateData.gcodeFileName = ""
+                        rawText = self.gcText.GetText()
+                        self.stateData.gcodeFileLines = rawText.splitlines(True)
+                        h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                        self.machifProgExecGcodeMd5 = h
 
-                self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
-                self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
-                self.stateData.fileIsOpen = False
+                        if 'gcodePC' in te.data:
+                            self.SetPC(te.data['gcodePC'])
+                        else:
+                            self.SetPC(0)
 
-                if 'gcodeLines' in te.data:
-                    readOnly = self.gcText.GetReadOnly()
-                    self.gcText.SetReadOnly(False)
-                    self.gcText.ClearAll()
-                    self.gcText.AddText("".join(te.data['gcodeLines']))
-                    self.gcText.SetReadOnly(readOnly)
-                    self.gcText.DiscardEdits()
-                else:
-                    readOnly = self.gcText.GetReadOnly()
-                    self.gcText.SetReadOnly(False)
-                    self.gcText.ClearAll()
-                    self.gcText.SetReadOnly(readOnly)
-                    self.gcText.DiscardEdits()
+                        if 'breakPoints' in te.data:
+                            break_points = te.data['breakPoints']
+                            self.gcText.DeleteAllBreakPoints()
+                            for bp in break_points:
+                                self.gcText.UpdateBreakPoint(bp, True)
+                        else:
+                            self.gcText.DeleteAllBreakPoints()
 
-                rawText = self.gcText.GetText()
-                self.stateData.gcodeFileLines = rawText.splitlines(True)
-                h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
-                self.machifProgExecGcodeMd5 = h
-
-                if 'gcodePC' in te.data:
-                    self.SetPC(te.data['gcodePC'])
-                else:
-                    self.SetPC(0)
-
-                if 'breakPoints' in te.data:
-                    break_points = te.data['breakPoints']
-                    self.gcText.DeleteAllBreakPoints()
-                    for bp in break_points:
-                        self.gcText.UpdateBreakPoint(bp, True)
-                else:
-                    self.gcText.DeleteAllBreakPoints()
-
-                self.gcText.GoToPC()
-                self.UpdateUI()
+                        self.gcText.GoToPC()
+                        self.UpdateUI()
 
             elif te.event_id == gc.EV_BRK_PT_CHG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
