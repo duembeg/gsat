@@ -26,13 +26,16 @@
 
 import os
 import sys
-from optparse import OptionParser
+import argparse
 import time
+
+from modules.version_info import *
 
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
 import modules.remote_server as remote_server
 
+'''
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
@@ -40,52 +43,48 @@ __description__ = \
     "debug/step for grbl like GCODE interpreters. With features similar to "\
     "software debuggers. Features Such as breakpoint, change current program "\
     "counter, inspection and modification of variables."
-
-__version_info__ = (1, 0, 0)
-__version__ = 'v%i.%i.%i beta' % __version_info__
-__revision__ = __version__
-
+'''
 
 def get_cli_params():
     ''' define, retrieve and error check command line interface (cli) params
     '''
 
-    usage = \
-        "usage: %prog [options]"
+    parser = argparse.ArgumentParser(
+        description=__description__, version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
 
-    parser = OptionParser(usage=usage, version="%prog " + __revision__)
-    parser.add_option("-c", "--config",
-                      dest="config",
-                      default=None,
-                      help="Use alternate configuration file name, location "
-                      "will be in HOME folder regardless of file name.",
-                      metavar="FILE")
-    parser.add_option("-g", "--gcode",
-                      dest="gcode",
-                      default="None",
-                      help="gcode file.",
-                      metavar="FILE")
+    parser.add_argument("-c", "--config",
+                        dest="config",
+                        default=None,
+                        help="Use alternate configuration file name, location "
+                        "will be in HOME folder regardless of file name.",
+                        metavar="FILE")
+
+    parser.add_argument("-g", "--gcode",
+                        dest="gcode",
+                        default="None",
+                        help="gcode file.",
+                        metavar="FILE")
 
     mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
-    parser.add_option("--vm", "--verbose_mask",
-                      dest="verbose_mask",
-                      default=None,
-                      help="select verbose mask(s) separated by ',' options are {}".format(mask_str),
-                      metavar="")
+    parser.add_argument("--vm", "--verbose_mask",
+                        dest="verbose_mask",
+                        default=None,
+                        help="select verbose mask(s) separated by ',' options are {}".format(mask_str),
+                        metavar="MASK")
 
-    parser.add_option("-s", "--server",
-                      dest="server",
-                      action="store_true",
-                      default=False,
-                      help="run gsat server")
+    parser.add_argument("-s", "--server",
+                        dest="server",
+                        action="store_true",
+                        default=False,
+                        help="run gsat server")
 
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
 
     if options.verbose_mask is not None:
         options.verbose_mask = gc.decode_verbose_mask_string(
             options.verbose_mask)
 
-    return (options, args)
+    return options
 
 
 """----------------------------------------------------------------------------
@@ -96,7 +95,8 @@ if __name__ == '__main__':
     machifProgExec = None
     remoteSever = None
     gcodeFileLines = []
-    (cmd_line_options, cli_args) = get_cli_params()
+
+    cmd_line_options = get_cli_params()
 
     try:
         config_fname = cmd_line_options.config
