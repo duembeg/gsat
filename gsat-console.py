@@ -55,8 +55,7 @@ def get_cli_params():
     parser.add_argument("-c", "--config",
                         dest="config",
                         default=None,
-                        help="Use alternate configuration file name, location "
-                        "will be in HOME folder regardless of file name.",
+                        help="Use alternate configuration file name",
                         metavar="FILE")
 
     parser.add_argument("-g", "--gcode",

@@ -56,23 +56,20 @@ def get_cli_params():
 
     parser.add_argument("-c", "--config",
                         dest="config",
-                        help="Use alternate configuration file name, location "
-                        "will be in HOME folder regardless of file name.",
+                        help="Use alternate configuration file name",
                         metavar="FILE")
 
     parser.add_argument("-V", "--verbose",
                         dest="verbose",
                         action="store_true",
                         default=False,
-                        help="print extra information while processing input "
-                        "file.")
+                        help="print extra information to stdout")
 
     parser.add_argument("--vv", "--vverbose",
                         dest="vverbose",
                         action="store_true",
                         default=False,
-                        help="print extra extra information while processing "
-                        "input file.")
+                        help="print extra++ information to stdout")
 
     mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
     parser.add_argument("--vm", "--verbose_mask",
@@ -80,6 +77,12 @@ def get_cli_params():
                         default=None,
                         help="select verbose mask(s) separated by ','; the options are {}".format(mask_str),
                         metavar="MASK")
+
+    parser.add_argument("-s", "--server",
+                    dest="server",
+                    action="store_true",
+                    default=False,
+                    help="run gsat server, allows other UIs like cnc pendants to connect via socket")
 
     options = parser.parse_args()
 

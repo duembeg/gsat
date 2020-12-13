@@ -60,16 +60,28 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
     """ Threads to send and monitor network socket for new data.
     """
 
-    def __init__(self, event_handler):
+    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None):
         """ Init remote client class
         """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
-        self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
-        self.host = gc.CONFIG_DATA.get('/remote/Host', "")
+        if host:
+            self.host = host
+        else:
+            self.host = gc.CONFIG_DATA.get('/remote/Host', "")
+
+        if host:
+            self.tcpPort = tcp_port
+        else:
+            self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+
+        if host:
+            self.udpPort = udp_port
+        else:
+            self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
+
         # self.host = "river"
         self.socClient = None
         self.socBroadcast = None

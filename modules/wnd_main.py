@@ -60,6 +60,7 @@ import modules.wnd_cli as cli
 import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
 import modules.remote_client as remote_client
+import modules.remote_server as remote_server
 
 from modules.version_info import *
 
@@ -232,6 +233,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.InitUI()
         self.Centre()
         self.Show()
+
+
+        # start local server
+        self.localServer = None
+        if self.cmdLineOptions.server:
+            self.localServer = remote_server.RemoteServerThread(None)
 
     def InitConfig(self):
         self.displayRuntimeDialog = self.configData.get(
@@ -1600,13 +1607,19 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.SerialOpen()
 
     def OnMachineConnectUpdate(self, e=None):
-        if e is not None:
-            if self.machifProgExec is None:
-                e.Check(False)
-            else:
-                e.Check(True)
+        state = True
+        if self.cmdLineOptions.server and self.remoteClient is None:
+            state = False
 
-        # self.gcodeToolBar.EnableTool(gID_MENU_MACHINE_CONNECT, state)
+        if e is not None:
+            if self.stateData.serialPortIsOpen:
+                e.Check(True)
+            else:
+                e.Check(False)
+
+            e.Enable(state)
+
+        self.machineToolBar.EnableTool(gID_MENU_MACHINE_CONNECT, state)
 
     def OnMachineRefresh(self, e):
         self.GetMachineStatus()
@@ -1869,10 +1882,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # Link status
         if self.stateData.serialPortIsOpen:
             self.machineToolBar.SetToolBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugConnect.GetBitmap())
-            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugConnect.GetBitmap())
+            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugConnectDisable.GetBitmap())
         else:
             self.machineToolBar.SetToolBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
-            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
+            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnectDisabled.GetBitmap())
 
 
     # -------------------------------------------------------------------------
@@ -1910,6 +1923,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.RemoteClose()
         elif self.machifProgExec is not None:
             self.SerialClose()
+
+        if self.localServer:
+            self.localServer.add_event(gc.EV_CMD_EXIT, 0, -1)
 
         time.sleep(1)
 
