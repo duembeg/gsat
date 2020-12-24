@@ -49,8 +49,11 @@ def get_cli_params():
     ''' define, retrieve and error check command line interface (cli) params
     '''
 
-    parser = argparse.ArgumentParser(
-        description=__description__, version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
+    parser = argparse.ArgumentParser(description=__description__)
+
+    parser.add_argument('--version',
+                        action='version',
+                        version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
 
     parser.add_argument("-c", "--config",
                         dest="config",

@@ -248,9 +248,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             '/mainApp/FileHistory/FilesMaxHistory', 10)
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
-        self.stateData.machIfId = mi.GetMachIfId(
-            self.configData.get('/machine/Device'))
-        self.stateData.machIfName = mi.GetMachIfName(self.stateData.machIfId)
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
             self.logger.info("Init config values...")
@@ -2362,7 +2359,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.GetMachineStatus()
 
                 if self.remoteClient is None:
-                    self.RunDeviceInitScript()
+                    pass
+                    # This will be done by progexec thread where it belongs
+                    # self.RunDeviceInitScript()
 
             elif te.event_id == gc.EV_ABORT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:

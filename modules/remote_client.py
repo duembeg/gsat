@@ -23,11 +23,7 @@
 
 ----------------------------------------------------------------------------"""
 
-import os
-from os import tcsetpgrp
-import sys
 import threading
-import time
 import logging
 import socket
 import select
@@ -60,7 +56,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
     """ Threads to send and monitor network socket for new data.
     """
 
-    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None):
+    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, broadcast=None):
         """ Init remote client class
         """
         threading.Thread.__init__(self)
@@ -89,7 +85,11 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.inputsAddr = {}
         self.outputs = []
         self.messageQueues = {}
-        self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/udpBroadcast', True)
+
+        if broadcast:
+            self.useUdpBroadcast = broadcast
+        else:
+            self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/udpBroadcast', True)
 
         self.rxBuffer = b""
         self.rxBufferLen = 0
@@ -380,7 +380,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         exFlag = False
         exMsg = ""
 
-        pickle_data = pickle.dumps(data)
+        pickle_data = pickle.dumps(data, protocol=2)
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data

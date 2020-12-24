@@ -212,52 +212,70 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         if statusData is not None:
 
-            prcnt = statusData.get('prcnt')
-            if prcnt is not None:
-                self.prcntStatus.SetLabel(prcnt)
+            if 'prcnt' in statusData:
+                if self.prcntStatus.GetLabel() != statusData['prcnt']:
+                    self.prcntStatus.SetLabel(statusData['prcnt'])
 
-            rtime = statusData.get('rtime')
-            if rtime is not None:
+            if 'rtime' in statusData:
+                rtime = statusData['rtime']
                 hours, reminder = divmod(rtime, 3600)
                 minutes, reminder = divmod(reminder, 60)
                 seconds, mseconds = divmod(reminder, 1)
                 runTimeStr = "{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds)
 
-                self.runTimeStatus.SetLabel(runTimeStr)
+                if self.runTimeStatus.GetLabel() != runTimeStr:
+                    self.runTimeStatus.SetLabel(runTimeStr)
 
-            if self.configDroEnX:
-                x = statusData.get('posx')
-                if x is not None:
-                    self.xPos.SetValue("{:.3f}".format(x))
+            def update_val(enable, key, ctrl, data):
+                if enable and key in data:
+                    val = "{:.3f}".format(data[key])
+                    if ctrl.GetValue() != val:
+                        ctrl.SetValue(val)
 
-            if self.configDroEnY:
-                y = statusData.get('posy')
-                if y is not None:
-                    self.yPos.SetValue("{:.3f}".format(y))
+            update_val(self.configDroEnX, 'posx', self.xPos, statusData)
+            update_val(self.configDroEnY, 'posy', self.yPos, statusData)
+            update_val(self.configDroEnZ, 'posz', self.zPos, statusData)
+            update_val(self.configDroEnA, 'posa', self.aPos, statusData)
+            update_val(self.configDroEnB, 'posb', self.bPos, statusData)
+            update_val(self.configDroEnC, 'posc', self.cPos, statusData)
+            update_val(self.configDroEnC, 'posc', self.cPos, statusData)
 
-            if self.configDroEnZ:
-                z = statusData.get('posz')
-                if z is not None:
-                    self.zPos.SetValue("{:.3f}".format(z))
+            # if self.configDroEnX and 'posx' in statusData:
+            #     val = "{:.3f}".format(statusData['posx'])
+            #     print self.xPos.GetValue()
+            #     if self.xPos.GetValue() != val:
+            #         self.xPos.SetValue(val)
 
-            if self.configDroEnA:
-                a = statusData.get('posa')
-                if a is not None:
-                    self.aPos.SetValue("{:.3f}".format(a))
+            # if self.configDroEnY and 'posy' in statusData:
+            #     val = "{:.3f}".format(statusData['posy'])
+            #     print self.yPos.GetValue()
+            #     if self.yPos.GetValue() != val:
+            #         self.yPos.SetValue(val)
 
-            if self.configDroEnB:
-                b = statusData.get('posb')
-                if b is not None:
-                    self.bPos.SetValue("{:.3f}".format(b))
+            # if self.configDroEnZ:
+            #     z = statusData.get('posz')
+            #     if z is not None:
+            #         self.zPos.SetValue("{:.3f}".format(z))
 
-            if self.configDroEnC:
-                c = statusData.get('posc')
-                if c is not None:
-                    self.cPos.SetValue("{:.3f}".format(c))
+            # if self.configDroEnA:
+            #     a = statusData.get('posa')
+            #     if a is not None:
+            #         self.aPos.SetValue("{:.3f}".format(a))
 
-            fr = statusData.get('vel')
-            if fr is not None:
-                self.frVal.SetValue("{:.2f}".format(fr))
+            # if self.configDroEnB:
+            #     b = statusData.get('posb')
+            #     if b is not None:
+            #         self.bPos.SetValue("{:.3f}".format(b))
+
+            # if self.configDroEnC:
+            #     c = statusData.get('posc')
+            #     if c is not None:
+            #         self.cPos.SetValue("{:.3f}".format(c))
+
+            if 'vel' in statusData:
+                fr = "{:.2f}".format(statusData['vel'])
+                if self.frVal.GetValue() != fr:
+                    self.frVal.SetValue(fr)
 
             fv = statusData.get('fv')
             fb = statusData.get('fb')
@@ -269,6 +287,9 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             ib = statusData.get('ib')
             if ib is not None:
                 self.bufferStatus.SetLabel("%d/%d" % (ib[1], ib[0]))
+
+            if 'machif' in statusData:
+                self.machIfStatus.SetLabel(statusData['machif'])
 
         if stateData.serialPortIsOpen:
             # self.refreshButton.Enable()
@@ -282,14 +303,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             self.version.SetLabel("")
             self.bufferStatus.SetLabel("")
             self.runStatus.SetValue("")
-
-        configMachIfId = self.configData.get('/machine/Device')
-
-        if self.configRemoteData is not None:
-            configMachIfId = self.configRemoteData.get('/machine/Device')
-
-        machIfId = mi.GetMachIfId(configMachIfId)
-        self.machIfStatus.SetLabel(mi.GetMachIfName(machIfId))
+            self.machIfStatus.SetLabel("")
 
         self.Update()
 
@@ -441,9 +455,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         #                               01234567890123456789
         st = wx.StaticText(self, label="Device name       ")
         st.SetFont(font)
-        machIfId = mi.GetMachIfId(self.configData.get('/machine/Device'))
-        self.machIfStatus = wx.StaticText(
-            self, label=mi.GetMachIfName(machIfId))
+        self.machIfStatus = wx.StaticText(self, label="")
         self.machIfStatus.SetForegroundColour(self.machineDataColor)
         self.machIfStatus.SetFont(font)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_LEFT)

@@ -658,12 +658,12 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
     def OnSpindleCWOn(self, e):
         speed = self.spindleSpeedSpinCtrl.GetValue()
-        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CW_ON, round(speed))
+        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CW_ON, int(round(speed)))
         self.mainWindow.SerialWrite(speed_cmd)
 
     def OnSpindleCCWOn(self, e):
         speed = self.spindleSpeedSpinCtrl.GetValue()
-        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CCW_ON, round(speed))
+        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CCW_ON, int(round(speed)))
         self.mainWindow.SerialWrite(speed_cmd)
 
     def OnSpindleOff(self, e):

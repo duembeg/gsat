@@ -51,15 +51,18 @@ def get_cli_params():
     usage = \
         "usage: %prog [options]"
 
-    parser = argparse.ArgumentParser(
-        description=__description__, version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
+    parser = argparse.ArgumentParser(description=__description__)
+
+    parser.add_argument('--version',
+                        action='version',
+                        version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
 
     parser.add_argument("-c", "--config",
                         dest="config",
                         help="Use alternate configuration file name",
                         metavar="FILE")
 
-    parser.add_argument("-V", "--verbose",
+    parser.add_argument("-v", "--verbose",
                         dest="verbose",
                         action="store_true",
                         default=False,

@@ -323,6 +323,13 @@ class MachIf_g2core(mi.MachIf_Base):
 
                         dataDict['r']['init'] = r['msg']
 
+                if 'fb' in r:
+                    dataDict['r']['machif'] = self.getName()
+
+                if 'sys' in r:
+                    if 'fb' in r['sys']:
+                        dataDict['r']['sys']['machif'] = self.getName()
+
             if 'sr' in dataDict:
                 sr = dataDict['sr']
 

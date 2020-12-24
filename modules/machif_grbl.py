@@ -483,6 +483,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 dataDict['r'] = r
 
             dataDict['r']['fb'] = version.group(1)
+            dataDict['r']['machif'] = self.getName()
             dataDict['f'] = [0, 0, 0]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
             self.systemInfo = data
@@ -500,6 +501,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 dataDict['r'] = r
 
             dataDict['r']['init'] = initStr.group(1).strip()
+            dataDict['r']['machif'] = self.getName()
 
         config = self.reGrblConfig.match(data)
         if config is not None:

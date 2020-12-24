@@ -166,7 +166,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     self.deviceDetected = True
 
-                    self.run_device_init_script()
+                    # This will be done by progexec thread where it belongs
+                    # self.run_device_init_script()
 
                     e.sender = id(self)
                     self.send_broadcast(e)
@@ -249,7 +250,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_GET_GCODE from client{}".format(self.inputsAddr[e.sender]))
 
                 if self.machifProgExec is not None:
-                    gcode_dict = self.machifProgExec.getGcodeDict()
+                    gcode_dict = self.machifProgExec.get_gcode_dict()
                     self.send(e.sender, gc.SimpleEvent(gc.EV_GCODE, gcode_dict, id(self.socServer)))
 
             elif e.event_id == gc.EV_CMD_GET_BRK_PT:
@@ -257,7 +258,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_GET_BRK_PT from client{}".format(self.inputsAddr[e.sender]))
 
                 if self.machifProgExec is not None:
-                    gcode_dict = self.machifProgExec.getGcodeDict()
+                    gcode_dict = self.machifProgExec.get_gcode_dict()
                     self.send(e.sender, gc.SimpleEvent(gc.EV_BRK_PT, gcode_dict['breakPoints'], id(self.socServer)))
 
             elif e.event_id == gc.EV_CMD_UPDATE_CONFIG:
@@ -360,9 +361,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     try:
                         serial.Serial(i)
                         serList.append('COM'+str(i + 1))
-                    except serial.SerialException, e:
+                    except serial.SerialException as e:
                         pass
-                    except OSError, e:
+                    except OSError as e:
                         pass
             else:
                 ser_list = glob.glob('/dev/ttyUSB*') + \
@@ -510,7 +511,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         exFlag = False
         exMsg = ""
 
-        pickle_data = pickle.dumps(data)
+        pickle_data = pickle.dumps(data, protocol=2)
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
@@ -557,7 +558,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         exFlag = False
         exMsg = ""
 
-        pickle_data = pickle.dumps(data)
+        pickle_data = pickle.dumps(data, protocol=2)
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data

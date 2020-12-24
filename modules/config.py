@@ -597,7 +597,7 @@ class gsatConfigData(ConfigData):
             "Host": "localhost",
             "TcpPort": 61801,
             "UdpPort": 61802,
-            "UdpBroadcast": True,
+            "UdpBroadcast": False,
             "AutoGcodeRequest": False
         }
     }

@@ -174,7 +174,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             dataDict['sr'] = sr
 
-            if self.cmdLineOptions.vverbose:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 print ("** MachIf_Smoothie re Smoothie status match {}".format(str(statusData)))
                 print ("** MachIf_Smoothie str match from {}".format(str(data.strip())))
                 print ("** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full"
@@ -201,19 +201,17 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie found acknowledgement [%s]" % data.strip(
-                )
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie found acknowledgement []".format(data.strip()))
 
             r = {}
             dataDict['r'] = r
             dataDict['f'] = [0, 0, bufferPart]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                    (bufferPart, self._inputBufferSize,
-                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
+                    (bufferPart, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
         error = self.reSmoothieMachineError.search(data)
         if error is not None:
@@ -224,8 +222,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie found error [%s]" % data.strip()
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie found error [{}]".format(data.strip()))
 
             if 'r' not in dataDict:
                 r = {}
@@ -240,22 +238,21 @@ class MachIf_Smoothie(mi.MachIf_Base):
             dataDict['f'] = [0, error_code, bufferPart, error.group(1).strip()]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % \
-                    (bufferPart, self._inputBufferSize,
-                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie input buffer decode returned: {}, buffer size: {}, {:.2f}%% full".format(
+                    bufferPart, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
         version = self.reSmoothieVersion.match(data)
         if version is not None:
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie found device version [%s]" % version.group(
-                    1).strip()
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie found device version [{}]".format(version.group(1).strip()))
 
             if 'r' not in dataDict:
                 r = {}
                 dataDict['r'] = r
 
             dataDict['r']['fb'] = version.group(1)
+            dataDict['r']['machif'] = self.getName()
             dataDict['f'] = [0, 0, 0]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
@@ -295,10 +292,9 @@ class MachIf_Smoothie(mi.MachIf_Base):
                 self._inputBufferSize = self._inputBufferSize + 1
 
         if data == self.cmdStatus and bookeeping:
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-                    (1, self._inputBufferSize,
-                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie input buffer encode used: {}, buffer size: {}, {:.2f}%% full".format(
+                    1, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
         elif data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
@@ -308,10 +304,9 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if self.cmdLineOptions.vverbose:
-                print "** MachIf_Smoothie input buffer encode used: %d, buffer size: %d, %.2f%% full" % \
-                    (dataLen, self._inputBufferSize,
-                     (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize)))
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                print ("** MachIf_Smoothie input buffer encode used: {}, buffer size: {}, {:.2f}%% full".format(
+                    dataLen, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
         return data
 

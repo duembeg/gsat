@@ -236,6 +236,7 @@ class MachIf_TinyG(mi.MachIf_Base):
 
     # text mode re expressions
     reMachineAck = re.compile(r'.+\s+ok>\s$')
+    reMachineAck2 = re.compile(r'^{"r":.*"f":')
     reMachineErr = re.compile(r'.+\s+err:\s$')
     reMachinePosX = re.compile(r'.*(posx):([+-]{0,1}\d+\.\d+)')
     reMachinePosY = re.compile(r'.*(posy):([+-]{0,1}\d+\.\d+)')
@@ -274,7 +275,8 @@ class MachIf_TinyG(mi.MachIf_Base):
         self.cmdQueueFlushCmd = "%"
         self.cmdSetAxisCmd = "G28.3"
         self.cmdStatus = '{"sr":null}\n'
-        self.cmdSystemInfo = '{"sys":null}\n'
+        # self.cmdSystemInfo = '{"sys":null}\n'
+        self.cmdSystemInfo = '{sys:{fv:null,fb:null}}\n'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw
@@ -310,6 +312,7 @@ class MachIf_TinyG(mi.MachIf_Base):
 
                     if 'fb' in sys:
                         r['fb'] = sys['fb']
+                        r['machif'] = self.getName()
 
                     if 'fv' in sys:
                         r['fv'] = sys['fv']
@@ -368,6 +371,7 @@ class MachIf_TinyG(mi.MachIf_Base):
         except ValueError:
             match = False
             ack = self.reMachineAck.match(data)
+            ack2 = self.reMachineAck2.match(data)
             posx = self.reMachinePosX.match(data)
             posy = self.reMachinePosY.match(data)
             posz = self.reMachinePosZ.match(data)
@@ -375,7 +379,7 @@ class MachIf_TinyG(mi.MachIf_Base):
             vel = self.reMachineVel.match(data)
             stat = self.reMachineStat.match(data)
 
-            if ack is not None:
+            if ack is not None or ack2 is not None:
                 dataDict['r'] = {"f": [1, 0, 0]}
                 dataDict['f'] = [1, 0, 0]
                 match = True

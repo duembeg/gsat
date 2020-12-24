@@ -376,9 +376,9 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                         try:
                             serial.Serial(i)
                             serList.append('COM'+str(i + 1))
-                        except serial.SerialException, e:
+                        except serial.SerialException as e:
                             pass
-                        except OSError, e:
+                        except OSError as e:
                             pass
                 else:
                     serList = glob.glob('/dev/ttyUSB*') + \
