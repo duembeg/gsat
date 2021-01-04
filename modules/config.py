@@ -113,6 +113,24 @@ STATE_STEP = 300
 STATE_BREAK = 400
 STATE_PAUSE = 500
 
+def get_sw_status_str(sw_status):
+    sw_status_str = "Unknown"
+
+    if sw_status == STATE_IDLE:
+        sw_status_str = "Idle"
+    elif sw_status == STATE_RUN:
+        sw_status_str = "Run"
+    elif sw_status == STATE_PAUSE:
+        sw_status_str = "Pause"
+    elif sw_status == STATE_STEP:
+        sw_status_str = "Step"
+    elif sw_status == STATE_BREAK:
+        sw_status_str = "Break"
+    elif sw_status == STATE_ABORT:
+        sw_status_str = "ABORT"
+
+    return sw_status_str
+
 '''
 Notes:
 Abort state is a special state, where the serial thread is waiting to be

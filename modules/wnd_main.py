@@ -983,18 +983,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnRunToolBarForceUpdate()
 
         # Program status
-        if self.stateData.swState == gc.STATE_IDLE:
-            self.statusbar.SetStatusText("SWST: Idle", 3)
-        elif self.stateData.swState == gc.STATE_RUN:
-            self.statusbar.SetStatusText("SWST: Run", 3)
-        elif self.stateData.swState == gc.STATE_PAUSE:
-            self.statusbar.SetStatusText("SWST: Pause", 3)
-        elif self.stateData.swState == gc.STATE_STEP:
-            self.statusbar.SetStatusText("SWST: Step", 3)
-        elif self.stateData.swState == gc.STATE_BREAK:
-            self.statusbar.SetStatusText("SWST: Break", 3)
-        elif self.stateData.swState == gc.STATE_ABORT:
-            self.statusbar.SetStatusText("SWST: ABORT", 3)
+        self.statusbar.SetStatusText("SWST: {}".format(gc.get_sw_status_str(self.stateData.swState)), 3)
 
         # machif status
         if self.remoteClient:
