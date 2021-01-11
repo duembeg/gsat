@@ -26,4 +26,7 @@
         "gsat",
         "machif"
     ],
+    "telemetry.enableCrashReporter": false,
+    "telemetry.enableTelemetry": false,
+    "terminal.integrated.inheritEnv": false,
 }

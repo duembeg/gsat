@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: gsat-vmask",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/gsat.py",
+            "args": [
+                "--vm=ui,ui_ev"
+                // "--vm=machif,ui,serialif,remoteif,evenif"
+            ]
+        },
+        {
             "name": "Python: gsat-console",
             "type": "python",
             "request": "launch",
@@ -37,16 +47,6 @@
             "program": "${workspaceFolder}/gsat.py",
             "args": [
                 "--vv"
-            ]
-        },
-        {
-            "name": "Python: gsat-vmask",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/gsat.py",
-            "args": [
-                "--vm=ui,ui_ev"
-                // "--vm=machif,ui,serialif,remoteif,evenif"
             ]
         },
         {
