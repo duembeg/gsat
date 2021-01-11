@@ -34,3 +34,8 @@ nosetests.xml
 .project
 .pydevproject
 .gsat.json
+
+# buildozer
+kivy-rc/.buildozer/
+kivy-rc/bin/
+kivy-rc/main.ini
