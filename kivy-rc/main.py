@@ -4,6 +4,7 @@ import time
 #from kivy.lang import Builder
 from kivy.config import Config
 from kivy.utils import platform
+# from kivy.core.window import Window
 
 if platform != 'android':
     # Nexus 7       1920 x 1200
@@ -74,7 +75,7 @@ class InputDialagoContent(MDBoxLayout):
         # self.on_init()
 
     def on_init(self, *args):
-        #self.ids.text_field.focus = True
+        # self.ids.text_field.focus = True
         self.ids.text_field.text = self.value
 
     def on_number_button_release(self, instance):
@@ -82,10 +83,11 @@ class InputDialagoContent(MDBoxLayout):
         '''
         self.ids.text_field.text = instance.text
         self.value = self.ids.text_field.text
-        self.ids.text_field.focus = True
+        # self.ids.text_field.focus = True
 
     def on_open(self, instance):
-        self.ids.text_field.focus = True
+        pass
+        # self.ids.text_field.focus = True
 
     def on_text_validate(self, instance):
         self.value = instance.text
@@ -337,7 +339,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li: 0})
 
         # handle step size
-        elif li in 'jsz':
+        elif li in ['jsz']:
             self.jog_step_size = instance_menu_item.text
             self.list_items[li].text = "{}".format(self.jog_step_size)
 
@@ -787,6 +789,9 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.update_dro = self.ids.dro_panel.on_update
         self.text_out = self.ids.text_out
         self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
+        # print ("*******************")
+        # print (Window.size)
+        # print (self.size)
 
     def on_stop(self):
         self.on_close()

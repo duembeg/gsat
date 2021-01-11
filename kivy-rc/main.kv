@@ -215,10 +215,7 @@
     rows:3
     # button_size: sp(24) #"38sp"
     # button_size: pt(24) #"38sp"
-    button_xscale: dp(1)*0.5 # 0.4 if (dp(1)<1) else 0.5
-    button_xsize: sp(24)
-    button_scale: (self.parent.width/(self.button_xsize*self.cols)) * self.button_xscale
-    button_size: self.button_xsize*self.button_scale
+    button_size: sp(48)
     spacing: 18
     size_hint:(None,None)
     width: self.minimum_width
@@ -227,9 +224,8 @@
     MDIconButton:
         # Zero XYZ Button
         icon: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
-        #user_font_size: jog.button_size
-        user_font_size: sp(48)
-        #size_hint: (jog.button_scale, jog.button_scale)
+        user_font_size: jog.button_size
+        # size_hint: (jog.button_scale, jog.button_scale)
         on_press: root.on_jog_set_axis({'x': 0, 'y': 0, 'z': 0})
     MDIconButton:
         # Zero XY Button
