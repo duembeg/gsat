@@ -32,17 +32,13 @@
             spacing: 5
             MDBoxLayoutDRO:
                 id: dro_panel
-                pos_hint: {'center_x':0.5, 'center_y': 0.5}
 
             MDBoxLayout:
                 orientation: 'vertical'
                 MDGridLayoutPlayControls:
                     id: play_ctrl
-                AnchorLayout:
-                    anchor_x: 'center'
-                    anchor_y: 'center'
-                    MDGridLayoutJogControls:
-                        id: jog_ctrl
+                MDGridLayoutJogControls:
+                    id: jog_ctrl
                 TextInput:
                     id: text_out
                     multiline: True
@@ -52,87 +48,117 @@
 
 
 <MDBoxLayoutDRO>
+    pos_hint: {'center_x':0.5, 'center_y': 0.5}
+    # size_hint_y: None
+    # height: self.minimum_height
     MDBoxLayout:
+        height: self.minimum_height
         ScrollView:
             MDList:
                 id: dro_list
                 axis_font_style: "H5"
                 axis_text: "0.000"
+                list_item_height: dp(64)
                 TwoLineListItem:
                     id: x_axis
                     text: dro_list.axis_text
                     secondary_text: "X axis"
                     font_style: dro_list.axis_font_style
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: y_axis
                     text: dro_list.axis_text
                     secondary_text: "Y axis"
                     font_style: dro_list.axis_font_style
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: z_axis
                     text: dro_list.axis_text
                     secondary_text: "Z axis"
                     font_style: dro_list.axis_font_style
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: a_axis
                     text: dro_list.axis_text
                     secondary_text: "A axis"
                     font_style: dro_list.axis_font_style
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: b_axis
                     text: dro_list.axis_text
                     secondary_text: "B axis"
                     font_style: dro_list.axis_font_style
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: c_axis
                     text: dro_list.axis_text
                     secondary_text: "C axis"
                     font_style: dro_list.axis_font_style
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: feed_rate
                     text: "0.00"
                     secondary_text: "Feed Rate"
                     font_style: "H6"
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: status
                     text: "Stop"
                     secondary_text: "Status"
                     font_style: "H6"
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: sw_status
                     text: "Idle"
                     secondary_text: "SW Status"
                     font_style: "H6"
+                    size_hint_y: None
+                    height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
         ScrollView:
             MDList:
                 id: info_list
                 font_style: "H6"
+                list_item_height: dp(64)
                 TwoLineListItem:
                     id: device
                     text: ""
                     secondary_text: "Device"
                     font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: gcode_pos
                     text: "-/- (0.00%)"
                     secondary_text: "Position in G-code"
                     font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: run_time
                     text: "00:00:00"
                     secondary_text: "Run Time"
                     font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     # on_release: print(self.to_window(self.center_x, self.center_y), self.text)
                 TwoLineListItem:
@@ -140,24 +166,32 @@
                     text: ""
                     secondary_text: "Remote Server"
                     font_style: "Body1"
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
                 TwoLineListItem:
                     id: jog_step_size
                     text: "1"
                     secondary_text: "Jog Step Size"
                     font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_jog_step_size_release(self)
                 TwoLineListItem:
                     id: jog_feed_rate
                     text: "1000"
                     secondary_text: "Jog Feed Rate"
                     font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_jog_feed_rate_release(self)
                 TwoLineListItem:
                     id: jog_spindle_rpm
                     text: "18000"
                     secondary_text: "Jog Spindle RPM"
                     font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
                     on_release: root.on_jog_spindle_rpm_release(self)
 
 
@@ -165,8 +199,8 @@
     rows:1
     size_hint_y: None
     height: self.minimum_height
-    spacing: 4
-    button_size: sp(48) #"38sp"
+    # spacing: 10
+    button_size: dp(38) #"38sp"
     MDIconButton:
         # canvas.before:
         #     Color:
@@ -177,26 +211,39 @@
         id: play
         text: "Play"
         icon: "play-circle-outline"
+        # icon: "images/icons/color/control.png"
         user_font_size: root.button_size
-        pos_hint: {'center_x':0.5, 'center_y': 0.5}
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
+        # text_color: app.theme_cls.disabled_hint_text_color
         on_press: root.on_play()
     MDIconButton:
         id: pause
         text: "Pause"
         icon: "pause-circle-outline"
+        # icon: "images/icons/color/control-pause.png"
         user_font_size: root.button_size
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
+        # text_color: app.theme_cls.disabled_hint_text_color
         on_press: root.on_pause()
     MDIconButton:
         id: step
         text: "Step"
         icon: "skip-next-circle-outline"
+        # icon: "images/icons/color/control-stop.png"
         user_font_size: root.button_size
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
         on_press: root.on_step()
     MDIconButton:
         id: stop
         text: "Stop"
         icon: "stop-circle-outline"
+        # icon: "images/icons/color/control-stop-square.png"
         user_font_size: root.button_size
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
         on_press: root.on_stop()
     AnchorLayout:
         anchor_x: 'center'
@@ -213,18 +260,26 @@
         text: "Refresh"
         icon: "cog-refresh-outline"
         user_font_size: root.button_size
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
         on_press: root.on_refresh()
     MDIconButton:
         id: machine_cycle_start
         text: "Cycle Start"
         icon: "cog-sync-outline"
         user_font_size: root.button_size
+        theme_text_color: "Custom"
+        # text_color: app.theme_cls.primary_color
+        text_color: 0.2, 1, 0.4, 1
         on_press: root.on_cycle_start()
     MDIconButton:
         id: machine_hold
         text: "Hold"
         icon: "cog-off-outline"
         user_font_size: root.button_size
+        theme_text_color: "Custom"
+        # text_color: app.theme_cls.primary_color
+        text_color: 1, 0, 0, 0.7
         on_press: root.on_hold()
 
 
@@ -241,29 +296,36 @@
     # button_size: sp(24) #"38sp"
     # button_size: pt(24) #"38sp"
     button_size: sp(48)
-    spacing: 18
-    size_hint:(None,None)
+    spacing: 30
+    size_hint:(None, None)
     width: self.minimum_width
     height: self.minimum_height
-    # pos_hint: {'x':((self.width - self.minimum_width)/2)/self.width}
+    pos_hint: {'center_x':0.5}
     MDIconButton:
-        # Zero XYZ Button
+    # Button:
+    #     background_normal: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
+    #     background_down: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
+    #     background_disabled_normal: "images/icons/color-dis/"
+        id: zero_xyz
         icon: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         # size_hint: (jog.button_scale, jog.button_scale)
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
         on_press: root.on_jog_set_axis({'x': 0, 'y': 0, 'z': 0})
+        #elevation_normal: 30
     MDIconButton:
-        # Zero XY Button
+        id: zero_xy
         icon: "images/icons/color/jogging_set_to_zero_xy_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_set_axis({'x': 0, 'y': 0})
     MDIconButton:
-        # Zero Z Button
+        id: zero_z
         icon: "images/icons/color/jogging_set_to_zero_z_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_set_axis({'z': 0})
     MDIconButton:
-        # Home XYZ Button
+        id: home_xyz
         # canvas.before:
         #     Color:
         #         rgba: app.get_color_random()
@@ -271,98 +333,98 @@
         #         pos: self.pos
         #         size: self.size
         icon: "images/icons/color/jogging_home_xyz_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_home_axis({'x': 0, 'y': 0, 'z': 0})
         # icon: "home-circle-outline"
         # user_font_size: jog.button_size
         # theme_text_color: "Custom"
         # text_color:  (60.4,79.2,62,1)
     MDIconButton:
-        # Positive Y Button
+        id: positive_y
         icon: "images/icons/color/jogging_pos_y_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_relative('y', direction=+1)
     MDIconButton:
-        # Home X Button
+        id: home_x
         icon: "images/icons/color/jogging_home_x_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_home_axis({'x': 0})
     MDIconButton:
-        # Positive Z Button
+        id: positive_z
         icon: "images/icons/color/jogging_pos_z_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_relative('z', direction=+1)
     MDIconButton:
         # Coolant On Button
         icon: "images/icons/color/jogging_coolant_on_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_COOLANT_ON))
     MDIconButton:
         # Coolant Off Button
         icon: "images/icons/color/jogging_coolant_off_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
     MDIconButton:
         # Probe Z Button
         icon: "images/icons/color/jogging_probe_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_probe("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
     MDIconButton:
         # Negative X Button
         icon: "images/icons/color/jogging_neg_x_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_relative('x', direction=-1)
     MDIconButton:
         # Goto zero XY Button
         icon: "images/icons/color/jogging_goto_zero_xy_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_absolute({'x':0, 'y':0})
     MDIconButton:
         # Posotive X Button
         icon: "images/icons/color/jogging_pos_x_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_relative('x', direction=+1)
     MDIconButton:
         # Home Z Button
         icon: "images/icons/color/jogging_home_z_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_home_axis({'z': 0})
     MDIconButton:
         # Spindle CW Button
         icon: "images/icons/color/jogging_spindle_cw_48x48.png"
         # TODO: get spindle rpm
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_send_cmd("{} S{:d}\n".format(root.gc.DEVICE_CMD_SPINDLE_CW_ON, root.jog_spindle_rpm))
     MDIconButton:
         # Spindle CCW Button
         icon: "images/icons/color/jogging_spindle_ccw_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         # TODO: get spindle rpm
         on_press: root.on_jog_send_cmd("{} S{:d}\n".format(root.gc.DEVICE_CMD_SPINDLE_CCW_ON, root.jog_spindle_rpm))
     MDIconButton:
         # Spindle OFF Button
         icon: "images/icons/color/jogging_spindle_off_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_SPINDLE_OFF))
     MDIconButton:
         # Empty Spot Button
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         theme_text_color: "Custom"
         text_color: (0,0,0,0)
     MDIconButton:
         # Negative Y Button
         icon: "images/icons/color/jogging_neg_y_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_relative('y', direction=-1)
     MDIconButton:
         # Home Y Button
         icon: "images/icons/color/jogging_home_y_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_home_axis({'y': 0})
     MDIconButton:
         # Negative Z Button
         icon: "images/icons/color/jogging_neg_z_48x48.png"
-        user_font_size: jog.button_size
+        # user_font_size: jog.button_size
         on_press: root.on_jog_move_relative('z', direction=-1)
 
 

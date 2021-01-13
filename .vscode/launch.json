@@ -9,6 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/gsat.py",
+            "python": "python2",
             "args": [
                 "--vm=ui,ui_ev"
                 // "--vm=machif,ui,serialif,remoteif,evenif"
@@ -23,6 +24,17 @@
                 // "-g../test.gcode",
                 "--vm=machif,serialif,remoteif",
                 "--server"
+            ]
+        },
+        {
+            "name": "Python: gsat-rc",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/kivy-rc/main.py",
+            "python": "python3",
+            // "args": [
+            //     "--vm=ui,ui_ev"
+            //     // "--vm=machif,ui,serialif,remoteif,evenif"
             ]
         },
         {

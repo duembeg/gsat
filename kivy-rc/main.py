@@ -29,9 +29,17 @@ import time
 #from kivy.lang import Builder
 from kivy.config import Config
 from kivy.utils import platform
+from kivy.metrics import sp, dp, mm
+
 # from kivy.core.window import Window
 
 if platform != 'android':
+    # Lenovo M8 Tablet 1280 x 800
+    # Config.set('graphics', 'width', '800')
+    # Config.set('graphics', 'height', '1280')
+    Config.set('graphics', 'width', '1280')
+    Config.set('graphics', 'height', '800')
+
     # Nexus 7       1920 x 1200
     # Config.set('graphics', 'width', '1920')
     # Config.set('graphics', 'height', '1200')
@@ -45,8 +53,8 @@ if platform != 'android':
     # Config.set('graphics', 'height', '1024')
 
     # Amazon HD8    1280 x 800
-    Config.set('graphics', 'width', '1280')
-    Config.set('graphics', 'height', '800')
+    # Config.set('graphics', 'width', '1280')
+    # Config.set('graphics', 'height', '800')
     # Config.set('graphics', 'width', '800')
     # Config.set('graphics', 'height', '1280')
 
@@ -62,7 +70,7 @@ from kivymd.uix.screen import Screen
 from kivymd.uix.boxlayout import MDBoxLayout
 # from kivymd.uix.floatlayout import FloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.button import MDFlatButton #, MDRectangleFlatButton, MDIconButton, MDRoundImageButton
+from kivymd.uix.button import MDFlatButton, MDIconButton #, MDRectangleFlatButton, , MDRoundImageButton
 from kivymd.uix.textfield import MDTextField #, MDTextFieldRect
 from kivymd.uix.list import MDList, OneLineListItem, TwoLineListItem
 # from kivymd.uix.dropdownitem import MDDropDownItem
@@ -70,6 +78,7 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.list import IRightBodyTouch
 from kivymd.uix.selectioncontrol import MDCheckbox #, MDSwitch
 from kivymd.uix.dialog import MDDialog
+from kivymd.theming import ThemeManager
 from kivy.clock import Clock
 # from kivy.uix.anchorlayout import AnchorLayout
 # from kivy.uix.scrollview import ScrollView
@@ -374,8 +383,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
         self.axis_list_items = ['x', 'y', 'z', 'a', 'b', 'c']
         self.dro_list_enable = ['x', 'y', 'z', 'a', 'fr', 'st', 'swst']
         self.info_list_enable = ['mi', 'pc', 'rt', 'rc', 'jsz', 'jfr', 'jrpm']
-        #self.dro_list_enable = []
-        #self.info_list_enable = []
+        # self.dro_list_enable = ['x', 'y', 'z']
+        # self.info_list_enable = ['mi', 'pc', 'rt']
 
         if (set(self.dro_list_enable) & set(self.info_list_enable)):
             raise Exception("Cannot have same item in multiple MD lists!!")
@@ -637,6 +646,29 @@ class MDGridLayoutPlayControls(MDGridLayout):
 
         self.gc = gc # for access via kv lang
 
+    # def on_size (self, *args):
+    #     Clock.schedule_once(self.on_sz_init)
+
+    def on_sz_init(self, *args):
+        # print (self.size)
+        # print (self.width)
+
+        br = 7  # 7 buttons per row
+        spc = self.spacing[0] + 2 # 18 spacing
+        sz = abs(int((self.width - (spc * (br-1))) / 7))
+        # print (self.parent.width)
+        # print (self.parent.width - (sp * (br-1)))
+        # print (sz)
+        #print( sp(48) )
+        #print( dp(48) )
+        #print( mm(48) )
+
+        # if sz > 60:
+        #     for widget in self.walk():
+        #         if type(widget) is MDIconButton:
+        #             widget.height = sz
+        #             widget.width = sz
+
     def on_cycle_start(self):
         if gc.gsatrc_remote_client:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_CYCLE_START)
@@ -674,6 +706,7 @@ class MDGridLayoutPlayControls(MDGridLayout):
         self.update_button_state()
 
     def update_button_state(self):
+        return
         if self.serial_port_open:
             self.ids.machine_refresh.disabled = False
             self.ids.machine_cycle_start.disabled = False
@@ -715,6 +748,37 @@ class MDGridLayoutJogControls(MDGridLayout):
         self.jog_step_size = ""
         self.jog_feed_rate = ""
         self.jog_spindle_rpm = ""
+
+        Clock.schedule_once(self.on_init, 1)
+
+    def on_init(self, *args):
+        pass
+        # print ("$$$$$$$$$$$$$$$$$  {}".format(self.parent.width))
+
+    # def on_size (self, *args):
+    #     Clock.schedule_once(self.on_sz_init, 5)
+
+    def on_sz_init(self, *args):
+        # print (self.size)
+        # print (self.width)
+
+        br = 7  # 7 buttons per row
+        space = self.spacing[0] + 2 # 18 spacing
+        sz = abs(int((self.parent.width - (space * (br-1))) / 7))
+        print (self.parent.width)
+        # print (self.parent.width - (sp * (br-1)))
+        # print (sz)
+        # print (sp(1))
+        # print ("{:.2f}sp".format(sz/sp(1)))
+
+
+        if sz > 60:
+            for widget in self.walk():
+                if type(widget) is MDIconButton:
+                    widget.height = sz
+                    widget.width = sz
+                    # widget.user_font_size = "{:.2f}sp".format((sz/sp(1))*.7)
+                    # widget.canvas.ask_update()
 
     def on_jog_home_axis(self, axis):
         if gc.gsatrc_remote_client:
@@ -816,7 +880,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
         # print ("*******************")
         # print (Window.size)
-        # print (self.size)
+        # print ("################# {}".format(self.size))
 
     def on_stop(self):
         self.on_close()
@@ -1208,14 +1272,21 @@ class MDBoxLayoutAutoRotate(MDBoxLayout):
         super(MDBoxLayoutAutoRotate, self).__init__(**kwargs)
 
     def on_size(self, *args):
+        # print (self.size)
+        # print (self.width)
+
         if self.width > self.height:
             self.orientation = 'horizontal'
         else:
             self.orientation = 'vertical'
 
 class MainApp(MDApp):
+
     def build(self):
         config = self.config
+        #self.theme_cls.primary_palette = "Green"
+        #self.theme_cls.primary_hue = "A700"
+        self.theme_cls.theme_style = "Light"
         # screen = Builder.load_string(kv_helper)
         # return screen
         return RootWidget()
