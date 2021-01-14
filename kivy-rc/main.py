@@ -646,28 +646,40 @@ class MDGridLayoutPlayControls(MDGridLayout):
 
         self.gc = gc # for access via kv lang
 
+        # Clock.schedule_once(self.on_sz_init)
+
     # def on_size (self, *args):
     #     Clock.schedule_once(self.on_sz_init)
 
     def on_sz_init(self, *args):
         # print (self.size)
-        # print (self.width)
+        # print (self.parent.size)
+        # print (">>>>>>>>> {}".format(self.minimum_width))
 
-        br = 7  # 7 buttons per row
-        spc = self.spacing[0] + 2 # 18 spacing
-        sz = abs(int((self.width - (spc * (br-1))) / 7))
+        # br = 7  # 7 buttons per row
+        # spc = self.spacing[0] + 2 # 18 spacing
+        # sz = abs(int((self.width - (spc * (br-1))) / 7))
         # print (self.parent.width)
         # print (self.parent.width - (sp * (br-1)))
         # print (sz)
-        #print( sp(48) )
-        #print( dp(48) )
-        #print( mm(48) )
+        # print( sp(48) )
+        # print( dp(48) )
+        # print( mm(48) )
+        print (self.spacing)
 
-        # if sz > 60:
-        #     for widget in self.walk():
-        #         if type(widget) is MDIconButton:
-        #             widget.height = sz
-        #             widget.width = sz
+        if self.minimum_width > self.width:
+            size_f = self.width / self.minimum_width
+
+            if size_f > 0.50: # avoid very early when size are almost zero
+                print (self.spacing)
+                # self.spacing = int(self.spacing * size_f)
+            #     children_list = list(self.children)
+            #     for widget in children_list:
+            #         if type(widget) is MDIconButton:
+            #             pass
+                        #widget.height = widget.height * size_f
+                        #widget.width = widget.width * size_f
+                        #widget.user_font_size *= size_f
 
     def on_cycle_start(self):
         if gc.gsatrc_remote_client:
