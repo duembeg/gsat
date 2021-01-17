@@ -31,8 +31,6 @@ from kivy.config import Config
 from kivy.utils import platform
 from kivy.metrics import sp, dp, mm
 
-# from kivy.core.window import Window
-
 if platform != 'android':
     # Lenovo M8 Tablet 1280 x 800
     Config.set('graphics', 'width', '800')
@@ -59,9 +57,13 @@ if platform != 'android':
     # Config.set('graphics', 'height', '1280')
 
 if platform == 'android':
-    pass
     # from android.permissions import request_permissions, Permission
     # request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
+
+    # fix issues with text_input below virtual keyboard
+    from kivy.core.window import Window
+    Window.softinput_mode = 'below_target'
+
 
 # Config.set('kivy','window_icon','/images/icons/color/gcs_g1_cog_32x32.png')
 
@@ -854,6 +856,10 @@ class MDGridLayoutJogControls(MDGridLayout):
         self.jog_step_size = ""
         self.jog_feed_rate = ""
         self.jog_spindle_rpm = ""
+        self.jog_long_press_time = 0.4
+        self.jog_long_press_clk_ev = None
+        self.jog_long_press_ev = False
+        self.jog_long_press_key = ""
 
         Clock.schedule_once(self.on_init, 1)
 
@@ -886,6 +892,55 @@ class MDGridLayoutJogControls(MDGridLayout):
                     # widget.user_font_size = "{:.2f}sp".format((sz/sp(1))*.7)
                     # widget.canvas.ask_update()
 
+    def on_jog_button_long_press(self, time):
+        ''' handle long press for a few jog buttons (part 3)
+        '''
+        self.jog_long_press_ev = True
+
+        if self.long_press_clk_ev:
+            self.long_press_clk_ev = None
+
+        dir = 0
+        big_val = 99999
+
+        if self.jog_long_press_key[:1] == "+":
+            dir = 1
+        elif self.jog_long_press_key[:1] == "-":
+            dir = -1
+
+        self.on_jog_move_relative(self.jog_long_press_key[1:], step_size=float(big_val * dir))
+
+    def on_jog_button_press(self, key):
+        ''' handle long press for a few jog buttons (part 1)
+        '''
+        self.jog_long_press_key = key
+        self.long_press_clk_ev = Clock.schedule_once(self.on_jog_button_long_press, self.jog_long_press_time)
+
+    def on_jog_button_release(self, key):
+        ''' handle long press for a few jog buttons (part 2)
+        '''
+        if self.jog_long_press_ev:
+            self.jog_long_press_ev = False
+            if gc.gsatrc_remote_client:
+                gc.gsatrc_remote_client.add_event(gc.EV_CMD_JOG_STOP)
+        else:
+            if self.long_press_clk_ev:
+                self.long_press_clk_ev.cancel()
+                self.long_press_clk_ev = None
+                self.jog_long_press_ev = False
+
+            # handle regular press
+            dir = 0
+
+            if key[:1] == "+":
+                dir = 1
+            elif key[:1] == "-":
+                dir = -1
+
+            self.on_jog_move_relative(
+                self.jog_long_press_key[1:], step_size=float(self.jog_step_size * dir)
+            )
+
     def on_jog_home_axis(self, axis):
         if gc.gsatrc_remote_client:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, axis)
@@ -899,12 +954,10 @@ class MDGridLayoutJogControls(MDGridLayout):
                 axis['feed'] = int(self.jog_feed_rate)
             gc.gsatrc_remote_client.add_event(gc_cmd, axis)
 
-    def on_jog_move_relative(self, axis_str, direction):
+    def on_jog_move_relative(self, axis_str, step_size=None):
         if gc.gsatrc_remote_client:
-            step_size = float(self.jog_step_size)
-
-            if direction<1:
-                step_size = step_size * -1
+            if step_size is None:
+                step_size = float(self.jog_step_size)
 
             axis = {axis_str: step_size}
             if self.jog_feed_rate == "Rapid":
@@ -963,11 +1016,15 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.dispatch('on_process_queue')
 
     def append_text(self, str_data):
-        # self.text_out.text = self.text_out.text + str_data
-        self.text_out.readonly = False
-        self.text_out.do_cursor_movement('cursor_end', control=True)
-        self.text_out.insert_text(str_data)
-        self.text_out.readonly = True
+        ''' text output
+        '''
+        try:
+            self.text_out.readonly = False
+            self.text_out.do_cursor_movement('cursor_end', control=True)
+            self.text_out.insert_text(str_data)
+            self.text_out.readonly = True
+        except:
+            pass
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:

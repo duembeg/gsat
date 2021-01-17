@@ -359,7 +359,8 @@
         id: positive_y
         icon: "images/icons/color/jogging_pos_y_48x48.png"
         # user_font_size: jog.button_size
-        on_press: root.on_jog_move_relative('y', direction=+1)
+        on_press: root.on_jog_button_press('+y')
+        on_release: root.on_jog_button_release('+y')
     MDIconButton:
         id: home_x
         icon: "images/icons/color/jogging_home_x_48x48.png"
@@ -369,39 +370,42 @@
         id: positive_z
         icon: "images/icons/color/jogging_pos_z_48x48.png"
         # user_font_size: jog.button_size
-        on_press: root.on_jog_move_relative('z', direction=+1)
+        on_press: root.on_jog_button_press('+z')
+        on_release: root.on_jog_button_release('+z')
     MDIconButton:
-        # Coolant On Button
+        id: coolant_on
         icon: "images/icons/color/jogging_coolant_on_48x48.png"
         # user_font_size: jog.button_size
         on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_COOLANT_ON))
     MDIconButton:
-        # Coolant Off Button
+        id: coolant_off
         icon: "images/icons/color/jogging_coolant_off_48x48.png"
         # user_font_size: jog.button_size
         on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
     MDIconButton:
-        # Probe Z Button
+        id: probe
         icon: "images/icons/color/jogging_probe_48x48.png"
         # user_font_size: jog.button_size
         on_press: root.on_jog_probe("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
     MDIconButton:
-        # Negative X Button
+        id: negative_x
         icon: "images/icons/color/jogging_neg_x_48x48.png"
         # user_font_size: jog.button_size
-        on_press: root.on_jog_move_relative('x', direction=-1)
+        on_press: root.on_jog_button_press('-x')
+        on_release: root.on_jog_button_release('-x')
     MDIconButton:
-        # Goto zero XY Button
+        id: go_zero_xy
         icon: "images/icons/color/jogging_goto_zero_xy_48x48.png"
         # user_font_size: jog.button_size
         on_press: root.on_jog_move_absolute({'x':0, 'y':0})
     MDIconButton:
-        # Posotive X Button
+        id: positive_x
         icon: "images/icons/color/jogging_pos_x_48x48.png"
         # user_font_size: jog.button_size
-        on_press: root.on_jog_move_relative('x', direction=+1)
+        on_press: root.on_jog_button_press('+x')
+        on_release: root.on_jog_button_release('+x')
     MDIconButton:
-        # Home Z Button
+        id: home_z
         icon: "images/icons/color/jogging_home_z_48x48.png"
         # user_font_size: jog.button_size
         on_press: root.on_jog_home_axis({'z': 0})
@@ -428,20 +432,23 @@
         theme_text_color: "Custom"
         text_color: (0,0,0,0)
     MDIconButton:
-        # Negative Y Button
+        id: negative_y
         icon: "images/icons/color/jogging_neg_y_48x48.png"
         # user_font_size: jog.button_size
-        on_press: root.on_jog_move_relative('y', direction=-1)
+        on_press: root.on_jog_button_press('-y')
+        on_release: root.on_jog_button_release('-y')
     MDIconButton:
-        # Home Y Button
+        id: home_y
         icon: "images/icons/color/jogging_home_y_48x48.png"
         # user_font_size: jog.button_size
         on_press: root.on_jog_home_axis({'y': 0})
     MDIconButton:
-        # Negative Z Button
+        id: negative_z
         icon: "images/icons/color/jogging_neg_z_48x48.png"
         # user_font_size: jog.button_size
-        on_press: root.on_jog_move_relative('z', direction=-1)
+        on_press: root.on_jog_button_press('-z')
+        on_release: root.on_jog_button_release('-z')
+
 
 
 <InputDialagoContent>
