@@ -30,13 +30,17 @@
             title: "gsat remote control"
         MDBoxLayoutAutoRotate:
             spacing: 5
-            MDBoxLayoutDRO:
-                id: dro_panel
+            MDBoxLayout:
+                orientation: 'vertical'
+                MDBoxLayoutDRO:
+                    id: dro_panel
+                MDGridLayoutButtons:
+                    id: button_panel
 
             MDBoxLayout:
                 orientation: 'vertical'
-                MDGridLayoutPlayControls:
-                    id: play_ctrl
+                # MDGridLayoutPlayControls:
+                #     id: play_ctrl
                 MDGridLayoutJogControls:
                     id: jog_ctrl
                 TextInput:
@@ -45,6 +49,16 @@
                     scroll_y: 1000
                     readonly: True
                     font_name: 'data/fonts/RobotoMono-Regular'
+    # MDFloatingActionButton:
+    #     icon: "play-circle"
+    #     md_bg_color: app.theme_cls.primary_color
+    #     pos_hint: {'right':1}
+    # MDFloatingActionButton:
+    #     icon: "car-brake-hold"
+    #     md_bg_color: app.theme_cls.primary_color
+    #     pos_hint: {'right':0.95}
+
+
 
 
 <MDBoxLayoutDRO>
@@ -52,6 +66,7 @@
     # size_hint_y: None
     # height: self.minimum_height
     MDBoxLayout:
+        # orientation: 'vertical'
         height: self.minimum_height
         ScrollView:
             MDList:
@@ -169,118 +184,119 @@
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
-                    id: jog_step_size
-                    text: "1"
-                    secondary_text: "Jog Step Size"
-                    font_style: info_list.font_style
-                    size_hint_y: None
-                    height: info_list.list_item_height
-                    on_release: root.on_jog_step_size_release(self)
-                TwoLineListItem:
-                    id: jog_feed_rate
-                    text: "1000"
-                    secondary_text: "Jog Feed Rate"
-                    font_style: info_list.font_style
-                    size_hint_y: None
-                    height: info_list.list_item_height
-                    on_release: root.on_jog_feed_rate_release(self)
-                TwoLineListItem:
-                    id: jog_spindle_rpm
-                    text: "18000"
-                    secondary_text: "Jog Spindle RPM"
-                    font_style: info_list.font_style
-                    size_hint_y: None
-                    height: info_list.list_item_height
-                    on_release: root.on_jog_spindle_rpm_release(self)
 
 
-<MDGridLayoutPlayControls>
-    rows:1
+<MDGridLayoutButtons>
+    rows: 3
+    # columns: 4
     size_hint_y: None
-    height: self.minimum_height
-    # spacing: 10
-    button_size: dp(34) #"38sp"
-    MDIconButton:
-        # canvas.before:
-        #     Color:
-        #         rgba: app.get_color_random()
-        #     Rectangle:
-        #         pos: self.pos
-        #         size: self.size
-        id: play
-        text: "Play"
-        icon: "play-circle-outline"
-        # icon: "images/icons/color/control.png"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        text_color: app.theme_cls.primary_color
-        # text_color: app.theme_cls.disabled_hint_text_color
-        on_press: root.on_play()
-    MDIconButton:
+    # height: self.minimum_height
+    height: dp(150)
+    # MDRectangleFlatIconButton:
+    # # Button:
+    #     # canvas.before:
+    #     #     Color:
+    #     #         rgba: app.get_color_random()
+    #     #     Rectangle:
+    #     #         pos: self.pos
+    #     #         size: self.size
+    #     id: run
+    #     text: "Run"
+    #     icon: "play"
+    #     theme_text_color: "Custom"
+    #     text_color: app.theme_cls.primary_color
+    #     size_hint: (1, 1)
+    #     # text_size: self.size
+    #     # text_color: app.theme_cls.disabled_hint_text_color
+    #     # on_press: root.on_play()
+
+
+    MDRectangleFlatIconButton:
+    # Button:
+        id: step_size
+        text: "Step Size"
+        icon: "arrow-expand-horizontal"
+        size_hint: (1, 1)
+        on_press: root.on_jog_step_size()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: feed_rate
+        text: "Feed Rate"
+        icon: "play-speed"
+        size_hint: (1, 1)
+        on_press: root.on_jog_feed_rate()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: spindle_rpm
+        text: "Spindle RPM"
+        icon: "speedometer"
+        size_hint: (1, 1)
+        on_press: root.on_jog_spindle_rpm()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: send_gcode
+        text: "Send G-code"
+        icon: "console-line"
+        size_hint: (1, 1)
+        on_press: root.on_jog_g_code_cmd()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: run
+        text: "Run"
+        icon: "play"
+        size_hint: (1, 1)
+        on_press: root.on_run()
+    MDRectangleFlatIconButton:
+    # Button:
         id: pause
         text: "Pause"
-        icon: "pause-circle-outline"
-        # icon: "images/icons/color/control-pause.png"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        text_color: app.theme_cls.primary_color
-        # text_color: app.theme_cls.disabled_hint_text_color
+        icon: "pause"
+        size_hint: (1, 1)
         on_press: root.on_pause()
-    MDIconButton:
+    MDRectangleFlatIconButton:
+    # Button:
         id: step
         text: "Step"
-        icon: "skip-next-circle-outline"
-        # icon: "images/icons/color/control-stop.png"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        text_color: app.theme_cls.primary_color
+        icon: "step-forward"
+        size_hint: (1, 1)
         on_press: root.on_step()
-    MDIconButton:
+    MDRectangleFlatIconButton:
         id: stop
         text: "Stop"
-        icon: "stop-circle-outline"
-        # icon: "images/icons/color/control-stop-square.png"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        text_color: app.theme_cls.primary_color
+        icon: "stop"
+        size_hint: (1, 1)
         on_press: root.on_stop()
-    AnchorLayout:
-        anchor_x: 'center'
-        anchor_y: 'center'
-    # MDTextField:
-    #     #hint_text: 'Search icon'
-    #     multiline: False
-    #     input_filter: 'float'
-    #     input_type: 'number'
-    #     #on_focus: root.text_focused()
-    #     pos_hint: {'center_x':0.5, 'center_y': 0.5}
-    MDIconButton:
+    MDRectangleFlatIconButton:
+    # Button:
+        id: machine_clear_alarm
+        text: "Clear Alarm"
+        icon: "progress-alert"
+        size_hint: (1, 1)
+        on_press: root.on_machine_clear_alarm()
+    MDRectangleFlatIconButton:
+    # Button:
         id: machine_refresh
         text: "Refresh"
-        icon: "cog-refresh-outline"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        text_color: app.theme_cls.primary_color
-        on_press: root.on_refresh()
-    MDIconButton:
+        icon: "refresh-circle"
+        size_hint: (1, 1)
+        on_press: root.on_machine_refresh()
+    MDRectangleFlatIconButton:
+    # Button:
         id: machine_cycle_start
         text: "Cycle Start"
-        icon: "cog-sync-outline"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        # text_color: app.theme_cls.primary_color
-        text_color: 0.2, 1, 0.4, 1
-        on_press: root.on_cycle_start()
-    MDIconButton:
+        icon: "play-circle"
+        text_color: 0, 0.5, 0, 1
+        line_color: app.theme_cls.primary_color
+        size_hint: (1, 1)
+        on_press: root.on_machine_cycle_start()
+    MDRectangleFlatIconButton:
         id: machine_hold
         text: "Hold"
-        icon: "cog-off-outline"
-        user_font_size: root.button_size
-        theme_text_color: "Custom"
-        # text_color: app.theme_cls.primary_color
+        icon: "car-brake-hold"
         text_color: 1, 0, 0, 0.7
-        on_press: root.on_hold()
+        line_color: app.theme_cls.primary_color
+        size_hint: (1, 1)
+        on_press: root.on_machine_hold()
 
 
 <MDGridLayoutJogControls>
@@ -300,7 +316,7 @@
     size_hint:(None, None)
     width: self.minimum_width
     height: self.minimum_height
-    pos_hint: {'center_x':0.5}
+    pos_hint: {'center_x':0.5, 'center_y':0.5}
     MDIconButton:
     # Button:
     #     background_normal: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
@@ -466,7 +482,7 @@
         #         pos: self.pos
         #         size: self.size
         id: step_size_buttons
-        colums: 4
+        columns: 4
         rows: 3
         spacing: 5
         size_hint_x: None
