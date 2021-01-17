@@ -217,28 +217,28 @@
         text: "Step Size"
         icon: "arrow-expand-horizontal"
         size_hint: (1, 1)
-        on_press: root.on_jog_step_size()
+        on_press: root.on_jog_step_size_bt()
     MDRectangleFlatIconButton:
     # Button:
         id: feed_rate
         text: "Feed Rate"
         icon: "play-speed"
         size_hint: (1, 1)
-        on_press: root.on_jog_feed_rate()
+        on_press: root.on_jog_feed_rate_bt()
     MDRectangleFlatIconButton:
     # Button:
         id: spindle_rpm
         text: "Spindle RPM"
         icon: "speedometer"
         size_hint: (1, 1)
-        on_press: root.on_jog_spindle_rpm()
+        on_press: root.on_jog_spindle_rpm_bt()
     MDRectangleFlatIconButton:
     # Button:
         id: send_gcode
         text: "Send G-code"
         icon: "console-line"
         size_hint: (1, 1)
-        on_press: root.on_jog_g_code_cmd()
+        on_press: root.on_jog_g_code_cmd_bt()
     MDRectangleFlatIconButton:
     # Button:
         id: run

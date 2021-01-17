@@ -79,7 +79,9 @@ from kivymd.uix.list import IRightBodyTouch
 from kivymd.uix.selectioncontrol import MDCheckbox #, MDSwitch
 from kivymd.uix.dialog import MDDialog
 from kivymd.theming import ThemeManager
+from kivymd.toast import toast
 from kivy.clock import Clock
+
 # from kivy.uix.anchorlayout import AnchorLayout
 # from kivy.uix.scrollview import ScrollView
 from kivy.properties import ObjectProperty, BooleanProperty
@@ -199,9 +201,6 @@ class MDBoxLayoutDRO(MDBoxLayout):
     ''' Class to handle DRO panel list items
     '''
     rc_connect = ObjectProperty(None)
-    jog_step_size = ObjectProperty(None)
-    jog_feed_rate = ObjectProperty(None)
-    jog_spindle_rpm = ObjectProperty(None)
     server_hostname  = ObjectProperty(None)
     server_tcp_port  = ObjectProperty(None)
     server_udp_port  = ObjectProperty(None)
@@ -543,6 +542,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
 
 class MDGridLayoutButtons(MDGridLayout):
+    jog_step_size = ObjectProperty(None)
+    jog_feed_rate = ObjectProperty(None)
+    jog_spindle_rpm = ObjectProperty(None)
     sw_state = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
 
@@ -620,7 +622,7 @@ class MDGridLayoutButtons(MDGridLayout):
                 dialog_buttons.insert(
                     0,
                     MDFlatButton(
-                        text="RAPID", text_color=button_text_color, on_release=self.on_jog_feed_rate_rapid_button
+                        text="RAPID", text_color=button_text_color, on_release=self.on_jog_feed_rate_rapid_bt
                     )
                 )
 
@@ -633,7 +635,7 @@ class MDGridLayoutButtons(MDGridLayout):
         # config_dialog.open()
         return config_dialog
 
-    def on_jog_feed_rate(self):
+    def on_jog_feed_rate_bt(self):
         ''' setup jog step size dialog
         '''
         value = MDApp.get_running_app().config.get(__appname__, 'jog_feed_rate')
@@ -647,7 +649,7 @@ class MDGridLayoutButtons(MDGridLayout):
         '''
         self.jog_feed_rate_dlg.dismiss()
 
-    def on_jog_feed_rate_rapid_button(self, *args):
+    def on_jog_feed_rate_rapid_bt(self, *args):
         ''' handle special Rapid button
         '''
         value = self.jog_feed_rate_dlg.content_cls.ids.text_field.text = "Rapid"
@@ -670,8 +672,9 @@ class MDGridLayoutButtons(MDGridLayout):
         '''
         value = MDApp.get_running_app().config.get(__appname__, 'jog_feed_rate')
         self.ids.feed_rate.text = "Feed Rate\n{}".format(value)
+        self.jog_feed_rate = value
 
-    def on_jog_g_code_cmd(self):
+    def on_jog_g_code_cmd_bt(self):
         ''' setup G-code cmd dialog
         '''
         self.jog_g_code_cmd_dlg.open()
@@ -687,10 +690,12 @@ class MDGridLayoutButtons(MDGridLayout):
         self.jog_g_code_cmd_dlg.dismiss()
         value = self.jog_g_code_cmd_dlg.content_cls.ids.text_field.text
 
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, "{}\n".format(value))
+        else:
+            self.on_no_serial_port_open()
 
-    def on_jog_spindle_rpm(self):
+    def on_jog_spindle_rpm_bt(self):
         ''' setup spindle rpm dialog
         '''
         value = MDApp.get_running_app().config.get(__appname__, 'jog_spindle_rpm')
@@ -719,8 +724,9 @@ class MDGridLayoutButtons(MDGridLayout):
         '''
         value = MDApp.get_running_app().config.get(__appname__, 'jog_spindle_rpm')
         self.ids.spindle_rpm.text = "Spindle RPM\n{}".format(value)
+        self.jog_spindle_rpm = value
 
-    def on_jog_step_size(self):
+    def on_jog_step_size_bt(self):
         ''' setup jog step size dialog
         '''
         value = MDApp.get_running_app().config.get(__appname__, 'jog_step_size')
@@ -747,46 +753,63 @@ class MDGridLayoutButtons(MDGridLayout):
         '''
         value = MDApp.get_running_app().config.get(__appname__, 'jog_step_size')
         self.ids.step_size.text = "Step Size\n{}".format(value)
+        self.jog_step_size = value
 
     def on_machine_clear_alarm(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_CLEAR_ALARM)
+        else:
+            self.on_no_serial_port_open()
 
     def on_machine_cycle_start(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_CYCLE_START)
+        else:
+            self.on_no_serial_port_open()
 
     def on_machine_hold(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_FEED_HOLD)
+        else:
+            self.on_no_serial_port_open()
 
     def on_machine_refresh(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_STATUS)
+        else:
+            self.on_no_serial_port_open()
+
+    def on_no_serial_port_open(self):
+        toast("There is no machine connected/detected")
 
     def on_pause(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_PAUSE)
+        else:
+            self.on_no_serial_port_open()
 
     def on_run(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             runDict = dict()
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_RUN, runDict)
+        else:
+            self.on_no_serial_port_open()
 
     def on_serial_port_open(self, instance, value):
         self.update_button_state()
 
     def on_step(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             runDict = dict()
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_STEP, runDict)
-
-    def on_step_size(self):
-        pass
+        else:
+            self.on_no_serial_port_open()
 
     def on_stop(self):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_STOP)
+        else:
+            self.on_no_serial_port_open()
 
     def on_sw_state(self, instance, value):
         self.update_button_state()
@@ -925,9 +948,9 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.jog_spindle_rpm = ""
 
         self.ids.dro_panel.bind(rc_connect=self.on_value_rc_connect)
-        self.ids.dro_panel.bind(jog_step_size=self.on_value_jog_step_size)
-        self.ids.dro_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
-        self.ids.dro_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
+        self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
+        self.ids.button_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
+        self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
         self.ids.dro_panel.bind(server_hostname=self.on_value_server_hostname)
         self.ids.dro_panel.bind(server_tcp_port=self.on_value_server_tcp_port)
         self.ids.dro_panel.bind(server_udp_port=self.on_value_server_udp_port)
