@@ -77,10 +77,12 @@ requirements = python3,kivy==2.0.0,https://github.com/kivymd/KivyMD/archive/mast
 #garden_requirements =
 
 # (str) Presplash of the application
-# presplash.filename = %(source.dir)s/data/presplash.png
+#presplash.filename = %(source.dir)s/data/presplash.png
+#presplash.filename = %(source.dir)s/gsat-rc-32x32.png
 
 # (str) Icon of the application
 #icon.filename = %(source.dir)s/data/icon.png
+icon.filename = %(source.dir)s/gsat-rc-32x32.png
 
 # (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
 orientation = all
