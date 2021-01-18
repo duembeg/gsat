@@ -68,12 +68,12 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             self.host = gc.CONFIG_DATA.get('/remote/Host', "")
 
-        if host:
+        if tcp_port:
             self.tcpPort = tcp_port
         else:
             self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
 
-        if host:
+        if udp_port:
             self.udpPort = udp_port
         else:
             self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)

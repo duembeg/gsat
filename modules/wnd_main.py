@@ -2005,7 +2005,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if self.machifProgExec is not None:
                 self.SerialClose()
 
-            self.remoteClient = remote_client.RemoteClientThread(self)
+            hostname = None
+            if self.localServer is not None:
+                hostname = "localhost"
+
+            self.remoteClient = remote_client.RemoteClientThread(self, host=hostname)
             self.machifProgExec = self.remoteClient
 
     def RemoteClose(self):

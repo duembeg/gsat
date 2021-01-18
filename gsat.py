@@ -85,7 +85,8 @@ def get_cli_params():
                     dest="server",
                     action="store_true",
                     default=False,
-                    help="run gsat server, allows other UIs like cnc pendants to connect via socket")
+                    help="run gsat server, allows other UIs like cnc pendants to connect via socket, "
+                         " on this mode remote host name config is ignored and localhost is used")
 
     options = parser.parse_args()
 
