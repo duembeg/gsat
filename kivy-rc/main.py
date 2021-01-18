@@ -32,6 +32,9 @@ from kivy.utils import platform
 from kivy.metrics import sp, dp, mm
 
 if platform != 'android':
+    Config.set('kivy','window_icon','gsat-rc-32x32.png')
+    # Config.set('kivy','icon','gsat-rc-32x32.png')
+
     # Lenovo M8 Tablet 1280 x 800
     Config.set('graphics', 'width', '800')
     Config.set('graphics', 'height', '1280')
@@ -64,8 +67,6 @@ if platform == 'android':
     from kivy.core.window import Window
     Window.softinput_mode = 'below_target'
 
-
-# Config.set('kivy','window_icon','/images/icons/color/gcs_g1_cog_32x32.png')
 
 from kivymd.app import MDApp
 from kivymd.uix.screen import Screen
@@ -1457,8 +1458,10 @@ class MDBoxLayoutAutoRotate(MDBoxLayout):
             self.orientation = 'vertical'
 
 class MainApp(MDApp):
+    # icon = "gsat-rc-32x32.png"
 
     def build(self):
+        self.title = __appname_brief__
         self.icon = "gsat-rc-32x32.png"
         config = self.config
         #self.theme_cls.primary_palette = "Green"

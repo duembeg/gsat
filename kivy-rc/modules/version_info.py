@@ -25,6 +25,7 @@
 
 __all__ = [
     '__appname__',
+    '__appname_brief__',
     '__appname_full__',
     '__description__',
 
@@ -49,6 +50,7 @@ __all__ = [
 ]
 
 __appname__ = "gsat-rc"
+__appname_brief__ = "gsat remote control"
 __appname_full__ = "Gcode Step and Alignment Tool Remote Control"
 
 __description__ = \
