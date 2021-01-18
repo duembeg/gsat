@@ -29,4 +29,11 @@
     "telemetry.enableCrashReporter": false,
     "telemetry.enableTelemetry": false,
     "terminal.integrated.inheritEnv": false,
+
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/kivy-rc/bin/**": true,
+        "**/kivy-rc/.buildozer/**": true
+      }
 }

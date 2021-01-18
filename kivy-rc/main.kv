@@ -26,8 +26,8 @@
 <RootWidget>
     MDBoxLayout:
         orientation: 'vertical'
-        MDToolbar:
-            title: "gsat remote control"
+        # MDToolbar:
+        #     title: "gsat remote control"
         MDBoxLayoutAutoRotate:
             spacing: 5
             MDBoxLayout:
@@ -43,7 +43,12 @@
                 #     id: play_ctrl
                 MDGridLayoutJogControls:
                     id: jog_ctrl
-                TextInput:
+                # ScrollView:
+                #     do_scroll_x: False
+                #     do_scroll_y: True
+                TextInputTouchScroll:
+                    # size_hint_y: None
+                    # height: root.height
                     id: text_out
                     multiline: True
                     scroll_y: 1000

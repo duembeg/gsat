@@ -83,11 +83,12 @@ from kivymd.uix.selectioncontrol import MDCheckbox #, MDSwitch
 from kivymd.uix.dialog import MDDialog
 from kivymd.theming import ThemeManager
 from kivymd.toast import toast
-from kivy.clock import Clock
 
 # from kivy.uix.anchorlayout import AnchorLayout
 # from kivy.uix.scrollview import ScrollView
 from kivy.properties import ObjectProperty, BooleanProperty
+from kivy.clock import Clock
+from kivy.uix.textinput import TextInput
 
 #from random import random
 import random
@@ -96,6 +97,16 @@ from modules.version_info import *
 
 import modules.config as gc
 import modules.remote_client as rc
+
+
+class TextInputTouchScroll(TextInput):
+    pass
+
+    def on_touch_down(self, touch):
+        if platform != 'android':
+            super(TextInputTouchScroll, self).on_touch_down(touch)
+        else:
+            pass
 
 
 class InputDialagoContent(MDBoxLayout):
