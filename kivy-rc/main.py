@@ -548,7 +548,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         self.value_dialog.dismiss()
         self.value_dialog = None
 
-    def on_value_dialog_value(self, instance, val):
+    def on_value_dialog_value(self, instance, *args):
         self.on_value_dialog_ok(instance)
 
     def on_value_dialog_rapid_button(self, instance):
