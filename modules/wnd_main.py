@@ -240,6 +240,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if self.cmdLineOptions.server:
             self.localServer = remote_server.RemoteServerThread(None)
 
+        self.late_init_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.InitLate, self.late_init_timer)
+        self.late_init_timer.Start(500, wx.TIMER_ONE_SHOT)
+
+    def InitLate(self, event):
+        if self.localServer:
+            self.RemoteOpen()
+
     def InitConfig(self):
         self.displayRuntimeDialog = self.configData.get(
             '/mainApp/DisplayRunTimeDialog')
