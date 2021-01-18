@@ -101,13 +101,14 @@ class InputDialagoContent(MDBoxLayout):
     ''' General config custom input dialog content '''
 
     value = ObjectProperty(None)
-    enter = ObjectProperty(None)
+    #enter = ObjectProperty(None)
 
     def __init__(self, val, **kwargs):
         ''' init function for object
         '''
         super(InputDialagoContent, self).__init__(**kwargs)
         self.value = val
+        self.register_event_type('on_enter')
 
         Clock.schedule_once(self.on_init)
         # self.on_init()
@@ -129,7 +130,12 @@ class InputDialagoContent(MDBoxLayout):
 
     def on_text_validate(self, instance):
         self.value = instance.text
-        self.enter = True
+        self.dispatch('on_enter')
+        #self.enter = True
+        #self.enter = False
+
+    def on_enter(self, *args):
+        pass
 
 
 class StepSizeDialagoContent(InputDialagoContent):
@@ -142,11 +148,18 @@ class StepSizeDialagoContent(InputDialagoContent):
         self.ids.text_field.input_filter = 'float'
 
         for bt_text in ['0.1', '0.5', '1', '5', '10', '20', '50','100', '150', '200', '400', '500']:
-            bt = MDFlatButton(text=bt_text, on_release=self.on_number_button_release)
+            bt = MDFlatButton(
+                text=bt_text, on_release=self.on_number_button_release,
+                text_color=MDApp.get_running_app().theme_cls.primary_color
+            )
             self.ids.step_size_buttons.add_widget(bt)
 
         self.size_hint_y=None
         bt = MDFlatButton(text='dummy', on_release=self.on_number_button_release)
+
+    def on_number_button_release(self, instance):
+        super(StepSizeDialagoContent, self).on_number_button_release(instance)
+        self.on_text_validate(instance)
 
 
 class ServerDialagoContent(InputDialagoContent):
@@ -418,7 +431,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 MDFlatButton(text="OK", text_color=button_text_color, on_release=self.on_value_dialog_ok),
             ]
 
-            content_cls.bind(enter=self.on_value_dialog_value)
+            content_cls.bind(on_enter=self.on_value_dialog_value)
             value_dialog = MDDialog(
                 title=dialog_title, type='custom', content_cls=content_cls,
                 buttons=dialog_buttons, on_open=content_cls.on_open
@@ -628,7 +641,7 @@ class MDGridLayoutButtons(MDGridLayout):
                     )
                 )
 
-            content_cls.bind(enter=content_cls_on_enter)
+            content_cls.bind(on_enter=content_cls_on_enter)
             config_dialog = MDDialog(
                 title=dialog_title, type='custom', content_cls=content_cls,
                 buttons=dialog_buttons, on_open=content_cls.on_open
