@@ -425,7 +425,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             # sending directly to who created us
             self.notify_event_listeners(gc.EV_ABORT, exMsg)
         else:
-            msg = "Sever listening on {}{}\n".format(self.host, self.socServer.getsockname())
+            msg = "Server listening on {}{}\n".format(self.host, self.socServer.getsockname())
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(msg.strip())
 
@@ -674,7 +674,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             self.inputsAddr[connection] = client_address
                             self.messageQueues[connection] = queue.Queue()
 
-                            msg = "Sever stablish connection to client{}\n".format(self.inputsAddr[connection])
+                            msg = "Server stablish connection to client{}\n".format(self.inputsAddr[connection])
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                 self.logger.info(msg.strip())
                                 self.logger.info("Server report [{}] connected client(s)".format(len(self.inputs)-1))
