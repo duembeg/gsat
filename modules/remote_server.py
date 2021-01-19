@@ -677,6 +677,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             msg = "Sever stablish connection to client{}\n".format(self.inputsAddr[connection])
                             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                 self.logger.info(msg.strip())
+                                self.logger.info("Server report [{}] connected clients".format(len(self.inputs)-1))
 
                             # notify local lisensers
                             self.notify_event_listeners(gc.EV_RMT_HELLO, msg)
@@ -709,6 +710,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                             "Connection reset by peer, client{}".format(self.inputsAddr[soc]))
 
                                     self.clean_up(soc)
+
+                                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                        self.logger.info("Server report [{}] connected clients".format(len(self.inputs)-1))
 
                     # # Handle outputs
                     # for soc in writable:
