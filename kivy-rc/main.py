@@ -536,9 +536,18 @@ class MDBoxLayoutDRO(MDBoxLayout):
             if self.list_items['rc'].text != sr['rc']:
                 self.list_items['rc'].text = sr['rc']
 
-        if 'mi' in self.list_items_enable and 'mi' in sr:
-            if self.list_items['mi'].text != sr['mi']:
-                self.list_items['mi'].text = sr['mi']
+        if 'mi' in self.list_items_enable and 'machif' in sr:
+            firmware_version_str = ""
+            if 'fb' in sr:
+                firmware_version_str = sr['fb']
+
+            if 'fv' in sr:
+                firmware_version_str = "fb:{} fv:{}".format(firmware_version_str, sr['fv'])
+
+            machif_str = "{} ({})".format(sr['machif'], firmware_version_str)
+
+            if self.list_items['mi'].text != machif_str:
+                self.list_items['mi'].text = machif_str
 
         if 'swst' in self.list_items_enable and 'swst' in sr:
             if self.list_items['swst'].text != sr['swst']:
@@ -1099,9 +1108,6 @@ class RootWidget(Screen, gc.EventQueueIf):
                     sr = ev.data['sr']
                     self.update_dro(sr)
 
-                #     self.machineStatusPanel.UpdateUI(self.stateData, sr)
-                #     self.machineJoggingPanel.UpdateUI(self.stateData, sr)
-
                 # TODO: control this via config
                 if 'rx_data' in ev.data:
                     self.append_text("{}".format(ev.data['rx_data']))
@@ -1119,13 +1125,13 @@ class RootWidget(Screen, gc.EventQueueIf):
                     r = ev.data['r']
 
                     if 'sys' in r:
-                        sys = r['sys']
+                        sys_info = r['sys']
 
-                        if 'machif' in sys:
-                            self.update_dro({'mi': sys['machif']})
+                        if 'machif' in sys_info:
+                            self.update_dro(sys_info)
 
                     if 'machif' in r:
-                        self.update_dro({'mi': r['machif']})
+                        self.update_dro(r)
 
             elif ev.event_id == gc.EV_DATA_IN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
