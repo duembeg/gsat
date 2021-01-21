@@ -78,71 +78,89 @@
                 id: dro_list
                 axis_font_style: "H5"
                 axis_text: "0.000"
-                list_item_height: dp(64)
-                TwoLineListItem:
+                list_item_height: dp(60)
+                #TwoLineListItem:
+                OneLineAvatarIconListItem:
                     id: x_axis
                     text: dro_list.axis_text
-                    secondary_text: "X axis"
+                    # secondary_text: "X axis"
                     font_style: dro_list.axis_font_style
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/x.png"
+                #TwoLineListItem:
+                OneLineAvatarIconListItem:
                     id: y_axis
                     text: dro_list.axis_text
-                    secondary_text: "Y axis"
+                    # secondary_text: "Y axis"
                     font_style: dro_list.axis_font_style
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/y.png"
+                OneLineAvatarIconListItem:
                     id: z_axis
                     text: dro_list.axis_text
-                    secondary_text: "Z axis"
+                    # secondary_text: "Z axis"
                     font_style: dro_list.axis_font_style
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/z.png"
+                OneLineAvatarIconListItem:
                     id: a_axis
                     text: dro_list.axis_text
-                    secondary_text: "A axis"
+                    # secondary_text: "A axis"
                     font_style: dro_list.axis_font_style
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/a.png"
+                OneLineAvatarIconListItem:
                     id: b_axis
                     text: dro_list.axis_text
-                    secondary_text: "B axis"
+                    # secondary_text: "B axis"
                     font_style: dro_list.axis_font_style
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/b.png"
+                OneLineAvatarIconListItem:
                     id: c_axis
                     text: dro_list.axis_text
-                    secondary_text: "C axis"
+                    # secondary_text: "C axis"
                     font_style: dro_list.axis_font_style
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/c.png"
+                OneLineAvatarIconListItem:
                     id: feed_rate
                     text: "0.00"
-                    secondary_text: "Feed Rate"
+                    # secondary_text: "Feed Rate"
                     font_style: "H6"
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "images/icons/color/fr.png"
+                OneLineAvatarIconListItem:
                     id: status
                     text: "Stop"
-                    secondary_text: "Status"
-                    font_style: "H6"
-                    size_hint_y: None
-                    height: dro_list.list_item_height
+                    # secondary_text: "Status"
+                    font_style: "H5"
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/st.png"
                 TwoLineListItem:
                     id: sw_status
                     text: "Idle"
@@ -155,12 +173,12 @@
             MDList:
                 id: info_list
                 font_style: "H6"
-                list_item_height: dp(64)
+                list_item_height: dp(60)
                 TwoLineListItem:
                     id: device
                     text: ""
                     secondary_text: "Device"
-                    font_style: info_list.font_style
+                    font_style: "Subtitle1"
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
@@ -185,7 +203,7 @@
                     id: remote_server
                     text: ""
                     secondary_text: "Remote Server"
-                    font_style: "Body1"
+                    font_style: "Subtitle1"
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)

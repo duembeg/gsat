@@ -218,10 +218,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
     ''' Class to handle DRO panel list items
     '''
     rc_connect = ObjectProperty(None)
-    server_hostname  = ObjectProperty(None)
-    server_tcp_port  = ObjectProperty(None)
-    server_udp_port  = ObjectProperty(None)
-    serial_port_open  = ObjectProperty(None)
+    server_hostname = ObjectProperty(None)
+    server_tcp_port = ObjectProperty(None)
+    server_udp_port = ObjectProperty(None)
+    serial_port_open = ObjectProperty(None)
+    jog_feed_rate = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         ''' Constructor
@@ -310,6 +311,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         items = [
             {icon: "numeric-0-circle-outline", name: "Zero Axis"},
             {icon: "home-search-outline", name: "Home Axis"},
+            {icon: "target", name: "Go to Zero"},
         ]
         self.init_a_menu(items, self.axis_list_items)
 
@@ -371,6 +373,14 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li: 0})
             elif instance_menu_item.text == "Home Axis":
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li: 0})
+            elif instance_menu_item.text == "Go to Zero":
+                axis = {li: 0}
+                if self.jog_feed_rate == "Rapid":
+                    gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
+                else:
+                    gc_cmd = gc.EV_CMD_JOG_MOVE
+                    axis['feed'] = int(self.jog_feed_rate)
+                gc.gsatrc_remote_client.add_event(gc_cmd, axis)
 
     def on_init(self, *args):
         ''' init event after construction
@@ -1416,6 +1426,7 @@ class RootWidget(Screen, gc.EventQueueIf):
     def on_value_jog_feed_rate(self, instance, value):
         self.jog_feed_rate = value
         self.ids.jog_ctrl.jog_feed_rate = self.jog_feed_rate
+        self.ids.dro_panel.jog_feed_rate = self.jog_feed_rate
 
     def on_value_jog_spindle_rpm(self, instance, value):
         try:
