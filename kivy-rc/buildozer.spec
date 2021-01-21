@@ -119,6 +119,7 @@ fullscreen = 0
 
 # (list) Permissions
 android.permissions = INTERNET
+# ,REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,INSTALL_SHORTCUT
 
 # (int) Target Android API, should be as high as possible.
 #android.api = 27

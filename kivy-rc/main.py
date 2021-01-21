@@ -25,6 +25,7 @@
 
 import sys
 import time
+import random
 
 #from kivy.lang import Builder
 from kivy.config import Config
@@ -59,15 +60,6 @@ if platform != 'android':
     # Config.set('graphics', 'width', '800')
     # Config.set('graphics', 'height', '1280')
 
-if platform == 'android':
-    # from android.permissions import request_permissions, Permission
-    # request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
-
-    # fix issues with text_input below virtual keyboard
-    from kivy.core.window import Window
-    Window.softinput_mode = 'below_target'
-
-
 from kivymd.app import MDApp
 from kivymd.uix.screen import Screen
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -89,12 +81,10 @@ from kivymd.toast import toast
 from kivy.properties import ObjectProperty, BooleanProperty
 from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
+from kivy.factory import Factory
 
-#from random import random
-import random
 
 from modules.version_info import *
-
 import modules.config as gc
 import modules.remote_client as rc
 
@@ -1499,8 +1489,57 @@ class MainApp(MDApp):
         })
 
     def on_start(self):
-        pass
-        # self.config.update_config(self.config_file)
+        if platform == 'android':
+            # fix issues with text_input below virtual keyboard
+            from kivy.core.window import Window
+            Window.softinput_mode = 'below_target'
+
+            # fix issue with battery optimization, app doze sleep will
+            # mess socket connection, resulting in a non responsive network connection
+            # if version M or newer ask user to add this app to the
+            # "NO BATT OPTIMIZATION" list
+            from jnius import autoclass, JavaException
+
+            version = autoclass("android.os.Build$VERSION")
+            version_codes =  autoclass("android.os.Build$VERSION_CODES")
+
+            if (version.SDK_INT >= version_codes.M):
+                PythonActivity =  autoclass("org.kivy.android.PythonActivity")
+                activity = PythonActivity.mActivity
+
+                Context = autoclass('android.content.Context')
+                power = activity.getSystemService(Context.POWER_SERVICE)
+                ignore_batt_opt = power.isIgnoringBatteryOptimizations(activity.getPackageName())
+
+                if ignore_batt_opt:
+                    pass
+                else:
+                    Intent = autoclass('android.content.Intent')
+                    Settings = autoclass('android.provider.Settings')
+                    # pm = autoclass('android.content.pm.PackageManager')
+                    Uri = autoclass('android.net.Uri')
+
+                    intent = Intent()
+
+                    # try:
+                    #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    #     intent.setData(Uri.parse("package:" + activity.getPackageName()))
+                    #     activity.startActivity(intent)
+                    # except JavaException as err:
+                    #     print ("Got Java exceptions")
+                    #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    #     toast("Please mark gsat rc as not optimized in the next screen", length_long=20)
+                    #     activity.startActivity(intent)
+
+                    # except Exception as err:
+                    #     print ("Got exceptions")
+
+                    # except:
+                    #     print ("Why here??")
+
+                    intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    toast("Please mark ( gsat rc ) as not optimized", length_long=20)
+                    activity.startActivity(intent)
 
     def on_stop(self):
         self.root.on_stop()
