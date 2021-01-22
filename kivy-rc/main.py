@@ -26,6 +26,7 @@
 import sys
 import time
 import random
+import hashlib
 
 #from kivy.lang import Builder
 from kivy.config import Config

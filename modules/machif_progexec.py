@@ -391,7 +391,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.info("EV_CMD_GET_GCODE")
 
                 listener = e.sender
-                listener.add_event(gc.EV_GCODE, self.gcodeDataLines)
+                listener.add_event(gc.EV_GCODE, self.gcodeDataLines, self)
 
             elif e.event_id == gc.EV_CMD_GET_GCODE_MD5:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
@@ -401,7 +401,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 # self.notify_event_listeners(gc.EV_GCODE_MD5, h)
 
                 listener = e.sender
-                listener.add_event(gc.EV_GCODE, h)
+                listener.add_event(gc.EV_GCODE_MD5, h, self)
 
             elif e.event_id == gc.EV_CMD_GET_BRK_PT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
