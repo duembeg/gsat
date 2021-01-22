@@ -207,6 +207,14 @@
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
+                TwoLineListItem:
+                    id: gcode_fname
+                    text: ""
+                    secondary_text: "G-code filename"
+                    font_style: "Subtitle1"
+                    size_hint_y: None
+                    height: info_list.list_item_height
+                    on_release: root.on_list_item_release(self)
 
 
 <MDGridLayoutButtons>

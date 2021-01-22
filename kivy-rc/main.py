@@ -387,7 +387,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         '''
         self.axis_list_items = ['x', 'y', 'z', 'a', 'b', 'c']
         self.dro_list_enable = ['x', 'z', 'fr', 'pc', 'mi', 'swst']
-        self.info_list_enable = ['y', 'a', 'st', 'rt', 'rc']
+        self.info_list_enable = ['y', 'a', 'st', 'rt', 'rc', 'fn']
         self.list_items_enable = list(self.dro_list_enable)
         self.list_items_enable.extend(self.info_list_enable)
         # self.dro_list_enable = ['x', 'y', 'z']
@@ -410,6 +410,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
             'pc': self.ids.gcode_pos,
             'rt': self.ids.run_time,
             'rc': self.ids.remote_server,
+            'fn': self.ids.gcode_fname,
         }
 
         for li in self.list_items:
@@ -552,6 +553,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
         if 'swst' in self.list_items_enable and 'swst' in sr:
             if self.list_items['swst'].text != sr['swst']:
                 self.list_items['swst'].text = sr['swst']
+
+        if 'gfn' in self.list_items_enable and 'gfn' in sr:
+            if self.list_items['gfn'].text != sr['gfn']:
+                self.list_items['gfn'].text = sr['gfn']
+
 
     def on_value_dialog_cancel(self, instance):
         self.value_dialog.dismiss()
@@ -1075,6 +1081,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.update_dro = self.ids.dro_panel.on_update
         self.text_out = self.ids.text_out
         self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
+        self.remote_gcode_md5 = 0
         # print ("*******************")
         # print (Window.size)
         # print ("################# {}".format(self.size))
@@ -1272,6 +1279,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                 if gc.gsatrc_remote_client is not None:
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_SW_STATE)
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_GCODE_MD5)
 
             elif ev.event_id == gc.EV_RMT_PORT_CLOSE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -1315,13 +1323,13 @@ class RootWidget(Screen, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_GCODE_MD5")
 
-                # self.machifProgExecGcodeMd5 = ev.data
+                old_md5_hash = self.remote_gcode_md5
+                self.remote_gcode_md5 = ev.data
 
-                # h = hashlib.md5(str([])).hexdigest()
-                # if h != ev.data and self.machifProgExec is not None:
-                #     h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
-                #     if h != ev.data:
-                #         self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
+                h = hashlib.md5(str([])).hexdigest()
+                if h != ev.data and self.serial_port_open and gc.gsatrc_remote_client:
+                    if old_md5_hash != ev.data:
+                        gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_GCODE)
 
             elif ev.event_id == gc.EV_GCODE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
