@@ -41,17 +41,20 @@
                 orientation: 'vertical'
                 # MDGridLayoutPlayControls:
                 #     id: play_ctrl
+                # ScrollView:
                 MDGridLayoutJogControls:
                     id: jog_ctrl
                 # ScrollView:
                 #     do_scroll_x: False
                 #     do_scroll_y: True
+                # Splitter:
+                #     sizable_from: 'top'
                 TextInputTouchScroll:
                     # size_hint_y: None
                     # height: root.height
                     id: text_out
                     multiline: True
-                    scroll_y: 1000
+                    scroll_y: 100
                     readonly: True
                     font_name: 'data/fonts/RobotoMono-Regular'
     # MDFloatingActionButton:
@@ -62,7 +65,6 @@
     #     icon: "car-brake-hold"
     #     md_bg_color: app.theme_cls.primary_color
     #     pos_hint: {'right':0.95}
-
 
 
 

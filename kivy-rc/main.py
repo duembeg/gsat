@@ -552,7 +552,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
             if 'fv' in sr:
                 firmware_version_str = "fb:{} fv:{}".format(firmware_version_str, sr['fv'])
 
-            machif_str = "{} ({})".format(sr['machif'], firmware_version_str)
+            machif_str = ""
+            if len (sr['machif']):
+                machif_str = "{} ({})".format(sr['machif'], firmware_version_str)
 
             if self.list_items['mi'].text != machif_str:
                 self.list_items['mi'].text = machif_str
@@ -1254,7 +1256,7 @@ class RootWidget(Screen, gc.EventQueueIf):
 
                 self.serial_port_open = False
                 self.device_detected = False
-                self.update_dro({'mi':""})
+                self.update_dro({'machif':""})
 
             elif ev.event_id == gc.EV_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -1268,7 +1270,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                     self.device_detected = False
                     self.sw_state = gc.STATE_IDLE
                     self.ids.dro_panel.rc_connect = False
-                    self.update_dro({'rc':"", 'mi':"", 'swst': gc.get_sw_status_str(self.sw_state)})
+                    self.update_dro({'rc':"", 'machif':"", 'swst': gc.get_sw_status_str(self.sw_state)})
 
             elif ev.event_id == gc.EV_DEVICE_DETECTED:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
