@@ -214,7 +214,7 @@
                     font_style: "Subtitle1"
                     size_hint_y: None
                     height: info_list.list_item_height
-                    on_release: root.on_list_item_release(self)
+                    on_release: root.dispatch('on_display_gcode_filename')
 
 
 <MDGridLayoutButtons>

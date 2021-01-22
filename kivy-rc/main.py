@@ -24,6 +24,7 @@
 ----------------------------------------------------------------------------"""
 
 import sys
+import os
 import time
 import random
 import hashlib
@@ -230,6 +231,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
         '''
         super(MDBoxLayoutDRO, self).__init__(**kwargs)
 
+        self.register_event_type('on_display_gcode_filename')
+
         Clock.schedule_once(self.on_init)
         # self.on_init()
 
@@ -383,12 +386,15 @@ class MDBoxLayoutDRO(MDBoxLayout):
                     axis['feed'] = int(self.jog_feed_rate)
                 gc.gsatrc_remote_client.add_event(gc_cmd, axis)
 
+    def on_display_gcode_filename(self, *args):
+        pass
+
     def on_init(self, *args):
         ''' init event after construction
         '''
         self.axis_list_items = ['x', 'y', 'z', 'a', 'b', 'c']
         self.dro_list_enable = ['x', 'z', 'fr', 'pc', 'mi', 'swst']
-        self.info_list_enable = ['y', 'a', 'st', 'rt', 'rc', 'fn']
+        self.info_list_enable = ['y', 'a', 'st', 'rt', 'rc', 'gfn']
         self.list_items_enable = list(self.dro_list_enable)
         self.list_items_enable.extend(self.info_list_enable)
         # self.dro_list_enable = ['x', 'y', 'z']
@@ -411,7 +417,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
             'pc': self.ids.gcode_pos,
             'rt': self.ids.run_time,
             'rc': self.ids.remote_server,
-            'fn': self.ids.gcode_fname,
+            'gfn': self.ids.gcode_fname,
         }
 
         for li in self.list_items:
@@ -1040,14 +1046,17 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.jog_step_size = ""
         self.jog_feed_rate = ""
         self.jog_spindle_rpm = ""
+        self.update_dro = None
 
         self.ids.dro_panel.bind(rc_connect=self.on_value_rc_connect)
-        self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
-        self.ids.button_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
-        self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
         self.ids.dro_panel.bind(server_hostname=self.on_value_server_hostname)
         self.ids.dro_panel.bind(server_tcp_port=self.on_value_server_tcp_port)
         self.ids.dro_panel.bind(server_udp_port=self.on_value_server_udp_port)
+        self.ids.dro_panel.bind(on_display_gcode_filename=self.on_display_gcode_filename)
+
+        self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
+        self.ids.button_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
+        self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
 
         Clock.schedule_once(self.on_init)
         # self.on_init()
@@ -1083,9 +1092,14 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.text_out = self.ids.text_out
         self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
         self.remote_gcode_md5 = 0
+        self.remote_gcode_filename = ""
         # print ("*******************")
         # print (Window.size)
         # print ("################# {}".format(self.size))
+
+    def on_display_gcode_filename(self, *args):
+        if len(self.remote_gcode_filename):
+            self.append_text("G-code filename: {}\n".format(self.remote_gcode_filename))
 
     def on_stop(self):
         self.on_close()
@@ -1095,6 +1109,11 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.button_panel.serial_port_open = value
         self.ids.jog_ctrl.serial_port_open = value
         self.ids.dro_panel.serial_port_open = value
+
+        if value == False and self.update_dro:
+            self.update_dro({'gfn': ""})
+            self.remote_gcode_md5 = 0
+            self.remote_gcode_filename = ""
 
     def on_sw_state(self, instance, value):
         self.ids.button_panel.sw_state = value
@@ -1327,7 +1346,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                 old_md5_hash = self.remote_gcode_md5
                 self.remote_gcode_md5 = ev.data
 
-                h = hashlib.md5(str([])).hexdigest()
+                h = hashlib.md5(str([]).encode('utf-8')).hexdigest()
                 if h != ev.data and self.serial_port_open and gc.gsatrc_remote_client:
                     if old_md5_hash != ev.data:
                         gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_GCODE)
@@ -1336,78 +1355,10 @@ class RootWidget(Screen, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_GCODE")
 
-                # only if there is gcode we should do do something
-                # if ev.data.get('gcodeLines', []):
-                #     user_response = wx.ID_YES
-
-                #     if self.gcText.GetModify():
-                #         title = "Get Remote G-code"
-                #         prompt = "Current G-code has been modified, save before overide?"
-                #         if sys.platform in 'darwin':
-                #             # because dialog icons where not working correctly in
-                #             # Mac OS X
-                #             dlg = gmd.GenericMessageDialog(
-                #                 self, prompt, title,
-                #                 wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
-                #         else:
-                #             dlg = wx.MessageDialog(
-                #                 self, prompt, title,
-                #                 wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
-
-
-                #         user_response = dlg.ShowModal()
-                #         if user_response == wx.ID_YES:
-                #             self.OnFileSaveAs(None)
-
-                #         dlg.Destroy()
-
-                #     if user_response == wx.ID_CANCEL:
-                #         # cancel G-code update from remote server
-                #         pass
-                #     else:
-                #         if 'gcodeFileName' in ev.data:
-                #             self.stateData.gcodeFileName = ev.data['gcodeFileName']
-                #         else:
-                #             self.stateData.gcodeFileName = ""
-
-                #         self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
-                #         self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
-                #         self.stateData.fileIsOpen = False
-
-                #         if 'gcodeLines' in ev.data:
-                #             readOnly = self.gcText.GetReadOnly()
-                #             self.gcText.SetReadOnly(False)
-                #             self.gcText.ClearAll()
-                #             self.gcText.AddText("".join(ev.data['gcodeLines']))
-                #             self.gcText.SetReadOnly(readOnly)
-                #             self.gcText.DiscardEdits()
-                #         else:
-                #             readOnly = self.gcText.GetReadOnly()
-                #             self.gcText.SetReadOnly(False)
-                #             self.gcText.ClearAll()
-                #             self.gcText.SetReadOnly(readOnly)
-                #             self.gcText.DiscardEdits()
-
-                #         rawText = self.gcText.GetText()
-                #         self.stateData.gcodeFileLines = rawText.splitlines(True)
-                #         h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
-                #         self.machifProgExecGcodeMd5 = h
-
-                #         if 'gcodePC' in ev.data:
-                #             self.SetPC(ev.data['gcodePC'])
-                #         else:
-                #             self.SetPC(0)
-
-                #         if 'breakPoints' in ev.data:
-                #             break_points = ev.data['breakPoints']
-                #             self.gcText.DeleteAllBreakPoints()
-                #             for bp in break_points:
-                #                 self.gcText.UpdateBreakPoint(bp, True)
-                #         else:
-                #             self.gcText.DeleteAllBreakPoints()
-
-                #         self.gcText.GoToPC()
-                #         self.UpdateUI()
+                if 'gcodeFileName' in ev.data:
+                    self.remote_gcode_filename = os.path.basename(ev.data['gcodeFileName'])
+                    self.update_dro({'gfn': self.remote_gcode_filename})
+                    self.append_text("G-code filename: {}\n".format(self.remote_gcode_filename))
 
             elif ev.event_id == gc.EV_BRK_PT_CHG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
