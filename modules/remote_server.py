@@ -85,7 +85,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.machifProgExec = None
         self.serialPortIsOpen = False
         self.deviceDetected = False
-        self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/udpBroadcast', True)
+        self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
 
         self.rxBuffer = b""
         self.rxBufferLen = 0

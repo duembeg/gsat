@@ -56,7 +56,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
     """ Threads to send and monitor network socket for new data.
     """
 
-    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, broadcast=None):
+    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None):
         """ Init remote client class
         """
         threading.Thread.__init__(self)
@@ -78,6 +78,11 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
 
+        if use_udp_broadcast:
+            self.useUdpBroadcast = use_udp_broadcast
+        else:
+            self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
+
         # self.host = "river"
         self.socClient = None
         self.socBroadcast = None
@@ -85,11 +90,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.inputsAddr = {}
         self.outputs = []
         self.messageQueues = {}
-
-        if broadcast:
-            self.useUdpBroadcast = broadcast
-        else:
-            self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/udpBroadcast', True)
 
         self.rxBuffer = b""
         self.rxBufferLen = 0
