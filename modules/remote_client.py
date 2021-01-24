@@ -78,7 +78,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
 
-        if use_udp_broadcast:
+        if use_udp_broadcast is not None:
             self.useUdpBroadcast = use_udp_broadcast
         else:
             self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
