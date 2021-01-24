@@ -1566,6 +1566,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnResetPC(self, e):
         self.SetPC(0)
+        self.gcText.GoToPC()
 
     def OnResetPCUpdate(self, e=None):
         state = False
