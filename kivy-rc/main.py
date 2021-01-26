@@ -111,11 +111,11 @@ class TextInputTouchScroll(TextInput):
     def __init__(self, **kwargs):
         super(TextInputTouchScroll, self).__init__(**kwargs)
 
-    # def on_touch_down(self, touch):
-    #     if platform != 'android':
-    #         super(TextInputTouchScroll, self).on_touch_down(touch)
-    #     else:
-    #         pass
+    def on_touch_down(self, touch):
+        if platform != 'android':
+            super(TextInputTouchScroll, self).on_touch_down(touch)
+        else:
+            pass
 
     # @mainthread
     def append_text(self, str_data, from_undo=False):
