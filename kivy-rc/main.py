@@ -28,21 +28,27 @@ import os
 import time
 import random
 import hashlib
+import queue
+import threading
 
 #from kivy.lang import Builder
 from kivy.config import Config
 from kivy.utils import platform
 from kivy.metrics import sp, dp, mm
 
+# dealing with some issue on scheduling events, coming
+# from networking thread, interrupt mode is faster
+Config.set('graphics', 'KIVY_CLOCK', 'interrupt')
+
 if platform != 'android':
     Config.set('kivy','window_icon','gsat-rc-32x32.png')
     # Config.set('kivy','icon','gsat-rc-32x32.png')
 
     # Lenovo M8 Tablet 1280 x 800
-    Config.set('graphics', 'width', '800')
-    Config.set('graphics', 'height', '1280')
-    # Config.set('graphics', 'width', '1280')
-    # Config.set('graphics', 'height', '800')
+    # Config.set('graphics', 'width', '800')
+    # Config.set('graphics', 'height', '1280')
+    Config.set('graphics', 'width', '1280')
+    Config.set('graphics', 'height', '800')
 
     # Nexus 7       1920 x 1200
     # Config.set('graphics', 'width', '1920')
@@ -77,12 +83,14 @@ from kivymd.uix.selectioncontrol import MDCheckbox #, MDSwitch
 from kivymd.uix.dialog import MDDialog
 from kivymd.theming import ThemeManager
 from kivymd.toast import toast
+from kivymd.uix.label import MDLabel
 
 # from kivy.uix.anchorlayout import AnchorLayout
 # from kivy.uix.scrollview import ScrollView
 from kivy.properties import ObjectProperty, BooleanProperty
-from kivy.clock import Clock
+from kivy.clock import Clock, mainthread
 from kivy.uix.textinput import TextInput
+from kivy.uix.label import Label
 from kivy.factory import Factory
 
 
@@ -91,14 +99,59 @@ import modules.config as gc
 import modules.remote_client as rc
 
 
-class TextInputTouchScroll(TextInput):
-    pass
+def jog_not_permitted_run_state():
+    toast("JOG operations not permitted while in RUN state")
 
-    def on_touch_down(self, touch):
-        if platform != 'android':
-            super(TextInputTouchScroll, self).on_touch_down(touch)
-        else:
+
+class TextInputTouchScroll(TextInput):
+    max_lines = ObjectProperty(None)
+    max_text = ObjectProperty(None)
+    max_text_backoff = ObjectProperty(None)
+
+    def __init__(self, **kwargs):
+        super(TextInputTouchScroll, self).__init__(**kwargs)
+
+    # def on_touch_down(self, touch):
+    #     if platform != 'android':
+    #         super(TextInputTouchScroll, self).on_touch_down(touch)
+    #     else:
+    #         pass
+
+    # @mainthread
+    def append_text(self, str_data, from_undo=False):
+        ''' Append text to end of self.text
+        '''
+        try:
+            # self.text = "".join([self.text, str_data])
+            self.readonly = False
+            self.do_cursor_movement('cursor_end', control=True)
+            self.insert_text(str_data, False)
+            self.do_cursor_movement('cursor_end', control=True)
+            self.insert_text("** text_size: {}\n".format(len(self.text_out.text)), from_undo)
+            self.readonly = True
+        except:
+            # sometimes while rotating screen and heavy output exceptions might
+            # happen, ignore since this is a bets effort output window
             pass
+
+
+    def _update_graphics(self, *largs):
+        ''' hijack this regularly call function to trim self.text if
+        is getting too big
+        '''
+
+        super(TextInputTouchScroll, self)._update_graphics(largs)
+
+        if len(self.text) > self.max_text:
+            # before = len(self.text)
+            self.text = self.text[-(self.max_text-self.max_text_backoff):]
+            # print ("Before: {}".format(before))
+            # print ("After: {}".format(len(self.text)))
+            self.height -= self.line_height
+
+
+    def insert_text(self, substring, from_undo=False):
+        super(TextInputTouchScroll, self).insert_text(substring, from_undo)
 
 
 class InputDialagoContent(MDBoxLayout):
@@ -142,11 +195,11 @@ class InputDialagoContent(MDBoxLayout):
         pass
 
 
-class StepSizeDialagoContent(InputDialagoContent):
+class StepSizeDialogContent(InputDialagoContent):
     ''' Step size config custom dialog content '''
 
     def on_init(self, *args):
-        super(StepSizeDialagoContent, self).on_init(args)
+        super(StepSizeDialogContent, self).on_init(args)
 
         self.height = "200dp"
         self.ids.text_field.input_filter = 'float'
@@ -162,24 +215,25 @@ class StepSizeDialagoContent(InputDialagoContent):
         bt = MDFlatButton(text='dummy', on_release=self.on_number_button_release)
 
     def on_number_button_release(self, instance):
-        super(StepSizeDialagoContent, self).on_number_button_release(instance)
+        super(StepSizeDialogContent, self).on_number_button_release(instance)
         self.on_text_validate(instance)
 
 
 class ServerDialagoContent(InputDialagoContent):
     ''' Server config custom dialog content '''
-    def __init__(self, hostname, tcp_port, udp_port, **kwargs):
+    def __init__(self, hostname, tcp_port, udp_port, use_udp_broadcast, **kwargs):
         ''' init function for object
         '''
         self.hostname = hostname
         self.tcp_port = tcp_port
         self.udp_port = udp_port
+        self.use_udp_broadcast = use_udp_broadcast
         super(ServerDialagoContent, self).__init__(hostname, **kwargs)
 
     def on_init(self, *args):
         super(ServerDialagoContent, self).on_init(args)
 
-        self.height = "200dp"
+        self.height = "240dp"
         self.ids.text_field.input_filter = None
         self.ids.text_field.input_type = 'text'
         self.ids.text_field.hint_text = "Server Hostname"
@@ -203,6 +257,19 @@ class ServerDialagoContent(InputDialagoContent):
         self.tf_udp_port = tf
         self.add_widget(tf)
 
+        bl = MDBoxLayout()
+        cb_l = MDLabel(text="Use UDP Broadcast")
+        cb_l.size_hint_x = None
+        cb_l.width = cb_l.text_size[0] + 48
+        bl.add_widget(cb_l)
+        cb = MDCheckbox(pos_hint={'left':1})
+        cb.active = self.use_udp_broadcast
+        cb.size_hint_x = None
+        cb.width = "48dp"
+        self.cb_use_udp_broadcast = cb
+        bl.add_widget(cb)
+        self.add_widget(bl)
+
 
 class OneListItemWithCheckbox(OneLineListItem):
     '''Custom list item.'''
@@ -223,8 +290,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
     server_hostname = ObjectProperty(None)
     server_tcp_port = ObjectProperty(None)
     server_udp_port = ObjectProperty(None)
+    server_use_udp_broadcast = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
     jog_feed_rate = ObjectProperty(None)
+    sw_state = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         ''' Constructor
@@ -373,6 +442,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
         # handle axis menus
         elif li in self.axis_list_items and gc.gsatrc_remote_client:
+            if self.sw_state in [gc.STATE_RUN]:
+                jog_not_permitted_run_state()
+                return
+
             if instance_menu_item.text == "Zero Axis":
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li: 0})
             elif instance_menu_item.text == "Home Axis":
@@ -426,6 +499,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         self.server_hostname = MDApp.get_running_app().config.get(__appname__, 'server_hostname')
         self.server_tcp_port = MDApp.get_running_app().config.get(__appname__, 'server_tcp_port')
         self.server_udp_port = MDApp.get_running_app().config.get(__appname__, 'server_udp_port')
+        self.server_use_udp_broadcast = MDApp.get_running_app().config.get(__appname__, 'server_use_udp_broadcast')
 
         self.init_menu()
         self.init_list()
@@ -441,7 +515,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
         value_dialog = None
 
         if data_key == "server_config":
-            content_cls = ServerDialagoContent(self.server_hostname, self.server_tcp_port, self.server_udp_port)
+            content_cls = ServerDialagoContent(
+                self.server_hostname, self.server_tcp_port, self.server_udp_port, eval(self.server_use_udp_broadcast)
+            )
             dialog_title = 'Remote Server'
 
         if content_cls is not None:
@@ -490,6 +566,14 @@ class MDBoxLayoutDRO(MDBoxLayout):
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
+
+    def on_server_use_udp_broadcast(self, instance, value):
+        value_key = 'server_use_udp_broadcast'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+
 
     def on_update(self, sr):
         ''' Update DRO fields
@@ -580,6 +664,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 self.server_hostname = self.value_dialog.content_cls.tf_server.text
                 self.server_tcp_port = self.value_dialog.content_cls.tf_tcp_port.text
                 self.server_udp_port = self.value_dialog.content_cls.tf_udp_port.text
+                self.server_use_udp_broadcast = str(self.value_dialog.content_cls.cb_use_udp_broadcast.active)
 
         self.value_dialog.dismiss()
         self.value_dialog = None
@@ -630,7 +715,7 @@ class MDGridLayoutButtons(MDGridLayout):
         config_dialog = None
 
         if data_key in ['jsz']:
-            content_cls=StepSizeDialagoContent(val="")
+            content_cls=StepSizeDialogContent(val="")
             content_cls.ids.text_field.input_filter = 'float'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Step Size'
@@ -944,6 +1029,10 @@ class MDGridLayoutJogControls(MDGridLayout):
     def on_jog_button_long_press(self, time):
         ''' handle long press for a few jog buttons (part 3)
         '''
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         self.jog_long_press_ev = True
 
         if self.long_press_clk_ev:
@@ -962,12 +1051,20 @@ class MDGridLayoutJogControls(MDGridLayout):
     def on_jog_button_press(self, key):
         ''' handle long press for a few jog buttons (part 1)
         '''
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         self.jog_long_press_key = key
         self.long_press_clk_ev = Clock.schedule_once(self.on_jog_button_long_press, self.jog_long_press_time)
 
     def on_jog_button_release(self, key):
         ''' handle long press for a few jog buttons (part 2)
         '''
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         if self.jog_long_press_ev:
             self.jog_long_press_ev = False
             if gc.gsatrc_remote_client:
@@ -991,10 +1088,18 @@ class MDGridLayoutJogControls(MDGridLayout):
             )
 
     def on_jog_home_axis(self, axis):
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         if gc.gsatrc_remote_client:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, axis)
 
     def on_jog_move_absolute(self, axis):
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         if gc.gsatrc_remote_client:
             if self.jog_feed_rate == "Rapid":
                 gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
@@ -1004,6 +1109,10 @@ class MDGridLayoutJogControls(MDGridLayout):
             gc.gsatrc_remote_client.add_event(gc_cmd, axis)
 
     def on_jog_move_relative(self, axis_str, step_size=None):
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         if gc.gsatrc_remote_client:
             if step_size is None:
                 step_size = float(self.jog_step_size)
@@ -1017,15 +1126,27 @@ class MDGridLayoutJogControls(MDGridLayout):
             gc.gsatrc_remote_client.add_event(gc_cmd, axis)
 
     def on_jog_probe(self, data):
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         # TODO: doe spendant really need to keep this config??
         if gc.gsatrc_remote_client:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, data)
 
     def on_jog_send_cmd(self, data):
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         if gc.gsatrc_remote_client:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, data)
 
     def on_jog_set_axis(self, axis):
+        if self.sw_state in [gc.STATE_RUN]:
+            jog_not_permitted_run_state()
+            return
+
         if gc.gsatrc_remote_client:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, axis)
 
@@ -1054,6 +1175,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.dro_panel.bind(server_hostname=self.on_value_server_hostname)
         self.ids.dro_panel.bind(server_tcp_port=self.on_value_server_tcp_port)
         self.ids.dro_panel.bind(server_udp_port=self.on_value_server_udp_port)
+        self.ids.dro_panel.bind(server_use_udp_broadcast=self.on_value_server_use_udp_broadcast)
         self.ids.dro_panel.bind(on_display_gcode_filename=self.on_display_gcode_filename)
 
         self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
@@ -1063,25 +1185,23 @@ class RootWidget(Screen, gc.EventQueueIf):
         Clock.schedule_once(self.on_init)
         # self.on_init()
 
+    # @mainthread
     def add_event(self, id, data=None, sender=None):
+        # print ("{} from root_add_event".format(threading.current_thread().ident))
         gc.EventQueueIf.add_event(self, id, data, sender)
-        self.dispatch('on_process_queue')
+        Clock.schedule_once(self.on_process_queue)
+        # self.dispatch('on_process_queue')
 
     def append_text(self, str_data):
         ''' text output
         '''
-        try:
-            self.text_out.readonly = False
-            self.text_out.do_cursor_movement('cursor_end', control=True)
-            self.text_out.insert_text(str_data)
-            self.text_out.readonly = True
-        except:
-            pass
+        self.text_out.append_text(str_data)
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:
             gc.gsatrc_remote_client = rc.RemoteClientThread(
-                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, True)
+                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast
+            )
 
     def on_close(self):
         if gc.gsatrc_remote_client:
@@ -1118,8 +1238,10 @@ class RootWidget(Screen, gc.EventQueueIf):
             self.remote_gcode_filename = ""
 
     def on_sw_state(self, instance, value):
+        # print ("{} from on_sw_state".format(threading.current_thread().ident))
         self.ids.button_panel.sw_state = value
         self.ids.jog_ctrl.sw_state = value
+        self.ids.dro_panel.sw_state = value
 
     def on_process_queue(self, *args):
         ''' Process evens on queue
@@ -1423,6 +1545,9 @@ class RootWidget(Screen, gc.EventQueueIf):
     def on_value_server_udp_port(self, instance, value):
         self.server_udp_port = int(value)
 
+    def on_value_server_use_udp_broadcast(self, instance, value):
+        self.server_use_udp_broadcast = eval(value)
+
 
 class MDBoxLayoutAutoRotate(MDBoxLayout):
     def __init__(self, **kwargs):
@@ -1456,6 +1581,7 @@ class MainApp(MDApp):
             'server_hostname': "hostname",
             'server_tcp_port': "61801",
             'server_udp_port': "61802",
+            'server_use_udp_broadcast': False,
             'jog_step_size': "1",
             'jog_feed_rate': "Rapid",
             'Jog_spindle_rpm': "18000"

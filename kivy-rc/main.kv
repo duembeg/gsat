@@ -54,9 +54,13 @@
                     # height: root.height
                     id: text_out
                     multiline: True
-                    scroll_y: 100
+                    max_text: 8000
+                    max_text_backoff: 6000
                     readonly: True
+                    use_bubble: False
+                    use_handles: False
                     font_name: 'data/fonts/RobotoMono-Regular'
+
     # MDFloatingActionButton:
     #     icon: "play-circle"
     #     md_bg_color: app.theme_cls.primary_color
@@ -200,7 +204,6 @@
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                    # on_release: print(self.to_window(self.center_x, self.center_y), self.text)
                 TwoLineListItem:
                     id: remote_server
                     text: ""
@@ -224,26 +227,7 @@
     # columns: 4
     size_hint_y: None
     # height: self.minimum_height
-    height: dp(150)
-    # MDRectangleFlatIconButton:
-    # # Button:
-    #     # canvas.before:
-    #     #     Color:
-    #     #         rgba: app.get_color_random()
-    #     #     Rectangle:
-    #     #         pos: self.pos
-    #     #         size: self.size
-    #     id: run
-    #     text: "Run"
-    #     icon: "play"
-    #     theme_text_color: "Custom"
-    #     text_color: app.theme_cls.primary_color
-    #     size_hint: (1, 1)
-    #     # text_size: self.size
-    #     # text_color: app.theme_cls.disabled_hint_text_color
-    #     # on_press: root.on_play()
-
-
+    height: dp(130)
     MDRectangleFlatIconButton:
     # Button:
         id: step_size
@@ -506,13 +490,11 @@
         on_text_validate: top.on_text_validate(self)
 
 
-<StepSizeDialagoContent>
+<StepSizeDialogContent>
     id: top
     orientation: "vertical"
-    #spacing: "12dp"
     size_hint_y: None
-    #height: "170dp"
-    #height: self.ids.text_field.minimum_height + self.ids.step_size_buttons.minimum_height
+    height: "200dp"
 
     MDGridLayout:
         # canvas.before:
@@ -528,14 +510,3 @@
         size_hint_x: None
         width: self.minimum_width
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-
-# <OneListItemWithCheckbox@OneLineListItem>:
-#     RightCheckbox:
-
-# <TwoListItemWithCheckbox@TwoLineListItem>:
-#     # RightCheckbox:
-#     #     pos_hint: {'right':1.3, 'center_y':0.5}
-#     # MDCheckbox:
-#     #     pos_hint: {'right':1.3, 'center_y':0.5}
-#     MDSwitch:
-#         pos_hint: {'right':0.8, 'center_y':0.5}

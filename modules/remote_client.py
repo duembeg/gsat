@@ -27,6 +27,7 @@ import threading
 import logging
 import socket
 import select
+import time
 
 try:
     import queue
@@ -525,6 +526,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 # add data to queue
                 self.notify_event_listeners(gc.EV_ABORT, message)
                 break
+
+            time.sleep(0.010)
 
         # exit thread
         self.close()
