@@ -207,7 +207,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     force_update = True
                     self.swState = gc.STATE_IDLE
 
-                self.runTimeStart = 0
+                # self.runTimeStart = 0
 
                 if force_update:
                     self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
@@ -501,9 +501,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                         self.runTimeElapse = runTimeNow - self.runTimeStart
                         rxData['sr']['rtime'] = self.runTimeElapse
 
-                        if self.swState == gc.STATE_IDLE and self.machIfState in [
-                            "Idle", "idle", "Stop", "stop", "End", "end"]:
-                            self.runTimeStart = 0
+                        # if self.swState == gc.STATE_IDLE and self.machIfState in [
+                        #     "Idle", "idle", "Stop", "stop", "End", "end"]:
+                        #     self.runTimeStart = 0
 
                 self.notify_event_listeners(gc.EV_DATA_STATUS, rxData)
 
@@ -708,6 +708,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             # notify listeners
             self.notify_event_listeners(gc.EV_RUN_END)
             self.notify_event_listeners(gc.EV_SW_STATE, self.swState)
+            self.runTimeStart = 0
             return
 
         # update PC

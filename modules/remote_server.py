@@ -466,7 +466,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "Recv msg len:{} data:{} from {}".format(len(self.rxBuffer), str(data), soc.getpeername()))
+                            "Recv msg len:{} data:{} from {}".format(len(self.rxBuffer), str(data), self.inputsAddr[soc]))
 
                     # init rxBuffer last
                     self.rxBuffer = b""
@@ -546,7 +546,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.info(
-                "Send msg len:{} data:{} to {}".format(msg_len, str(data), soc.getpeername()))
+                "Send msg len:{} data:{} to {}".format(msg_len, str(data), self.inputsAddr[soc]))
 
         if exFlag:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
@@ -707,7 +707,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                     # no data client disconnected, clean up
                                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                                         self.logger.info(
-                                            "Connection reset by peer, client{}".format(self.inputsAddr[soc]))
+                                            "Connection reset by peer, client {}".format(self.inputsAddr[soc]))
 
                                     self.clean_up(soc)
 
@@ -733,7 +733,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     # handle exceptions
                     for soc in exceptional:
                         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                            self.logger.info("Unknown exception from client{}".format(self.inputsAddr[soc]))
+                            self.logger.info("Unknown exception from client {}".format(self.inputsAddr[soc]))
 
                         self.clean_up(soc)
 
