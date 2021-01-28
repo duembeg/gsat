@@ -572,7 +572,12 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.process_queue()
 
         if self.do_init_script:
+            # run user specified script
             self.run_device_init_script()
+
+            # get device status
+            self.add_event(gc.EV_CMD_GET_STATUS)
+
             self.do_init_script = False
 
     def wait_for_acknowledge(self):

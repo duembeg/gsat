@@ -2357,9 +2357,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.stateData.deviceDetected = True
 
-                # TODO: this doesn't belong here put in machif_proexec
-                self.GetMachineStatus()
-
                 if self.remoteClient is None:
                     pass
                     # This will be done by progexec thread where it belongs
