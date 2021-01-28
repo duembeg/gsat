@@ -271,7 +271,8 @@ class MachIf_Smoothie(mi.MachIf_Base):
         if len(data) == 0:
             return data
 
-        data = data.encode('ascii')
+        if type(data) is bytes:
+            data = data.decode('utf-8')
 
         data = super(MachIf_Smoothie, self).encode(data)
 

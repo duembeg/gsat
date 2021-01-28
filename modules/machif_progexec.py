@@ -129,7 +129,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_STEP")
 
-                h1 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                h1 = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
 
                 if 'gcodeFileName' in e.data:
                     self.gcodeFileName = e.data['gcodeFileName']
@@ -149,7 +149,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.breakPointSet = e.data['breakPoints']
 
                 # if gcode lines change update listeners of new md5
-                h2 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                h2 = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
                 if h1 != h2:
                     self.notify_event_listeners(gc.EV_GCODE_MD5, h2)
                 elif last_brk_pt_set != self.breakPointSet:
@@ -161,7 +161,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_RUN")
 
-                h1 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                h1 = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
 
                 if 'gcodeFileName' in e.data:
                     self.gcodeFileName = e.data['gcodeFileName']
@@ -179,7 +179,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 # init time only if we got new lines or previous satate was
                 # IDLE (if we stop or step operations)
-                h2 = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                h2 = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
                 if h1 != h2 or self.swState == gc.STATE_IDLE:
                     self.runTimeStart = int(time.time())
 
@@ -359,7 +359,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 listener = e.sender
                 self.add_event_listener(listener)
-                h = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                h = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
                 listener.add_event(gc.EV_GCODE_MD5, h)
 
             elif e.event_id == gc.EV_GOOD_BYE:
@@ -397,7 +397,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_GET_GCODE_MD5")
 
-                h = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+                h = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
                 # self.notify_event_listeners(gc.EV_GCODE_MD5, h)
 
                 listener = e.sender
@@ -882,7 +882,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.machIfModule.open()
 
         # initial report of GCode MD5
-        h = hashlib.md5(str(self.gcodeDataLines)).hexdigest()
+        h = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
         self.notify_event_listeners(gc.EV_GCODE_MD5, h)
 
         while not self.endThread:

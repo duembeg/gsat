@@ -472,8 +472,13 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.rxBuffer = b""
 
         except OSError as e:
-            exMsg = "** OSError exception: {}\n".format(str(e))
-            exFlag = True
+            # This is normal on non blocking connections - when there are no incoming data error is going to be raised
+            # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
+            # If we got different error code - something happened
+            if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                exMsg = "** OSError exception: {}\n".format(str(e))
+                exFlag = True
 
         except IOError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
@@ -523,8 +528,13 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 data_sent_len += soc.send(bytes(msg[data_sent_len:]))
 
             except OSError as e:
-                exMsg = "** OSError exception: {}\n".format(str(e))
-                exFlag = True
+                # This is normal on non blocking connections - when there are no incoming data error is going to be
+                # raised. Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
+                # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+                # as normal. If we got different error code - something happened
+                if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
+                    exMsg = "** OSError exception: {}\n".format(str(e))
+                    exFlag = True
 
             except IOError as e:
                 # This is normal on non blocking connections - when there are no incoming data error is going to be
@@ -683,9 +693,22 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             self.notify_event_listeners(gc.EV_RMT_HELLO, msg)
 
                             # send welcome message, only to new client
-                            msg = gc.SimpleEvent(gc.EV_RMT_HELLO, "Welcome to gsat server {}, on {}{} {}\n".format(
-                                    __version__, self.host, self.socServer.getsockname(),
-                                    os.uname()), id(self))
+                            soc_str = self.socServer.getsockname()
+                            python_ver = sys.version.replace('\n', "")
+                            sys_str = str(os.uname()).replace("posix.uname_result","")
+                            welcome_str = \
+                            "=========================================\n"\
+                            "Welcome to gsat server {}, runing on:\n"\
+                            "Server: {}{}\n"\
+                            "Python: {}\n"\
+                            "System: {}\n"\
+                            "\n"
+
+                            msg = gc.SimpleEvent(
+                                gc.EV_RMT_HELLO,
+                                welcome_str.format(__version__, self.host, soc_str, python_ver, sys_str),
+                                id(self)
+                            )
 
                             self.send(connection, msg)
 

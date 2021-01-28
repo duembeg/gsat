@@ -2453,7 +2453,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 h = hashlib.md5(str([])).hexdigest()
                 if h != te.data and self.machifProgExec is not None:
                     h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
-                    if h != te.data:
+                    if h != te.data and self.configData.get('/remote/AutoGcodeRequest', False):
                         self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
 
             elif te.event_id == gc.EV_GCODE:

@@ -569,7 +569,8 @@ class MachIf_GRBL(mi.MachIf_Base):
         if len(data) == 0:
             return data
 
-        data = data.encode('ascii')
+        if type(data) is bytes:
+            data = data.decode('utf-8')
 
         data = super(MachIf_GRBL, self).encode(data)
 
@@ -632,7 +633,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 tnowMilli = tnow.second*1000 + tnow.microsecond/1000
                 tdeltaMilli = self.autoStatusNextMicro.second * \
                     1000 + self.autoStatusNextMicro.microsecond/1000
-                if long(tnowMilli - tdeltaMilli) >= 0:
+                if int(tnowMilli - tdeltaMilli) >= 0:
                     if self.okToSend(self.cmdStatus):
                         super(MachIf_GRBL, self).write(self.cmdStatus)
 

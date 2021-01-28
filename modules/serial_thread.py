@@ -222,8 +222,8 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 # # then "+="
                 # serialData = self.serialPort.readline()
                 # self.rxBuffer += self.serialPort.read(inDataCnt)
-                self.rxBuffer = "".join(
-                    [self.rxBuffer, self.serialPort.read(inDataCnt)])
+                data = self.serialPort.read(inDataCnt).decode("utf-8")
+                self.rxBuffer = "".join([self.rxBuffer, data])
 
                 while '\n' in self.rxBuffer:
                     serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
@@ -296,7 +296,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                           gc.VERBOSE_MASK_SERIALIF_STR):
                         self.logger.info(verbose_data_ascii("->", serialData))
 
-                self.serialPort.write(serialData)
+                self.serialPort.write(serialData.encode('utf8'))
 
             except serial.SerialException as e:
                 exMsg = "** PySerial exception: %s\n" % e.message

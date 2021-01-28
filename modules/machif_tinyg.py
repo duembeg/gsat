@@ -446,7 +446,8 @@ class MachIf_TinyG(mi.MachIf_Base):
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller
         """
-        data = data.encode('ascii')
+        if type(data) is bytes:
+            data = data.decode('utf-8')
 
         data = super(MachIf_TinyG, self).encode(data)
 
