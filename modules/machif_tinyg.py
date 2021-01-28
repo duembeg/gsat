@@ -272,7 +272,7 @@ class MachIf_TinyG(mi.MachIf_Base):
         # list of commands
         self.cmdClearAlarm = '{"clear":true}\n'
         self.cmdInitComm = '{"sys":null}\n'
-        self.cmdQueueFlushCmd = "%"
+        self.cmdQueueFlush = '%'
         self.cmdSetAxisCmd = "G28.3"
         self.cmdStatus = '{"sr":null}\n'
         # self.cmdSystemInfo = '{"sys":null}\n'
