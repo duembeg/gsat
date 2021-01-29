@@ -99,6 +99,9 @@ import modules.config as gc
 import modules.remote_client as rc
 
 
+def no_machine_detected():
+    toast("There is no machine connected/detected")
+
 def jog_not_permitted_run_state():
     toast("JOG operations not permitted while in RUN state")
 
@@ -126,29 +129,21 @@ class TextInputTouchScroll(TextInput):
             self.readonly = False
             self.do_cursor_movement('cursor_end', control=True)
             self.insert_text(str_data, False)
-            self.do_cursor_movement('cursor_end', control=True)
-            self.insert_text("** text_size: {}\n".format(len(self.text_out.text)), from_undo)
+            # self.do_cursor_movement('cursor_end', control=True)
+            # self.insert_text("** text_size: {}\n".format(len(self.text_out.text)), False)
             self.readonly = True
+
+            if len(self.text) > self.max_text:
+                # before = len(self.text)
+                self.text = self.text[-(self.max_text-self.max_text_backoff):]
+                # print ("Before: {}".format(before))
+                # print ("After: {}".format(len(self.text)))
+                self.height -= self.line_height
+
         except:
             # sometimes while rotating screen and heavy output exceptions might
             # happen, ignore since this is a bets effort output window
             pass
-
-
-    def _update_graphics(self, *largs):
-        ''' hijack this regularly call function to trim self.text if
-        is getting too big
-        '''
-
-        super(TextInputTouchScroll, self)._update_graphics(largs)
-
-        if len(self.text) > self.max_text:
-            # before = len(self.text)
-            self.text = self.text[-(self.max_text-self.max_text_backoff):]
-            # print ("Before: {}".format(before))
-            # print ("After: {}".format(len(self.text)))
-            self.height -= self.line_height
-
 
     def insert_text(self, substring, from_undo=False):
         super(TextInputTouchScroll, self).insert_text(substring, from_undo)
@@ -446,18 +441,22 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 jog_not_permitted_run_state()
                 return
 
-            if instance_menu_item.text == "Zero Axis":
-                gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li: 0})
-            elif instance_menu_item.text == "Home Axis":
-                gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li: 0})
-            elif instance_menu_item.text == "Go to Zero":
-                axis = {li: 0}
-                if self.jog_feed_rate == "Rapid":
-                    gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
-                else:
-                    gc_cmd = gc.EV_CMD_JOG_MOVE
-                    axis['feed'] = int(self.jog_feed_rate)
-                gc.gsatrc_remote_client.add_event(gc_cmd, axis)
+            if gc.gsatrc_remote_client and self.serial_port_open:
+                if instance_menu_item.text == "Zero Axis":
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li: 0})
+                elif instance_menu_item.text == "Home Axis":
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li: 0})
+                elif instance_menu_item.text == "Go to Zero":
+                    axis = {li: 0}
+                    if self.jog_feed_rate == "Rapid":
+                        gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
+                    else:
+                        gc_cmd = gc.EV_CMD_JOG_MOVE
+                        axis['feed'] = int(self.jog_feed_rate)
+                    gc.gsatrc_remote_client.add_event(gc_cmd, axis)
+            else:
+                no_machine_detected()
+
 
     def on_display_gcode_filename(self, *args):
         pass
@@ -546,6 +545,16 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 instance.menu.caller = instance
                 instance.menu.open()
 
+    def on_serial_port_open(self, instance, val):
+
+        if not val:
+            self.list_items['rt'].text = ""
+            self.list_items['pc'].text = ""
+            self.list_items['st'].text = "Stop"
+            self.list_items['swst'].text = "Idle"
+            self.list_items['mi'].text = ""
+            self.list_items['gfn'].text = ""
+
     def on_server_hostname(self, instance, value):
         value_key = 'server_hostname'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
@@ -573,7 +582,6 @@ class MDBoxLayoutDRO(MDBoxLayout):
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
-
 
     def on_update(self, sr):
         ''' Update DRO fields
@@ -895,41 +903,38 @@ class MDGridLayoutButtons(MDGridLayout):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_CLEAR_ALARM)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_machine_cycle_start(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_CYCLE_START)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_machine_hold(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_FEED_HOLD)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_machine_refresh(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_STATUS)
         else:
-            self.on_no_serial_port_open()
-
-    def on_no_serial_port_open(self):
-        toast("There is no machine connected/detected")
+            no_machine_detected()
 
     def on_pause(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_PAUSE)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_run(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             runDict = dict()
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_RUN, runDict)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_serial_port_open(self, instance, value):
         self.update_button_state()
@@ -939,13 +944,13 @@ class MDGridLayoutButtons(MDGridLayout):
             runDict = dict()
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_STEP, runDict)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_stop(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_STOP)
         else:
-            self.on_no_serial_port_open()
+            no_machine_detected()
 
     def on_sw_state(self, instance, value):
         self.update_button_state()
@@ -973,10 +978,6 @@ class MDGridLayoutButtons(MDGridLayout):
             self.ids.machine_cycle_start.disabled = True
             self.ids.machine_hold.disabled = True
 
-
-# class MDGridLayoutButtons(MDGridLayout):
-#     def __init__(self, **args):
-#         super(MDGridLayoutButtons, self).__init__(**args)
 
 
 class MDGridLayoutJogControls(MDGridLayout):
@@ -1055,8 +1056,9 @@ class MDGridLayoutJogControls(MDGridLayout):
             jog_not_permitted_run_state()
             return
 
-        self.jog_long_press_key = key
-        self.long_press_clk_ev = Clock.schedule_once(self.on_jog_button_long_press, self.jog_long_press_time)
+        if gc.gsatrc_remote_client and self.serial_port_open:
+            self.jog_long_press_key = key
+            self.long_press_clk_ev = Clock.schedule_once(self.on_jog_button_long_press, self.jog_long_press_time)
 
     def on_jog_button_release(self, key):
         ''' handle long press for a few jog buttons (part 2)
@@ -1065,35 +1067,40 @@ class MDGridLayoutJogControls(MDGridLayout):
             jog_not_permitted_run_state()
             return
 
-        if self.jog_long_press_ev:
-            self.jog_long_press_ev = False
-            if gc.gsatrc_remote_client:
-                gc.gsatrc_remote_client.add_event(gc.EV_CMD_JOG_STOP)
-        else:
-            if self.long_press_clk_ev:
-                self.long_press_clk_ev.cancel()
-                self.long_press_clk_ev = None
+        if gc.gsatrc_remote_client and self.serial_port_open:
+            if self.jog_long_press_ev:
                 self.jog_long_press_ev = False
+                gc.gsatrc_remote_client.add_event(gc.EV_CMD_JOG_STOP)
+            else:
+                if self.long_press_clk_ev:
+                    self.long_press_clk_ev.cancel()
+                    self.long_press_clk_ev = None
+                    self.jog_long_press_ev = False
 
-            # handle regular press
-            dir = 0
+                # handle regular press
+                dir = 0
 
-            if key[:1] == "+":
-                dir = 1
-            elif key[:1] == "-":
-                dir = -1
+                if key[:1] == "+":
+                    dir = 1
+                elif key[:1] == "-":
+                    dir = -1
 
-            self.on_jog_move_relative(
-                self.jog_long_press_key[1:], step_size=float(self.jog_step_size * dir)
-            )
+                self.on_jog_move_relative(
+                    self.jog_long_press_key[1:], step_size=float(self.jog_step_size * dir)
+                )
+        else:
+            no_machine_detected()
+
 
     def on_jog_home_axis(self, axis):
         if self.sw_state in [gc.STATE_RUN]:
             jog_not_permitted_run_state()
             return
 
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, axis)
+        else:
+            no_machine_detected()
 
     def on_jog_move_absolute(self, axis):
         if self.sw_state in [gc.STATE_RUN]:
@@ -1131,24 +1138,30 @@ class MDGridLayoutJogControls(MDGridLayout):
             return
 
         # TODO: doe spendant really need to keep this config??
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, data)
+        else:
+            no_machine_detected()
 
     def on_jog_send_cmd(self, data):
         if self.sw_state in [gc.STATE_RUN]:
             jog_not_permitted_run_state()
             return
 
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, data)
+        else:
+            no_machine_detected()
 
     def on_jog_set_axis(self, axis):
         if self.sw_state in [gc.STATE_RUN]:
             jog_not_permitted_run_state()
             return
 
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, axis)
+        else:
+            no_machine_detected()
 
 
 class RootWidget(Screen, gc.EventQueueIf):
@@ -1208,11 +1221,10 @@ class RootWidget(Screen, gc.EventQueueIf):
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_EXIT)
 
     def on_init(self, *args):
-        self.serial_port_open = False
         self.sw_state = gc.STATE_IDLE
+        self.serial_port_open = False
         self.update_dro = self.ids.dro_panel.on_update
         self.text_out = self.ids.text_out
-        self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
         self.remote_gcode_md5 = 0
         self.remote_gcode_filename = ""
         # print ("*******************")
@@ -1233,7 +1245,6 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.dro_panel.serial_port_open = value
 
         if value == False and self.update_dro:
-            self.update_dro({'gfn': ""})
             self.remote_gcode_md5 = 0
             self.remote_gcode_filename = ""
 
@@ -1376,9 +1387,10 @@ class RootWidget(Screen, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(ev.sender), ev.sender))
 
+                # order matters in this case sw_state must be first
+                self.sw_state = gc.STATE_IDLE
                 self.serial_port_open = False
                 self.device_detected = False
-                self.update_dro({'machif':""})
 
             elif ev.event_id == gc.EV_EXIT:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -1386,13 +1398,12 @@ class RootWidget(Screen, gc.EventQueueIf):
 
                 if id(ev.sender) == id(gc.gsatrc_remote_client):
                     gc.gsatrc_remote_client = None
+                    self.update_dro({'rc': ""})
 
-                    gc.gsatrc_remote_client = None
+                    self.sw_state = gc.STATE_IDLE
                     self.serial_port_open = False
                     self.device_detected = False
-                    self.sw_state = gc.STATE_IDLE
                     self.ids.dro_panel.rc_connect = False
-                    self.update_dro({'rc':"", 'machif':"", 'swst': gc.get_sw_status_str(self.sw_state)})
 
             elif ev.event_id == gc.EV_DEVICE_DETECTED:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -1409,10 +1420,9 @@ class RootWidget(Screen, gc.EventQueueIf):
                 if ev.sender is gc.gsatrc_remote_client:
                     self.on_close()
 
+                self.sw_state = gc.STATE_IDLE
                 self.serial_port_open = False
                 self.device_detected = False
-                self.sw_state = gc.STATE_IDLE
-                self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
 
             elif ev.event_id == gc.EV_RMT_PORT_OPEN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -1430,10 +1440,9 @@ class RootWidget(Screen, gc.EventQueueIf):
                     self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(ev.sender), ev.sender))
 
                 self.append_text(ev.data)
+                self.sw_state = gc.STATE_IDLE
                 self.serial_port_open = False
                 self.device_detected = False
-                self.sw_state = gc.STATE_IDLE
-                self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
 
             elif  ev.event_id == gc.EV_RMT_CONFIG_DATA:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:

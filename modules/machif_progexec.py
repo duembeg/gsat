@@ -478,7 +478,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     #self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
 
                 if 'sr' in rxData:
-                    if self.swState != gc.STATE_IDLE and len(self.gcodeDataLines):
+                    if len(self.gcodeDataLines):
                         # at this point we haven't completed and added progaram counter
                         # we need to +1, also array starts at 0 and gcode page starts at 1
                         # nee another +1
