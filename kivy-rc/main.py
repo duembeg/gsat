@@ -917,6 +917,12 @@ class MDGridLayoutButtons(MDGridLayout):
         else:
             no_machine_detected()
 
+    def on_machine_queue_flush(self):
+        if gc.gsatrc_remote_client and self.serial_port_open:
+            gc.gsatrc_remote_client.add_event(gc.EV_CMD_QUEUE_FLUSH)
+        else:
+            no_machine_detected()
+
     def on_machine_refresh(self):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_STATUS)
@@ -1137,7 +1143,9 @@ class MDGridLayoutJogControls(MDGridLayout):
             jog_not_permitted_run_state()
             return
 
-        # TODO: doe spendant really need to keep this config??
+        # TODO: does pendant really need to keep this config??
+        # probe command should be sent to server, server should
+        # the information of the prove offset, etc.
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, data)
         else:
@@ -1215,6 +1223,12 @@ class RootWidget(Screen, gc.EventQueueIf):
             gc.gsatrc_remote_client = rc.RemoteClientThread(
                 self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast
             )
+
+    def on_cli_text_validate(self, text, *args):
+        if gc.gsatrc_remote_client and self.serial_port_open:
+            gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, "{}\n".format(str(text).strip()))
+        else:
+            no_machine_detected()
 
     def on_close(self):
         if gc.gsatrc_remote_client:

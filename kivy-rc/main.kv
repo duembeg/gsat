@@ -44,11 +44,19 @@
                 # ScrollView:
                 MDGridLayoutJogControls:
                     id: jog_ctrl
-                # ScrollView:
-                #     do_scroll_x: False
-                #     do_scroll_y: True
-                # Splitter:
-                #     sizable_from: 'top'
+                MDTextField:
+                    # size_hint_x: .9
+                    hint_text: "send G-code"
+                    mode: "fill"
+                    active_line: False
+                    font_name: 'data/fonts/RobotoMono-Regular'
+                    icon: "console-line"
+                    icon_color: app.theme_cls.primary_color
+                    #icon_right: "arrow-down-drop-circle-outline"
+                    #icon_right_color: app.theme_cls.primary_color
+                    # icon_right: "send"
+                    # icon_right_color: app.theme_cls.primary_color
+                    on_text_validate: root.on_cli_text_validate(self.text)
                 TextInputTouchScroll:
                     # size_hint_y: None
                     # height: root.height
@@ -160,7 +168,7 @@
                 OneLineAvatarIconListItem:
                     id: status
                     text: "Stop"
-                    # secondary_text: "Status"
+                    #secondary_text: "G54 1 XX"
                     font_style: "H5"
                     # size_hint_y: None
                     # height: dro_list.list_item_height
@@ -249,13 +257,20 @@
         icon: "speedometer"
         size_hint: (1, 1)
         on_press: root.on_jog_spindle_rpm_bt()
+    # MDRectangleFlatIconButton:
+    # # Button:
+    #     id: send_gcode
+    #     text: "Send G-code"
+    #     icon: "console-line"
+    #     size_hint: (1, 1)
+    #     on_press: root.on_jog_g_code_cmd_bt()
     MDRectangleFlatIconButton:
     # Button:
-        id: send_gcode
-        text: "Send G-code"
-        icon: "console-line"
+        id: machine_clear_alarm
+        text: "Clear Alarm"
+        icon: "progress-alert"
         size_hint: (1, 1)
-        on_press: root.on_jog_g_code_cmd_bt()
+        on_press: root.on_machine_clear_alarm()
     MDRectangleFlatIconButton:
     # Button:
         id: run
@@ -285,11 +300,11 @@
         on_press: root.on_stop()
     MDRectangleFlatIconButton:
     # Button:
-        id: machine_clear_alarm
-        text: "Clear Alarm"
-        icon: "progress-alert"
+        id: machine_flush_queue
+        text: "Queue Flush"
+        icon: "trash-can-outline"
         size_hint: (1, 1)
-        on_press: root.on_machine_clear_alarm()
+        on_press: root.on_machine_queue_flush()
     MDRectangleFlatIconButton:
     # Button:
         id: machine_refresh
