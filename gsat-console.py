@@ -34,6 +34,7 @@ from modules.version_info import *
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
 import modules.remote_server as remote_server
+import modules.remote_client as remote_client
 
 '''
 __appname__ = "Gcode Step and Alignment Tool"
@@ -86,6 +87,9 @@ def get_cli_params():
         options.verbose_mask = gc.decode_verbose_mask_string(
             options.verbose_mask)
 
+    if len(options.gcode):
+        options.gcode = str(options.gcode).strip()
+
     return options
 
 
@@ -96,6 +100,7 @@ if __name__ == '__main__':
 
     machifProgExec = None
     remoteSever = None
+    remoteClient = None
     gcodeFileLines = []
 
     cmd_line_options = get_cli_params()
@@ -111,19 +116,27 @@ if __name__ == '__main__':
 
         if cmd_line_options.server:
             remoteServer = remote_server.RemoteServerThread(None)
+            time.sleep(1)
+            remoteClient = remote_client.RemoteClientThread(None, host='localhost')
 
-        elif os.path.exists(cmd_line_options.gcode):
-            gcode_file = file(cmd_line_options.gcode)
+        if os.path.exists(os.path.expanduser(cmd_line_options.gcode)):
+            gcode_file = file(os.path.expanduser(cmd_line_options.gcode))
             gcode_data = gcode_file.read()
 
             gcodeFileLines = gcode_data.splitlines(True)
 
-            machifProgExec = mi_progexec.MachIfExecuteThread(None)
+            machif = None
+            if remoteClient is None:
+                machifProgExec = mi_progexec.MachIfExecuteThread(None)
+                machif = machifProgExec
+            else:
+                remoteClient.add_event(gc.EV_CMD_OPEN)
+                machif = remoteClient
 
             # TODO: need code to check port is open
             time.sleep(2)
 
-            machifProgExec.add_event(gc.EV_CMD_CLEAR_ALARM, 0, self)
+            machif.add_event(gc.EV_CMD_CLEAR_ALARM)
 
             runDict = dict({
                 'gcodeFileName': cmd_line_options.gcode,
@@ -131,9 +144,7 @@ if __name__ == '__main__':
                 'gcodePC': 0,
                 'breakPoints': set()})
 
-            machifProgExec.add_event(gc.EV_CMD_RUN, runDict, self)
-
-            time.sleep(20)
+            machif.add_event(gc.EV_CMD_RUN, runDict)
 
         while True:
             time.sleep(1)
@@ -141,6 +152,9 @@ if __name__ == '__main__':
     finally:
         if remoteServer is not None:
             remoteServer.add_event(gc.EV_CMD_EXIT, 0, -1)
+
+        if remoteClient is not None:
+            remoteClient.add_event(gc.EV_CMD_EXIT, 0, -1)
 
         if machifProgExec is not None:
             machifProgExec.add_event(gc.EV_CMD_EXIT, 0, -1)
