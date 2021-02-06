@@ -22,7 +22,7 @@
             "program": "${workspaceFolder}/gsat-console.py",
             "args": [
                 // "-g../test.gcode",
-                "--vm=machif,serialif,remoteif",
+                "--vm=machif,serialif,remoteif,ui_ev",
                 "--server"
             ]
         },

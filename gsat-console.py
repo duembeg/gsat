@@ -35,6 +35,7 @@ import modules.config as gc
 import modules.machif_progexec as mi_progexec
 import modules.remote_server as remote_server
 import modules.remote_client as remote_client
+import modules.con_main as cm
 
 '''
 __appname__ = "Gcode Step and Alignment Tool"
@@ -105,56 +106,7 @@ if __name__ == '__main__':
 
     cmd_line_options = get_cli_params()
 
-    try:
-        config_fname = cmd_line_options.config
+    app = cm.ConsoleApp(cmd_line_options)
 
-        if config_fname is None:
-            config_fname = os.path.abspath(os.path.abspath(os.path.expanduser(
-                "~/.gsat.json")))
+    app.run()
 
-        gc.init_config(cmd_line_options, config_fname, "foo")
-
-        if cmd_line_options.server:
-            remoteServer = remote_server.RemoteServerThread(None)
-            time.sleep(1)
-            remoteClient = remote_client.RemoteClientThread(None, host='localhost')
-
-        if os.path.exists(os.path.expanduser(cmd_line_options.gcode)):
-            gcode_file = file(os.path.expanduser(cmd_line_options.gcode))
-            gcode_data = gcode_file.read()
-
-            gcodeFileLines = gcode_data.splitlines(True)
-
-            machif = None
-            if remoteClient is None:
-                machifProgExec = mi_progexec.MachIfExecuteThread(None)
-                machif = machifProgExec
-            else:
-                remoteClient.add_event(gc.EV_CMD_OPEN)
-                machif = remoteClient
-
-            # TODO: need code to check port is open
-            time.sleep(2)
-
-            machif.add_event(gc.EV_CMD_CLEAR_ALARM)
-
-            runDict = dict({
-                'gcodeFileName': cmd_line_options.gcode,
-                'gcodeLines': gcodeFileLines,
-                'gcodePC': 0,
-                'breakPoints': set()})
-
-            machif.add_event(gc.EV_CMD_RUN, runDict)
-
-        while True:
-            time.sleep(1)
-
-    finally:
-        if remoteServer is not None:
-            remoteServer.add_event(gc.EV_CMD_EXIT, 0, -1)
-
-        if remoteClient is not None:
-            remoteClient.add_event(gc.EV_CMD_EXIT, 0, -1)
-
-        if machifProgExec is not None:
-            machifProgExec.add_event(gc.EV_CMD_EXIT, 0, -1)
