@@ -289,12 +289,16 @@ def decode_verbose_mask_string(verbose_mask_str):
 # LOGGING MASK
 # --------------------------------------------------------------------------
 
-def init_logger(filename):
+def init_logger(filename, log_handler=None):
     log_path = filename
 
     logger = logging.getLogger()
 
-    ch = logging.StreamHandler()
+    if log_handler:
+        ch = log_handler
+    else:
+        ch = logging.StreamHandler()
+
     # ch_format = Formatter("%(levelname)s : %(message)s")
     ch_format = Formatter("%(asctime)s - m:%(module)s l:%(lineno)d >> "
                           "%(levelname)s :"
@@ -318,7 +322,7 @@ def init_logger(filename):
     # logger.info('>>> start')
 
 
-def init_config(cmd_line_options, config_file, log_file):
+def init_config(cmd_line_options, config_file, log_file, log_handler=None):
     """ Initialize config vars
     """
     global CMD_LINE_OPTIONS
@@ -327,7 +331,7 @@ def init_config(cmd_line_options, config_file, log_file):
 
     CMD_LINE_OPTIONS = cmd_line_options
 
-    init_logger('log_file')
+    init_logger(log_file, log_handler)
 
     CONFIG_DATA = gsatConfigData(config_file)
     CONFIG_DATA.load()
