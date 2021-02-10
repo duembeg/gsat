@@ -466,7 +466,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "Recv msg len:{} data:{} from {}".format(len(self.rxBuffer), str(data), self.inputsAddr[soc]))
+                            "Recv msg id:{} obj:0x{:x} len:{} from {}".format(
+                                data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc]
+                            )
+                        )
 
                     # init rxBuffer last
                     self.rxBuffer = b""
@@ -556,7 +559,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.info(
-                "Send msg len:{} data:{} to {}".format(msg_len, str(data), self.inputsAddr[soc]))
+                "Send msg id:{} obj:0x{:x} len:{} to {}".format(
+                    data.event_id, id(data), msg_len, self.inputsAddr[soc]
+                )
+            )
 
         if exFlag:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
@@ -578,7 +584,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.info(
-                    "Send broadcast msg len:{} data:{}".format(msg_len, str(data)))
+                    "Send broadcast msg id:{} obj:0x{:x} len:{}".format(data.event_id, id(data), msg_len)
+                )
 
         except OSError as e:
             exMsg = "** OSError exception: {}\n".format(str(e))

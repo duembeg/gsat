@@ -46,19 +46,21 @@ import modules.remote_server as remote_server
 import modules.remote_client as remote_client
 
 
+text_queue = queue.Queue()
+
 class StdoutWrapper(object):
     def __init__(self, win):
         self.out = sys.stdout
         self.win = win
-        self.lock = threading.RLock()
+        # self.lock = threading.RLock()
 
     def write(self, message):
-        with self.lock:
-            # self.out.write(message)
-            self.win.addstr(message)
-            # self.win.touchwin()
-            self.win.refresh()
-            # print (message)
+        # with self.lock:
+        # self.out.write(message)
+        self.win.addstr(message)
+        # self.win.touchwin()
+        self.win.refresh()
+        # print (message)
 
     def flush(self):
         pass
@@ -69,18 +71,16 @@ class CursesHandler(logging.Handler):
     def __init__(self, win):
         logging.Handler.__init__(self)
         self.win = win
-        self.lock = threading.RLock()
 
     def emit(self, record):
         try:
             msg = str(self.format(record))
-
-            with self.lock:
-                # self.win.addstr("{}\n".format(msg))
-                print (msg)
-                # self.win.box()
-                # self.win.touchwin()
-                # self.win.refresh()
+            text_queue.put(msg)
+            # self.win.addstr("{}\n".format(msg))
+            # print (msg)
+            # self.win.box()
+            # self.win.touchwin()
+            # self.win.refresh()
 
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -343,9 +343,25 @@ class ConsoleApp(gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
 
+            elif e.event_id == gc.EV_RMT_HELLO:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(te.sender), te.sender))
+
+                print(e.data)
+
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.error("got unknown event!! [{}]".format(str(e.event_id)))
+
+    def process_text_queue(self):
+        # process text from queue
+        while(True):
+            try:
+                text = text_queue.get_nowait()
+            except queue.Empty:
+                break
+            else:
+                print(text)
 
     def resize(self):
         self.screen.clear()
@@ -422,6 +438,7 @@ class ConsoleApp(gc.EventQueueIf):
                     self.machif.add_event(gc.EV_CMD_RUN, runDict)
 
             while not self.time_to_exit_gracefully:
+                self.process_text_queue()
                 self.process_queue()
                 self.proccess_keypad()
                 time.sleep(0.010)
@@ -517,6 +534,6 @@ class ConsoleApp(gc.EventQueueIf):
             #     self.consoleApp.machifState))
 
 
-            self.sta_box.touchwin()
+            # self.sta_box.touchwin()
             self.sta_box.refresh()
             # self.stdout_box.refresh()

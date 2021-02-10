@@ -272,8 +272,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                         self.logger.info(
-                            "Recv msg len:{} data:{} from {}".format(
-                                len(self.rxBuffer), str(data), self.inputsAddr[self.socServer]
+                            "Recv msg id:{} obj:0x{:x} len:{} from {}".format(
+                                data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[self.socServer]
                             )
                         )
 
@@ -348,7 +348,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                     self.logger.info(
-                        "Recv msg len:{} data:{} from {}".format(len(msg), str(data), from_data))
+                        "Recv msg id:{} obj:0x{:x} len:{} from {}".format(data.event_id, id(data), len(msg), from_data)
+                    )
 
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
@@ -436,7 +437,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
             self.logger.info(
-                "Send msg len:{} data:{} to {}".format(msg_len, str(data), self.inputsAddr[self.socServer])
+                "Send msg id:{} obj:0x{:x} len:{} to {}".format(
+                    data.event_id, id(data), msg_len, self.inputsAddr[self.socServer]
+                )
             )
 
         if exFlag:
