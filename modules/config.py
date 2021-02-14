@@ -688,26 +688,35 @@ class TimeOut(object):
     """
 
     def __init__(self, timeout):
-        self.timeNow = time.time()
+        self.time_now = time.time()
         self.timeout = timeout
-        self.timeoutTime = self.timeout + self.timeNow
+        self.timeout_time = self.timeout + self.time_now
 
     def disable(self):
-        self.timeoutTime = 0
+        self.timeout_time = 0
 
     def enable(self):
         self.reset()
 
-    def reset(self):
-        self.timeNow = time.time()
-        self.timeoutTime = self.timeout + self.timeNow
+    def reset(self, new_timeout=None):
+        if new_timeout:
+            self.timeout = new_timeout
+
+        self.time_now = time.time()
+        self.timeout_time = self.timeout + self.time_now
+
+    def set_timeout(self, new_timeout):
+        self.timeout = new_timeout
+
+        if self.timeout_time:
+            self.timeout_time = self.timeout + self.time_now
 
     def time_expired(self):
         rcVal = False
 
-        self.timeNow = time.time()
-        if self.timeoutTime != 0 and self.timeNow > self.timeoutTime:
-            self.timeoutTime = self.timeout + self.timeNow
+        self.time_now = time.time()
+        if self.timeout_time != 0 and self.time_now > self.timeout_time:
+            self.timeout_time = self.timeout + self.time_now
             rcVal = True
 
         return rcVal

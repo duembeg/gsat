@@ -42,7 +42,7 @@ def verbose_data_hex(direction, data):
         len(data),
         direction,
         data.strip(),
-        ':'.join(x.encode('hex') for x in data)
+        ':'.join(x.encode("utf-8").hex() for x in data)
     )
 
 

@@ -290,6 +290,8 @@ class MachIf_GRBL(mi.MachIf_Base):
         self._inputBufferPart = list()
 
         self.machineAutoRefreshPeriod = 200
+        self.timeOut = gc.TimeOut(float(self.machineAutoRefreshPeriod/1000))
+        self.timeOut.disable()
         self.machineStatus = GRBL_STATE_UNKNOWN
 
         self.autoStatusNextMicro = None
@@ -371,9 +373,9 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             if self.machineStatus != decodedStatus:
                 if decodedStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
-                    msec = self.machineAutoRefreshPeriod * 1000
-                    self.autoStatusNextMicro = dt.datetime.now() + \
-                        dt.timedelta(microseconds=msec)
+
+                    # start timer
+                    self.timeOut.reset()
 
                 self.machineStatus = decodedStatus
 
@@ -622,33 +624,23 @@ class MachIf_GRBL(mi.MachIf_Base):
     def init(self):
         super(MachIf_GRBL, self).init()
         self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-            '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value' % self.name)
+            '/machine/MachIfSpecific/{}/AutoRefreshPeriod/Value'.format(self.name)
+        )
+        self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))
 
     def tick(self):
         # check if is time for auto-refresh and send get status cmd and
         # prepare next refresh time
-        if self.autoStatusNextMicro is not None:
-            if self.machineStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
-                tnow = dt.datetime.now()
-                tnowMilli = tnow.second*1000 + tnow.microsecond/1000
-                tdeltaMilli = self.autoStatusNextMicro.second * \
-                    1000 + self.autoStatusNextMicro.microsecond/1000
-                if int(tnowMilli - tdeltaMilli) >= 0:
-                    if self.okToSend(self.cmdStatus):
-                        super(MachIf_GRBL, self).write(self.cmdStatus)
+        if self.machineStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
+            if self.timeOut.time_expired() and self.okToSend(self.cmdStatus):
+                super(MachIf_GRBL, self).write(self.cmdStatus)
+        else:
+            self.timeOut.disable()
 
-                    msec = self.machineAutoRefreshPeriod * 1000
-                    self.autoStatusNextMicro = dt.datetime.now() + \
-                        dt.timedelta(microseconds=msec)
-            else:
-                self.autoStatusNextMicro = None
-
-        if self.machineAutoRefreshPeriod != gc.CONFIG_DATA.get(
-                '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value'
-                % self.name):
-            self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-                '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value'
-                % self.name)
+        configAutorefresh = gc.CONFIG_DATA.get('/machine/MachIfSpecific/{}/AutoRefreshPeriod/Value'.format(self.name))
+        if self.machineAutoRefreshPeriod != configAutorefresh:
+            self.machineAutoRefreshPeriod = configAutorefresh
+            self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))
 
         # check for init condition, take action, and reset init condition
         if (self.initStringDetectFlag):
@@ -674,8 +666,6 @@ class MachIf_GRBL(mi.MachIf_Base):
                 super(MachIf_GRBL, self).write(self.cmdStatus)
                 super(MachIf_GRBL, self).write(self.cmdStatus)
 
-            msec = self.machineAutoRefreshPeriod * 1000
-            self.autoStatusNextMicro = dt.datetime.now() + \
-                dt.timedelta(microseconds=msec)
-
+            # start timer
+            self.timeOut.reset()
         return bytesSent

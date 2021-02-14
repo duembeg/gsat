@@ -48,6 +48,18 @@ import modules.remote_client as remote_client
 
 text_queue = queue.Queue()
 
+def verbose_data_ascii(direction, data):
+    return "[%03d] %s %s" % (len(data), direction, data.strip())
+
+
+def verbose_data_hex(direction, data):
+    return "[%03d] %s ASCII:%s HEX:%s" % (
+        len(data),
+        direction,
+        data.strip(),
+        ':'.join(x.encode("utf-8").hex() for x in data)
+    )
+
 class StdoutWrapper(object):
     def __init__(self, win):
         self.out = sys.stdout
@@ -55,12 +67,10 @@ class StdoutWrapper(object):
         # self.lock = threading.RLock()
 
     def write(self, message):
+        text_queue.put(message)
         # with self.lock:
-        # self.out.write(message)
-        self.win.addstr(message)
-        # self.win.touchwin()
-        self.win.refresh()
-        # print (message)
+        #     self.win.addstr(message)
+        #     self.win.refresh()
 
     def flush(self):
         pass
@@ -117,8 +127,8 @@ class ConsoleApp(gc.EventQueueIf):
         self.feed_rate = 0
         self.machif_st = "Idle"
         self.sw_st = "Idle"
-        self.controller_str = ""
-        self.server_str = ""
+        self.device_str = ""
+        self.remote_str = ""
         self.run_time = ""
         self.pc_str = ""
 
@@ -345,9 +355,18 @@ class ConsoleApp(gc.EventQueueIf):
 
             elif e.event_id == gc.EV_RMT_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(te.sender), te.sender))
+                    self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
+                self.update_status()
                 print(e.data)
+
+            elif e.event_id == gc.EV_RMT_GOOD_BYE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                self.remote_str = ""
+                self.device_str = ""
+                self.update_status()
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -355,13 +374,18 @@ class ConsoleApp(gc.EventQueueIf):
 
     def process_text_queue(self):
         # process text from queue
-        while(True):
-            try:
-                text = text_queue.get_nowait()
-            except queue.Empty:
-                break
-            else:
-                print(text)
+        try:
+            text = text_queue.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            if len(text.strip()):
+                if text.endswith('\n'):
+                    self.stdout_box.addstr(text)
+                    # self.stdout_box.addstr("{}\n".format(verbose_data_hex("#", text)))
+                else:
+                    self.stdout_box.addstr("{}\n".format(text))
+                self.stdout_box.refresh()
 
     def resize(self):
         self.screen.clear()
@@ -496,6 +520,21 @@ class ConsoleApp(gc.EventQueueIf):
                     seconds, mseconds = divmod(reminder, 1)
                     self.run_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds)
 
+            if 'r' in data:
+                r = data['r']
+
+                if 'machif' in r:
+                    firmware_version_str = ""
+                    if 'fb' in r:
+                        firmware_version_str = r['fb']
+
+                    if 'fv' in r:
+                        firmware_version_str = "fb:{} fv:{}".format(firmware_version_str, r['fv'])
+
+                    machif_str = ""
+                    if len (r['machif']):
+                        self.device_str = "{} ({})".format(r['machif'], firmware_version_str)
+
             if 'swstate' in data:
                 self.sw_st = gc.get_sw_status_str(int(data['swstate']))
 
@@ -509,22 +548,25 @@ class ConsoleApp(gc.EventQueueIf):
             self.sta_box.box()
 
             self.sta_box.addstr(0, 2, "{} Console {}".format(__appname__, __revision__))
-            #self.sta_box.addstr(1, 2, "DRO")
+            self.sta_box.addstr(2, 2, "{:<30}".format("DRO"), curses.A_REVERSE)
 
-            self.sta_box.addstr(2, 3, "X: {:>9.3f}  ".format(self.posx), curses.A_REVERSE)
-            self.sta_box.addstr(3, 3, "Y: {:>9.3f}  ".format(self.posy), curses.A_REVERSE)
-            self.sta_box.addstr(4, 3, "Z: {:>9.3f}  ".format(self.posz), curses.A_REVERSE)
-            self.sta_box.addstr(5, 3, "FR: {:>8.1f}  ".format(self.feed_rate), curses.A_REVERSE)
-            self.sta_box.addstr(6, 3, "GPOS: {:<20}".format(self.pc_str), curses.A_REVERSE)
+            self.sta_box.addstr(3, 3, "X:{:>9.3f}  ".format(self.posx))
+            self.sta_box.addstr(4, 3, "Y:{:>9.3f}  ".format(self.posy))
+            self.sta_box.addstr(5, 3, "Z:{:>9.3f}  ".format(self.posz))
+            self.sta_box.addstr(6, 3, "FR:{:>8.2f}  ".format(self.feed_rate))
+            self.sta_box.addstr(7, 3, "GPOS: {:<19}".format(self.pc_str))
 
-            self.sta_box.addstr(2, 17, "A: {:>9.3f}".format(self.posa), curses.A_REVERSE)
-            self.sta_box.addstr(3, 17, "B: {:>9.3f}".format(self.posb), curses.A_REVERSE)
-            self.sta_box.addstr(4, 17, "C: {:>9.3f}".format(self.posc), curses.A_REVERSE)
-            self.sta_box.addstr(5, 17, "   {:>9}".format(""), curses.A_REVERSE)
+            self.sta_box.addstr(3, 20, "A:{:>9.3f}".format(self.posa))
+            self.sta_box.addstr(4, 20, "B:{:>9.3f}".format(self.posb))
+            self.sta_box.addstr(5, 20, "C:{:>9.3f}".format(self.posc))
+            self.sta_box.addstr(6, 20, "ST:{:>8}".format(self.machif_st))
 
-            self.sta_box.addstr(2, 31, "Ctrl ST:  {:<8}".format(self.machif_st), curses.A_REVERSE)
-            self.sta_box.addstr(3, 31, "Soft ST:  {:<8}".format(self.sw_st), curses.A_REVERSE)
-            self.sta_box.addstr(4, 31, "Run time: {:<8}".format(self.run_time), curses.A_REVERSE)
+            self.sta_box.addstr(3, 35, "Soft ST:  {:<8}".format(self.sw_st))
+            self.sta_box.addstr(4, 35, "Run time: {:<8}".format(self.run_time))
+            self.sta_box.addstr(5, 35, "Device:   {:<8}".format(self.device_str))
+
+            if self.remoteClient:
+                self.sta_box.addstr(6, 35, "Remote:   {:<8}".format(self.remoteClient.get_hostname()))
 
             # self.sta_box.addstr(1, 18, "State")
             # self.sta_box.addstr(2, 19, "APP:  {:<20s}".format("%s, %d" % (
