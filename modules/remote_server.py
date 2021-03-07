@@ -300,6 +300,12 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.close()
                     self.open()
 
+            elif e.event_id == gc.EV_CMD_RMT_RESET:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_CMD_RMT_RESET from client{}".format(self.inputsAddr[e.sender]))
+
+                os.system('sudo reboot')
+
             else:
                 # # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                 # self.logger.error(

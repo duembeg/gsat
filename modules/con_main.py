@@ -202,7 +202,7 @@ class ConsoleApp(gc.EventQueueIf):
         self.cli_begin_x = 0
         self.cli_begin_y = self.scr_y_max - self.cli_height
 
-        self.sta_height = 10
+        self.sta_height = 15
         self.sta_width = self.scr_x_max
         self.sta_begin_x = 0
         self.sta_begin_y = 0
@@ -223,6 +223,32 @@ class ConsoleApp(gc.EventQueueIf):
 
             if c in [curses.KEY_RESIZE]:
                 self.resize()
+
+            elif c in [curses.KEY_F2]:
+                if not self.machifProgExec:
+                    if self.remoteClient:
+                        self.remoteClient.add_event(gc.EV_CMD_EXIT, 0, -1)
+                    else:
+                        if self.cmd_line_options.server:
+                            self.remoteClient = remote_client.RemoteClientThread(self, host='localhost')
+                        else:
+                            self.remoteClient = remote_client.RemoteClientThread(self)
+
+            elif c in [curses.KEY_F3]:
+                if self.remoteClient:
+                    if self.machif:
+                        self.remoteClient.add_event(gc.EV_CMD_CLOSE)
+                        self.machif = None
+                    else:
+                        self.remoteClient.add_event(gc.EV_CMD_OPEN)
+                        self.machif = self.remoteClient
+                else:
+                    if self.machif:
+                        self.machifProgExec.add_event(gc.EV_CMD_EXIT, 0, -1)
+                        self.machif = None
+                    else:
+                        self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
+                        self.machif = self.machifProgExec
 
             # elif (c in [curses.KEY_ENTER, '\n', 10]):
             #     # print self.userCmd, len(self.userCmd)
@@ -319,6 +345,7 @@ class ConsoleApp(gc.EventQueueIf):
             #         # print "no more data"
             #         pass
 
+        self.update_status()
         return retVal
 
     def process_queue(self):
@@ -353,11 +380,27 @@ class ConsoleApp(gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
 
+            elif e.event_id == gc.EV_SER_PORT_OPEN:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                if self.remoteClient is not None:
+                    self.remoteClient.add_event(gc.EV_CMD_GET_STATUS)
+                    self.machif = self.remoteClient
+                elif self.machifProgExec:
+                    self.machif = self.machifProgExec
+
+            elif e.event_id == gc.EV_SER_PORT_CLOSE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                self.device_str = ""
+                self.machif = None
+
             elif e.event_id == gc.EV_RMT_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
-                self.update_status()
                 print(e.data)
 
             elif e.event_id == gc.EV_RMT_GOOD_BYE:
@@ -366,11 +409,39 @@ class ConsoleApp(gc.EventQueueIf):
 
                 self.remote_str = ""
                 self.device_str = ""
-                self.update_status()
+
+            elif e.event_id == gc.EV_RMT_PORT_OPEN:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                print(e.data)
+
+                if self.remoteClient is not None:
+                    self.remoteClient.add_event(gc.EV_CMD_GET_CONFIG)
+                    self.remoteClient.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
+                    self.remoteClient.add_event(gc.EV_CMD_GET_SW_STATE)
+
+                    # if self.configData.get('/remote/AutoGcodeRequest', False):
+                    #     self.machif.add_event(gc.EV_CMD_GET_GCODE)
+
+            elif e.event_id == gc.EV_RMT_PORT_CLOSE:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(e.sender), e.sender))
+
+            elif e.event_id == gc.EV_EXIT:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_EXIT from 0x{:x} {}".format(id(e.sender), e.sender))
+
+                self.remote_str = ""
+                self.device_str = ""
+                self.remoteClient = None
+                self.machifProgExec = None
 
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.error("got unknown event!! [{}]".format(str(e.event_id)))
+
+            self.update_status()
 
     def process_text_queue(self):
         # process text from queue
@@ -566,14 +637,32 @@ class ConsoleApp(gc.EventQueueIf):
             self.sta_box.addstr(5, 35, "Device:   {:<8}".format(self.device_str))
 
             if self.remoteClient:
-                self.sta_box.addstr(6, 35, "Remote:   {:<8}".format(self.remoteClient.get_hostname()))
+                try:
+                    self.sta_box.addstr(6, 35, "Remote:   {:<8}".format(self.remoteClient.get_hostname()))
+                except:
+                    pass
 
-            # self.sta_box.addstr(1, 18, "State")
-            # self.sta_box.addstr(2, 19, "APP:  {:<20s}".format("%s, %d" % (
-            #     config.STATE_DICT[self.consoleApp.consoleAppState],
-            #     self.consoleApp.consoleAppState)))
-            # self.sta_box.addstr(3, 19, "MACH: {:<20s}".format(
-            #     self.consoleApp.machifState))
+            self.sta_box.addstr(9, 3,  "F1 :Help")
+
+            if self.remoteClient:
+                self.sta_box.addstr(9, 23, "F2 :Discon Remote")
+            else:
+                self.sta_box.addstr(9, 23, "F2 :Connect Remote")
+
+            if self.machif:
+                self.sta_box.addstr(9, 43, "F3 :Discon Device")
+            else:
+                self.sta_box.addstr(9, 43, "F3 :Connect Device")
+
+            self.sta_box.addstr(9, 63, "F4 :Load G-code")
+            self.sta_box.addstr(10, 3, "F5 :Run")
+            self.sta_box.addstr(10, 23, "F6 :Pause")
+            self.sta_box.addstr(10, 43, "F7 :Step")
+            self.sta_box.addstr(10, 63, "F8 :Stop")
+            self.sta_box.addstr(11, 3, "F9 :Queue Flush")
+            self.sta_box.addstr(11, 23, "F10:Refresh")
+            self.sta_box.addstr(11, 43, "F11:Cycle Start")
+            self.sta_box.addstr(11, 63, "F12:Hold")
 
 
             # self.sta_box.touchwin()

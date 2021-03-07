@@ -387,8 +387,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
         items = [
             {icon: "power-plug", name: "Connect"},
             {icon: "power-plug-off", name: "Disconnect"},
-            {icon: "refresh", name: "Refresh"},
-            {icon: "power", name: "Reset"},
+            # {icon: "refresh", name: "Refresh"},
+            # {icon: "power", name: "Reset"},
+            {icon: "refresh", name: "Reset"},
         ]
         self.init_a_menu(items, 'mi')
 
@@ -396,6 +397,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
         items = [
             {icon: "lan-connect", name: "Connect"},
             {icon: "lan-disconnect", name: "Disconnect"},
+            # {icon: "power", name: "Reset"},
+            {icon: "refresh", name: "Reset"},
             {icon: "cog-outline", name: "Configure"},
         ]
         self.init_a_menu(items, 'rc')
@@ -423,6 +426,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 self.value_dialog_data_key = "server_config"
                 self.value_dialog = self.server_config_dialog
                 self.value_dialog.open()
+            elif instance_menu_item.text == "Reset" and gc.gsatrc_remote_client:
+                gc.gsatrc_remote_client.add_event(gc.EV_CMD_RMT_RESET)
 
         # handle device
         elif li == 'mi' and gc.gsatrc_remote_client:

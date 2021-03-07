@@ -276,7 +276,7 @@ class MachIf_TinyG(mi.MachIf_Base):
         self.cmdSetAxisCmd = "G28.3"
         self.cmdStatus = '{"sr":null}\n'
         # self.cmdSystemInfo = '{"sys":null}\n'
-        self.cmdSystemInfo = '{sys:{fv:null,fb:null}}\n'
+        self.cmdSystemInfo = '{"sys":{"fv":"null","fb":"null"}}\n'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw
