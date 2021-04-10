@@ -676,10 +676,13 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_COOLANT_OFF))
 
     def OnProbeZ(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
+        # mim = mi.GetMachIfModule(self.stateData.machIfId)
 
-        self.mainWindow.SerialWrite("{} Z{:f} F{:f}\n".format(
-                mim.getProbeAxisCmd(), self.configProbeMaxDistance, self.configProbeFeedRate))
+        # self.mainWindow.SerialWrite("{} Z{:f} F{:f}\n".format(
+        #         mim.getProbeAxisCmd(), self.configProbeMaxDistance, self.configProbeFeedRate))
+
+        dictAxisCoor = {'z': self.configProbeMaxDistance, 'feed': self.configProbeFeedRate}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_PROBE, dictAxisCoor)
 
         dictAxisCoor = {'z': self.configProbeDistance}
         self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
