@@ -96,6 +96,8 @@ Screen Shoots
 
 Changelog
 ---------
+### 1.7.0
+
 ### 1.6.0
 * Major rewrite for underlying "working threads" code
    * All machine interfaces are now separated in modules, each interface module can handle the specifics for that interface. For example encode/decode data, handle specific Jog, Hold, and Abort commands. Using Facade and Interface OOD patterns.
