@@ -1,7 +1,9 @@
 """----------------------------------------------------------------------------
    main.py
 
-   Copyright (C) 2013-2021 Wilhelm Duembeg
+   Copyright (C) 2021 Wilhelm Duembeg
+
+   gsatrc kivy
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -75,7 +77,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.button import MDFlatButton, MDIconButton #, MDRectangleFlatButton, , MDRoundImageButton
 from kivymd.uix.textfield import MDTextField #, MDTextFieldRect
-from kivymd.uix.list import MDList, OneLineListItem, TwoLineListItem
+from kivymd.uix.list import MDList, OneLineListItem, TwoLineListItem, OneLineIconListItem
 # from kivymd.uix.dropdownitem import MDDropDownItem
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.list import IRightBodyTouch
@@ -87,7 +89,7 @@ from kivymd.uix.label import MDLabel
 
 # from kivy.uix.anchorlayout import AnchorLayout
 # from kivy.uix.scrollview import ScrollView
-from kivy.properties import ObjectProperty, BooleanProperty
+from kivy.properties import ObjectProperty, BooleanProperty, StringProperty
 from kivy.clock import Clock, mainthread
 from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
@@ -277,6 +279,8 @@ class TwoListItemWithCheckbox(TwoLineListItem):
 class RightCheckbox(IRightBodyTouch, MDCheckbox):
     '''Custom right container.'''
 
+class IconListItem(OneLineIconListItem):
+    icon = StringProperty()
 
 class MDBoxLayoutDRO(MDBoxLayout):
     ''' Class to handle DRO panel list items
@@ -322,21 +326,24 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 else:
                     menu_items.append(
                         {
-                            #"viewclass": "MDMenuItem",
+                            "viewclass": "IconListItem",
                             "icon": di['icon'],
                             "text": di['name'],
-                            "font_style": "Caption",
+                            #"font_style": "Caption",
                             # "height": "36dp",
                             # "top_pad": "10dp",
                             # "bot_pad": "10dp",
                             "divider": None,
                             "disable": True,
+                            "on_release": lambda x=di['name']: self.menu_callback(x, list_items),
                         })
             else:
                 menu_items.append({"viewclass": "MDSeparator", "height": 1})
 
-        menu = MDDropdownMenu(caller=self, items=menu_items, width_mult=4)
-        menu.bind(on_release=self.menu_callback)
+        #menu = MDDropdownMenu(caller=self, items=menu_items, width_mult=4)
+        #menu = MDDropdownMenu(caller=self, items=menu_items, always_release=True)
+        #menu = MDDropdownMenu(caller=self, items=menu_items, on_release=self.menu_callback)
+        menu = MDDropdownMenu(caller=self, items=menu_items)
 
         if type(list_items) is not list:
             list_items = [list_items]
@@ -403,41 +410,45 @@ class MDBoxLayoutDRO(MDBoxLayout):
         ]
         self.init_a_menu(items, 'rc')
 
-    def menu_callback(self, instance_menu, instance_menu_item):
+
+    def menu_callback(self, menu_text, list_item):
         ''' menu callback event handler
         '''
-        list_item = instance_menu.caller
-        instance_menu.dismiss()
+        if isinstance(list_item, list):
+            list_item = list_item[0]
+
+        caller = id(self.list_items[list_item].menu.caller)
+        self.list_items[list_item].menu.dismiss()
 
         # identify instance
         li = ""
         for i in self.list_items:
-            if self.list_items[i] == list_item:
+            if id(self.list_items[i]) == caller:
                li = i
                break
 
         # handle remote server
         if li == 'rc':
-            if instance_menu_item.text == "Connect":
+            if menu_text == "Connect":
                 self.rc_connect = True
-            elif instance_menu_item.text == "Disconnect":
+            elif menu_text == "Disconnect":
                 self.rc_connect = False
-            elif instance_menu_item.text == "Configure":
+            elif menu_text == "Configure":
                 self.value_dialog_data_key = "server_config"
                 self.value_dialog = self.server_config_dialog
                 self.value_dialog.open()
-            elif instance_menu_item.text == "Reset" and gc.gsatrc_remote_client:
+            elif menu_text == "Reset" and gc.gsatrc_remote_client:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_RMT_RESET)
 
         # handle device
         elif li == 'mi' and gc.gsatrc_remote_client:
-            if instance_menu_item.text == "Connect" and not self.serial_port_open:
+            if menu_text == "Connect" and not self.serial_port_open:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_OPEN)
-            elif instance_menu_item.text == "Disconnect" and self.serial_port_open:
+            elif menu_text == "Disconnect" and self.serial_port_open:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_CLOSE)
-            elif instance_menu_item.text == "Refresh" and self.serial_port_open:
+            elif menu_text == "Refresh" and self.serial_port_open:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_STATUS)
-            elif instance_menu_item.text == "Reset" and self.serial_port_open:
+            elif menu_text == "Reset" and self.serial_port_open:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_RESET)
 
         # handle axis menus
@@ -447,11 +458,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 return
 
             if gc.gsatrc_remote_client and self.serial_port_open:
-                if instance_menu_item.text == "Zero Axis":
+                if menu_text == "Zero Axis":
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li: 0})
-                elif instance_menu_item.text == "Home Axis":
+                elif menu_text == "Home Axis":
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li: 0})
-                elif instance_menu_item.text == "Go to Zero":
+                elif menu_text == "Go to Zero":
                     axis = {li: 0}
                     if self.jog_feed_rate == "Rapid":
                         gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE

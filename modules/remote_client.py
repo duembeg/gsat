@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    remote_client.py
 
-   Copyright (C) 2020-2020 Wilhelm Duembeg
+   Copyright (C) 2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -221,7 +221,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         if exFlag:
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
-            self.socServer.close()
+            if self.socServer:
+                self.socServer.close()
             self.socServer = None
 
             # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:

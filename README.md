@@ -44,46 +44,8 @@ Development Environment
    sudo apt-get install python-numpy python-opencv
    ```
 
-* [Ubuntu 12.04, 12.10, 13.04, 13.10, 14.04](http://www.ubuntu.com/)
-   * Installing dependencies:
-   ```
-   sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-i18n python-pip python-serial
-   ```
-   * Optional dependencies for OpenCV
-   ```
-   sudo apt-get install python-numpy python-opencv
-   ```
-
-* [Mac OS X](http://www.apple.com/osx/)
-   * Install python following the instructions at [python-guide.org](http://docs.python-guide.org/en/latest/starting/install/osx/)
-      * After installing python install pySerial
-      ```
-      pip install pyserial
-      ```
-   * Install wxPython following the instructions at [wxPython](http://www.wxpython.org/)
-   * Optional dependecies for OpenCV
-   ```
-   brew install numpy
-   brew tap homebrew/science
-   brew install opencv
-   ```
-
-* [Windows 7](http://windows.microsoft.com/)
-   * Install python following the instructions at [python.org](https://www.python.org/)
-   * install pip following instructions at [pip.pypa.io](https://pip.pypa.io/en/latest/installing.html)
-      * After installing pip install pySerial
-      ```
-      python -m pip install pyserial
-      ```
-   * Install wxPython following the instructions at [wxPython](http://www.wxpython.org/)
-   * Optional dependencies for [OpenCV](http://opencv.org/)
-      * Install OpenCV follow instructions at [OpenCV windows install](http://docs.opencv.org/trunk/doc/py_tutorials/py_setup/py_setup_in_windows/py_setup_in_windows.html)
-      * Note if there are errors regarding "OpenCV 2.4.8: module compiled against API version 9", go [here](http://sourceforge.net/projects/numpy/files/NumPy) for latest NumPy build.
-
 ### Editors used for development.
 * [Visual Studio Code] (https://code.visualstudio.com/)
-* [Geany] (http://www.geany.org/)
-* [Notepad ++] (http://notepad-plus-plus.org/)
 
 Screen Shoots
 ------------
@@ -97,6 +59,14 @@ Screen Shoots
 Changelog
 ---------
 ### 1.7.0
+* Remote Interface
+   * All code necessary to run the machine is now GUI free and can run in a console.
+   * All UI code can communicate via sockets to the machine interface.
+      * This also allows for multiple UIs to communicate with a single machine interface.
+   * Added new options "--server" when enabled the UI will use sockets to communicate to the machine interface, and other UIs can also attach to the running machine.
+   * Added a new gsat-console.py app that will run in console mode (WIP) this is perfect tu run with --server option on a Raspberry PI or another computer close to the machine where a screen maybe not necessary.
+   * Added a KivyMD APP that can compile into an android app and run in a phone or tablet and can communicate via sockets with the machine interface.
+
 
 ### 1.6.0
 * Major rewrite for underlying "working threads" code
