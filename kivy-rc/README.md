@@ -48,7 +48,7 @@ Development Environment
 Screen Shoots
 ------------
 ### Main window
-![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux")
+![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/be6c091cbb511c2a3d35844af2329be6711e3321/images/screenshoot/gsatrc-main-window.png "Main Window, Linux")
 
 Changelog
 ---------
