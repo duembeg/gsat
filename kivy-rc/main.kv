@@ -1,0 +1,555 @@
+# """--------------------------------------------------------------------------
+#   main.kv
+#
+#   Copyright (C) 2021 Wilhelm Duembeg
+#
+#   gsatrc kivy
+#
+#   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+#   Grbl like GCODE interpreters. With features similar to software debuggers.
+#   Features such as breakpoint, change current program counter, inspection
+#   and modification of variables.
+#
+#   gsat is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 2 of the License, or
+#   (at your option) any later version.#
+#
+#   gsat is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --------------------------------------------------------------------------"""
+
+<RootWidget>
+    MDBoxLayout:
+        orientation: 'vertical'
+        # MDToolbar:
+        #     title: "gsat remote control"
+        MDBoxLayoutAutoRotate:
+            spacing: 5
+            MDBoxLayout:
+                orientation: 'vertical'
+                MDBoxLayoutDRO:
+                    id: dro_panel
+                MDGridLayoutButtons:
+                    id: button_panel
+
+            MDBoxLayout:
+                orientation: 'vertical'
+                # MDGridLayoutPlayControls:
+                #     id: play_ctrl
+                # ScrollView:
+                MDGridLayoutJogControls:
+                    id: jog_ctrl
+                MDTextField:
+                    # size_hint_x: .9
+                    hint_text: "send G-code"
+                    mode: "fill"
+                    active_line: False
+                    font_name: 'data/fonts/RobotoMono-Regular'
+                    icon: "console-line"
+                    icon_color: app.theme_cls.primary_color
+                    #icon_right: "arrow-down-drop-circle-outline"
+                    #icon_right_color: app.theme_cls.primary_color
+                    # icon_right: "send"
+                    # icon_right_color: app.theme_cls.primary_color
+                    on_text_validate: root.on_cli_text_validate(self.text)
+                TextInputTouchScroll:
+                    # size_hint_y: None
+                    # height: root.height
+                    id: text_out
+                    multiline: True
+                    max_text: 8000
+                    max_text_backoff: 6000
+                    readonly: True
+                    use_bubble: False
+                    use_handles: False
+                    font_name: 'data/fonts/RobotoMono-Regular'
+
+    # MDFloatingActionButton:
+    #     icon: "play-circle"
+    #     md_bg_color: app.theme_cls.primary_color
+    #     pos_hint: {'right':1}
+    # MDFloatingActionButton:
+    #     icon: "car-brake-hold"
+    #     md_bg_color: app.theme_cls.primary_color
+    #     pos_hint: {'right':0.95}
+
+
+
+<MDBoxLayoutDRO>
+    pos_hint: {'center_x':0.5, 'center_y': 0.5}
+    # size_hint_y: None
+    # height: self.minimum_height
+    MDBoxLayout:
+        # orientation: 'vertical'
+        height: self.minimum_height
+        ScrollView:
+            MDList:
+                id: dro_list
+                axis_font_style: "H5"
+                axis_text: "0.000"
+                list_item_height: dp(60)
+                #TwoLineListItem:
+                OneLineAvatarIconListItem:
+                    id: x_axis
+                    text: dro_list.axis_text
+                    # secondary_text: "X axis"
+                    font_style: dro_list.axis_font_style
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/x.png"
+                #TwoLineListItem:
+                OneLineAvatarIconListItem:
+                    id: y_axis
+                    text: dro_list.axis_text
+                    # secondary_text: "Y axis"
+                    font_style: dro_list.axis_font_style
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/y.png"
+                OneLineAvatarIconListItem:
+                    id: z_axis
+                    text: dro_list.axis_text
+                    # secondary_text: "Z axis"
+                    font_style: dro_list.axis_font_style
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/z.png"
+                OneLineAvatarIconListItem:
+                    id: a_axis
+                    text: dro_list.axis_text
+                    # secondary_text: "A axis"
+                    font_style: dro_list.axis_font_style
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/a.png"
+                OneLineAvatarIconListItem:
+                    id: b_axis
+                    text: dro_list.axis_text
+                    # secondary_text: "B axis"
+                    font_style: dro_list.axis_font_style
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/b.png"
+                OneLineAvatarIconListItem:
+                    id: c_axis
+                    text: dro_list.axis_text
+                    # secondary_text: "C axis"
+                    font_style: dro_list.axis_font_style
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/c.png"
+                OneLineAvatarIconListItem:
+                    id: feed_rate
+                    text: "0.00"
+                    # secondary_text: "Feed Rate"
+                    font_style: "H6"
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/fr.png"
+                OneLineAvatarIconListItem:
+                    id: status
+                    text: "Stop"
+                    #secondary_text: "G54 1 XX"
+                    font_style: "H5"
+                    # size_hint_y: None
+                    # height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                    IconLeftWidget:
+                        icon: "images/icons/color/st.png"
+                TwoLineListItem:
+                    id: sw_status
+                    text: "Idle"
+                    secondary_text: "SW Status"
+                    font_style: "H6"
+                    size_hint_y: None
+                    height: dro_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+        ScrollView:
+            MDList:
+                id: info_list
+                font_style: "H6"
+                list_item_height: dp(60)
+                TwoLineListItem:
+                    id: device
+                    text: ""
+                    secondary_text: "Device"
+                    font_style: "Subtitle1"
+                    size_hint_y: None
+                    height: info_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                TwoLineListItem:
+                    id: gcode_pos
+                    text: ""
+                    secondary_text: "Position in G-code"
+                    font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                TwoLineListItem:
+                    id: run_time
+                    text: ""
+                    secondary_text: "Run Time"
+                    font_style: info_list.font_style
+                    size_hint_y: None
+                    height: info_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                TwoLineListItem:
+                    id: remote_server
+                    text: ""
+                    secondary_text: "Remote Server"
+                    font_style: "Subtitle1"
+                    size_hint_y: None
+                    height: info_list.list_item_height
+                    on_release: root.on_list_item_release(self)
+                TwoLineListItem:
+                    id: gcode_fname
+                    text: ""
+                    secondary_text: "G-code filename"
+                    font_style: "Subtitle1"
+                    size_hint_y: None
+                    height: info_list.list_item_height
+                    on_release: root.dispatch('on_display_gcode_filename')
+
+
+<MDGridLayoutButtons>
+    rows: 3
+    # columns: 4
+    size_hint_y: None
+    # height: self.minimum_height
+    height: dp(130)
+    MDRectangleFlatIconButton:
+    # Button:
+        id: step_size
+        text: "Step Size"
+        icon: "arrow-expand-horizontal"
+        size_hint: (1, 1)
+        on_press: root.on_jog_step_size_bt()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: feed_rate
+        text: "Feed Rate"
+        icon: "play-speed"
+        size_hint: (1, 1)
+        on_press: root.on_jog_feed_rate_bt()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: spindle_rpm
+        text: "Spindle RPM"
+        icon: "speedometer"
+        size_hint: (1, 1)
+        on_press: root.on_jog_spindle_rpm_bt()
+    # MDRectangleFlatIconButton:
+    # # Button:
+    #     id: send_gcode
+    #     text: "Send G-code"
+    #     icon: "console-line"
+    #     size_hint: (1, 1)
+    #     on_press: root.on_jog_g_code_cmd_bt()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: machine_clear_alarm
+        text: "Clear Alarm"
+        icon: "progress-alert"
+        size_hint: (1, 1)
+        on_press: root.on_machine_clear_alarm()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: run
+        text: "Run"
+        icon: "play"
+        size_hint: (1, 1)
+        on_press: root.on_run()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: pause
+        text: "Pause"
+        icon: "pause"
+        size_hint: (1, 1)
+        on_press: root.on_pause()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: step
+        text: "Step"
+        icon: "step-forward"
+        size_hint: (1, 1)
+        on_press: root.on_step()
+    MDRectangleFlatIconButton:
+        id: stop
+        text: "Stop"
+        icon: "stop"
+        size_hint: (1, 1)
+        on_press: root.on_stop()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: machine_flush_queue
+        text: "Queue Flush"
+        icon: "trash-can-outline"
+        size_hint: (1, 1)
+        on_press: root.on_machine_queue_flush()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: machine_refresh
+        text: "Refresh"
+        icon: "refresh-circle"
+        size_hint: (1, 1)
+        on_press: root.on_machine_refresh()
+    MDRectangleFlatIconButton:
+    # Button:
+        id: machine_cycle_start
+        text: "Cycle Start"
+        icon: "play-circle"
+        text_color: 0, 0.5, 0, 1
+        line_color: app.theme_cls.primary_color
+        size_hint: (1, 1)
+        on_press: root.on_machine_cycle_start()
+    MDRectangleFlatIconButton:
+        id: machine_hold
+        text: "Hold"
+        icon: "car-brake-hold"
+        text_color: 1, 0, 0, 0.7
+        line_color: app.theme_cls.primary_color
+        size_hint: (1, 1)
+        on_press: root.on_machine_hold()
+
+
+<MDGridLayoutJogControls>
+    # canvas.before:
+    #     Color:
+    #         rgba: app.get_color_random()
+    #     Rectangle:
+    #         pos: self.pos
+    #         size: self.size
+    id: jog
+    cols:7
+    rows:3
+    # button_size: sp(24) #"38sp"
+    # button_size: pt(24) #"38sp"
+    button_size: sp(48)
+    spacing: 24
+    size_hint:(None, None)
+    width: self.minimum_width
+    height: self.minimum_height
+    pos_hint: {'center_x':0.5, 'center_y':0.5}
+    MDIconButton:
+    # Button:
+    #     background_normal: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
+    #     background_down: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
+    #     background_disabled_normal: "images/icons/color-dis/"
+        id: zero_xyz
+        icon: "images/icons/color/jogging_set_to_zero_xyz_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: "64sp"
+        # size_hint: (jog.button_scale, jog.button_scale)
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.primary_color
+        on_press: root.on_jog_set_axis({'x': 0, 'y': 0, 'z': 0})
+        #elevation_normal: 30
+    MDIconButton:
+        id: zero_xy
+        icon: "images/icons/color/jogging_set_to_zero_xy_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_set_axis({'x': 0, 'y': 0})
+    MDIconButton:
+        id: zero_z
+        icon: "images/icons/color/jogging_set_to_zero_z_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_set_axis({'z': 0})
+    MDIconButton:
+        id: home_xyz
+        # canvas.before:
+        #     Color:
+        #         rgba: app.get_color_random()
+        #     Rectangle:
+        #         pos: self.pos
+        #         size: self.size
+        icon: "images/icons/color/jogging_home_xyz_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_home_axis({'x': 0, 'y': 0, 'z': 0})
+        # icon: "home-circle-outline"
+        # user_font_size: jog.button_size
+        # theme_text_color: "Custom"
+        # text_color:  (60.4,79.2,62,1)
+    MDIconButton:
+        id: positive_y
+        icon: "images/icons/color/jogging_pos_y_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_button_press('+y')
+        on_release: root.on_jog_button_release('+y')
+    MDIconButton:
+        id: home_x
+        icon: "images/icons/color/jogging_home_x_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_home_axis({'x': 0})
+    MDIconButton:
+        id: positive_z
+        icon: "images/icons/color/jogging_pos_z_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_button_press('+z')
+        on_release: root.on_jog_button_release('+z')
+    MDIconButton:
+        id: coolant_on
+        icon: "images/icons/color/jogging_coolant_on_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_COOLANT_ON))
+    MDIconButton:
+        id: coolant_off
+        icon: "images/icons/color/jogging_coolant_off_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
+    MDIconButton:
+        id: probe
+        icon: "images/icons/color/jogging_probe_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_probe("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
+    MDIconButton:
+        id: negative_x
+        icon: "images/icons/color/jogging_neg_x_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_button_press('-x')
+        on_release: root.on_jog_button_release('-x')
+    MDIconButton:
+        id: go_zero_xy
+        icon: "images/icons/color/jogging_goto_zero_xy_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_move_absolute({'x':0, 'y':0})
+    MDIconButton:
+        id: positive_x
+        icon: "images/icons/color/jogging_pos_x_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_button_press('+x')
+        on_release: root.on_jog_button_release('+x')
+    MDIconButton:
+        id: home_z
+        icon: "images/icons/color/jogging_home_z_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_home_axis({'z': 0})
+    MDIconButton:
+        # Spindle CW Button
+        icon: "images/icons/color/jogging_spindle_cw_48x48.png"
+        icon_size: jog.button_size
+        # TODO: get spindle rpm
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_send_cmd("{} S{:d}\n".format(root.gc.DEVICE_CMD_SPINDLE_CW_ON, root.jog_spindle_rpm))
+    MDIconButton:
+        # Spindle CCW Button
+        icon: "images/icons/color/jogging_spindle_ccw_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        # TODO: get spindle rpm
+        on_press: root.on_jog_send_cmd("{} S{:d}\n".format(root.gc.DEVICE_CMD_SPINDLE_CCW_ON, root.jog_spindle_rpm))
+    MDIconButton:
+        # Spindle OFF Button
+        icon: "images/icons/color/jogging_spindle_off_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_send_cmd("{}\n".format(root.gc.DEVICE_CMD_SPINDLE_OFF))
+    MDIconButton:
+        # Empty Spot Button
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        theme_text_color: "Custom"
+        text_color: (0,0,0,0)
+    MDIconButton:
+        id: negative_y
+        icon: "images/icons/color/jogging_neg_y_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_button_press('-y')
+        on_release: root.on_jog_button_release('-y')
+    MDIconButton:
+        id: home_y
+        icon: "images/icons/color/jogging_home_y_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_home_axis({'y': 0})
+    MDIconButton:
+        id: negative_z
+        icon: "images/icons/color/jogging_neg_z_48x48.png"
+        icon_size: jog.button_size
+        # user_font_size: jog.button_size
+        on_press: root.on_jog_button_press('-z')
+        on_release: root.on_jog_button_release('-z')
+
+
+
+<InputDialagoContent>
+    id: top
+    orientation: "vertical"
+    spacing: "12dp"
+    size_hint_y: None
+    #height: "60dp"
+    height: self.ids.text_field.minimum_height
+
+    MDTextField:
+        # canvas.before:
+        #     Color:
+        #         rgba: app.get_color_random()
+        #     Rectangle:
+        #         pos: self.pos
+        #         size: self.size
+        id: text_field
+        hint_text: ""
+        input_filter: 'int'
+        input_type: 'number'
+        on_text_validate: top.on_text_validate(self)
+
+
+<StepSizeDialogContent>
+    id: top
+    orientation: "vertical"
+    size_hint_y: None
+    height: "200dp"
+
+    MDGridLayout:
+        # canvas.before:
+        #     Color:
+        #         rgba: app.get_color_random()
+        #     Rectangle:
+        #         pos: self.pos
+        #         size: self.size
+        id: step_size_buttons
+        columns: 4
+        rows: 3
+        spacing: 5
+        size_hint_x: None
+        width: self.minimum_width
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+
+<IconListItem>
+    IconLeftWidget:
+        icon: root.icon

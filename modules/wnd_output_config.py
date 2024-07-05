@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-   wnd_editor_config.py
+   wnd_output_config.py
 
    Copyright (C) 2013-2020 Wilhelm Duembeg
 
@@ -29,8 +29,6 @@ from wx import stc as stc
 from wx.lib import scrolledpanel as scrolled
 from wx.lib import colourselect as csel
 
-import modules.config as gc
-
 
 def hex_to_rgb(hex_color):
     m = re.match(r'^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$',
@@ -38,13 +36,33 @@ def hex_to_rgb(hex_color):
     return (int(m.group(1), 16), int(m.group(2), 16), int(m.group(3), 16))
 
 
-class gsatStyledTextCtrlSettingsPanel(scrolled.ScrolledPanel):
-    """ Program settings.
+import images.icons as ico
+
+class Factory():
+    """ Factory class to init config page
     """
 
-    def __init__(self, parent, config_data, key, **args):
-        scrolled.ScrolledPanel.__init__(self, parent,
-                                        style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
+    @staticmethod
+    def GetIcon():
+        return ico.imgLog.GetBitmap()
+
+    @staticmethod
+    def AddPage(parent_wnd, config, page):
+        ''' Function to create and inti settings page
+        '''
+        settings_page = gsatOutputSettingsPanel(parent_wnd, config)
+        parent_wnd.AddPage(settings_page, "Output")
+        parent_wnd.SetPageImage(page, page)
+
+        return settings_page
+
+
+class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
+    """ Output settings
+    """
+
+    def __init__(self, parent, config_data, key="output"):
+        super(gsatOutputSettingsPanel, self).__init__(parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
         self.key = key

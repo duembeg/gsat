@@ -23,38 +23,37 @@
 
 ----------------------------------------------------------------------------"""
 
-import threading
-import Queue
-import time
 import wx
 from wx.lib import scrolledpanel as scrolled
 
-import modules.config as gc
+import images.icons as ico
 
-# --------------------------------------------------------------------------
-# Thread/ComputerVisionWindow communication events
-# --------------------------------------------------------------------------
-EV_CMD_CV_EXIT = 1000
-EV_CMD_CV_IMAGE = 3000
+import images.icons as ico
 
-ID_CV2_GOTO_CAM = wx.NewId()
-ID_CV2_GOTO_TOOL = wx.NewId()
-ID_CV2_CAPTURE_TIMER = wx.NewId()
+class Factory():
+    """ Factory class to init config page
+    """
 
+    @staticmethod
+    def GetIcon():
+        return ico.imgEye.GetBitmap()
 
-"""----------------------------------------------------------------------------
-   gsatCV2SettingsPanel:
+    @staticmethod
+    def AddPage(parent_wnd, config, page):
+        ''' Function to create and inti settings page
+        '''
+        settings_page = gsatCV2SettingsPanel(parent_wnd, config)
+        parent_wnd.AddPage(settings_page, "OpenCV2")
+        parent_wnd.SetPageImage(page, page)
 
-----------------------------------------------------------------------------"""
-
+        return settings_page
 
 class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
-    """ CV2 settings.
+    """ CV2 settings
     """
 
     def __init__(self, parent, config_data, **args):
-        scrolled.ScrolledPanel.__init__(self, parent,
-                                        style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
+        super(gsatCV2SettingsPanel, self).__init__(parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
 

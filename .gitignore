@@ -1,3 +1,7 @@
+#.venv
+.venv/
+
+# other
 *.py[cod]
 
 # C extensions
@@ -33,3 +37,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+.gsat.json
+
+# buildozer
+kivy-rc/.buildozer/
+kivy-rc/bin/
+kivy-rc/main.ini

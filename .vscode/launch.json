@@ -5,13 +5,36 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: gsat-vmask",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/gsat.py",
+            "python": "python2",
+            "args": [
+                "--vm=ui,ui_ev"
+                // "--vm=machif,ui,serialif,remoteif,evenif"
+            ]
+        },
+        {
             "name": "Python: gsat-console",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/gsat-console.py",
             "args": [
-                "-g../test.gcode",
-                "--vm=machif,serialif"
+                // "-g../test.gcode",
+                "--vm=machif,serialif,remoteif,ui_ev",
+                "--server"
+            ]
+        },
+        {
+            "name": "Python: gsat-rc",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/kivy-rc/main.py",
+            "python": "python3",
+            // "args": [
+            //     "--vm=ui,ui_ev"
+            //     // "--vm=machif,ui,serialif,remoteif,evenif"
             ]
         },
         {
@@ -36,15 +59,6 @@
             "program": "${workspaceFolder}/gsat.py",
             "args": [
                 "--vv"
-            ]
-        },
-        {
-            "name": "Python: gsat-vmask",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/gsat.py",
-            "args": [
-                "--vm=machif,ui,serialif"
             ]
         },
         {
@@ -148,7 +162,7 @@
             "name": "Python: All debug Options",
             "type": "python",
             "request": "launch",
-            "pythonPath": "${command:python.interpreterPath}",
+            "python": "${command:python.interpreterPath}",
             "program": "${file}",
             "module": "module.name",
             "env": {

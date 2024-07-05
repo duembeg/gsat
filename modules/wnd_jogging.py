@@ -658,43 +658,34 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
     def OnSpindleCWOn(self, e):
         speed = self.spindleSpeedSpinCtrl.GetValue()
-        spped_cmd = "".join([gc.DEVICE_CMD_SPINDLE_CW_ON,
-                             " S", "%d" % round(speed), "\n"])
-        self.mainWindow.SerialWrite(spped_cmd)
+        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CW_ON, int(round(speed)))
+        self.mainWindow.SerialWrite(speed_cmd)
 
     def OnSpindleCCWOn(self, e):
         speed = self.spindleSpeedSpinCtrl.GetValue()
-        spped_cmd = "".join([gc.DEVICE_CMD_SPINDLE_CCW_ON,
-                             " S", "%d" % round(speed), "\n"])
-        self.mainWindow.SerialWrite(spped_cmd)
+        speed_cmd = "{} S{:d}\n".format(gc.DEVICE_CMD_SPINDLE_CCW_ON, int(round(speed)))
+        self.mainWindow.SerialWrite(speed_cmd)
 
     def OnSpindleOff(self, e):
-        self.mainWindow.SerialWrite(
-            "".join([gc.DEVICE_CMD_SPINDLE_OFF, "\n"]))
+        self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_SPINDLE_OFF))
 
     def OnCoolantOn(self, e):
-        self.mainWindow.SerialWrite(
-            "".join([gc.DEVICE_CMD_COOLANT_ON, "\n"]))
+        self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_COOLANT_ON))
 
     def OnCoolantOff(self, e):
-        self.mainWindow.SerialWrite(
-            "".join([gc.DEVICE_CMD_COOLANT_OFF, "\n"]))
+        self.mainWindow.SerialWrite("{}\n".format(gc.DEVICE_CMD_COOLANT_OFF))
 
     def OnProbeZ(self, e):
-        mim = mi.GetMachIfModule(self.stateData.machIfId)
+        # mim = mi.GetMachIfModule(self.stateData.machIfId)
 
-        self.mainWindow.SerialWrite(
-            "".join([
-                mim.getProbeAxisCmd(),
-                " Z%f" % self.configProbeMaxDistance,
-                " F%f" % self.configProbeFeedRate,
-                "\n"]))
+        # self.mainWindow.SerialWrite("{} Z{:f} F{:f}\n".format(
+        #         mim.getProbeAxisCmd(), self.configProbeMaxDistance, self.configProbeFeedRate))
 
-        self.mainWindow.SerialWrite(
-            "".join([
-                mim.getSetAxisCmd(),
-                " Z%f" % self.configProbeDistance,
-                "\n"]))
+        dictAxisCoor = {'z': self.configProbeMaxDistance, 'feed': self.configProbeFeedRate}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_PROBE, dictAxisCoor)
+
+        dictAxisCoor = {'z': self.configProbeDistance}
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
     def OnHomeX(self, e):
         """ Home X axis
@@ -1186,18 +1177,18 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
 
         if self.configXYZReadOnly:
             self.jX.SetEditable(False)
-            self.jX.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+            self.jX.SetBackgroundColour(wx.Colour(242, 241, 240))
             self.jY.SetEditable(False)
-            self.jY.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+            self.jY.SetBackgroundColour(wx.Colour(242, 241, 240))
             self.jZ.SetEditable(False)
-            self.jZ.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+            self.jZ.SetBackgroundColour(wx.Colour(242, 241, 240))
         else:
             self.jX.SetEditable(True)
-            self.jX.SetBackgroundColour(gc.EDIT_BK_COLOR)
+            self.jX.SetBackgroundColour(wx.WHITE)
             self.jY.SetEditable(True)
-            self.jY.SetBackgroundColour(gc.EDIT_BK_COLOR)
+            self.jY.SetBackgroundColour(wx.WHITE)
             self.jZ.SetEditable(True)
-            self.jZ.SetBackgroundColour(gc.EDIT_BK_COLOR)
+            self.jZ.SetBackgroundColour(wx.WHITE)
 
         self.useWorkPosCheckBox.SetValue(self.configAutoMPOS)
         self.numKeypadPendantCheckBox.SetValue(self.configNumKeypadPendant)
@@ -1699,14 +1690,14 @@ class gsatJoggingObsoletePanel(wx.ScrolledWindow):
         st = wx.StaticText(self, label="SP")
         self.jSpindle = wx.TextCtrl(
             self, value=gc.OFF_STRING, style=wx.TE_READONLY)
-        self.jSpindle.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+        self.jSpindle.SetBackgroundColour(wx.Colour(242, 241, 240))
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.jSpindle, 1, flag=wx.EXPAND)
 
         st = wx.StaticText(self, label="CO")
         self.jCoolant = wx.TextCtrl(
             self, value=gc.OFF_STRING, style=wx.TE_READONLY)
-        self.jCoolant.SetBackgroundColour(gc.READ_ONLY_BK_COLOR)
+        self.jCoolant.SetBackgroundColour(wx.Colour(242, 241, 240))
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.jCoolant, 1, flag=wx.EXPAND)
 

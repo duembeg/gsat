@@ -28,21 +28,33 @@ import wx
 from wx.lib import scrolledpanel as scrolled
 from wx.lib.agw import floatspin as fs
 
-import modules.config as gc
-import modules.machif_config as mi
 
 import images.icons as ico
 
-import time
+class Factory():
+    """ Factory class to init config page
+    """
+
+    @staticmethod
+    def GetIcon():
+        return ico.imgMove.GetBitmap()
+
+    @staticmethod
+    def AddPage(parent_wnd, config, page):
+        ''' Function to create and inti settings page
+        '''
+        settings_page = gsatJoggingSettingsPanel(parent_wnd, config)
+        parent_wnd.AddPage(settings_page, "Jogging")
+        parent_wnd.SetPageImage(page, page)
+
+        return settings_page
 
 
 class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
-    """ Jog panel settings
+    """ Jog settings
     """
     def __init__(self, parent, config_data, **args):
-        scrolled.ScrolledPanel.__init__(
-            self, parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER
-        )
+        super(gsatJoggingSettingsPanel, self).__init__(parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
 

@@ -26,12 +26,15 @@
 
 import os
 import sys
-from optparse import OptionParser
+import argparse
 import wx
 
 import modules.config as gc
 import modules.wnd_main as mw
 
+from modules.version_info import *
+
+'''
 __appname__ = "Gcode Step and Alignment Tool"
 
 __description__ = \
@@ -39,7 +42,7 @@ __description__ = \
     "debug/step for grbl like GCODE interpreters. With features similar to "\
     "software debuggers. Features Such as breakpoint, change current program "\
     "counter, inspection and modification of variables."
-
+'''
 
 def get_cli_params():
     ''' define, retrieve and error check command line interface (cli) params
@@ -48,35 +51,44 @@ def get_cli_params():
     usage = \
         "usage: %prog [options]"
 
-    parser = OptionParser(usage=usage, version="%prog " + mw.__revision__)
-    parser.add_option("-c", "--config",
-                      dest="config",
-                      help="Use alternate configuration file name, location "
-                      "will be in HOME folder regardless of file name.",
-                      metavar="FILE")
+    parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_option("-v", "--verbose",
-                      dest="verbose",
-                      action="store_true",
-                      default=False,
-                      help="print extra information while processing input "
-                      "file.")
+    parser.add_argument('--version',
+                        action='version',
+                        version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
 
-    parser.add_option("--vv", "--vverbose",
-                      dest="vverbose",
-                      action="store_true",
-                      default=False,
-                      help="print extra extra information while processing "
-                      "input file.")
+    parser.add_argument("-c", "--config",
+                        dest="config",
+                        help="Use alternate configuration file name",
+                        metavar="FILE")
 
-    parser.add_option("--vm", "--verbose_mask",
-                      dest="verbose_mask",
-                      default=None,
-                      help="select verbose mask. UI, MACHIF, MACHIF_MOD, "
-                      "MACHIF_EXEC, SERIALIF, SERIALIF_STR, SERIALIF_HEX",
-                      metavar="")
+    parser.add_argument("-v", "--verbose",
+                        dest="verbose",
+                        action="store_true",
+                        default=False,
+                        help="print extra information to stdout")
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("--vv", "--vverbose",
+                        dest="vverbose",
+                        action="store_true",
+                        default=False,
+                        help="print extra++ information to stdout")
+
+    mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
+    parser.add_argument("--vm", "--verbose_mask",
+                        dest="verbose_mask",
+                        default=None,
+                        help="select verbose mask(s) separated by ','; the options are {}".format(mask_str),
+                        metavar="MASK")
+
+    parser.add_argument("-s", "--server",
+                    dest="server",
+                    action="store_true",
+                    default=False,
+                    help="run gsat server, allows other UIs like cnc pendants to connect via socket, "
+                         " on this mode remote host name config is ignored and localhost is used")
+
+    options = parser.parse_args()
 
     if options.verbose_mask is not None:
         options.verbose_mask = gc.decode_verbose_mask_string(
@@ -100,7 +112,7 @@ def get_cli_params():
         parser.error("** Required wxPython 2.7 or grater.")
         sys.exit(1)
 
-    return (options, args)
+    return options
 
 
 """----------------------------------------------------------------------------
@@ -111,13 +123,12 @@ if __name__ == '__main__':
     if 'ubuntu' in os.getenv('DESKTOP_SESSION', 'unknown'):
         os.environ["UBUNTU_MENUPROXY"] = "0"
 
-    (cmd_line_options, cli_args) = get_cli_params()
+    cmd_line_options = get_cli_params()
 
     config_fname = cmd_line_options.config
 
     if config_fname is None:
-        config_fname = os.path.abspath(os.path.abspath(os.path.expanduser(
-            "~/.gsat.json")))
+        config_fname = os.path.abspath(os.path.abspath(os.path.expanduser("~/.gsat.json")))
 
     gc.init_config(cmd_line_options, config_fname, "foo")
 

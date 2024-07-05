@@ -28,17 +28,34 @@ import wx
 from wx.lib import scrolledpanel as scrolled
 import wx.propgrid as wxpg
 
-import modules.config as gc
 import modules.machif_config as mi
 
+import images.icons as ico
+
+class Factory():
+    """ Factory class to init config page
+    """
+
+    @staticmethod
+    def GetIcon():
+        return ico.imgMachine.GetBitmap()
+
+    @staticmethod
+    def AddPage(parent_wnd, config, page):
+        ''' Function to create and inti settings page
+        '''
+        settings_page = gsatMachineSettingsPanel(parent_wnd, config)
+        parent_wnd.AddPage(settings_page, "Machine")
+        parent_wnd.SetPageImage(page, page)
+
+        return settings_page
 
 class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
-    """ Machine panel settings
+    """ Machine settings
     """
 
     def __init__(self, parent, config_data, **args):
-        scrolled.ScrolledPanel.__init__(self, parent,
-                                        style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
+        super(gsatMachineSettingsPanel, self).__init__(parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
         self.lastSpecificProperty = ""
@@ -68,15 +85,13 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY
         )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.deviceComboBox, 1,
-                          flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         self.Bind(
             wx.EVT_COMBOBOX, self.OnDeviceComboBoxSelect, self.deviceComboBox)
 
         # get serial port list and baud rate speeds
-        brList = ['1200', '2400', '4800', '9600',
-                  '19200', '38400', '57600', '115200']
+        brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200', '230400']
 
         # Add serial port controls
         st = wx.StaticText(self, label="Serial Port")
@@ -85,8 +100,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
         )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND |
-                          wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         self.Bind(
             wx.EVT_COMBOBOX, self.OnSpComboBoxSelect, self.spComboBox)
@@ -105,8 +119,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
         )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND |
-                          wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         # DRO Font
         st = wx.StaticText(self, label="DRO Font")
@@ -116,8 +129,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             wx.ToolTip("DRO Font updates after application restart"))
 
         font = wx.Font(self.configData.get('/machine/DRO/FontSize'),
-                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
-                       unicode(self.configData.get('/machine/DRO/FontFace')))
+                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, unicode(self.configData.get('/machine/DRO/FontFace')))
 
         font_style_str = self.configData.get('/machine/DRO/FontStyle')
 
@@ -130,34 +142,33 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.fontSelect.SetSelectedFont(font)
 
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.fontSelect, 1, flag=wx.EXPAND |
-                          wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.fontSelect, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
         # add DRO enable axes
         st = wx.StaticText(self, label="DRO Axes")
         hBoxSz = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X")
+        self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X   ")
         self.cbDroEnX.SetValue(self.configData.get('/machine/DRO/EnableX'))
         self.cbDroEnX.SetToolTip(wx.ToolTip("DRO Enable X axis"))
 
-        self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y")
+        self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y   ")
         self.cbDroEnY.SetValue(self.configData.get('/machine/DRO/EnableY'))
         self.cbDroEnY.SetToolTip(wx.ToolTip("DRO Enable Y axis"))
 
-        self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z")
+        self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z   ")
         self.cbDroEnZ.SetValue(self.configData.get('/machine/DRO/EnableZ'))
         self.cbDroEnZ.SetToolTip(wx.ToolTip("DRO Enable Z axis"))
 
-        self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A")
+        self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A   ")
         self.cbDroEnA.SetValue(self.configData.get('/machine/DRO/EnableA'))
         self.cbDroEnA.SetToolTip(wx.ToolTip("DRO Enable A axis"))
 
-        self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B")
+        self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B   ")
         self.cbDroEnB.SetValue(self.configData.get('/machine/DRO/EnableB'))
         self.cbDroEnB.SetToolTip(wx.ToolTip("DRO Enable B axis"))
 
-        self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C")
+        self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C   ")
         self.cbDroEnC.SetValue(self.configData.get('/machine/DRO/EnableC'))
         self.cbDroEnC.SetToolTip(wx.ToolTip("DRO Enable C axis"))
 
@@ -298,39 +309,27 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/machine/DRO/FontSize', font.GetPointSize())
         self.configData.set('/machine/DRO/FontStyle', font_style_str)
 
-        self.configData.set(
-            '/machine/DRO/EnableX', self.cbDroEnX.GetValue())
-        self.configData.set(
-            '/machine/DRO/EnableY', self.cbDroEnY.GetValue())
-        self.configData.set(
-            '/machine/DRO/EnableZ', self.cbDroEnZ.GetValue())
-        self.configData.set(
-            '/machine/DRO/EnableA', self.cbDroEnA.GetValue())
-        self.configData.set(
-            '/machine/DRO/EnableB', self.cbDroEnB.GetValue())
-        self.configData.set(
-            '/machine/DRO/EnableC', self.cbDroEnC.GetValue())
+        self.configData.set('/machine/DRO/EnableX', self.cbDroEnX.GetValue())
+        self.configData.set('/machine/DRO/EnableY', self.cbDroEnY.GetValue())
+        self.configData.set('/machine/DRO/EnableZ', self.cbDroEnZ.GetValue())
+        self.configData.set('/machine/DRO/EnableA', self.cbDroEnA.GetValue())
+        self.configData.set('/machine/DRO/EnableB', self.cbDroEnB.GetValue())
+        self.configData.set('/machine/DRO/EnableC', self.cbDroEnC.GetValue())
 
-        self.configData.set(
-            '/machine/FilterGcodesEnable', self.cbFilterGcodes.GetValue())
+        self.configData.set('/machine/FilterGcodesEnable', self.cbFilterGcodes.GetValue())
 
         filterGcodeList = self.tcFilterGcodes.GetValue().split(',')
         filterGcodeList = [x.strip() for x in filterGcodeList]
         filterGcodeList = ",".join(filterGcodeList)
-        self.configData.set(
-            '/machine/FilterGcodes', filterGcodeList)
+        self.configData.set('/machine/FilterGcodes', filterGcodeList)
 
-        self.configData.set(
-            '/machine/InitScriptEnable', self.cbInitScript.GetValue())
-        self.configData.set(
-            '/machine/InitScript', self.tcInitScript.GetValue())
+        self.configData.set('/machine/InitScriptEnable', self.cbInitScript.GetValue())
+        self.configData.set('/machine/InitScript', self.tcInitScript.GetValue())
 
         if len(self.machIfConfigCtrl):
             for i in self.machIfConfigCtrl:
                 value = self.machIfConfigCtrl[i].GetValue()
-                self.configData.set(
-                    '/machine/MachIfSpecific/%s/%s/Value' % (
-                        self.machIfName, i), value)
+                self.configData.set('/machine/MachIfSpecific/{}/{}/Value'.format(self.machIfName, i), value)
 
     def OnDeviceComboBoxSelect(self, event):
         self.machIfName = self.deviceComboBox.GetValue()
@@ -342,48 +341,52 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.spComboBox.SetValue(port)
 
     def OnSpComboBoxDropDown(self, event):
-        serList = ['None']
         portSearchFailSafe = False
 
-        try:
-            import glob
-            import serial.tools.list_ports
+        serList = self.configData.get('/temp/SerialPorts')
 
-            serListInfo = serial.tools.list_ports.comports()
+        if not serList:
+            serList = ['None']
 
-            if len(serListInfo) > 0:
-                if type(serListInfo[0]) == tuple:
-                    serList = ["%s, %s, %s" %
-                               (i[0], i[1], i[2]) for i in serListInfo]
+            try:
+                import glob
+                import serial.tools.list_ports
+
+                serListInfo = serial.tools.list_ports.comports()
+
+                if len(serListInfo) > 0:
+                    if type(serListInfo[0]) == tuple:
+                        serList = ["%s, %s, %s" %
+                                (i[0], i[1], i[2]) for i in serListInfo]
+                    else:
+                        serList = ["%s, %s" % (i.device, i.description)
+                                for i in serListInfo]
+
+                    serList.sort()
+
+            except ImportError:
+                portSearchFailSafe = True
+
+            if portSearchFailSafe:
+                serList = []
+
+                if os.name == 'nt':
+                    # Scan for available ports.
+                    for i in range(256):
+                        try:
+                            serial.Serial(i)
+                            serList.append('COM'+str(i + 1))
+                        except serial.SerialException as e:
+                            pass
+                        except OSError as e:
+                            pass
                 else:
-                    serList = ["%s, %s" % (i.device, i.description)
-                               for i in serListInfo]
+                    serList = glob.glob('/dev/ttyUSB*') + \
+                        glob.glob('/dev/ttyACM*') + \
+                        glob.glob('/dev/cu*')
 
-                serList.sort()
-
-        except ImportError:
-            portSearchFailSafe = True
-
-        if portSearchFailSafe:
-            serList = []
-
-            if os.name == 'nt':
-                # Scan for available ports.
-                for i in range(256):
-                    try:
-                        serial.Serial(i)
-                        serList.append('COM'+str(i + 1))
-                    except serial.SerialException, e:
-                        pass
-                    except OSError, e:
-                        pass
-            else:
-                serList = glob.glob('/dev/ttyUSB*') + \
-                    glob.glob('/dev/ttyACM*') + \
-                    glob.glob('/dev/cu*')
-
-            if len(serList) < 1:
-                serList = ['None']
+                if len(serList) < 1:
+                    serList = ['None']
 
         self.spComboBox.SetItems(serList)
 

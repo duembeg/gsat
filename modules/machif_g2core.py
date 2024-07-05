@@ -289,6 +289,8 @@ class MachIf_g2core(mi.MachIf_Base):
         self.cmdClearAlarm = '{"clr":null}\n'
         self.cmdQueueFlush = '%'
         self.cmdStatus = '{"sr":null}\n'
+        # self.cmdSystemInfo = '{"sys":null}\n'
+        self.cmdSystemInfo = '{"sys":{"fv":"n","fb":"n"}}\n'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw
@@ -321,6 +323,13 @@ class MachIf_g2core(mi.MachIf_Base):
 
                         dataDict['r']['init'] = r['msg']
 
+                if 'fb' in r:
+                    dataDict['r']['machif'] = self.getName()
+
+                if 'sys' in r:
+                    if 'fb' in r['sys']:
+                        dataDict['r']['sys']['machif'] = self.getName()
+
             if 'sr' in dataDict:
                 sr = dataDict['sr']
 
@@ -344,7 +353,7 @@ class MachIf_g2core(mi.MachIf_Base):
                     stat_str = '{"st":%d,"msg":"%s"}\n' % (
                         stat_code, G2CORE_STAT_CODE_2_STR_DICT.get(
                             stat_code, "Unknown"))
-                    self.eventPut(gc.EV_SER_RXDATA, stat_str)
+                    self.add_event(gc.EV_RXDATA, stat_str)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                         error_msg = "found error [%s]" % stat_str
@@ -407,7 +416,8 @@ class MachIf_g2core(mi.MachIf_Base):
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller
         """
-        data = data.encode('ascii')
+        if type(data) is bytes:
+            data = data.decode('utf-8')
 
         data = super(MachIf_g2core, self).encode(data)
 

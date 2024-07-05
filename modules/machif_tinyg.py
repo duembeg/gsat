@@ -236,6 +236,7 @@ class MachIf_TinyG(mi.MachIf_Base):
 
     # text mode re expressions
     reMachineAck = re.compile(r'.+\s+ok>\s$')
+    reMachineAck2 = re.compile(r'^{"r":.*"f":')
     reMachineErr = re.compile(r'.+\s+err:\s$')
     reMachinePosX = re.compile(r'.*(posx):([+-]{0,1}\d+\.\d+)')
     reMachinePosY = re.compile(r'.*(posy):([+-]{0,1}\d+\.\d+)')
@@ -271,9 +272,11 @@ class MachIf_TinyG(mi.MachIf_Base):
         # list of commands
         self.cmdClearAlarm = '{"clear":true}\n'
         self.cmdInitComm = '{"sys":null}\n'
-        self.cmdQueueFlushCmd = "%"
+        self.cmdQueueFlush = '%'
         self.cmdSetAxisCmd = "G28.3"
         self.cmdStatus = '{"sr":null}\n'
+        # self.cmdSystemInfo = '{"sys":null}\n'
+        self.cmdSystemInfo = '{"sys":{"fv":"null","fb":"null"}}\n'
 
     def _init(self):
         """ Init object variables, ala soft-reset in hw
@@ -309,6 +312,7 @@ class MachIf_TinyG(mi.MachIf_Base):
 
                     if 'fb' in sys:
                         r['fb'] = sys['fb']
+                        r['machif'] = self.getName()
 
                     if 'fv' in sys:
                         r['fv'] = sys['fv']
@@ -358,7 +362,7 @@ class MachIf_TinyG(mi.MachIf_Base):
                         stat_code,
                         TINYG_STAT_CODE_2_STR_DICT.get(
                             stat_code, "Unknown"))
-                    self.eventPut(gc.EV_SER_RXDATA, stat_str)
+                    self.add_event(gc.EV_RXDATA, stat_str)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                         error_msg = "found error [%s]" % stat_str
@@ -367,6 +371,7 @@ class MachIf_TinyG(mi.MachIf_Base):
         except ValueError:
             match = False
             ack = self.reMachineAck.match(data)
+            ack2 = self.reMachineAck2.match(data)
             posx = self.reMachinePosX.match(data)
             posy = self.reMachinePosY.match(data)
             posz = self.reMachinePosZ.match(data)
@@ -374,7 +379,7 @@ class MachIf_TinyG(mi.MachIf_Base):
             vel = self.reMachineVel.match(data)
             stat = self.reMachineStat.match(data)
 
-            if ack is not None:
+            if ack is not None or ack2 is not None:
                 dataDict['r'] = {"f": [1, 0, 0]}
                 dataDict['f'] = [1, 0, 0]
                 match = True
@@ -441,7 +446,8 @@ class MachIf_TinyG(mi.MachIf_Base):
     def encode(self, data, bookeeping=True):
         """ Encodes data properly to be sent to controller
         """
-        data = data.encode('ascii')
+        if type(data) is bytes:
+            data = data.decode('utf-8')
 
         data = super(MachIf_TinyG, self).encode(data)
 
