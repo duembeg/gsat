@@ -59,7 +59,7 @@ Screen Shoots
 Changelog
 ---------
 ### 1.7.0
-* Remote Interface
+* Remote Interface and Android Remote Pendant
    * All code necessary to run the machine is now GUI free and can run in a console.
    * All UI code can communicate via sockets to the machine interface.
       * This also allows for multiple UIs to communicate with a single machine interface.
