@@ -71,6 +71,6 @@ __website__ = 'https://github.com/duembeg/gsat'
 
 # define version information
 __requires__ = ['pySerial', 'wxPython']
-__version_info__ = (1, 7, 0)
+__version_info__ = (1, 7, 5)
 __version__ = 'v%i.%i.%i' % __version_info__
 __revision__ = __version__

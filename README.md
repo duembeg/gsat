@@ -33,8 +33,7 @@ Development Environment
 * Other CNC machines that use the above devices.
 
 ### OSes:
-* [Ubuntu 18.04, 20.04, 22.04, 24.04](http://www.ubuntu.com/)
-   * Installing dependencies:
+* [Ubuntu 20.04, Ubuntu 22.04, Ubuntu 24.04](http://www.ubuntu.com/)
    ```
    sudo apt install python3 python3-pip python3-venv git python3-dev
    sudo apt install build-essential libgtk-3-dev
@@ -44,11 +43,12 @@ Development Environment
    ```
    * Optional dependencies for OpenCV
    ```
-   sudo apt-get install python-numpy python-opencv
+   python3 -m pip install numpy
+   python3 -m pip install opencv-python
    ```
 
 * [Ubuntu 18.04](http://www.ubuntu.com/)
-   * Installing dependencies:
+   * Special Installing dependencies:
    ```
    sudo apt install python3.8 python3-pip python3.8-venv git python3.8-dev
    sudo apt install build-essential libgtk-3-dev
@@ -58,7 +58,8 @@ Development Environment
    ```
    * Optional dependencies for OpenCV
    ```
-   sudo apt-get install python-numpy python-opencv
+   python3.8 -m pip install numpy
+   python3.8 -m pip install opencv-python
    ```
 
 
@@ -68,7 +69,7 @@ Development Environment
 Screen Shoots
 ------------
 ### Main window
-####* Linux
+#### Linux
 ![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux")
 
 ### Settings Dialog
@@ -76,6 +77,11 @@ Screen Shoots
 
 Changelog
 ---------
+### 1.7.5
+* Python3.x and wxPython 4.x Migration
+   * Updated dependencies instructions
+* Fix CV2 issues
+
 ### 1.7.0
 * Remote Interface and Android Remote Pendant
    * All code necessary to run the machine is now GUI free and can run in a console.

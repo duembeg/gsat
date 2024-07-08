@@ -158,9 +158,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
             width, height = self.capturePanel.GetSize()
 
             self.scrollPanel.SetScrollbars(
-                self.scrollUnit, self.scrollUnit, width/self.scrollUnit,
-                height/self.scrollUnit
-            )
+                self.scrollUnit, self.scrollUnit, int(width/self.scrollUnit), int(height/self.scrollUnit))
 
             self.scrollPanel.GetSizer().Layout()
 
@@ -223,11 +221,12 @@ class gsatCV2Panel(wx.ScrolledWindow):
             if te.event_id == EV_CMD_CV_IMAGE:
                 if self.cmdLineOptions.vverbose:
                     print("** gsatCV2Panel got event gEV_CMD_CV_IMAGE.")
+
                 image = te.data
 
                 if image is not None:
                     height, width, x = image.shape
-                    self.bmp = wx.BitmapFromBuffer(width, height, image)
+                    self.bmp = wx.Bitmap.FromBuffer(width, height, image)
                     self.capturePanel.SetBitmapLabel(self.bmp)
                     # self.capturePanel.SetBitmapDisabled(self.bmp)
 
@@ -351,13 +350,14 @@ class gsatComputerVisionThread(threading.Thread):
         # cv.ShowImage("Window",frame)
         if frame is not None:
             # offset = (0, 0)
-            width = self.cv2CaptureWidth
-            height = self.cv2CaptureHeight
+            # width = self.cv2CaptureWidth
+            # height = self.cv2CaptureHeight
 
             if self.cv2Crosshair:
-                widthHalf = width/2
-                heightHalf = height/2
-                self.cv2.line(frame, (widthHalf, 0),  (widthHalf, height), 255)
+                height, width = frame.shape[:2]
+                widthHalf = int(width/2)
+                heightHalf = int(height/2)
+                self.cv2.line(frame, (widthHalf, 0), (widthHalf, height), 255)
                 self.cv2.line(frame, (0, heightHalf), (width, heightHalf), 255)
                 self.cv2.circle(frame, (widthHalf, heightHalf), 66, 255)
                 self.cv2.circle(frame, (widthHalf, heightHalf), 22, 255)
@@ -398,16 +398,12 @@ class gsatComputerVisionThread(threading.Thread):
         # init sensor frame size
         try:
             # OpenCV 3
-            self.captureDevice.set(
-                self.cv2.CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
-            self.captureDevice.set(
-                self.cv2.CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
+            self.captureDevice.set(self.cv2.CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
+            self.captureDevice.set(self.cv2.CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
         except AttributeError:
             # OpenCV 2
-            self.captureDevice.set(
-                self.cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
-            self.captureDevice.set(
-                self.cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
+            self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_WIDTH, self.cv2CaptureWidth)
+            self.captureDevice.set(self.cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, self.cv2CaptureHeight)
 
         # init before work loop
         self.endThread = False
@@ -429,6 +425,8 @@ class gsatComputerVisionThread(threading.Thread):
 
             # process input queue for new commands or actions
             self.ProcessQueue()
+
+            # self.cv2.imshow('frame', frame)
 
             # check if we need to exit now
             if self.endThread:
