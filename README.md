@@ -33,16 +33,34 @@ Development Environment
 * Other CNC machines that use the above devices.
 
 ### OSes:
-* [Ubuntu 16.04, 18.04, 20.04, 22.04, 24.04](http://www.ubuntu.com/)
+* [Ubuntu 18.04, 20.04, 22.04, 24.04](http://www.ubuntu.com/)
    * Installing dependencies:
    ```
    sudo apt install python3 python3-pip python3-venv git python3-dev
    sudo apt install build-essential libgtk-3-dev
+   python3 -m pip install -U pip
+   python3 -m pip install pyserial
+   python3 -m pip install wxPython
    ```
    * Optional dependencies for OpenCV
    ```
    sudo apt-get install python-numpy python-opencv
    ```
+
+* [Ubuntu 18.04](http://www.ubuntu.com/)
+   * Installing dependencies:
+   ```
+   sudo apt install python3.8 python3-pip python3.8-venv git python3.8-dev
+   sudo apt install build-essential libgtk-3-dev
+   python3.8 -m pip install -U pip
+   python3.8 -m pip install pyserial
+   python3.8 -m pip install wxPython
+   ```
+   * Optional dependencies for OpenCV
+   ```
+   sudo apt-get install python-numpy python-opencv
+   ```
+
 
 ### Editors used for development.
 * [Visual Studio Code] (https://code.visualstudio.com/)

@@ -1099,7 +1099,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             defaultDir=currentDir,
             defaultFile=currentFile,
             wildcard=gc.FILE_WILDCARD,
-            style=wx.SAVE
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
         )
 
         if dlgFile.ShowModal() == wx.ID_OK:
@@ -2396,7 +2396,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                         self.SetTitle(f"{os.path.basename(self.stateData.gcodeFileName)} - {vinfo.__appname__}")
                         self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
-                        self.stateData.fileIsOpen = False
+                        # self.stateData.fileIsOpen = False
 
                         if 'gcodeLines' in te.data:
                             readOnly = self.gcText.GetReadOnly()
@@ -2412,6 +2412,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                             self.gcText.SetReadOnly(readOnly)
                             self.gcText.DiscardEdits()
 
+                        self.stateData.fileIsOpen = True
                         rawText = self.gcText.GetText()
                         self.stateData.gcodeFileLines = rawText.splitlines(True)
                         h = hashlib.md5(str(self.stateData.gcodeFileLines).encode('utf-8')).hexdigest()
