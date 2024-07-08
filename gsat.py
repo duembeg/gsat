@@ -2,7 +2,7 @@
 """----------------------------------------------------------------------------
    gsat.py:
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -23,7 +23,6 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import os
 import sys
 import argparse
@@ -32,61 +31,57 @@ import wx
 import modules.config as gc
 import modules.wnd_main as mw
 
-from modules.version_info import *
+import modules.version_info as vinfo
 
-'''
-__appname__ = "Gcode Step and Alignment Tool"
-
-__description__ = \
-    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE "\
-    "debug/step for grbl like GCODE interpreters. With features similar to "\
-    "software debuggers. Features Such as breakpoint, change current program "\
-    "counter, inspection and modification of variables."
-'''
 
 def get_cli_params():
-    ''' define, retrieve and error check command line interface (cli) params
-    '''
+    """
+    define, retrieve and error check command line interface (cli) params
 
-    usage = \
-        "usage: %prog [options]"
+    """
 
-    parser = argparse.ArgumentParser(description=__description__)
+    parser = argparse.ArgumentParser(description=vinfo.__description__)
 
-    parser.add_argument('--version',
-                        action='version',
-                        version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
+    parser.add_argument(
+        '-V', '--version',
+        action='version',
+        version=f"{sys.argv[0]} {vinfo.__revision__} ({vinfo.__appname__})")
 
-    parser.add_argument("-c", "--config",
-                        dest="config",
-                        help="Use alternate configuration file name",
-                        metavar="FILE")
+    parser.add_argument(
+        "-c", "--config",
+        dest="config",
+        help="Use alternate configuration file name",
+        metavar="FILE")
 
-    parser.add_argument("-v", "--verbose",
-                        dest="verbose",
-                        action="store_true",
-                        default=False,
-                        help="print extra information to stdout")
+    parser.add_argument(
+        "-v", "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=False,
+        help="print extra information to stdout")
 
-    parser.add_argument("--vv", "--vverbose",
-                        dest="vverbose",
-                        action="store_true",
-                        default=False,
-                        help="print extra++ information to stdout")
+    parser.add_argument(
+        "--vv", "--vverbose",
+        dest="vverbose",
+        action="store_true",
+        default=False,
+        help="print extra++ information to stdout")
 
     mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
-    parser.add_argument("--vm", "--verbose_mask",
-                        dest="verbose_mask",
-                        default=None,
-                        help="select verbose mask(s) separated by ','; the options are {}".format(mask_str),
-                        metavar="MASK")
+    parser.add_argument(
+        "--vm", "--verbose_mask",
+        dest="verbose_mask",
+        default=None,
+        help="select verbose mask(s) separated by ','; the options are {}".format(mask_str),
+        metavar="MASK")
 
-    parser.add_argument("-s", "--server",
-                    dest="server",
-                    action="store_true",
-                    default=False,
-                    help="run gsat server, allows other UIs like cnc pendants to connect via socket, "
-                         " on this mode remote host name config is ignored and localhost is used")
+    parser.add_argument(
+        "-s", "--server",
+        dest="server",
+        action="store_true",
+        default=False,
+        help="run gsat server, allows other UIs like cnc pendants to connect via socket, "
+        " on this mode remote host name config is ignored and localhost is used")
 
     options = parser.parse_args()
 
@@ -115,13 +110,10 @@ def get_cli_params():
     return options
 
 
-"""----------------------------------------------------------------------------
-   main
-----------------------------------------------------------------------------"""
 if __name__ == '__main__':
 
-    if 'ubuntu' in os.getenv('DESKTOP_SESSION', 'unknown'):
-        os.environ["UBUNTU_MENUPROXY"] = "0"
+    import faulthandler
+    faulthandler.enable()
 
     cmd_line_options = get_cli_params()
 
@@ -133,6 +125,6 @@ if __name__ == '__main__':
     gc.init_config(cmd_line_options, config_fname, "foo")
 
     app = wx.App(0)
-    mw.gsatMainWindow(None, title=__appname__,
-                      cmd_line_options=cmd_line_options)
+    mw.gsatMainWindow(None, title=vinfo.__appname__, cmd_line_options=cmd_line_options)
+
     app.MainLoop()

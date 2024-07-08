@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_gcode_config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,19 +22,15 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
-import re
-import wx
-from wx import stc as stc
-from wx.lib import scrolledpanel as scrolled
-from wx.lib import colourselect as csel
-
 import modules.wnd_output_config as outc
 
 import images.icons as ico
 
+
 class Factory():
-    """ Factory class to init config page
+    """
+    Factory class to init config page
+
     """
 
     @staticmethod
@@ -53,7 +49,9 @@ class Factory():
 
 
 class gsatGcodeSettingsPanel(outc.gsatOutputSettingsPanel):
-    """ Program settings
+    """
+    Program settings
+
     """
 
     def __init__(self, parent, config_data, key="code"):

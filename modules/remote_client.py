@@ -22,25 +22,17 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import threading
 import logging
 import socket
 import select
 import time
 import errno
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
+import queue
+import pickle
 
 import modules.config as gc
+
 
 def verbose_data_ascii(direction, data):
     return "[%03d] %s %s" % (len(data), direction, data.strip())
@@ -55,7 +47,9 @@ def verbose_data_hex(direction, data):
 
 
 class RemoteClientThread(threading.Thread, gc.EventQueueIf):
-    """ Threads to send and monitor network socket for new data.
+    """
+    Threads to send and monitor network socket for new data.
+
     """
 
     def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None):
@@ -111,7 +105,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.start()
 
     def process_queue(self):
-        """ Event handlers
+        """
+        Event handlers
+
         """
         # process events from queue
         try:
@@ -148,7 +144,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.send(self.socServer, e)
 
     def get_hostname(self):
-        """ Get server host info
+        """
+        Get server host info
+
         """
         hostname = ""
 
@@ -158,7 +156,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         return hostname
 
     def close(self):
-        """ Close serial port
+        """
+        Close serial port
+
         """
         if self.socServer is not None:
 
@@ -180,7 +180,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.socBroadcast = None
 
     def open(self):
-        """ Open serial port
+        """
+        Open serial port
+
         """
         exFlag = False
         exMsg = ""
@@ -188,15 +190,15 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.close()
 
         try:
-            self.socServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Internet, TCP
-            #self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
-            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # for TCP
+            self.socServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Internet, TCP
+            # self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)        # Internet, UDP
+            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)    # for TCP
             self.socServer.connect((self.host, self.tcpPort))
             self.inputs.append(self.socServer)
             self.inputsAddr[self.socServer] = self.socServer.getpeername()
 
             if self.useUdpBroadcast:
-                self.socBroadcast = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
+                self.socBroadcast = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)  # UDP
                 self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                 self.socBroadcast.bind(("", self.udpPort))
@@ -261,7 +263,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.rxBufferLen -= len(msg)
                 self.rxBuffer += msg
 
-                # got the entire mesage decode
+                # got the entire message decode
                 if self.rxBufferLen <= 0:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
                         self.logger.info(verbose_data_hex("<-", self.rxBuffer))
@@ -284,8 +286,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** OSError exception: {}\n".format(str(e))
                 exFlag = True
@@ -293,8 +295,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except IOError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** IOError exception: {}\n".format(str(e))
                 exFlag = True
@@ -338,7 +340,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             msg = data[gc.SOCK_HEADER_SIZE:]
 
             if len(msg):
-                # got the entire mesage decode
+                # got the entire message decode
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
                     self.logger.info(verbose_data_hex("<-", msg))
 
@@ -355,8 +357,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** OSError exception: {}\n".format(str(e))
                 exFlag = True
@@ -364,8 +366,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except IOError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** IOError exception: {}\n".format(str(e))
                 exFlag = True
@@ -404,7 +406,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         data_len = len(msg)
         data_sent_len = 0
 
-        while (not exFlag and data_sent_len<data_len):
+        while (not exFlag and data_sent_len < data_len):
 
             try:
                 data_sent_len += soc.send(bytes(msg[data_sent_len:]))
@@ -455,7 +457,10 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # self.close()
 
     def run(self):
-        """Run Worker Thread."""
+        """
+        Run Worker Thread.
+
+        """
         # This is the code executing in the new thread.
         self.endThread = False
 
@@ -464,7 +469,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         self.open()
 
-        while (not self.endThread): # and (self.serialPort is not None):
+        while (not self.endThread):  # and (self.serialPort is not None):
 
             # process input queue for new commands or actions
             self.process_queue()
@@ -499,7 +504,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         pass
 
                     if self.useUdpBroadcast:
-                        udp_readable, udp_writable, udp_exceptional = select.select([self.socBroadcast], self.outputs, self.inputs, 0)
+                        udp_readable, udp_writable, udp_exceptional = select.select(
+                            [self.socBroadcast], self.outputs, self.inputs, 0)
 
                         if len(udp_readable):
                             data = self.recv_from()
@@ -560,4 +566,3 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("thread exit")
 
         self.notify_event_listeners(gc.EV_EXIT, "")
-

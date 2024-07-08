@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
-   serial_trhead.py
+   serial_thread.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -47,11 +47,15 @@ def verbose_data_hex(direction, data):
 
 
 class SerialPortThread(threading.Thread, gc.EventQueueIf):
-    """ Threads to send and monitor serial port for new data.
+    """
+    Threads to send and monitor serial port for new data.
+
     """
 
     def __init__(self, event_handler, port_name, port_baud):
-        """ Init serial class
+        """
+        Init serial class
+
         """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
@@ -77,7 +81,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         self.start()
 
     def process_queue(self):
-        """ Event handlers
+        """
+        Event handlers
+
         """
         # process events from queue
         if not self._eventQueue.empty():
@@ -116,7 +122,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                                   str(e.event_id))
 
     def close(self):
-        """ Close serial port
+        """
+        Close serial port
+
         """
         if self.serialPort is not None:
             if self.serialPort.isOpen():
@@ -129,7 +137,9 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.notify_event_listeners(gc.EV_SER_PORT_CLOSE, 0)
 
     def open(self):
-        """ Open serial port
+        """
+        Open serial port
+
         """
         exFlag = False
         exMsg = ""
@@ -240,8 +250,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                                 self.logger.info(verbose_data_ascii("<-",
                                                  serialData))
 
-                        self.notify_event_listeners(gc.EV_RXDATA,
-                                                  "%s\n" % serialData)
+                        self.notify_event_listeners(gc.EV_RXDATA, f"{serialData}\n")
 
                         # attempt to reduce starvation on other threads
                         # when serial traffic is constant
@@ -327,7 +336,10 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.close()
 
     def run(self):
-        """Run Worker Thread."""
+        """
+        Run Worker Thread.
+
+        """
         # This is the code executing in the new thread.
         self.endThread = False
 

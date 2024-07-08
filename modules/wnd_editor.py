@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_editor.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,12 +22,9 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import re
 import wx
 from wx import stc as stc
-from wx.lib import scrolledpanel as scrolled
-from wx.lib import colourselect as csel
 import string
 
 import modules.config as gc
@@ -40,8 +37,11 @@ def hex_to_rgb(hex_color):
 
 
 class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
-    """ gsatStcStyledTextCtrl:
-        Text control to display data
+    """
+    gsatStcStyledTextCtrl:
+
+    Text control to display data
+
     """
 
     def __init__(self, parent, config_data, state_data, id=wx.ID_ANY,
@@ -438,11 +438,11 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         stStart = self.PositionFromLine(stLine)
         stData = self.GetTextRange(stStart, stEnd)
 
-        #print stStart, stEnd, stLine
+        # print stStart, stEnd, stLine
 
         # start with default (revert to default, if text gets modify)
         # in this example, only style the text style bits
-        self.StartStyling(stStart, 31)
+        self.StartStyling(stStart)
         self.SetStyling(len(stData), stc.STC_P_DEFAULT)
 
         # match gcodes
@@ -450,7 +450,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_OPERATOR)
 
         # match mcodes
@@ -458,7 +458,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_CLASSNAME)
 
         # match line number
@@ -466,22 +466,22 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_IDENTIFIER)
 
-        # match paramters
+        # match parameters
         mArray = self.reParams.finditer(stData)
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(1), 31)
+            self.StartStyling(stStart+m.start(1))
             self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD2)
 
         mArray = self.reParams2.finditer(stData)
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_DEFNAME)
 
         # match axis
@@ -489,17 +489,17 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(1), 31)
+            self.StartStyling(stStart+m.start(1))
             self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD)
 
         # match comments or skip code
-        # *** must be last to catch any keywords or numbers in commnets
+        # *** must be last to catch any keywords or numbers in comments
         for regex in self.reComments:
             mArray = regex.finditer(stData)
 
             for m in mArray:
                 # in this example, only style the text style bits
-                self.StartStyling(stStart+m.start(0), 31)
+                self.StartStyling(stStart+m.start(0))
                 self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
 
     def UpdateUI(self, stateData):
@@ -558,4 +558,3 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         if evt.GetMargin() == self.markerBreakpoint:
             line_clicked = self.LineFromPosition(evt.GetPosition())
             self.ToggleBreakPoint(line_clicked)
-

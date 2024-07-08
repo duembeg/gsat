@@ -65,10 +65,11 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
 
         self.UpdateSettings()
 
-        width, height = self.GetSizeTuple()
+        width, height = self.GetSize()
         scroll_unit = 10
-        self.SetScrollbars(scroll_unit, scroll_unit, width /
-                           scroll_unit, height/scroll_unit)
+        self.SetScrollbars(
+            scroll_unit, scroll_unit,
+            int(width/scroll_unit), int(height/scroll_unit))
 
     def InitConfig(self):
         self.configDroEnX = self.configData.get('/machine/DRO/EnableX')
@@ -82,9 +83,9 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.configDroFontStyle = self.configData.get('/machine/DRO/FontStyle')
 
     def test(self):
-        print self.GetClientSize()
-        print self.sDroBoxSz.ComputeFittingWindowSize(self)
-        print self.sDroBoxSz.ComputeFittingClientSize(self)
+        print(self.GetClientSize())
+        print(self.sDroBoxSz.ComputeFittingWindowSize(self))
+        print(self.sDroBoxSz.ComputeFittingClientSize(self))
 
 
     def UpdateSettings(self, config_data=None, config_remote_data=None):
@@ -153,7 +154,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         fontPos = wx.Font(
             self.configDroFontSize,
             wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
-            unicode(self.configDroFontFace))
+            self.configDroFontFace)
 
         font_style_str = self.configDroFontStyle
 
@@ -315,7 +316,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         return staticBoxSizer
 
     def CreateDroBox(self, sz):
-        fGridSizer = wx.FlexGridSizer(8, 2)
+        fGridSizer = wx.FlexGridSizer(8,2,0,0)
 
         # set font properties
         if self.configDroFontFace == "System" or self.configDroFontSize == -1:
@@ -335,7 +336,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         fontPos = wx.Font(
             self.configDroFontSize,
             wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
-            unicode(self.configDroFontFace))
+            self.configDroFontFace)
 
         font_style_str = self.configDroFontStyle
 

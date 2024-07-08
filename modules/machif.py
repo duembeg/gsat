@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,27 +22,23 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import re
 from abc import ABCMeta, abstractmethod
 import logging
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 
 import modules.config as gc
 import modules.serial_thread as st
 
 
 class MachIf_Base(gc.EventQueueIf):
-    """ Machine interface base class to provide a unified API for specific
-        devices (g2core, TinyG, grbl, etc).
+    """
+    Machine interface base class to provide a unified API for specific devices (g2core, TinyG, grbl, etc).
+
     """
     __metaclass__ = ABCMeta
 
-    reMachiePositionMode = re.compile(r'.*(G9[0|1]).*')
+    reMachinePositionMode = re.compile(r'.*(G9[0|1]).*')
 
     def __init__(
         self, if_id, name, input_buffer_max_size,
@@ -88,15 +84,17 @@ class MachIf_Base(gc.EventQueueIf):
     def _init(self):
         pass
 
-    def _move(self, move_code, dict_axis_coor, resert_pos_mode=True):
-        """ Move to a coordinate in obsolete or relative position mode
+    def _move(self, move_code, dict_axis_coor, reset_pos_mode=True):
+        """
+        Move to a coordinate in obsolete or relative position mode
+
         """
         machine_current_position_mode = self.machinePositionMode
 
         self._sendAxisCmd(move_code, dict_axis_coor)
 
         if machine_current_position_mode != self.machinePositionMode and\
-           resert_pos_mode:
+           reset_pos_mode:
             self.add_event(gc.EV_TXDATA, "{}\n".format(machine_current_position_mode))
             self.write("".join([machine_current_position_mode, "\n"]))
 
@@ -109,7 +107,9 @@ class MachIf_Base(gc.EventQueueIf):
         self._inputBufferSize = input_buffer_init_val
 
     def _sendAxisCmd(self, code, dict_axis_coor):
-        """ sends axis cmd
+        """
+        Sends axis cmd
+
         """
         machine_code = code
 
@@ -145,23 +145,29 @@ class MachIf_Base(gc.EventQueueIf):
     def decode(self, data):
         return data
 
-    # list if Actions fucntions "use to be neamed do<Something>
+    # list if Actions functions "use to be named do<Something>
 
     def doClearAlarm(self):
-        """ Clears alarm condition
+        """
+        Clears alarm condition
+
         """
         self.add_event(gc.EV_TXDATA, "{}\n".format(self.cmdClearAlarm.strip()))
         self.write(self.cmdClearAlarm)
         self.write(self.getStatusCmd())
 
     def doCycleStartResume(self):
-        """ send cycle resume command
+        """
+        Send cycle resume command
+
         """
         self.add_event(gc.EV_TXDATA, "{}\n".format(self.cmdCycleStart.strip()))
         self.write(self.cmdCycleStart)
 
     def doFastMove(self, dict_axis_coor):
-        """ Fast (rapid) move to a coordinate in obsolete position mode
+        """
+        Fast (rapid) move to a coordinate in obsolete position mode
+
         """
         if self.machinePositionMode == "G90":
             self._move("G00", dict_axis_coor)
@@ -169,7 +175,9 @@ class MachIf_Base(gc.EventQueueIf):
             self._move("G90 G00", dict_axis_coor)
 
     def doFastMoveRelative(self, dict_axis_coor):
-        """ Fast (rapid) move to a coordinate in relative position mode
+        """
+        Fast (rapid) move to a coordinate in relative position mode
+
         """
         if self.machinePositionMode == "G91":
             self._move("G00", dict_axis_coor)
@@ -177,7 +185,9 @@ class MachIf_Base(gc.EventQueueIf):
             self._move("G91 G00", dict_axis_coor)
 
     def doFeedHold(self):
-        """ send feed hold command
+        """
+        Send feed hold command
+
         """
         self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdFeedHold.strip())
         self.write(self.cmdFeedHold)
@@ -215,7 +225,9 @@ class MachIf_Base(gc.EventQueueIf):
         self.doQueueFlush()
 
     def doMove(self, dict_axis_coor):
-        """ Move to a coordinate in opsolute position mode
+        """
+        Move to a coordinate in obsolete position mode
+
         """
         if self.machinePositionMode == "G90":
             self._move("G01", dict_axis_coor)
@@ -223,7 +235,9 @@ class MachIf_Base(gc.EventQueueIf):
             self._move("G90 G01", dict_axis_coor)
 
     def doMoveRelative(self, dict_axis_coor):
-        """ Move to a coordinate in relative position mode
+        """
+        Move to a coordinate in relative position mode
+
         """
         if self.machinePositionMode == "G91":
             self._move("G01", dict_axis_coor)
@@ -231,8 +245,9 @@ class MachIf_Base(gc.EventQueueIf):
             self._move("G91 G01", dict_axis_coor)
 
     def doProbe(self, dict_axis_coor):
-        """ Probe toward work piace, coordinate and feed rate required
-            Errors/Alarm if probe fails
+        """
+        Probe toward work piece, coordinate and feed rate required Errors/Alarm if probe fails
+
         """
         self._sendAxisCmd(self.cmdProbeAxis, dict_axis_coor)
 
@@ -246,16 +261,20 @@ class MachIf_Base(gc.EventQueueIf):
         self._init()
 
     def doSetAxis(self, dict_axis_coor):
-        """ Set axis coordinates
+        """
+        Set axis coordinates
+
         """
         self._sendAxisCmd(self.cmdSetAxis, dict_axis_coor)
 
     @abstractmethod
-    def encode(self, data, bookeeping=True):
-        """ encodes the data for the controller if needed
+    def encode(self, data, bookkeeping=True):
+        """
+        Encodes the data for the controller if needed
+
         """
         # check positioning mode change
-        position_mode = self.reMachiePositionMode.match(data)
+        position_mode = self.reMachinePositionMode.match(data)
         if position_mode is not None:
             self.machinePositionMode = position_mode.group(1)
 
@@ -313,7 +332,7 @@ class MachIf_Base(gc.EventQueueIf):
         lines = data.splitlines(True)
 
         for line in lines:
-            data = self.encode(line, bookeeping=False)
+            data = self.encode(line, bookkeeping=False)
             new_size = self._inputBufferSize + len(data)
             if new_size > self._inputBufferWatermark:
                 bufferHasRoom = False
@@ -325,16 +344,16 @@ class MachIf_Base(gc.EventQueueIf):
         if self.serialName is not None and self.serialBaud is not None:
 
             # inti serial RX thread
-            self._serialTxRxThread = st.SerialPortThread(self,
-                                                         self.serialName,
-                                                         self.serialBaud)
+            self._serialTxRxThread = st.SerialPortThread(self, self.serialName, self.serialBaud)
 
             if self._serialTxRxThread is not None:
                 self._serialTxRxThread.add_event(gc.EV_HELLO, None, self)
                 self.doInitComm()
 
     def read(self):
-        """ Read and process data from txrx thread
+        """
+        Read and process data from tx/rx thread
+
         """
         dictData = {}
 
@@ -399,8 +418,7 @@ class MachIf_Base(gc.EventQueueIf):
                             self.logger.info("EV_EXIT")
                 else:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
-                        self.logger.error("EV_?? got unknown event!! [%s]" %
-                                        str(e.event_id))
+                        self.logger.error("EV_?? got unknown event!! [%s]" % str(e.event_id))
 
         return dictData
 
@@ -408,7 +426,9 @@ class MachIf_Base(gc.EventQueueIf):
         pass
 
     def write(self, txData, raw_write=False):
-        """ process and write data to txrx thread
+        """
+        Process and write data to tx/rx thread
+
         """
         bytesSent = 0
 

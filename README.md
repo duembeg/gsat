@@ -14,10 +14,9 @@ this is verify and or adjusted, the program can continue.
 Development Environment
 ---------------------
 ### gsat's dependencies are:
-* [python 2.7](http://www.python.org/) or later.
+* [python 3.8](http://www.python.org/) or later.
 * [pySerial](http://pyserial.sourceforge.net/).
-* [wxPython 2.8](http://www.wxpython.org/) or later.
-   * Note: Up to wxPython 3.0, 4.x and beyond has too many changes that makes code not backward compatible.
+* [wxPython 4.x](http://www.wxpython.org/) or later.
 
 ### Additional dependencies if enabling OpenCV
 * [OpenCV](http://opencv.org/)
@@ -34,10 +33,11 @@ Development Environment
 * Other CNC machines that use the above devices.
 
 ### OSes:
-* [Ubuntu 16.04, 18.04](http://www.ubuntu.com/)
+* [Ubuntu 16.04, 18.04, 20.04, 22.04, 24.04](http://www.ubuntu.com/)
    * Installing dependencies:
    ```
-   sudo apt-get install python-wxgtk3.0 python-wxtools wx3.0-i18n python-pip python-serial
+   sudo apt install python3 python3-pip python3-venv git python3-dev
+   sudo apt install build-essential libgtk-3-dev
    ```
    * Optional dependencies for OpenCV
    ```

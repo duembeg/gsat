@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif_grbl.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    grbl like GCODE interpreters. With features similar to software debuggers.
@@ -23,7 +23,6 @@
 
 ----------------------------------------------------------------------------"""
 
-import datetime as dt
 import re
 
 import modules.config as gc
@@ -31,7 +30,7 @@ import modules.machif as mi
 
 """ Global values for this module
 """
-# Numeric reperecentation of state, checking strings all the time is not
+# Numeric representation of state, checking strings all the time is not
 # fastest way...
 GRBL_STATE_UNKNOWN = 1000
 GRBL_STATE_IDLE = 1010
@@ -217,7 +216,7 @@ class MachIf_GRBL(mi.MachIf_Base):
     per GRBL 0.9 and 1.1 grbl input buffer is 127 bytes (buffer includes
     all characters including nulls and new line)
 
-    To be able to track working position changet GRBL settings to display work
+    To be able to track working position changes GRBL settings to display work
     position as oppose to machine position from 1.1f use $10=0 to configure...
 
     -----------------------------------------------------------------------"""
@@ -254,9 +253,9 @@ class MachIf_GRBL(mi.MachIf_Base):
     # more with 3 axes
     #   "<Idle|WPos:0.000,0.000,0.000,0.000|FS:0,0|Pn:XYZA|WCO:0.000,0.000,0.000,0.000>"
 
-    #reGrblMachineStatus = re.compile(
-    #    r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),'
-    #    r'([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
+    # reGrblMachineStatus = re.compile(
+    #     r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:([+-]{0,1}\d+\.\d+),'
+    #     r'([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
 
     reGrblMachineStatus = re.compile(
         r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:(.+)\|FS:(\d+),(\d+)')
@@ -265,7 +264,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         r'([+-]{0,1}\d+\.\d+),')
 
     """
-        To be able to track working position changet GRBL settings to display
+        To be able to track working position change GRBL settings to display
         work position as oppose to machine position from 1.1f use $10=0 to
         configure...
     """
@@ -298,13 +297,13 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         self.initStringDetectFlag = False
 
-        # list of commads
+        # list of commands
         self.cmdClearAlarm = '$X\n'
         self.cmdHome = '$H\n'
         self.cmdInitComm = self.cmdReset
 
         # no way to clean queue, this will do soft reset
-        # *stoping coolean and spindle with it.
+        # *stopping coolant and spindle with it.
         self.cmdQueueFlush = self.cmdReset
 
         self.cmdPostInit = '$I\n'
@@ -391,7 +390,7 @@ class MachIf_GRBL(mi.MachIf_Base):
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("founf acknowledge [%s]" % data.strip())
+                self.logger.info("found acknowledge [%s]" % data.strip())
 
             r = {}
             dataDict['r'] = r
@@ -424,7 +423,7 @@ class MachIf_GRBL(mi.MachIf_Base):
             if alarm_code.isdigit():
                 alarm_code = int(alarm_code)
                 alarm_str = "[MSG: %s]\n" % (
-                    GRBL_ALARM_CODE_2_STR_DICT.get(alarm_code, "Uknown")
+                    GRBL_ALARM_CODE_2_STR_DICT.get(alarm_code, "Unknown")
                 )
                 dataDict['rx_data_info'] = alarm_str
             else:
@@ -518,7 +517,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
     def doGetSystemInfo(self):
         if self._serialTxRxThread is not None:
-           self.add_event(gc.EV_RXDATA, self.systemInfo)
+            self.add_event(gc.EV_RXDATA, self.systemInfo)
 
     def doHome(self, dict_axis):
         if 'x' in dict_axis and 'y' in dict_axis and 'z' in dict_axis:
@@ -542,7 +541,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         if 'f' not in dict_axis_coor:
             dict_axis_coor['feed'] = 10000
 
-        self._move("$J=G90", dict_axis_coor, resert_pos_mode=False)
+        self._move("$J=G90", dict_axis_coor, reset_pos_mode=False)
 
     def doJogFastMoveRelative(self, dict_axis_coor):
         """ Jog Fast (rapid) move to a coordinate in relative position mode
@@ -550,22 +549,22 @@ class MachIf_GRBL(mi.MachIf_Base):
         if 'f' not in dict_axis_coor:
             dict_axis_coor['feed'] = 10000
 
-        self._move("$J=G91", dict_axis_coor, resert_pos_mode=False)
+        self._move("$J=G91", dict_axis_coor, reset_pos_mode=False)
 
     def doJogMove(self, dict_axis_coor):
         """ Jog Move to a coordinate in obsolete position mode
         """
-        self._move("$J=G90", dict_axis_coor, resert_pos_mode=False)
+        self._move("$J=G90", dict_axis_coor, reset_pos_mode=False)
 
     def doJogMoveRelative(self, dict_axis_coor):
         """ Jog Move to a coordinate in relative position mode
         """
-        self._move("$J=G91", dict_axis_coor, resert_pos_mode=False)
+        self._move("$J=G91", dict_axis_coor, reset_pos_mode=False)
 
     def doJogStop(self):
         self.doFeedHold()
 
-    def encode(self, data, bookeeping=True):
+    def encode(self, data, bookkeeping=True):
         """ Encodes data properly to be sent to controller
         """
         if len(data) == 0:
@@ -589,10 +588,10 @@ class MachIf_GRBL(mi.MachIf_Base):
             data = data.replace(self.cmdStatus, "")
             data = "".join([data, self.cmdStatus])  # only allow one
 
-            if bookeeping:
+            if bookkeeping:
                 self._inputBufferSize = self._inputBufferSize + 1
 
-        if data == self.cmdStatus and bookeeping:
+        if data == self.cmdStatus and bookkeeping:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
                 self.logger.info("encode, input buffer used: %d, buffer "
@@ -603,7 +602,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         elif data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
-        elif bookeeping:
+        elif bookkeeping:
             dataLen = len(data)
             self._inputBufferSize = self._inputBufferSize + dataLen
 
@@ -637,9 +636,9 @@ class MachIf_GRBL(mi.MachIf_Base):
         else:
             self.timeOut.disable()
 
-        configAutorefresh = gc.CONFIG_DATA.get('/machine/MachIfSpecific/{}/AutoRefreshPeriod/Value'.format(self.name))
-        if self.machineAutoRefreshPeriod != configAutorefresh:
-            self.machineAutoRefreshPeriod = configAutorefresh
+        configAutoRefresh = gc.CONFIG_DATA.get('/machine/MachIfSpecific/{}/AutoRefreshPeriod/Value'.format(self.name))
+        if self.machineAutoRefreshPeriod != configAutoRefresh:
+            self.machineAutoRefreshPeriod = configAutoRefresh
             self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))
 
         # check for init condition, take action, and reset init condition

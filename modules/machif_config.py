@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif_config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -23,7 +23,6 @@
 
 ----------------------------------------------------------------------------"""
 
-import modules.config as gc
 import modules.machif_g2core as mi_g2core
 import modules.machif_tinyg as mi_tinyg
 import modules.machif_grbl as mi_grbl

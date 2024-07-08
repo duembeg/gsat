@@ -2,7 +2,7 @@
 """----------------------------------------------------------------------------
    gsat-console.py:
 
-   Copyright (C) 2018-2018 Wilhelm Duembeg
+   Copyright (C) 2018 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -23,41 +23,27 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
-import os
 import sys
 import argparse
-import time
 import curses
 
-from modules.version_info import *
-
 import modules.config as gc
-import modules.machif_progexec as mi_progexec
-import modules.remote_server as remote_server
-import modules.remote_client as remote_client
 import modules.con_main as cm
+import modules.version_info as vinfo
 
-'''
-__appname__ = "Gcode Step and Alignment Tool"
-
-__description__ = \
-    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE "\
-    "debug/step for grbl like GCODE interpreters. With features similar to "\
-    "software debuggers. Features Such as breakpoint, change current program "\
-    "counter, inspection and modification of variables."
-'''
 
 def get_cli_params():
-    ''' define, retrieve and error check command line interface (cli) params
-    '''
+    """
+    define, retrieve and error check command line interface (cli) params
 
-    #parser = argparse.ArgumentParser(description=__description__)
+    """
+
+    # parser = argparse.ArgumentParser(description=__description__)
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--version',
                         action='version',
-                        version="{} {} ({})".format(sys.argv[0], __revision__, __appname__))
+                        version=f"{sys.argv[0]} {vinfo.__revision__} ({vinfo.__appname__})")
 
     parser.add_argument("-c", "--config",
                         dest="config",
@@ -105,7 +91,7 @@ def get_cli_params():
         options.gcode = str(options.gcode).strip()
 
     if options.run and options.gcode == "None":
-        print ("Error: --gcode option must be included when using --run option\n")
+        print("Error: --gcode option must be included when using --run option\n")
         parser.print_usage()
         exit(1)
 
@@ -117,12 +103,14 @@ def get_cli_params():
 ----------------------------------------------------------------------------"""
 cli_options = None
 
+
 def main(screen=None):
     global cli_options
 
     app = cm.ConsoleApp(cli_options)
 
     app.run()
+
 
 if __name__ == '__main__':
 
@@ -137,12 +125,7 @@ if __name__ == '__main__':
     finally:
         if cli_options is False:
             pass
-            #curses.nocbreak()
-            #curses.echo()
-            #curses.curs_set(1)
-            #curses.endwin()
-
-
-
-
-
+            # curses.nocbreak()
+            # curses.echo()
+            # curses.curs_set(1)
+            # curses.endwin()

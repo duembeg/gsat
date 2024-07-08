@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_main.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,7 +22,6 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import os
 import sys
 import glob
@@ -33,20 +32,11 @@ import shutil
 import logging
 import hashlib
 import wx
-import wx.combo
-# from wx import stc as stc
-# from wx.lib.mixins import listctrl as listmix
-from wx.lib.agw import aui as aui
-from wx.lib.agw import floatspin as fs
-from wx.lib.agw import genericmessagedialog as gmd
-# from wx.lib.agw import flatmenu as fm
-from wx.lib.wordwrap import wordwrap
-from wx.lib import scrolledpanel as scrolled
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from wx.lib.agw import aui as aui
+from wx.lib.agw import genericmessagedialog as gmd
+
+import queue
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -56,43 +46,12 @@ import modules.wnd_main_config as mwc
 import modules.wnd_editor as ed
 import modules.wnd_machine as mc
 import modules.wnd_jogging as jog
-import modules.wnd_cli as cli
+# import modules.wnd_cli as cli
 import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
 import modules.remote_client as remote_client
 import modules.remote_server as remote_server
-
-from modules.version_info import *
-
-'''
-__appname__ = "Gcode Step and Alignment Tool"
-
-__description__ = \
-    "GCODE Step and Alignment Tool (gsat) is a cross-platform GCODE "\
-    "debug/step for grbl like GCODE interpreters. With features similar "\
-    "to software debuggers. Features Such as breakpoint, change current "\
-    "program counter, inspection and modification of variables."
-
-
-# define authorship information
-__authors__ = ['Wilhelm Duembeg']
-__author__ = ','.join(__authors__)
-__credits__ = []
-__copyright__ = 'Copyright (c) 2013-2020'
-__license__ = 'GPL v2, Copyright (c) 2013-2020'
-__license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
-
-# maintenance information
-__maintainer__ = 'Wilhelm Duembeg'
-__email__ = 'duembeg.github@gmail.com'
-__website__ = 'https://github.com/duembeg/gsat'
-
-# define version information
-__requires__ = ['pySerial', 'wxPython']
-__version_info__ = (1, 6, 0)
-__version__ = 'v%i.%i.%i' % __version_info__
-__revision__ = __version__
-'''
+import modules.version_info as vinfo
 
 """----------------------------------------------------------------------------
    Globals:
@@ -155,22 +114,28 @@ gReAxis = re.compile(r'([XYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
 idle_count = 0
 
+
 class ThreadQueueEvent(wx.PyEvent):
-    """ Simple event to carry arbitrary data.
+    """
+    Simple event to carry arbitrary data.
+
     """
 
     def __init__(self, data):
         """Init Result Event."""
         wx.PyEvent.__init__(self)
-        self.SetEventType(gc.EVT_THREAD_QUEQUE_EVENT_ID)
+        self.SetEventType(gc.EVT_THREAD_QUEUE_EVENT_ID)
         self.data = data
 
-class gsatLog(wx.PyLog):
-    """ custom wxLog
+
+class gsatLog(wx.Log):
+    """
+    Custom wxLog
+
     """
 
     def __init__(self, textCtrl, logTime=0):
-        wx.PyLog.__init__(self)
+        wx.Log.__init__(self)
         self.tc = textCtrl
         self.logTime = logTime
 
@@ -180,12 +145,14 @@ class gsatLog(wx.PyLog):
 
 
 class gsatMainWindow(wx.Frame, gc.EventQueueIf):
-    """ Main Window Inits the UI and other panels.
+    """
+    Main Window Inits the UI and other panels.
+
     """
 
-    def __init__(self, parent, wnd_id=wx.ID_ANY, title="",
-                 cmd_line_options=None, pos=wx.DefaultPosition,
-                 size=(800, 600), style=wx.DEFAULT_FRAME_STYLE):
+    def __init__(
+            self, parent, wnd_id=wx.ID_ANY, title="", cmd_line_options=None, pos=wx.DefaultPosition,
+            size=(1200, 800), style=wx.DEFAULT_FRAME_STYLE):
 
         wx.Frame.__init__(self, parent, wnd_id, title, pos, size, style)
         gc.EventQueueIf.__init__(self)
@@ -198,7 +165,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if sys.platform in 'darwin':
             # for Mac OS X to properly display icon in task bar
             self.tbicon = wx.TaskBarIcon(iconType=wx.TBI_DOCK)
-            self.tbicon.SetIcon(ico.imgGCSBlack32x32.GetIcon(), __appname__)
+            self.tbicon.SetIcon(ico.imgGCSBlack32x32.GetIcon(), vinfo.__appname__)
 
         # register for thread events
         gc.reg_thread_queue_data_event(self, self.OnThreadEvent)
@@ -232,8 +199,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.InitUI()
         self.Centre()
-        self.Show()
-
 
         # start local server
         self.localServer = None
@@ -244,36 +209,34 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.Bind(wx.EVT_TIMER, self.InitLate, self.late_init_timer)
         self.late_init_timer.Start(500, wx.TIMER_ONE_SHOT)
 
+        self.Show()
+
     def InitLate(self, event):
         if self.localServer:
             self.RemoteOpen()
 
     def InitConfig(self):
-        self.displayRuntimeDialog = self.configData.get(
-            '/mainApp/DisplayRunTimeDialog')
+        self.displayRuntimeDialog = self.configData.get('/mainApp/DisplayRunTimeDialog')
         self.saveBackupFile = self.configData.get('/mainApp/BackupFile')
-        self.maxFileHistory = self.configData.get(
-            '/mainApp/FileHistory/FilesMaxHistory', 10)
+        self.maxFileHistory = self.configData.get('/mainApp/FileHistory/FilesMaxHistory', 10)
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
             self.logger.info("Init config values...")
-            self.logger.info("Pyhon Version:            %s" % sys.version)
-            self.logger.info("wx Version:               %s" % wx.version())
-            self.logger.info("displayRuntimeDialog:     %s" %
-                             self.displayRuntimeDialog)
-            self.logger.info("saveBackupFile:           %s" %
-                             self.saveBackupFile)
-            self.logger.info("maxFileHistory:           %s" %
-                             self.maxFileHistory)
-            self.logger.info("roundInch2mm:             %s" %
-                             self.roundInch2mm)
-            self.logger.info("roundmm2Inch:             %s" %
-                             self.roundmm2Inch)
+            self.logger.info(f"Python Version:           {sys.version}")
+            self.logger.info(f"wx Version:               {wx.version()}")
+            self.logger.info(f"displayRuntimeDialog:     {self.displayRuntimeDialog}")
+            self.logger.info(f"saveBackupFile:           {self.saveBackupFile}")
+            self.logger.info(f"maxFileHistory:           {self.maxFileHistory}")
+            self.logger.info(f"roundInch2mm:             {self.roundInch2mm}")
+            self.logger.info(f"roundmm2Inch:             {self.roundmm2Inch}")
 
     def InitUI(self):
-        """ Init main UI """
+        """
+        Init main UI
+
+        """
 
         # init aui manager
         self.aui_mgr = aui.AuiManager()
@@ -286,73 +249,52 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.statusbar.SetStatusWidths([-1, 350, 150, 100])
         self.statusbar.SetStatusText('')
 
-        self.machineStatusPanel = mc.gsatMachineStatusPanel(
-            self, self.configData, self.stateData, self.cmdLineOptions)
-        self.CV2Panel = compv.gsatCV2Panel(
-            self, self.configData, self.stateData, self.cmdLineOptions)
-        self.machineJoggingPanel = jog.gsatJoggingPanel(
-            self, self.configData, self.stateData, self.cmdLineOptions)
-        # self.machineJoggingPanel = jog.gsatJoggingObsoletePanel(
-        #     self, self.configData, self.stateData, self.cmdLineOptions)
-        # self.cliPanel = cli.gsatCliPanel(
-        #    self, self.configData, self.stateData)
+        self.machineStatusPanel = mc.gsatMachineStatusPanel(self, self.configData, self.stateData, self.cmdLineOptions)
+        self.CV2Panel = compv.gsatCV2Panel(self, self.configData, self.stateData, self.cmdLineOptions)
+        self.machineJoggingPanel = jog.gsatJoggingPanel(self, self.configData, self.stateData, self.cmdLineOptions)
 
         # output Window
-        self.outputText = ed.gsatStcStyledTextCtrl(
-            self, self.configData, self.stateData, style=wx.NO_BORDER)
-        wx.Log_SetActiveTarget(gsatLog(self.outputText))
+        self.outputText = ed.gsatStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
+        wx.Log.SetActiveTarget(gsatLog(self.outputText))
 
         # for serious debugging
         # wx.Log_SetActiveTarget(wx.LogStderr())
         # wx.Log_SetTraceMask(wx.TraceMessages)
 
         # main gcode list control
-        self.gcText = ed.gsatGcodeStcStyledTextCtrl(
-            self, self.configData, self.stateData, style=wx.NO_BORDER)
+        self.gcText = ed.gsatGcodeStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
 
         # add the panes to the manager
         self.aui_mgr.AddPane(
             self.gcText,
-            aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane()
-            .Caption("G-Code").CloseButton(True).MaximizeButton(True)
+            aui.AuiPaneInfo().Name("GCODE_PANEL").CenterPane().Caption("G-Code").CloseButton(True).MaximizeButton(True)
             .BestSize(600, 600))
-
-        # self.aui_mgr.AddPane(
-        #     self.cliPanel,
-        #     aui.AuiPaneInfo().Name("CLI_PANEL").Bottom().Row(1)
-        #     .Caption("CLI").CloseButton(True).MaximizeButton(True)
-        #     .BestSize(600, 40))
 
         self.aui_mgr.AddPane(
             self.outputText,
-            aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(1)
-            .Caption("Output").CloseButton(True).MaximizeButton(True)
-            .BestSize(600, 200))
+            aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(1).Caption("Output").CloseButton(True)
+            .MaximizeButton(True).BestSize(600, 200))
 
         self.aui_mgr.AddPane(
             self.CV2Panel,
-            aui.AuiPaneInfo().Name("CV2_PANEL").Right().Row(1)
-            .Caption("Computer Vision").CloseButton(True).MaximizeButton(True)
-            .BestSize(640, 530).Hide().Layer(1))
+            aui.AuiPaneInfo().Name("CV2_PANEL").Right().Row(1).Caption("Computer Vision").CloseButton(True).
+            MaximizeButton(True).BestSize(640, 530).Hide().Layer(1))
 
         self.aui_mgr.AddPane(
             self.machineStatusPanel,
-            aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1)
-            .Caption("Machine Status").CloseButton(True).MaximizeButton(True)
-            .BestSize(360, 400).Layer(1))
+            aui.AuiPaneInfo().Name("MACHINE_STATUS_PANEL").Right().Row(1).Caption("Machine Status").CloseButton(True)
+            .MaximizeButton(True).BestSize(360, 400).Layer(1))
 
         self.aui_mgr.AddPane(
             self.machineJoggingPanel,
-            aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1)
-            .Caption("Machine Jogging").CloseButton(True).MaximizeButton(True)
-            .BestSize(400, 600).Layer(1))
+            aui.AuiPaneInfo().Name("MACHINE_JOGGING_PANEL").Right().Row(1).Caption("Machine Jogging").CloseButton(True)
+            .MaximizeButton(True).BestSize(400, 600).Layer(1))
 
         self.CreateMenu()
         self.CreateToolBar()
 
         # tell the manager to "commit" all the changes just made
-        self.aui_mgr.SetAGWFlags(
-            self.aui_mgr.GetAGWFlags() | aui.AUI_MGR_ALLOW_ACTIVE_PANE)
+        self.aui_mgr.SetAGWFlags(self.aui_mgr.GetAGWFlags() | aui.AUI_MGR_ALLOW_ACTIVE_PANE)
 
         # load default layout
         self.aui_mgr.SavePerspective()
@@ -374,7 +316,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcText.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
 
     def CreateMenu(self):
-
         # Create the menubar
         # self.menuBar = FM.FlatMenuBar(self, wx.ID_ANY, 32, 5,
         #   options = FM_OPT_SHOW_TOOLBAR | FM_OPT_SHOW_CUSTOMIZE)
@@ -389,15 +330,15 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         openItem = wx.MenuItem(fileMenu, wx.ID_OPEN, "&Open")
         openItem.SetBitmap(ico.imgOpen.GetBitmap())
-        fileMenu.AppendItem(openItem)
+        fileMenu.Append(openItem)
 
         recentMenu = wx.Menu()
-        fileMenu.AppendMenu(wx.ID_ANY, "&Recent Files", recentMenu)
+        fileMenu.Append(wx.ID_ANY, "&Recent Files", recentMenu)
 
         # load history
         self.fileHistory = wx.FileHistory(self.maxFileHistory)
 
-        # load form config daat
+        # load form config data
         for i in list(reversed(range(1, self.maxFileHistory+1))):
             fn = self.configData.get("/mainApp/FileHistory/File%d" % (i))
             if fn is not None:
@@ -409,16 +350,16 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         saveItem = wx.MenuItem(fileMenu, wx.ID_SAVE, "&Save")
         if os.name != 'nt':
             saveItem.SetBitmap(ico.imgSave.GetBitmap())
-        fileMenu.AppendItem(saveItem)
+        fileMenu.Append(saveItem)
 
         saveAsItem = wx.MenuItem(fileMenu, wx.ID_SAVEAS, "Save &As")
         if os.name != 'nt':
             saveAsItem.SetBitmap(ico.imgSave.GetBitmap())
-        fileMenu.AppendItem(saveAsItem)
+        fileMenu.Append(saveAsItem)
 
         exitItem = wx.MenuItem(fileMenu, wx.ID_EXIT, "E&xit")
         exitItem.SetBitmap(ico.imgExit.GetBitmap())
-        fileMenu.AppendItem(exitItem)
+        fileMenu.Append(exitItem)
 
         # ---------------------------------------------------------------------
         # Edit menu
@@ -451,7 +392,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         settingsItem = wx.MenuItem(viewMenu, wx.ID_PREFERENCES, "&Settings")
         settingsItem.SetBitmap(ico.imgSettings.GetBitmap())
-        viewMenu.AppendItem(settingsItem)
+        viewMenu.Append(settingsItem)
 
         # ---------------------------------------------------------------------
         # Run menu
@@ -461,29 +402,28 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         runItem = wx.MenuItem(runMenu, gID_MENU_RUN, "&Run\tF5")
         if os.name != 'nt':
             runItem.SetBitmap(ico.imgPlay.GetBitmap())
-        runMenu.AppendItem(runItem)
+        runMenu.Append(runItem)
 
         pauseItem = wx.MenuItem(runMenu, gID_MENU_PAUSE, "Pa&use")
         if os.name != 'nt':
             pauseItem.SetBitmap(ico.imgPause.GetBitmap())
-        runMenu.AppendItem(pauseItem)
+        runMenu.Append(pauseItem)
 
         stepItem = wx.MenuItem(runMenu, gID_MENU_STEP, "S&tep")
         if os.name != 'nt':
             stepItem.SetBitmap(ico.imgStep.GetBitmap())
-        runMenu.AppendItem(stepItem)
+        runMenu.Append(stepItem)
 
         stopItem = wx.MenuItem(runMenu, gID_MENU_STOP, "&Stop")
         if os.name != 'nt':
             stopItem.SetBitmap(ico.imgStop.GetBitmap())
-        runMenu.AppendItem(stopItem)
+        runMenu.Append(stopItem)
 
         runMenu.AppendSeparator()
-        breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE,
-                                "Brea&kpoint Toggle\tF9")
+        breakItem = wx.MenuItem(runMenu, gID_MENU_BREAK_TOGGLE, "Brea&kpoint Toggle\tF9")
         if os.name != 'nt':
             breakItem.SetBitmap(ico.imgBreak.GetBitmap())
-        runMenu.AppendItem(breakItem)
+        runMenu.Append(breakItem)
 
         runMenu.Append(gID_MENU_BREAK_REMOVE_ALL, "Breakpoint &Remove All")
 
@@ -492,17 +432,17 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         setPCItem = wx.MenuItem(runMenu, gID_MENU_SET_PC, "Set &PC")
         if os.name != 'nt':
             setPCItem.SetBitmap(ico.imgSetMapPin.GetBitmap())
-        runMenu.AppendItem(setPCItem)
+        runMenu.Append(setPCItem)
 
         resetPCItem = wx.MenuItem(runMenu, gID_MENU_RESET_PC, "&Reset PC")
         if os.name != 'nt':
             resetPCItem.SetBitmap(ico.imgResetMapPin.GetBitmap())
-        runMenu.AppendItem(resetPCItem)
+        runMenu.Append(resetPCItem)
 
         gotoPCItem = wx.MenuItem(runMenu, gID_MENU_GOTO_PC, "&Goto PC")
         if os.name != 'nt':
             gotoPCItem.SetBitmap(ico.imgGotoMapPin.GetBitmap())
-        runMenu.AppendItem(gotoPCItem)
+        runMenu.Append(gotoPCItem)
 
         runMenu.AppendSeparator()
 
@@ -516,39 +456,39 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         machineRefresh = wx.MenuItem(machineMenu, gID_MENU_MACHINE_REFRESH, "Machine &Refresh\tCtrl+R")
         if os.name != 'nt':
             machineRefresh.SetBitmap(ico.imgMachineRefresh.GetBitmap())
-        machineMenu.AppendItem(machineRefresh)
+        machineMenu.Append(machineRefresh)
 
         machineCycleStart = wx.MenuItem(machineMenu, gID_MENU_MACHINE_CYCLE_START, "Machine &Cycle Start")
         if os.name != 'nt':
             machineCycleStart.SetBitmap(ico.imgCycleStart.GetBitmap())
-        machineMenu.AppendItem(machineCycleStart)
+        machineMenu.Append(machineCycleStart)
 
         machineFeedHold = wx.MenuItem(machineMenu, gID_MENU_MACHINE_FEED_HOLD, "Machine &Feed Hold")
         if os.name != 'nt':
             machineFeedHold.SetBitmap(ico.imgFeedHold.GetBitmap())
-        machineMenu.AppendItem(machineFeedHold)
+        machineMenu.Append(machineFeedHold)
 
         machineQueueFlush = wx.MenuItem(machineMenu, gID_MENU_MACHINE_QUEUE_FLUSH, "Machine &Queue Flush")
         if os.name != 'nt':
             machineQueueFlush.SetBitmap(ico.imgQueueFlush.GetBitmap())
-        machineMenu.AppendItem(machineQueueFlush)
+        machineMenu.Append(machineQueueFlush)
 
         machineReset = wx.MenuItem(machineMenu, gID_MENU_MACHINE_RESET, "Machine Reset")
         if os.name != 'nt':
             machineReset.SetBitmap(ico.imgMachineReset.GetBitmap())
-        machineMenu.AppendItem(machineReset)
+        machineMenu.Append(machineReset)
 
         machineClearAlarm = wx.MenuItem(machineMenu, gID_MENU_MACHINE_CLEAR_ALARM, "Machine Clear Alarm")
         if os.name != 'nt':
             machineReset.SetBitmap(ico.imgClearAlarm.GetBitmap())
-        machineMenu.AppendItem(machineClearAlarm)
+        machineMenu.Append(machineClearAlarm)
 
         machineMenu.AppendSeparator()
 
         abortItem = wx.MenuItem(machineMenu, gID_MENU_ABORT, "&Abort")
         if os.name != 'nt':
             abortItem.SetBitmap(ico.imgAbort.GetBitmap())
-        machineMenu.AppendItem(abortItem)
+        machineMenu.Append(abortItem)
 
         # ---------------------------------------------------------------------
         # Remote menu
@@ -576,32 +516,28 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         aboutItem = wx.MenuItem(helpMenu, wx.ID_ABOUT, "&About", "About gsat")
         aboutItem.SetBitmap(ico.imgAbout.GetBitmap())
-        helpMenu.AppendItem(aboutItem)
+        helpMenu.Append(aboutItem)
 
         # ---------------------------------------------------------------------
         # Bind events to handlers
 
         # ---------------------------------------------------------------------
         # File menu bind
-        self.Bind(wx.EVT_MENU,        self.OnFileOpen,     id=wx.ID_OPEN)
-        self.Bind(wx.EVT_MENU_RANGE,  self.OnFileHistory,
-                  id=wx.ID_FILE1, id2=wx.ID_FILE9)
-        self.Bind(wx.EVT_MENU,        self.OnFileSave,     id=wx.ID_SAVE)
-        self.Bind(wx.EVT_MENU,        self.OnFileSaveAs,   id=wx.ID_SAVEAS)
-        self.Bind(wx.EVT_MENU,        self.OnClose,        id=wx.ID_EXIT)
-        self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN,
-                  self.OnDropDownToolBarOpen,   id=gID_TOOLBAR_OPEN)
+        self.Bind(wx.EVT_MENU,        self.OnFileOpen, id=wx.ID_OPEN)
+        self.Bind(wx.EVT_MENU_RANGE,  self.OnFileHistory, id=wx.ID_FILE1, id2=wx.ID_FILE9)
+        self.Bind(wx.EVT_MENU,        self.OnFileSave, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_MENU,        self.OnFileSaveAs, id=wx.ID_SAVEAS)
+        self.Bind(wx.EVT_MENU,        self.OnClose, id=wx.ID_EXIT)
+        self.Bind(aui.EVT_AUITOOLBAR_TOOL_DROPDOWN, self.OnDropDownToolBarOpen,   id=gID_TOOLBAR_OPEN)
 
         self.Bind(wx.EVT_UPDATE_UI, self.OnFileOpenUpdate, id=wx.ID_OPEN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveUpdate, id=wx.ID_SAVE)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveAsUpdate,
-                  id=wx.ID_SAVEAS)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnFileSaveAsUpdate, id=wx.ID_SAVEAS)
 
         # ---------------------------------------------------------------------
         # Search menu bind
-        self.Bind(wx.EVT_MENU, self.OnFind,                id=gID_MENU_FIND)
-        self.Bind(wx.EVT_MENU, self.OnGotoLine,
-                  id=gID_MENU_GOTOLINE)
+        self.Bind(wx.EVT_MENU, self.OnFind, id=gID_MENU_FIND)
+        self.Bind(wx.EVT_MENU, self.OnGotoLine, id=gID_MENU_GOTOLINE)
 
         # ---------------------------------------------------------------------
         # View menu bind
@@ -740,22 +676,20 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # ---------------------------------------------------------------------
         # Main Tool Bar
-        self.appToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition,
-                                         wx.DefaultSize,
-                                         agwStyle=aui.AUI_TB_GRIPPER |
-                                         aui.AUI_TB_OVERFLOW |
-                                         aui.AUI_TB_TEXT |
-                                         aui.AUI_TB_HORZ_TEXT |
-                                         # aui.AUI_TB_PLAIN_BACKGROUND
-                                         aui.AUI_TB_DEFAULT_STYLE)
+        self.appToolBar = aui.AuiToolBar(
+            self, -1, wx.DefaultPosition, wx.DefaultSize,
+            agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            aui.AUI_TB_TEXT |
+            aui.AUI_TB_HORZ_TEXT |
+            aui.AUI_TB_PLAIN_BACKGROUND |
+            aui.AUI_TB_DEFAULT_STYLE)
 
         self.appToolBar.SetToolBitmapSize(iconSize)
 
-        self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open",
-                                      ico.imgOpen.GetBitmap(), "Open\tCtrl+O")
+        self.appToolBar.AddSimpleTool(gID_TOOLBAR_OPEN, "Open", ico.imgOpen.GetBitmap(), "Open\tCtrl+O")
 
-        self.appToolBar.AddSimpleTool(wx.ID_SAVE, "Save",
-                                      ico.imgSave.GetBitmap(), "Save\tCtrl+S")
+        self.appToolBar.AddSimpleTool(wx.ID_SAVE, "Save", ico.imgSave.GetBitmap(), "Save\tCtrl+S")
         self.appToolBar.SetToolDisabledBitmap(wx.ID_SAVE, ico.imgSaveDisabled.GetBitmap())
 
         self.appToolBar.AddSimpleTool(wx.ID_SAVEAS, "Save As", ico.imgSave.GetBitmap(), "Save As")
@@ -764,83 +698,63 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.appToolBar.AddSimpleTool(gID_TOOLBAR_SETTINGS, "Settings", ico.imgSettings.GetBitmap(), "Settings")
         self.appToolBar.SetToolDisabledBitmap(gID_TOOLBAR_SETTINGS, ico.imgSettings.GetBitmap())
 
-
         self.appToolBar.SetToolDropDown(gID_TOOLBAR_OPEN, True)
 
         self.appToolBar.Realize()
 
-        self.aui_mgr.AddPane(self.appToolBar,
-                             aui.AuiPaneInfo().Name("MAIN_TOOLBAR")
-                             .Caption("Main Tool Bar").ToolbarPane()
-                             .Top().Gripper())
-
+        self.aui_mgr.AddPane(
+            self.appToolBar,
+            aui.AuiPaneInfo().Name("MAIN_TOOLBAR").Caption("Main Tool Bar").ToolbarPane().Top().Gripper())
 
         # ---------------------------------------------------------------------
         # Search Tool Bar
-        self.searchToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition,
-                                            wx.DefaultSize,
-                                            agwStyle=aui.AUI_TB_GRIPPER |
-                                            aui.AUI_TB_OVERFLOW |
-                                            aui.AUI_TB_TEXT |
-                                            aui.AUI_TB_HORZ_TEXT |
-                                            # aui.AUI_TB_PLAIN_BACKGROUND
-                                            aui.AUI_TB_DEFAULT_STYLE)
+        self.searchToolBar = aui.AuiToolBar(
+            self, -1, wx.DefaultPosition, wx.DefaultSize,
+            agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            aui.AUI_TB_TEXT |
+            aui.AUI_TB_HORZ_TEXT |
+            aui.AUI_TB_PLAIN_BACKGROUND |
+            aui.AUI_TB_DEFAULT_STYLE)
 
-        self.searchToolBarFind = wx.TextCtrl(self.searchToolBar,
-                                             size=(100, -1),
-                                             style=wx.TE_PROCESS_ENTER)
+        self.searchToolBarFind = wx.TextCtrl(self.searchToolBar, size=(100, -1), style=wx.TE_PROCESS_ENTER)
         self.searchToolBar.AddControl(self.searchToolBarFind)
-        self.searchToolBar.SetToolTipString("Find Text")
-        self.searchToolBar.AddSimpleTool(gID_MENU_FIND, "",
-                                         ico.imgFind.GetBitmap(),
-                                         "Find Next\tF3")
+        self.searchToolBar.SetToolTip("Find Text")
+        self.searchToolBar.AddSimpleTool(gID_MENU_FIND, "", ico.imgFind.GetBitmap(), "Find Next\tF3")
         self.Bind(wx.EVT_TEXT_ENTER, self.OnFind, self.searchToolBarFind)
 
-        self.searchToolBarGotoLine = wx.TextCtrl(self.searchToolBar,
-                                                 size=(50, -1),
-                                                 style=wx.TE_PROCESS_ENTER)
+        self.searchToolBarGotoLine = wx.TextCtrl(self.searchToolBar, size=(50, -1), style=wx.TE_PROCESS_ENTER)
         self.searchToolBar.AddControl(self.searchToolBarGotoLine)
-        self.searchToolBar.SetToolTipString("Line Number")
-        self.searchToolBar.AddSimpleTool(gID_MENU_GOTOLINE, "",
-                                         ico.imgGotoLine.GetBitmap(),
-                                         "Goto Line")
-        self.Bind(wx.EVT_TEXT_ENTER, self.OnGotoLine,
-                  self.searchToolBarGotoLine)
+        self.searchToolBar.SetToolTip("Line Number")
+        self.searchToolBar.AddSimpleTool(gID_MENU_GOTOLINE, "", ico.imgGotoLine.GetBitmap(), "Goto Line")
+        self.Bind(wx.EVT_TEXT_ENTER, self.OnGotoLine, self.searchToolBarGotoLine)
 
         self.searchToolBar.Realize()
 
-        self.aui_mgr.AddPane(self.searchToolBar,
-                             aui.AuiPaneInfo().Name("SEARCH_TOOLBAR")
-                             .Caption("Search Tool Bar").ToolbarPane()
-                             .Top().Gripper())
+        self.aui_mgr.AddPane(
+            self.searchToolBar,
+            aui.AuiPaneInfo().Name("SEARCH_TOOLBAR").Caption("Search Tool Bar").ToolbarPane().Top().Gripper())
 
         # ---------------------------------------------------------------------
         # GCODE Tool Bar
-        self.gcodeToolBar = aui.AuiToolBar(self, -1, wx.DefaultPosition,
-                                           wx.DefaultSize,
-                                           agwStyle=aui.AUI_TB_GRIPPER |
-                                           aui.AUI_TB_OVERFLOW |
-                                           # aui.AUI_TB_TEXT |
-                                           # aui.AUI_TB_HORZ_TEXT |
-                                           # aui.AUI_TB_PLAIN_BACKGROUND
-                                           aui.AUI_TB_DEFAULT_STYLE)
+        self.gcodeToolBar = aui.AuiToolBar(
+            self, -1, wx.DefaultPosition, wx.DefaultSize,
+            agwStyle=aui.AUI_TB_GRIPPER |
+            aui.AUI_TB_OVERFLOW |
+            # aui.AUI_TB_TEXT |
+            # aui.AUI_TB_HORZ_TEXT |
+            aui.AUI_TB_PLAIN_BACKGROUND |
+            aui.AUI_TB_DEFAULT_STYLE)
 
         self.gcodeToolBar.SetToolBitmapSize(iconSize)
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, "Run",
-                                        ico.imgPlay.GetBitmap(),
-                                        "Run\tF5")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_RUN, ico.imgPlayDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_RUN, "Run", ico.imgPlay.GetBitmap(), "Run\tF5")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_RUN, ico.imgPlayDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_PAUSE, "Pause",
-                                        ico.imgPause.GetBitmap(),
-                                        "Pause")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_PAUSE, ico.imgPauseDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_PAUSE, "Pause", ico.imgPause.GetBitmap(), "Pause")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_PAUSE, ico.imgPauseDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step",
-                                        ico.imgStep.GetBitmap(),
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", ico.imgStep.GetBitmap(),
                                         "Step")
         self.gcodeToolBar.SetToolDisabledBitmap(
             gID_MENU_STEP, ico.imgStepDisabled.GetBitmap())
@@ -896,7 +810,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             aui.AUI_TB_OVERFLOW |
             # aui.AUI_TB_TEXT |
             # aui.AUI_TB_HORZ_TEXT |
-            # aui.AUI_TB_PLAIN_BACKGROUND
+            aui.AUI_TB_PLAIN_BACKGROUND |
             aui.AUI_TB_DEFAULT_STYLE)
 
         self.machineToolBar.SetToolBitmapSize(iconSize)
@@ -926,7 +840,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_RESET, ico.imgMachineResetDisabled.GetBitmap())
 
         self.machineToolBar.AddSimpleTool(
-            gID_MENU_MACHINE_CLEAR_ALARM, "Clear Alarm",ico.imgClearAlarm.GetBitmap(), "Machine Clear Alarm")
+            gID_MENU_MACHINE_CLEAR_ALARM, "Clear Alarm", ico.imgClearAlarm.GetBitmap(), "Machine Clear Alarm")
         self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CLEAR_ALARM, ico.imgClearAlarmDisabled.GetBitmap())
 
         self.machineToolBar.AddSeparator()
@@ -949,8 +863,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             agwStyle=aui.AUI_TB_GRIPPER |
             aui.AUI_TB_OVERFLOW |
             # aui.AUI_TB_TEXT |
-            #aui.AUI_TB_HORZ_TEXT |
-            # aui.AUI_TB_PLAIN_BACKGROUND
+            # aui.AUI_TB_HORZ_TEXT |
+            aui.AUI_TB_PLAIN_BACKGROUND |
             aui.AUI_TB_DEFAULT_STYLE)
 
         self.remoteToolBar.SetToolBitmapSize(iconSize)
@@ -960,11 +874,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_CONNECT, ico.imgRemote.GetBitmap())
 
         self.remoteToolBar.AddSimpleTool(
-            gID_MENU_REMOTE_GET_GCODE, "Remote Get G-code", ico.imgRemoteGcode.GetBitmap(), "Get G-code from remote server")
+            gID_MENU_REMOTE_GET_GCODE, "Remote Get G-code", ico.imgRemoteGcode.GetBitmap(),
+            "Get G-code from remote server")
         self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_GET_GCODE, ico.imgRemoteGcodeDisabled.GetBitmap())
 
         self.remoteToolBar.AddSimpleTool(
-            gID_MENU_REMOTE_SETTINGS, "Remore Settings", ico.imgRemoteSettings.GetBitmap(), "Settings on remote server")
+            gID_MENU_REMOTE_SETTINGS, "Remote Settings", ico.imgRemoteSettings.GetBitmap(),
+            "Settings on remote server")
         self.remoteToolBar.SetToolDisabledBitmap(gID_MENU_REMOTE_SETTINGS, ico.imgRemoteSettingsDisabled.GetBitmap())
 
         self.remoteToolBar.Realize()
@@ -1094,7 +1010,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                                     (index,
                                      self.fileHistory.GetHistoryFile(index)))
 
-                    menuPopup.AppendItem(m)
+                    menuPopup.Append(m)
 
                 # line up our menu with the button
                 rect = toolbBar.GetToolRect(e.GetId())
@@ -1137,7 +1053,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.gcText.SetReadOnly(readOnly)
 
             self.stateData.fileIsOpen = True
-            self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
+            self.SetTitle(f"{os.path.basename(self.stateData.gcodeFileName)} - {vinfo.__appname__}")
 
             self.gcText.DeleteAllBreakPoints()
             self.SetPC(0)
@@ -1209,10 +1125,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.gcText.SaveFile(self.stateData.gcodeFileName)
 
             # update title
-            self.SetTitle(
-                "%s - %s" %
-                (os.path.basename(self.stateData.gcodeFileName), __appname__))
-
+            self.SetTitle(f"{os.path.basename(self.stateData.gcodeFileName)} - {vinfo.__appname__}")
             self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
 
             self.UpdateUI()
@@ -1366,8 +1279,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             # re open serial port if open
             if self.stateData.serialPortIsOpen and (
-                machine_port != self.configData.get('/machine/Port') or
-                machine_baud != self.configData.get('/machine/Baud')):
+               machine_port != self.configData.get('/machine/Port') or
+               machine_baud != self.configData.get('/machine/Baud')):
                 self.SerialClose()
 
         # refresh UIs after settings updates
@@ -1409,7 +1322,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if len(self.stateData.gcodeFileName):
                     runDict['gcodeFileName'] = self.stateData.gcodeFileName
 
-                h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                h = hashlib.md5(str(self.stateData.gcodeFileLines).encode('utf-8')).hexdigest()
                 if self.machifProgExecGcodeMd5 != h:
                     runDict['gcodeLines'] = self.stateData.gcodeFileLines
 
@@ -1440,7 +1353,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.EnableTool(gID_MENU_RUN, state)
 
     def OnPause(self, e):
-        #self.Stop(gc.STATE_PAUSE)
+        # self.Stop(gc.STATE_PAUSE)
         self.machifProgExec.add_event(gc.EV_CMD_PAUSE, None, self)
         # self.stateData.swState = gc.STATE_PAUSE
         # self.UpdateUI()
@@ -1470,7 +1383,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if len(self.stateData.gcodeFileName):
                     runDict['gcodeFileName'] = self.stateData.gcodeFileName
 
-                h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                h = hashlib.md5(str(self.stateData.gcodeFileLines).encode('utf-8')).hexdigest()
                 if self.machifProgExecGcodeMd5 != h:
                     runDict['gcodeLines'] = self.stateData.gcodeFileLines
 
@@ -1503,7 +1416,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         state = False
         if self.stateData.serialPortIsOpen and \
            self.stateData.swState != gc.STATE_IDLE:
-        # if self.stateData.serialPortIsOpen:
 
             state = True
 
@@ -1514,7 +1426,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnBreakToggle(self, e):
         pc = self.gcText.GetCurrentLine()
-        enable = False
 
         break_points = self.gcText.GetBreakPoints()
 
@@ -1761,8 +1672,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnRemoteSettings(self, e):
         if self.remoteClient is not None:
             # save port settings
-            machine_port = self.configRemoteData.get('/machine/Port')
-            machine_baud = self.configRemoteData.get('/machine/Baud')
+            # machine_port = self.configRemoteData.get('/machine/Port')
+            # machine_baud = self.configRemoteData.get('/machine/Baud')
 
             # do settings dialog
             dlg = mwc.gsatSettingsDialog(self, self.configData, self.configRemoteData, title="Remote Settings")
@@ -1880,30 +1791,23 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugConnectDisable.GetBitmap())
         else:
             self.machineToolBar.SetToolBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnect.GetBitmap())
-            self.machineToolBar.SetToolDisabledBitmap(gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnectDisabled.GetBitmap())
-
+            self.machineToolBar.SetToolDisabledBitmap(
+                gID_MENU_MACHINE_CONNECT, ico.imgPlugDisconnectDisabled.GetBitmap())
 
     # -------------------------------------------------------------------------
     # Help Menu Handlers
     # -------------------------------------------------------------------------
     def OnAbout(self, e):
-        # First we create and fill the info object
-        aboutDialog = wx.AboutDialogInfo()
-        aboutDialog.Name = __appname__
-        aboutDialog.Version = __version__
-        # aboutDialog.Copyright = __copyright__
-        if os.name == 'nt':
-            aboutDialog.Description = wordwrap(
-                __description__, 520, wx.ClientDC(self))
-        else:
-            aboutDialog.Description = __description__
-        aboutDialog.WebSite = (__website__, "gsat home page")
-        # aboutDialog.Developers = __authors__
+        info = wx.adv.AboutDialogInfo()
+        info.SetName(vinfo.__appname__)
+        info.SetVersion(vinfo.__version__)
+        info.SetDescription(vinfo.__description__)
+        info.SetCopyright(vinfo.__copyright__)
+        info.SetWebSite(vinfo.__website__)
+        info.AddDeveloper(str(vinfo.__authors__))
+        info.SetLicense(vinfo.__license__)
 
-        aboutDialog.SetLicense(__license_str__)
-
-        # Then we call wx.AboutBox giving it that info object
-        wx.AboutBox(aboutDialog)
+        wx.adv.AboutBox(info)
 
     # -------------------------------------------------------------------------
     # Other UI Handlers
@@ -1998,7 +1902,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 # # self.mainWndOutQueue.join()
 
         elif self.cmdLineOptions.verbose:
-            print ("gsatMainWindow ERROR: attempt serial write with port closed!!")
+            print("gsatMainWindow ERROR: attempt serial write with port closed!!")
 
     def SerialWriteWaitForAck(self, serialData):
         if self.stateData.serialPortIsOpen:
@@ -2007,7 +1911,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machifProgExec.add_event(gc.EV_CMD_SEND_W_ACK, serialData)
 
         elif self.cmdLineOptions.verbose:
-            print ("gsatMainWindow ERROR: attempt serial write with port closed!!")
+            print("gsatMainWindow ERROR: attempt serial write with port closed!!")
 
     def RemoteOpen(self):
         if self.remoteClient is None:
@@ -2044,7 +1948,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.machifProgExec.add_event(gc.EV_CMD_GET_STATUS)
 
         elif self.cmdLineOptions.verbose:
-            print ("gsatMainWindow ERROR: attempt GetMachineStatus without progExecTread!!")
+            print("gsatMainWindow ERROR: attempt GetMachineStatus without progExecTread!!")
 
     def LoadLayoutData(self, key, update=True):
         dimensionsData = layoutData = self.configData.get(
@@ -2092,12 +1996,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.configData.save()
 
     def ConvertInchAndmm(self, lines, in_to_mm=True, round_to=-1):
-        ret_lienes = []
+        ret_lines = []
 
         # iterate input lines
         for line in lines:
 
-            # check for G20/G21 anc hange accordingly
+            # check for G20/G21 anc change accordingly
             if in_to_mm:
                 re_matches = re.findall(r"G20", line)
                 if len(re_matches) > 0:
@@ -2131,12 +2035,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                     line = line.replace(current_str, convert_str)
 
-            ret_lienes.append(line)
+            ret_lines.append(line)
 
-        return ret_lienes
+        return ret_lines
 
     def ConvertG812G01(self, lines):
-        ret_lienes = []
+        ret_lines = []
         state = 0
         R = 0
         Z = 0
@@ -2170,12 +2074,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         "G01 Z%s F%s ( plunge. )\n" \
                         "G00 Z%s ( retract )\n" % (X, Y, Z, F, R)
 
-            ret_lienes.append(line)
+            ret_lines.append(line)
 
-        return ret_lienes
+        return ret_lines
 
     def OnIdle(self, e):
-        """ process idel time
+        """
+        Process idle time
+
         """
         pass
         # self.OnThreadEvent(e)
@@ -2415,7 +2321,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
                 self.UpdateUI()
 
-            elif  te.event_id == gc.EV_RMT_CONFIG_DATA:
+            elif te.event_id == gc.EV_RMT_CONFIG_DATA:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(te.sender), te.sender))
 
@@ -2447,9 +2353,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                 self.machifProgExecGcodeMd5 = te.data
 
-                h = hashlib.md5(str([])).hexdigest()
+                h = hashlib.md5(str([]).encode('utf-8')).hexdigest()
                 if h != te.data and self.machifProgExec is not None:
-                    h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                    h = hashlib.md5(str(self.stateData.gcodeFileLines).encode('utf-8')).hexdigest()
                     if h != te.data and self.configData.get('/remote/AutoGcodeRequest', False):
                         self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
 
@@ -2463,18 +2369,15 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                     if self.gcText.GetModify():
                         title = "Get Remote G-code"
-                        prompt = "Current G-code has been modified, save before overide?"
+                        prompt = "Current G-code has been modified, save before override?"
                         if sys.platform in 'darwin':
                             # because dialog icons where not working correctly in
                             # Mac OS X
                             dlg = gmd.GenericMessageDialog(
-                                self, prompt, title,
-                                wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
+                                self, prompt, title, wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
                         else:
                             dlg = wx.MessageDialog(
-                                self, prompt, title,
-                                wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
-
+                                self, prompt, title, wx.YES_NO | wx.CANCEL | wx.YES_DEFAULT | wx.ICON_QUESTION)
 
                         user_response = dlg.ShowModal()
                         if user_response == wx.ID_YES:
@@ -2491,7 +2394,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         else:
                             self.stateData.gcodeFileName = ""
 
-                        self.SetTitle("{} - {}".format(os.path.basename(self.stateData.gcodeFileName), __appname__))
+                        self.SetTitle(f"{os.path.basename(self.stateData.gcodeFileName)} - {vinfo.__appname__}")
                         self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
                         self.stateData.fileIsOpen = False
 
@@ -2511,7 +2414,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
                         rawText = self.gcText.GetText()
                         self.stateData.gcodeFileLines = rawText.splitlines(True)
-                        h = hashlib.md5(str(self.stateData.gcodeFileLines)).hexdigest()
+                        h = hashlib.md5(str(self.stateData.gcodeFileLines).encode('utf-8')).hexdigest()
                         self.machifProgExecGcodeMd5 = h
 
                         if 'gcodePC' in te.data:
@@ -2558,8 +2461,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         # deal with delay between sw-run-end and machif-end
         # definition: software send all gcode lines ot machif, but machine
-        # still executing on them. UI should be re-anabled, any new command
-        # will be queued behind already proccessed ones
+        # still executing on them. UI should be re-enabled, any new command
+        # will be queued behind already processed ones
         if self.runEndWaitingForMachIfIdle:
             if self.stateData.machineStatusString in [
                "Idle", "idle", "Stop", "stop", "End", "end"]:
@@ -2613,7 +2516,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             if len(initScript) > 0:
                 if self.cmdLineOptions.verbose:
-                    print ("gsatMainWindow queuing machine init script...")
+                    print("gsatMainWindow queuing machine init script...")
 
                 self.outputText.AppendText("Queuing machine init script...\n")
                 for initLine in initScript:

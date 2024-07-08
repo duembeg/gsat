@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_machine_config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,18 +22,19 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import os
 import wx
 from wx.lib import scrolledpanel as scrolled
 import wx.propgrid as wxpg
 
 import modules.machif_config as mi
-
 import images.icons as ico
 
+
 class Factory():
-    """ Factory class to init config page
+    """
+    Factory class to init config page
+
     """
 
     @staticmethod
@@ -50,8 +51,11 @@ class Factory():
 
         return settings_page
 
+
 class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
-    """ Machine settings
+    """
+    Machine settings
+
     """
 
     def __init__(self, parent, config_data, **args):
@@ -87,8 +91,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-        self.Bind(
-            wx.EVT_COMBOBOX, self.OnDeviceComboBoxSelect, self.deviceComboBox)
+        self.Bind(wx.EVT_COMBOBOX, self.OnDeviceComboBoxSelect, self.deviceComboBox)
 
         # get serial port list and baud rate speeds
         brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200', '230400']
@@ -97,18 +100,16 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         st = wx.StaticText(self, label="Serial Port")
         self.spComboBox = wx.ComboBox(
             self, -1, value=self.configData.get('/machine/Port'),
-            choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
-        )
+            choices=self.GetListOfSerialPorts(), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-        self.Bind(
-            wx.EVT_COMBOBOX, self.OnSpComboBoxSelect, self.spComboBox)
+        self.Bind(wx.EVT_COMBOBOX, self.OnSpComboBoxSelect, self.spComboBox)
 
         # Older version of wx (available in *12.04, 14.04) doesn't support
         # EVT_COMBOBOX_DROPDOWN
         try:
-            self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown)
+            self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown, self.spComboBox)
         except:
             self.OnSpComboBoxDropDown(None)
 
@@ -129,7 +130,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             wx.ToolTip("DRO Font updates after application restart"))
 
         font = wx.Font(self.configData.get('/machine/DRO/FontSize'),
-                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, unicode(self.configData.get('/machine/DRO/FontFace')))
+                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, self.configData.get('/machine/DRO/FontFace'))
 
         font_style_str = self.configData.get('/machine/DRO/FontStyle')
 
@@ -218,26 +219,25 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             self.pg, 1,
             flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=20)
 
-        vBoxSizerRoot.AddSpacer(10, -1)
+        vBoxSizerRoot.AddSpacer(10)
 
         # add edit control for init script
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
         st = wx.StaticText(self, label="Init script")
-        vBoxSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        vBoxSizer.Add(st, 0)
 
         self.tcInitScript = wx.TextCtrl(
             self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.tcInitScript.SetValue(self.configData.get('/machine/InitScript'))
         self.tcInitScript.SetToolTip(wx.ToolTip(
             "This script is sent to device upon connect detect"))
-        vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL |
-                      wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
+        vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL | wx.EXPAND)
 
         vBoxSizerRoot.Add(
             vBoxSizer, 2, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
 
-        vBoxSizerRoot.AddSpacer(10, -1)
+        vBoxSizerRoot.AddSpacer(10)
 
         self.SetSizer(vBoxSizerRoot)
 
@@ -250,22 +250,22 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         if len(self.machIfConfigDic):
 
             self.pg.Append(wxpg.PropertyCategory(
-                "%s Specific Stettings" % self.machIfName))
+                "%s Specific Settings" % self.machIfName))
 
             for i in sorted(self.machIfConfigDic.keys()):
                 name = self.machIfConfigDic[i]['Name']
                 value = self.machIfConfigDic[i]['Value']
                 tooltip = self.machIfConfigDic[i].get('ToolTip', "")
 
-                if type(value) == int:
+                if isinstance(value, int):
                     cp = self.pg.Append(wxpg.IntProperty(name, value=value))
                     # pg.SetPropertyEditor(name,"SpinCtrl")
-                elif type(value) == float:
+                elif isinstance(value, float):
                     cp = self.pg.Append(wxpg.FloatProperty(name, value=value))
-                elif type(value) == bool:
+                elif isinstance(value, bool):
                     cp = self.pg.Append(wxpg.BoolProperty(name, value=value))
                     self.pg.SetPropertyAttribute(name, "UseCheckbox", True)
-                elif type(value) == str:
+                elif isinstance(value, str):
                     cp = self.pg.Append(wxpg.StringProperty(name, value=value))
                 else:
                     cp = None
@@ -282,7 +282,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         elif len(self.lastSpecificProperty):
             self.pg.DeleteProperty(self.lastSpecificProperty)
 
-        self.lastSpecificProperty = "%s Specific Stettings" % self.machIfName
+        self.lastSpecificProperty = "%s Specific Settings" % self.machIfName
 
     def UpdateConfigData(self):
         self.machIfName = self.deviceComboBox.GetValue()
@@ -341,6 +341,10 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.spComboBox.SetValue(port)
 
     def OnSpComboBoxDropDown(self, event):
+        serList = self.GetListOfSerialPorts()
+        self.spComboBox.SetItems(serList)
+
+    def GetListOfSerialPorts(self):
         portSearchFailSafe = False
 
         serList = self.configData.get('/temp/SerialPorts')
@@ -355,14 +359,14 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                 serListInfo = serial.tools.list_ports.comports()
 
                 if len(serListInfo) > 0:
-                    if type(serListInfo[0]) == tuple:
-                        serList = ["%s, %s, %s" %
-                                (i[0], i[1], i[2]) for i in serListInfo]
+                    if os.name != 'nt':
+                        for ser in serListInfo:
+                            if "USB" in ser.device or "ACM" in ser.device or "cu" in ser.device:
+                                serList.append(f"{ser.device}, {ser.description}")
                     else:
-                        serList = ["%s, %s" % (i.device, i.description)
-                                for i in serListInfo]
+                        serList = [f"{i.device}, {i.description}" for i in serListInfo]
 
-                    serList.sort()
+                serList.sort()
 
             except ImportError:
                 portSearchFailSafe = True
@@ -388,5 +392,4 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                 if len(serList) < 1:
                     serList = ['None']
 
-        self.spComboBox.SetItems(serList)
-
+        return serList

@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_cli.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    grbl like GCODE interpreters. With features similar to software debuggers.
@@ -23,18 +23,15 @@
 
 ----------------------------------------------------------------------------"""
 
-import re
 import wx
-from wx.lib import scrolledpanel as scrolled
-from wx.lib.agw import floatspin as fs
 
 import modules.config as gc
-import modules.machif_config as mi
 
-import images.icons as ico
 
 class gsatCliPanel(wx.ScrolledWindow):
-    """ Comand Line Interface (CLI) controls for the machine.
+    """
+    Command Line Interface (CLI) controls for the machine.
+
     """
     def __init__(self, parent, config_data, state_data, **args):
         wx.ScrolledWindow.__init__(self, parent, **args)
@@ -49,7 +46,7 @@ class gsatCliPanel(wx.ScrolledWindow):
 
         self.InitConfig()
         self.InitUI()
-        width, height = self.GetSizeTuple()
+        width, height = self.GetSize()
         scroll_unit = 10
         self.SetScrollbars(scroll_unit, scroll_unit, width /
                            scroll_unit, height/scroll_unit)
@@ -83,9 +80,9 @@ class gsatCliPanel(wx.ScrolledWindow):
         self.SetSizer(vPanelBoxSizer)
         self.Layout()
 
-        #self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
-        #self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
-        #self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+        # self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        # self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
+        # self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
 
     def UpdateUI(self, stateData, statusData=None):
         self.stateData = stateData
@@ -133,7 +130,7 @@ class gsatCliPanel(wx.ScrolledWindow):
             e.Skip()
 
     def LoadCli(self):
-        # read cmd hsitory
+        # read cmd history
         configData = self.cliCmdHistory
         if len(configData) > 0:
             cliCommandHistory = configData.split("|")
@@ -154,10 +151,9 @@ class gsatCliPanel(wx.ScrolledWindow):
                 self.configData.set('/cli/CmdHistory', cliCmdHistory)
 
     def OnKeyUp(self, e):
-        print "key up event"
+        print("key up event")
         e.skip()
 
     def OnKeyDown(self, e):
-        print "key down event"
+        print("key down event")
         e.skip()
-

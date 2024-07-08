@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    remote_server.py
 
-   Copyright (C) 2020-2020 Wilhelm Duembeg
+   Copyright (C) 2020 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,7 +22,6 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import os
 import sys
 import threading
@@ -32,21 +31,13 @@ import socket
 import select
 import errno
 import re
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
+import queue
+import pickle
 
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
 
-from modules.version_info import *
+import modules.version_info as vinfo
 
 
 def verbose_data_ascii(direction, data):
@@ -62,11 +53,15 @@ def verbose_data_hex(direction, data):
 
 
 class RemoteServerThread(threading.Thread, gc.EventQueueIf):
-    """ Threads to send and monitor network socket for new data.
+    """
+    Threads to send and monitor network socket for new data.
+
     """
 
     def __init__(self, event_handler):
-        """ Init remote client class
+        """
+        Init remote client class
+
         """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
@@ -107,7 +102,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         self.start()
 
     def process_queue(self):
-        """ Event handlers
+        """
+        Event handlers
+
         """
         # process events from queue
         try:
@@ -172,7 +169,6 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     e.sender = id(self)
                     self.send_broadcast(e)
 
-
                 else:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                         self.logger.info("EV_[{}] from 0x{:x} {}".format(e.event_id, id(e.sender), e.sender))
@@ -180,7 +176,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     e.sender = id(self)
                     self.send_broadcast(e)
 
-            # local/non-machine messageing
+            # local/non-machine messaging
             elif e.event_id == gc.EV_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                     self.logger.info("EV_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
@@ -209,9 +205,11 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 self.logger.error(
                     "EV_?? got unknown event!! {} from 0x{:x} {}".format(e.event_id, id(e.sender), e.sender))
 
-
     def process_client_queue(self):
-        # process socket events
+        """
+        Process socket events
+
+        """
         try:
             e = self.clientEventQueue._eventQueue.get_nowait()
         except queue.Empty:
@@ -270,7 +268,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
 
                 tcp_port = gc.CONFIG_DATA.get('/remote/TcpPort')
-                udp_port  = gc.CONFIG_DATA.get('/remote/UdpPort')
+                udp_port = gc.CONFIG_DATA.get('/remote/UdpPort')
                 udp_broadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast')
 
                 if e.data is not None:
@@ -282,14 +280,14 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     # close serial port if settings changed
                     if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
-                        machine_port != gc.CONFIG_DATA.get('/machine/Port') or
-                        machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
+                       machine_port != gc.CONFIG_DATA.get('/machine/Port') or
+                       machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
                         self.machifProgExec.add_event(gc.EV_CMD_EXIT)
 
                 # re start server if settings changed
                 if (tcp_port != gc.CONFIG_DATA.get('/remote/TcpPort') or
-                    udp_port != gc.CONFIG_DATA.get('/remote/UdpPort') or
-                    udp_broadcast != gc.CONFIG_DATA.get('/remote/UdpBroadcast')):
+                   udp_port != gc.CONFIG_DATA.get('/remote/UdpPort') or
+                   udp_broadcast != gc.CONFIG_DATA.get('/remote/UdpBroadcast')):
 
                     self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort')
                     self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort')
@@ -316,7 +314,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     self.machifProgExec.add_event(e)
 
     def close(self):
-        """ Close serial port
+        """
+        Close serial port
+
         """
         if self.socServer is not None:
 
@@ -346,12 +346,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             ser_list_info = serial.tools.list_ports.comports()
 
             if len(ser_list_info) > 0:
-                if type(ser_list_info[0]) == tuple:
-                    ser_list = ["%s, %s, %s" %
-                               (i[0], i[1], i[2]) for i in ser_list_info]
-                else:
-                    ser_list = ["%s, %s" % (i.device, i.description)
-                               for i in ser_list_info]
+                ser_list = [f"{i.device}, {i.description}" for i in ser_list_info]
 
                 ser_list.sort()
 
@@ -366,7 +361,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 for i in range(256):
                     try:
                         serial.Serial(i)
-                        serList.append('COM'+str(i + 1))
+                        ser_list.append('COM'+str(i + 1))
                     except serial.SerialException as e:
                         pass
                     except OSError as e:
@@ -382,7 +377,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         return ser_list
 
     def open(self):
-        """ Open serial port
+        """
+        Open serial port
+
         """
         exFlag = False
         exMsg = ""
@@ -391,12 +388,12 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         try:
             self.socServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Internet, TCP
-            #self.server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
+            # self.server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
             self.socServer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # for TCP
+            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # for TCP
             self.socServer.setblocking(0)
             self.socServer.bind(("", self.tcpPort))
-            self.socServer.listen(5) # only for TCP
+            self.socServer.listen(5)  # only for TCP
             self.inputs.append(self.socServer)
 
             if self.useUdpBroadcast:
@@ -460,7 +457,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                 self.rxBufferLen -= len(msg)
                 self.rxBuffer += msg
 
-                # got the entire mesage decode
+                # got the entire message decode
                 if self.rxBufferLen <= 0:
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
                         self.logger.info(verbose_data_hex("<-", self.rxBuffer))
@@ -483,8 +480,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as
+            # normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** OSError exception: {}\n".format(str(e))
                 exFlag = True
@@ -492,8 +489,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         except IOError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as
+            # normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** IOError exception: {}\n".format(str(e))
                 exFlag = True
@@ -532,7 +529,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         data_len = len(msg)
         data_sent_len = 0
 
-        while (not exFlag and data_sent_len<data_len):
+        while (not exFlag and data_sent_len < data_len):
             try:
                 data_sent_len += soc.send(bytes(msg[data_sent_len:]))
 
@@ -614,7 +611,6 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
                 self.logger.error(exMsg.strip())
 
-
     def send_broadcast(self, data):
         if self.useUdpBroadcast:
             self.send_to(data)
@@ -665,7 +661,10 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                 self.logger.info(init_line.strip())
 
     def run(self):
-        """Run Worker Thread."""
+        """
+        Run Worker Thread.
+
+        """
         # This is the code executing in the new thread.
         self.endThread = False
 
@@ -702,26 +701,21 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                 self.logger.info(msg.strip())
                                 self.logger.info("Server report [{}] connected client(s)".format(len(self.inputs)-1))
 
-                            # notify local lisensers
+                            # notify local listeners
                             self.notify_event_listeners(gc.EV_RMT_HELLO, msg)
 
                             # send welcome message, only to new client
-                            soc_str = self.socServer.getsockname()
                             python_ver = sys.version.replace('\n', "")
-                            sys_str = str(os.uname()).replace("posix.uname_result","")
+                            sys_str = str(os.uname()).replace("posix.uname_result", "")
                             welcome_str = \
-                            "=========================================\n"\
-                            "Welcome to gsat server {}, runing on:\n"\
-                            "Server: {}{}\n"\
-                            "Python: {}\n"\
-                            "System: {}\n"\
-                            "\n"
+                                "=========================================\n"\
+                                f"Welcome to gsat server {vinfo.__version__}, running on:\n"\
+                                f"Server: {self.host} on port {soc.getsockname()[1]}\n"\
+                                f"Python: {python_ver}\n"\
+                                f"System: {sys_str}\n"\
+                                "\n"
 
-                            msg = gc.SimpleEvent(
-                                gc.EV_RMT_HELLO,
-                                welcome_str.format(__version__, self.host, soc_str, python_ver, sys_str),
-                                id(self)
-                            )
+                            msg = gc.SimpleEvent(gc.EV_RMT_HELLO, welcome_str, id(self))
 
                             self.send(connection, msg)
 
@@ -735,7 +729,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             if data:
                                 # add data to self queue to handle
                                 data.sender = soc
-                                #self.eventPut(data)
+                                # self.eventPut(data)
                                 self.clientEventQueue.add_event(data)
 
                             else:
@@ -748,7 +742,8 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                                     self.clean_up(soc)
 
                                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                                        self.logger.info("Server report [{}] connected client(s)".format(len(self.inputs)-1))
+                                        self.logger.info(
+                                            "Server report [{}] connected client(s)".format(len(self.inputs)-1))
 
                     # # Handle outputs
                     # for soc in writable:
@@ -806,4 +801,3 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.logger.info("thread exit")
 
         self.notify_event_listeners(gc.EV_EXIT, "")
-

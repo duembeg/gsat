@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif_g2core.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -23,11 +23,7 @@
 
 ----------------------------------------------------------------------------"""
 import re
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import json
 
 import modules.config as gc
 import modules.machif as mi
@@ -285,7 +281,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
         self._inputBufferPart = list()
 
-        # list of commads
+        # list of commands
         self.cmdClearAlarm = '{"clr":null}\n'
         self.cmdQueueFlush = '%'
         self.cmdStatus = '{"sr":null}\n'
@@ -335,7 +331,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
                 if 'stat' in sr:
                     status = sr['stat']
-                    sr['stat'] = self.stat_dict.get(status, "Uknown")
+                    sr['stat'] = self.stat_dict.get(status, "Unknown")
 
                 # deal with old versions of g2core
                 if 'mpox' in sr:
@@ -413,7 +409,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
         return dataDict
 
-    def encode(self, data, bookeeping=True):
+    def encode(self, data, bookkeeping=True):
         """ Encodes data properly to be sent to controller
         """
         if type(data) is bytes:
@@ -423,7 +419,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
         if data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
-        elif bookeeping:
+        elif bookkeeping:
             dataLen = len(data)
             self._inputBufferSize = self._inputBufferSize + dataLen
 

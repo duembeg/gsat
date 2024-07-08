@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_compvision_config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -28,10 +28,11 @@ from wx.lib import scrolledpanel as scrolled
 
 import images.icons as ico
 
-import images.icons as ico
 
 class Factory():
-    """ Factory class to init config page
+    """
+    Factory class to init config page
+
     """
 
     @staticmethod
@@ -48,8 +49,11 @@ class Factory():
 
         return settings_page
 
+
 class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
-    """ CV2 settings
+    """
+    CV2 settings
+
     """
 
     def __init__(self, parent, config_data, **args):
@@ -64,7 +68,7 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
 
     def InitUI(self):
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
-        flexGridSizer = wx.FlexGridSizer(7, 2)
+        flexGridSizer = wx.FlexGridSizer(7, 2, 0, 0)
 
         # Add enable check box
         # , style=wx.ALIGN_RIGHT)
@@ -156,5 +160,3 @@ class gsatCV2SettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/cv2/CapturePeriod', self.scPeriod.GetValue())
         self.configData.set('/cv2/CaptureWidth', self.scWidth.GetValue())
         self.configData.set('/cv2/CaptureHeight', self.scHeight.GetValue())
-
-

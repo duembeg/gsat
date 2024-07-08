@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,22 +22,12 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import logging
-from logging import handlers, Formatter
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
-
 import os
 import time
-
+import queue
+import json
+import logging
+from logging import Formatter
 
 """----------------------------------------------------------------------------
    Globals:
@@ -113,6 +103,7 @@ STATE_STEP = 300
 STATE_BREAK = 400
 STATE_PAUSE = 500
 
+
 def get_sw_status_str(sw_status):
     sw_status_str = "Unknown"
 
@@ -130,6 +121,7 @@ def get_sw_status_str(sw_status):
         sw_status_str = "ABORT"
 
     return sw_status_str
+
 
 '''
 Notes:
@@ -271,6 +263,7 @@ VERBOSE_MASK_DICT = {
     "eventif": VERBOSE_MASK_EVENTIF,
 }
 
+
 def decode_verbose_mask_string(verbose_mask_str):
     """ Decode and init gc VERBOSE_MASK
     """
@@ -291,7 +284,7 @@ def decode_verbose_mask_string(verbose_mask_str):
 # --------------------------------------------------------------------------
 
 def init_logger(filename, log_handler=None):
-    log_path = filename
+    # log_path = filename
 
     logger = logging.getLogger()
 
@@ -477,7 +470,7 @@ class ConfigData(object):
         """ dumps config to stdout
         """
         data = json.dumps(self.datastore, indent=3, sort_keys=True)
-        print (data)
+        print(data)
 
 
 class gsatConfigData(ConfigData):
@@ -585,7 +578,7 @@ class gsatConfigData(ConfigData):
                 },
                 "g2core": {
                 },
-                "Smoothie":{
+                "Smoothie": {
                     "AutoRefreshPeriod": {
                         "Value": 200,
                         "Name": "Auto Refresh Period (msec)",
@@ -635,16 +628,19 @@ class gsatConfigData(ConfigData):
 """----------------------------------------------------------------------------
    EVENTS definitions to interact with multiple windows:
 ----------------------------------------------------------------------------"""
-EVT_THREAD_QUEQUE_EVENT_ID = 0x7ECAFE
+EVT_THREAD_QUEUE_EVENT_ID = 0x7ECAFE
 
 
 def reg_thread_queue_data_event(win, func):
     """ register for thread queue data event.
     """
-    win.Connect(-1, -1, EVT_THREAD_QUEQUE_EVENT_ID, func)
+    win.Connect(-1, -1, EVT_THREAD_QUEUE_EVENT_ID, func)
+
 
 class SimpleEvent(object):
-    """ Simple event to carry arbitrary data.
+    """
+    Simple event to carry arbitrary data.
+
     """
 
     def __init__(self, event_id, data, sender=None):
@@ -654,7 +650,9 @@ class SimpleEvent(object):
 
 
 class EventQueueIf(object):
-    """ Class that implement simple queue APIs
+    """
+    Class that implement simple queue APIs
+
     """
 
     def __init__(self):
@@ -684,8 +682,11 @@ class EventQueueIf(object):
         else:
             other.add_event(event_id, event_data, self)
 
+
 class TimeOut(object):
-    """ Class that implement timeout timer
+    """
+    Class that implement timeout timer
+
     """
 
     def __init__(self, timeout):

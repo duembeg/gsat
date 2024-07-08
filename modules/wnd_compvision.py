@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_compvision.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,16 +22,11 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import threading
 import time
+import queue
 import wx
 from wx.lib import scrolledpanel as scrolled
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 import modules.config as gc
 
@@ -47,7 +42,9 @@ ID_CV2_CAPTURE_TIMER = wx.NewId()
 
 
 class gsatCV2Panel(wx.ScrolledWindow):
-    """ Camera sensor panel
+    """
+    Camera sensor panel
+
     """
     def __init__(
         self, parent, config_data, state_data, cmd_line_options,
@@ -111,8 +108,8 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
         # buttons
         line = wx.StaticLine(self, -1, size=(20, -1), style=wx.LI_HORIZONTAL)
-        vPanelBoxSizer.Add(line, 0, wx.GROW | wx.ALIGN_CENTER_VERTICAL |
-                           wx.LEFT | wx.RIGHT | wx.TOP, border=5)
+        vPanelBoxSizer.Add(
+            line, 0, wx.GROW | wx.LEFT | wx.RIGHT | wx.TOP, border=5)
 
         btnsizer = wx.StdDialogButtonSizer()
 
@@ -130,15 +127,13 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
         btnsizer.Realize()
 
-        vPanelBoxSizer.Add(
-            btnsizer, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_RIGHT | wx.ALL, 5)
+        vPanelBoxSizer.Add(btnsizer, 0, wx.ALIGN_RIGHT | wx.ALL, 5)
 
         # Finish up init UI
         self.SetSizer(vPanelBoxSizer)
         self.SetAutoLayout(True)
         width, height = self.GetSize()
-        self.SetScrollbars(self.scrollUnit, self.scrollUnit,
-                           width/self.scrollUnit, height/self.scrollUnit)
+        self.SetScrollbars(self.scrollUnit, self.scrollUnit, int(width/self.scrollUnit), int(height/self.scrollUnit))
 
     def UpdateSettings(self, config_data):
         self.configData = config_data
@@ -217,7 +212,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
     def ProcessThreadQueue(self):
         if self.cmdLineOptions.vverbose:
-            print "** gsatCV2Panel ProcessThreadQueue."
+            print("** gsatCV2Panel ProcessThreadQueue.")
 
         goitem = False
 
@@ -227,7 +222,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
             if te.event_id == EV_CMD_CV_IMAGE:
                 if self.cmdLineOptions.vverbose:
-                    print "** gsatCV2Panel got event gEV_CMD_CV_IMAGE."
+                    print("** gsatCV2Panel got event gEV_CMD_CV_IMAGE.")
                 image = te.data
 
                 if image is not None:
@@ -239,13 +234,13 @@ class gsatCV2Panel(wx.ScrolledWindow):
                     if self.settingsChanged:
                         wx.CallAfter(self.UpdateCapturePanel)
 
-        # acknoledge thread
+        # acknowledge thread
         if goitem:
             self.t2cvwQueue.task_done()
 
     def StartCapture(self):
         if self.cmdLineOptions.vverbose:
-            print "** gsatCV2Panel StartCapture."
+            print("** gsatCV2Panel StartCapture.")
 
         if not self.capture:
 
@@ -264,7 +259,7 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
         if self.capture:
             if self.cmdLineOptions.vverbose:
-                print "** gsatCV2Panel StopCapture."
+                print("** gsatCV2Panel StopCapture.")
 
             self.capture = False
 
@@ -289,7 +284,9 @@ class gsatCV2Panel(wx.ScrolledWindow):
 
 
 class gsatComputerVisionThread(threading.Thread):
-    """ Threads that capture and processes vide frames.
+    """
+    Threads that capture and processes vide frames.
+
     """
 
     def __init__(
@@ -307,7 +304,7 @@ class gsatComputerVisionThread(threading.Thread):
         self.configData = config_data
 
         if self.cmdLineOptions.vverbose:
-            print "gsatComputerVisionThread ALIVE."
+            print("gsatComputerVisionThread ALIVE.")
 
         self.InitConfig()
 
@@ -335,10 +332,10 @@ class gsatComputerVisionThread(threading.Thread):
 
             if e.event_id == EV_CMD_CV_EXIT:
                 if self.cmdLineOptions.vverbose:
-                    print "** gsatcomputerVisionThread got event gEV_CMD_EXIT."
+                    print("** gsatcomputerVisionThread got event gEV_CMD_EXIT.")
                 self.endThread = True
 
-            # item qcknowledge
+            # item acknowledge
             self.cvw2tQueue.task_done()
 
     """------------------------------------------------------------------------
@@ -349,7 +346,7 @@ class gsatComputerVisionThread(threading.Thread):
         retval, frame = self.captureDevice.read()
 
         if self.cmdLineOptions.vverbose:
-            print "** gsatcomputerVisionThread Capture Frame."
+            print("** gsatcomputerVisionThread Capture Frame.")
 
         # cv.ShowImage("Window",frame)
         if frame is not None:
@@ -416,7 +413,7 @@ class gsatComputerVisionThread(threading.Thread):
         self.endThread = False
 
         if self.cmdLineOptions.vverbose:
-            print "** gsatcomputerVisionThread start."
+            print("** gsatcomputerVisionThread start.")
 
         while (not self.endThread):
 
@@ -440,4 +437,4 @@ class gsatComputerVisionThread(threading.Thread):
         self.captureDevice.release()
 
         if self.cmdLineOptions.vverbose:
-            print "** gsatcomputerVisionThread exit."
+            print("** gsatcomputerVisionThread exit.")

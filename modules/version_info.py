@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    version_info.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -60,8 +60,8 @@ __description__ = \
 __authors__ = ['Wilhelm Duembeg']
 __author__ = ','.join(__authors__)
 __credits__ = []
-__copyright__ = 'Copyright (c) 2013-2020'
-__license__ = 'GPL v2, Copyright (c) 2013-2020'
+__copyright__ = 'Copyright (c) 2013 Wilhelm Duembeg'
+__license__ = 'GPL v2, Copyright (c) 2013 Wilhelm Duembeg'
 __license_str__ = __license__ + '\nhttp://www.gnu.org/licenses/gpl-2.0.txt'
 
 # maintenance information

@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    machif_progexec.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -28,11 +28,7 @@ import threading
 import time
 import logging
 import hashlib
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -177,7 +173,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if 'breakPoints' in e.data:
                     self.breakPointSet = e.data['breakPoints']
 
-                # init time only if we got new lines or previous satate was
+                # init time only if we got new lines or previous state was
                 # IDLE (if we stop or step operations)
                 h2 = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
                 if h1 != h2 or self.swState == gc.STATE_IDLE:
@@ -308,7 +304,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_CMD_JOG_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE ".format(e.data))
+                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE {}".format(e.data))
 
                 self.machIfModule.doJogMoveRelative(e.data)
 
@@ -475,11 +471,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     pass
 
                     # notify listeners
-                    #self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
+                    # self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
 
                 if 'sr' in rxData:
                     if len(self.gcodeDataLines):
-                        # at this point we haven't completed and added progaram counter
+                        # at this point we haven't completed and added program counter
                         # we need to +1, also array starts at 0 and gcode page starts at 1
                         # nee another +1
                         gcode_lines_len = len(self.gcodeDataLines)
@@ -718,9 +714,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # update PC
         if self.lastWorkingProgramCounter != self.workingProgramCounter:
-        #     # notify listeners
-        #     self.notifyEventListeners(gc.EV_PC_UPDATE,
-        #                               self.workingProgramCounter)
+            #     # notify listeners
+            #     self.notifyEventListeners(gc.EV_PC_UPDATE,
+            #                               self.workingProgramCounter)
             self.lastWorkingProgramCounter = self.workingProgramCounter
 
         # check for break point hit
@@ -801,7 +797,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # update PC
         # self.notifyEventListeners(gc.EV_PC_UPDATE, self.workingProgramCounter)
-        self.notify_event_listeners(gc.EV_DATA_STATUS, {'pc':self.workingProgramCounter})
+        self.notify_event_listeners(gc.EV_DATA_STATUS, {'pc': self.workingProgramCounter})
 
         # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
@@ -892,7 +888,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         while not self.endThread:
 
-            # process bookeeping input queue for new commands or actions
+            # process bookkeeping input queue for new commands or actions
             self.tick()
 
             # process write queue from UI cmds
