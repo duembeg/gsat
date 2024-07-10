@@ -24,7 +24,6 @@
 ----------------------------------------------------------------------------"""
 import wx
 from wx.lib import scrolledpanel as scrolled
-from wx.lib.agw import floatspin as fs
 
 
 import images.icons as ico
@@ -73,21 +72,15 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
         # Add readonly check box
-        self.cbXYZReadOnly = wx.CheckBox(
-            self, wx.ID_ANY, "XYZ Read Only Status")
-        self.cbXYZReadOnly.SetValue(
-            self.configData.get('/jogging/XYZReadOnly'))
-        self.cbXYZReadOnly.SetToolTip(
-            wx.ToolTip("If enabled the XYZ fields in jogging status become "
-                       "read only"))
+        self.cbXYZReadOnly = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
+        self.cbXYZReadOnly.SetValue(self.configData.get('/jogging/XYZReadOnly'))
+        self.cbXYZReadOnly.SetToolTip(wx.ToolTip("If enabled the XYZ fields in jogging status become read only"))
         vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
 
         # Add update from machine pos check box
-        self.cbAutoMPOS = wx.CheckBox(
-            self, wx.ID_ANY, "Auto update from machine position")
+        self.cbAutoMPOS = wx.CheckBox(self, wx.ID_ANY, "Auto update from machine position")
         self.cbAutoMPOS.SetValue(self.configData.get('/jogging/AutoMPOS'))
-        self.cbAutoMPOS.SetToolTip(
-            wx.ToolTip(
+        self.cbAutoMPOS.SetToolTip(wx.ToolTip(
                 "Use Machine position to auto update Jogging position, "
                 "jogging operation use these values to operate. The JOG "
                 "current position need to be in sync with machine position "
@@ -136,15 +129,13 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.jogFeedRateSpinCtrl = fs.FloatSpin(
-            self, -1, min_val=0, max_val=999999, increment=100, value=self.configData.get('/jogging/JogFeedRate'),
-            size=(-1, -1), agwStyle=fs.FS_LEFT)
-        self.jogFeedRateSpinCtrl.SetFormat("%f")
+        self.jogFeedRateSpinCtrl = wx.SpinCtrlDouble(
+            self, -1, size=(-1, -1), min=0, max=99999,
+            initial=self.configData.get('/jogging/JogFeedRate'), inc=100)
+
         self.jogFeedRateSpinCtrl.SetDigits(0)
-        self.jogFeedRateSpinCtrl.SetToolTip(wx.ToolTip(
-            "Shift + mouse wheel = 2 * increment\n"
-            "Ctrl + mouse wheel = 10 * increment\n"
-            "Alt + mouse wheel = 100 * increment"))
+        self.jogFeedRateSpinCtrl.SetToolTip(wx.ToolTip("Jog Feed Rate Default Settings"))
+
         hBoxSizer.Add(self.jogFeedRateSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
 
         st = wx.StaticText(self, wx.ID_ANY, "units/min")
@@ -161,15 +152,11 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.spindleSpeedSpinCtrl = fs.FloatSpin(
-            self, -1, min_val=0, max_val=99999, increment=100, value=self.configData.get('/jogging/SpindleSpeed'),
-            size=(-1, -1), agwStyle=fs.FS_LEFT)
-        self.spindleSpeedSpinCtrl.SetFormat("%f")
+        self.spindleSpeedSpinCtrl = wx.SpinCtrlDouble(
+            self, -1, size=(-1, -1), min=0, max=99999,
+            initial=self.configData.get('/jogging/SpindleSpeed'), inc=100)
         self.spindleSpeedSpinCtrl.SetDigits(0)
-        self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip(
-            "Shift + mouse wheel = 2 * increment\n"
-            "Ctrl + mouse wheel = 10 * increment\n"
-            "Alt + mouse wheel = 100 * increment"))
+        self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip("Spindle Default Settings"))
         hBoxSizer.Add(self.spindleSpeedSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
 
         st = wx.StaticText(self, wx.ID_ANY, "RPM")
@@ -186,45 +173,34 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.probeZDistanceSpinCtrl = fs.FloatSpin(
-            self, -1, min_val=-9999, max_val=9999, increment=0.1, value=self.configData.get('/jogging/ProbeDistance'),
-            size=(-1, -1), agwStyle=fs.FS_LEFT)
-        self.probeZDistanceSpinCtrl.SetFormat("%f")
-        self.probeZDistanceSpinCtrl.SetDigits(6)
-        self.probeZDistanceSpinCtrl.SetToolTip(wx.ToolTip(
-            "Shift + mouse wheel = 2 * increment\n"
-            "Ctrl + mouse wheel = 10 * increment\n"
-            "Alt + mouse wheel = 100 * increment"))
+        self.probeZDistanceSpinCtrl = wx.SpinCtrlDouble(
+            self, -1, size=(-1, -1), min=-9999, max=9999,
+            initial=self.configData.get('/jogging/ProbeDistance'), inc=0.1)
+        self.probeZDistanceSpinCtrl.SetDigits(4)
+        self.probeZDistanceSpinCtrl.SetToolTip(wx.ToolTip("Probe Z height"))
         hBoxSizer.Add(self.probeZDistanceSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
         st = wx.StaticText(self, wx.ID_ANY, "Probe Z height")
         hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
         vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.probeZMaxDistanceSpinCtrl = fs.FloatSpin(
-            self, -1, min_val=-9999, max_val=9999, increment=0.1,
-            value=self.configData.get('/jogging/ProbeMaxDistance'), size=(-1, -1), agwStyle=fs.FS_LEFT)
-        self.probeZMaxDistanceSpinCtrl.SetFormat("%f")
-        self.probeZMaxDistanceSpinCtrl.SetDigits(6)
-        self.probeZMaxDistanceSpinCtrl.SetToolTip(wx.ToolTip(
-            "Shift + mouse wheel = 2 * increment\n"
-            "Ctrl + mouse wheel = 10 * increment\n"
-            "Alt + mouse wheel = 100 * increment"))
+        self.probeZMaxDistanceSpinCtrl = wx.SpinCtrlDouble(
+            self, -1, size=(-1, -1), min=-9999, max=9999,
+            initial=self.configData.get('/jogging/ProbeMaxDistance'), inc=0.1)
+        self.probeZMaxDistanceSpinCtrl.SetDigits(4)
+        self.probeZMaxDistanceSpinCtrl.SetToolTip(wx.ToolTip("Probe Z max travel"))
+
         hBoxSizer.Add(self.probeZMaxDistanceSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
         st = wx.StaticText(self, wx.ID_ANY, "Probe Z max travel")
         hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
         vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.probeZFeedRateSpinCtrl = fs.FloatSpin(
-            self, -1, min_val=-0, max_val=99999, increment=0.1, value=self.configData.get('/jogging/ProbeFeedRate'),
-            size=(-1, -1), agwStyle=fs.FS_LEFT)
-        self.probeZFeedRateSpinCtrl.SetFormat("%f")
-        self.probeZFeedRateSpinCtrl.SetDigits(6)
-        self.probeZFeedRateSpinCtrl.SetToolTip(wx.ToolTip(
-            "Shift + mouse wheel = 2 * increment\n"
-            "Ctrl + mouse wheel = 10 * increment\n"
-            "Alt + mouse wheel = 100 * increment"))
+        self.probeZFeedRateSpinCtrl = wx.SpinCtrlDouble(
+            self, -1, size=(-1, -1), min=0, max=99999,
+            initial=self.configData.get('/jogging/ProbeFeedRate'), inc=1)
+        self.probeZFeedRateSpinCtrl.SetDigits(0)
+        self.probeZFeedRateSpinCtrl.SetToolTip(wx.ToolTip("Probe Z feed rate"))
         hBoxSizer.Add(self.probeZFeedRateSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
         st = wx.StaticText(self, wx.ID_ANY, "Probe Z feed rate")
         hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)

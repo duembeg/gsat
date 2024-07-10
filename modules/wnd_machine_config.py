@@ -116,8 +116,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         # Add baud rate controls
         st = wx.StaticText(self, label="Baud Rate")
         self.sbrComboBox = wx.ComboBox(
-            self, -1, value=self.configData.get('/machine/Baud'),
-            choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
+            self, -1, value=self.configData.get('/machine/Baud'), choices=brList,
+            style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
         )
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
@@ -183,8 +183,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(hBoxSz, 0, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-        vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND |
-                          wx.TOP | wx.LEFT | wx.RIGHT, border=20)
+        vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT, border=20)
 
         self.pg = wxpg.PropertyGrid(self, wx.ID_ANY)
         self.pg.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
@@ -202,22 +201,17 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.cbFilterGcodes = self.pg.Append(wxpg.BoolProperty(
             prop, value=self.configData.get('/machine/FilterGcodesEnable')))
         self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
-        self.pg.SetPropertyHelpString(
-            prop, "When enabled, skip filtered G-codes")
+        self.pg.SetPropertyHelpString(prop, "When enabled, skip filtered G-codes")
 
         prop = "Filter G-codes list"
         self.tcFilterGcodes = self.pg.Append(wxpg.StringProperty(
             prop, value=self.configData.get('/machine/FilterGcodes')))
         self.pg.SetPropertyHelpString(
-            prop,
-            "When enabled, If a line contains one of these G-codes it wil be "
-            "skipped (',' separated)")
+            prop, "When enabled, If a line contains one of these G-codes it wil be skipped (',' separated)")
 
         self.CreateMachIfSpecificCtrls()
 
-        vBoxSizerRoot.Add(
-            self.pg, 1,
-            flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=20)
+        vBoxSizerRoot.Add(self.pg, 1, flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=20)
 
         vBoxSizerRoot.AddSpacer(10)
 
@@ -227,15 +221,12 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         st = wx.StaticText(self, label="Init script")
         vBoxSizer.Add(st, 0)
 
-        self.tcInitScript = wx.TextCtrl(
-            self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
+        self.tcInitScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.tcInitScript.SetValue(self.configData.get('/machine/InitScript'))
-        self.tcInitScript.SetToolTip(wx.ToolTip(
-            "This script is sent to device upon connect detect"))
+        self.tcInitScript.SetToolTip(wx.ToolTip("This script is sent to device upon connect detect"))
         vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL | wx.EXPAND)
 
-        vBoxSizerRoot.Add(
-            vBoxSizer, 2, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
+        vBoxSizerRoot.Add(vBoxSizer, 2, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
 
         vBoxSizerRoot.AddSpacer(10)
 

@@ -484,19 +484,19 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         # add Zero and go to Zero buttons
         self.SetToZeroButton = wx.BitmapButton(
             self, -1, ico.imgSetToZero.GetBitmap(), size=buttonSize, style=wx.BORDER_NONE)
-        self.SetToZeroButton.SetToolTip(wx.ToolTip("Set all axis to zero"))
+        self.SetToZeroButton.SetToolTip(wx.ToolTip("Zero all axis"))
         self.Bind(wx.EVT_BUTTON, self.OnSetToZero, self.SetToZeroButton)
         gbzJoggingGridSizer.Add(self.SetToZeroButton, pos=(0, 4))
 
         self.SetToZeroXYButton = wx.BitmapButton(
             self, -1, ico.imgSetToZeroXY.GetBitmap(), size=buttonSize, style=wx.BORDER_NONE)
-        self.SetToZeroXYButton.SetToolTip(wx.ToolTip("Set X and Y axis to zero"))
+        self.SetToZeroXYButton.SetToolTip(wx.ToolTip("Zero X and Y axis"))
         self.Bind(wx.EVT_BUTTON, self.OnSetToZeroXY, self.SetToZeroXYButton)
         gbzJoggingGridSizer.Add(self.SetToZeroXYButton, pos=(0, 5))
 
         self.SetToZeroZButton = wx.BitmapButton(
             self, -1, ico.imgSetToZeroZ.GetBitmap(), size=buttonSize, style=wx.BORDER_NONE)
-        self.SetToZeroZButton.SetToolTip(wx.ToolTip("Set Z axis to zero"))
+        self.SetToZeroZButton.SetToolTip(wx.ToolTip("Zero Z axis"))
         self.Bind(wx.EVT_BUTTON, self.OnSetToZeroZ, self.SetToZeroZButton)
         gbzJoggingGridSizer.Add(self.SetToZeroZButton, pos=(0, 6))
 

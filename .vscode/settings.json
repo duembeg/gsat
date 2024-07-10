@@ -68,6 +68,7 @@
         "HORZ",
         "Iconize",
         "Iconized",
+        "imshow",
         "INET",
         "IPPROTO",
         "keyname",
