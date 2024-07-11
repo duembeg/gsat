@@ -362,7 +362,9 @@ class gsatStateData():
 
 
 class ConfigData(object):
-    """ Provides various data information
+    """
+    Provides various data information
+
     """
     def __init__(self, config_fname=None):
 
@@ -371,7 +373,9 @@ class ConfigData(object):
         self.datastore = dict()
 
     def add(self, key_path, val):
-        """ Add new key value pair
+        """
+        Add new key value pair
+
         """
         if type(key_path) is list:
             key_list = key_path
@@ -396,7 +400,9 @@ class ConfigData(object):
         node[key_list[-1:][0]] = val
 
     def get(self, key_path, default_rv=None):
-        """ Get value for a given key
+        """
+        Get value for a given key
+
         """
         return_val = default_rv
 
@@ -425,12 +431,16 @@ class ConfigData(object):
         return return_val
 
     def set(self, key_path, val):
-        """ Set value for a given key
+        """
+        Set value for a given key
+
         """
         self.add(key_path, val)
 
     def load(self):
-        """ Load data from config file
+        """
+        Load data from config file
+
         """
         if self.configFileName is not None:
             if os.path.exists(self.configFileName):
@@ -452,7 +462,9 @@ class ConfigData(object):
                 deep_update(self.datastore, datastore)
 
     def save(self):
-        """ Save data to config file
+        """
+        Save data to config file
+
         """
         if self.configFileName is not None:
             temp_store = None
@@ -467,7 +479,9 @@ class ConfigData(object):
                 self.datastore = temp_store
 
     def dump(self):
-        """ dumps config to stdout
+        """
+        dumps config to stdout
+
         """
         data = json.dumps(self.datastore, indent=3, sort_keys=True)
         print(data)

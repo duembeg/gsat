@@ -130,9 +130,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.configData = config_data
         self.InitConfig()
 
-        self.spindleSpeedSpinCtrl.SetValue(self.configSpindleSpeed)
-
         self.rapidJogCheckBox.SetValue(self.configJogRapid)
+        self.feedRateSpinCtrl.SetValue(self.configJogFeedRate)
+        self.spindleSpeedSpinCtrl.SetValue(self.configSpindleSpeed)
 
         for customButton in self.customButtonsObjDict:
             customButtonName = self.customButtonsObjDict[customButton]
@@ -461,7 +461,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         gbJogSpindleGridSizer.Add(self.rapidJogCheckBox, pos=(0, 0), span=(1, 2), flag=wx.TOP, border=5)
 
         self.feedRateSpinCtrl = wx.SpinCtrlDouble(
-            self, -1, size=(stepButtonSize[0]*3, -1), min=0, max=99999, initial=1.0, inc=1)
+            self, -1, size=(stepButtonSize[0]*3, -1), min=0, max=99999, initial=self.configJogFeedRate, inc=1)
 
         self.feedRateSpinCtrl.SetDigits(0)
         self.feedRateSpinCtrl.SetToolTip(wx.ToolTip("Spindle feed rate"))
@@ -473,7 +473,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         gbJogSpindleGridSizer.Add(spinText, pos=(2, 0), span=(1, 2), flag=wx.TOP, border=5)
 
         self.spindleSpeedSpinCtrl = wx.SpinCtrlDouble(
-            self, -1, size=(stepButtonSize[0]*3, -1), min=0, max=99999, initial=1.0, inc=100)
+            self, -1, size=(stepButtonSize[0]*3, -1), min=0, max=99999, initial=self.configSpindleSpeed, inc=100)
         self.spindleSpeedSpinCtrl.SetDigits(0)
         self.spindleSpeedSpinCtrl.SetToolTip(wx.ToolTip("Spindle feed rate"))
 

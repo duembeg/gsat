@@ -754,53 +754,38 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.gcodeToolBar.AddSimpleTool(gID_MENU_PAUSE, "Pause", ico.imgPause.GetBitmap(), "Pause")
         self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_PAUSE, ico.imgPauseDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", ico.imgStep.GetBitmap(),
-                                        "Step")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_STEP, ico.imgStepDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_STEP, "Step", ico.imgStep.GetBitmap(), "Step")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STEP, ico.imgStepDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, "Stop",
-                                        ico.imgStop.GetBitmap(),
-                                        "Stop")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_STOP, ico.imgStopDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(gID_MENU_STOP, "Stop", ico.imgStop.GetBitmap(), "Stop")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_STOP, ico.imgStopDisabled.GetBitmap())
 
         self.gcodeToolBar.AddSeparator()
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_BREAK_TOGGLE, "Break Toggle",
-                                        ico.imgBreak.GetBitmap(),
-                                        "Breakpoint Toggle\tF9")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_BREAK_TOGGLE, ico.imgBreakDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(
+            gID_MENU_BREAK_TOGGLE, "Break Toggle", ico.imgBreak.GetBitmap(), "Breakpoint Toggle\tF9")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_BREAK_TOGGLE, ico.imgBreakDisabled.GetBitmap())
 
         self.gcodeToolBar.AddSeparator()
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_SET_PC, "Set PC",
-                                        ico.imgSetMapPin.GetBitmap(),
-                                        "Set Program Counter (PC) to current "
-                                        "position")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_SET_PC, ico.imgSetMapPinDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(
+            gID_MENU_SET_PC, "Set PC", ico.imgSetMapPin.GetBitmap(), "Set Program Counter (PC) to current position")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_SET_PC, ico.imgSetMapPinDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_RESET_PC, "Set PC",
-                                        ico.imgResetMapPin.GetBitmap(),
-                                        "Reset Program Counter (PC) to "
-                                        "beginning of file")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_RESET_PC, ico.imgResetMapPinDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(
+            gID_MENU_RESET_PC, "Set PC", ico.imgResetMapPin.GetBitmap(),
+            "Reset Program Counter (PC) to beginning of file")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_RESET_PC, ico.imgResetMapPinDisabled.GetBitmap())
 
-        self.gcodeToolBar.AddSimpleTool(gID_MENU_GOTO_PC, "Goto PC",
-                                        ico.imgGotoMapPin.GetBitmap(),
-                                        "Goto current Program Counter (PC)")
-        self.gcodeToolBar.SetToolDisabledBitmap(
-            gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
+        self.gcodeToolBar.AddSimpleTool(
+            gID_MENU_GOTO_PC, "Goto PC", ico.imgGotoMapPin.GetBitmap(), "Goto current Program Counter (PC)")
+        self.gcodeToolBar.SetToolDisabledBitmap(gID_MENU_GOTO_PC, ico.imgGotoMapPinDisabled.GetBitmap())
 
         self.gcodeToolBar.Realize()
 
-        self.aui_mgr.AddPane(self.gcodeToolBar,
-                             aui.AuiPaneInfo().Name("GCODE_TOOLBAR")
-                             .Caption("Program Tool Bar").ToolbarPane()
-                             .Top().Gripper())
+        self.aui_mgr.AddPane(
+            self.gcodeToolBar, aui.AuiPaneInfo().Name("GCODE_TOOLBAR")
+            .Caption("Program Tool Bar").ToolbarPane().Top().Gripper())
 
         # ---------------------------------------------------------------------
         # Machine Tool Bar
@@ -886,8 +871,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.remoteToolBar.Realize()
 
         self.aui_mgr.AddPane(
-            self.remoteToolBar, aui.AuiPaneInfo().Name("REMOTE_TOOLBAR")
-            .Caption("Remote Tool Bar").ToolbarPane().Top().Gripper())
+            self.remoteToolBar,
+            aui.AuiPaneInfo().Name("REMOTE_TOOLBAR").Caption("Remote Tool Bar").ToolbarPane().Top().Gripper())
 
         # finish up
         self.appToolBar.Refresh()
@@ -972,9 +957,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if historyCount > 0:
                 for index in range(historyCount):
                     self.configData.add(
-                        '/mainApp/FileHistory/File%d' % (index+1),
-                        self.fileHistory.GetHistoryFile(index)
-                    )
+                        '/mainApp/FileHistory/File%d' % (index+1), self.fileHistory.GetHistoryFile(index))
 
                 self.configData.save()
 
@@ -1005,10 +988,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 menuPopup = wx.Menu()
 
                 for index in range(historyCount):
-                    m = wx.MenuItem(menuPopup, wx.ID_FILE1+index,
-                                    "&%d %s" %
-                                    (index,
-                                     self.fileHistory.GetHistoryFile(index)))
+                    m = wx.MenuItem(
+                        menuPopup, wx.ID_FILE1+index, "&%d %s" % (index, self.fileHistory.GetHistoryFile(index)))
 
                     menuPopup.Append(m)
 
@@ -1024,20 +1005,15 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def OnFileHistory(self, e):
         fileNumber = e.GetId() - wx.ID_FILE1
-        self.stateData.gcodeFileName = self.fileHistory.GetHistoryFile(
-            fileNumber)
-        self.fileHistory.AddFileToHistory(
-            self.stateData.gcodeFileName)  # move up the list
+        self.stateData.gcodeFileName = self.fileHistory.GetHistoryFile(fileNumber)
+        self.fileHistory.AddFileToHistory(self.stateData.gcodeFileName)  # move up the list
 
         # update file history in config data
         historyCount = self.fileHistory.GetCount()
 
         if historyCount > 0:
             for index in range(historyCount):
-                self.configData.add(
-                    '/mainApp/FileHistory/File%d' % (index+1),
-                    self.fileHistory.GetHistoryFile(index)
-                )
+                self.configData.add('/mainApp/FileHistory/File%d' % (index+1), self.fileHistory.GetHistoryFile(index))
 
             self.configData.save()
 
@@ -1077,8 +1053,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.OnFileSaveAs(e)
         else:
             if self.saveBackupFile:
-                shutil.copyfile(self.stateData.gcodeFileName,
-                                self.stateData.gcodeFileName+"~")
+                shutil.copyfile(self.stateData.gcodeFileName, self.stateData.gcodeFileName+"~")
 
             self.gcText.SaveFile(self.stateData.gcodeFileName)
 
@@ -1116,9 +1091,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if historyCount > 0:
                 for index in range(historyCount):
                     self.configData.add(
-                        '/mainApp/FileHistory/File%d' % (index+1),
-                        self.fileHistory.GetHistoryFile(index)
-                    )
+                        '/mainApp/FileHistory/File%d' % (index+1), self.fileHistory.GetHistoryFile(index))
 
                 self.configData.save()
 
@@ -1862,8 +1835,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     if e:
                         pass
         else:
-            spList = glob.glob('/dev/ttyUSB*') + \
-                glob.glob('/dev/ttyACM*') + glob.glob('/dev/cu*')
+            spList = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob('/dev/cu*')
 
         if len(spList) < 1:
             spList = ['None']
@@ -2094,7 +2066,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         #     e.RequestMore()
 
     def OnThreadEvent(self, e):
-        """ program execution thread event handlers handle events
+        """
+        Program execution thread event handlers handle events
+
         """
         self.eventHandleCount = self.eventHandleCount + 1
 
@@ -2194,27 +2168,21 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         # because dialog icons where not working correctly in
                         # Mac OS X
                         dlg = gmd.GenericMessageDialog(
-                            self, te.data.strip() +
-                            "\n\nContinue program?", "G-Code Message",
-                            wx.YES_NO | wx.YES_DEFAULT |
-                            wx.ICON_INFORMATION)
+                            self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
+                            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_INFORMATION)
                     else:
                         dlg = wx.MessageDialog(
-                            self, te.data.strip() +
-                            "\n\nContinue program?", "G-Code Message",
-                            wx.YES_NO | wx.YES_DEFAULT |
-                            wx.ICON_INFORMATION)
+                            self, te.data.strip() + "\n\nContinue program?", "G-Code Message",
+                            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_INFORMATION)
                 else:
                     if sys.platform in 'darwin':
                         # because dialog icons where not working correctly in
                         # Mac OS X
                         dlg = gmd.GenericMessageDialog(
-                            self, te.data.strip(),
-                            "G-Code Message", wx.OK | wx.ICON_INFORMATION)
+                            self, te.data.strip(), "G-Code Message", wx.OK | wx.ICON_INFORMATION)
                     else:
                         dlg = wx.MessageDialog(
-                            self, te.data.strip(),
-                            "G-Code Message", wx.OK | wx.ICON_INFORMATION)
+                            self, te.data.strip(), "G-Code Message", wx.OK | wx.ICON_INFORMATION)
 
                 result = dlg.ShowModal()
                 dlg.Destroy()
@@ -2465,8 +2433,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # still executing on them. UI should be re-enabled, any new command
         # will be queued behind already processed ones
         if self.runEndWaitingForMachIfIdle:
-            if self.stateData.machineStatusString in [
-               "Idle", "idle", "Stop", "stop", "End", "end"]:
+            if self.stateData.machineStatusString in ["Idle", "idle", "Stop", "stop", "End", "end"]:
                 self.runEndWaitingForMachIfIdle = False
                 # self.RunTimerStop()
 
@@ -2478,10 +2445,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 minutes, reminder = divmod(reminder, 60)
                 seconds, mseconds = divmod(reminder, 1)
                 runTimeStr = "%02d:%02d:%02d" % (hours, minutes, seconds)
-                runStartTimeStr = time.strftime(
-                    "%a, %d %b %Y %H:%M:%S", time.localtime(runStartTime))
-                runEndTimeStr = time.strftime(
-                    "%a, %d %b %Y %H:%M:%S", time.localtime(runStartTime + runTime))
+                runStartTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(runStartTime))
+                runEndTimeStr = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime(runStartTime + runTime))
 
                 self.Refresh()
                 self.UpdateUI()
@@ -2497,9 +2462,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     if sys.platform in 'darwin':
                         # because dialog icons where not working correctly in
                         # Mac OS X
-                        gmd.GenericMessageDialog(msgText, "G-Code Program",
-                                                 gmd.GMD_DEFAULT, wx.OK |
-                                                 wx.ICON_INFORMATION)
+                        gmd.GenericMessageDialog(
+                            msgText, "G-Code Program", gmd.GMD_DEFAULT, wx.OK | wx.ICON_INFORMATION)
                     else:
                         wx.MessageBox(msgText, "G-Code Program",
                                       wx.OK | wx.ICON_INFORMATION)
@@ -2512,8 +2476,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             reGcodeComments = [re.compile(r'\(.*\)'), re.compile(r';.*')]
 
             # run init script
-            initScript = str(self.configData.get(
-                '/machine/InitScript')).splitlines()
+            initScript = str(self.configData.get('/machine/InitScript')).splitlines()
 
             if len(initScript) > 0:
                 if self.cmdLineOptions.verbose:
