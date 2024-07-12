@@ -48,6 +48,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.stateData = state_data
         self.cmdLineOptions = cmd_line_options
         self.droObj2AxisDict = {}
+        self.axisMenu = None
 
         self.machineDataColor = wx.RED
 
@@ -214,29 +215,33 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         home_icon = wx.Bitmap(scaledImage)
 
         # Add menu items with icons
-        home_item = wx.MenuItem(self.menu, wx.ID_ANY, "Home Axis")
+        home_item_id = wx.NewId()
+        home_item = wx.MenuItem(self.menu, home_item_id, "Home Axis")
         home_item.SetBitmap(home_icon)
         self.menu.Append(home_item)
+        self.Bind(wx.EVT_MENU, self.OnHomeAxis, id=home_item_id)
 
         zero_icon = ico.imgSetToZero.GetBitmap()
-        # home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
         image = zero_icon.ConvertToImage()
         scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
         zero_icon = wx.Bitmap(scaledImage)
 
-        zero_item = wx.MenuItem(self.menu, wx.ID_ANY, "Zero Axis")
+        zero_item_id = wx.NewId()
+        zero_item = wx.MenuItem(self.menu, zero_item_id, "Zero Axis")
         zero_item.SetBitmap(zero_icon)
         self.menu.Append(zero_item)
+        self.Bind(wx.EVT_MENU, self.OnZeroAxis, id=zero_item_id)
 
         goto_icon = ico.imgMove.GetBitmap()
-        # home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
         image = goto_icon.ConvertToImage()
         scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
         goto_icon = wx.Bitmap(scaledImage)
 
-        goto_item = wx.MenuItem(self.menu, 3, "Goto Zero")
+        goto_item_id = wx.NewId()
+        goto_item = wx.MenuItem(self.menu, goto_item_id, "Goto Zero")
         goto_item.SetBitmap(goto_icon)
         self.menu.Append(goto_item)
+        self.Bind(wx.EVT_MENU, self.OnGotoZero, id=goto_item_id)
 
     def UpdateUI(self, stateData, statusData=None):
         self.stateData = stateData
@@ -499,9 +504,27 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
                             dictAxisCoor = {axis.lower(): dlg.GetValue()}
                             self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
                 elif isinstance(eventControl, wx.StaticText):
-                    print(f"StaticText value is {eventControl.GetLabel()}")
+                    self.axisMenu = axis
                     pos = eventControl.GetPosition() + (0, eventControl.GetSize().height)
                     self.PopupMenu(self.menu, pos)
+
+    def OnHomeAxis(self, e):
+        print(f"Home Axis for {self.axisMenu}")
+        dictAxisCoor = {self.axisMenu.lower(): 0}
+        self.axisMenu = None
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_HOME, dictAxisCoor)
+
+    def OnZeroAxis(self, e):
+        print(f"Zero Axis for {self.axisMenu}")
+        dictAxisCoor = {self.axisMenu.lower(): 0}
+        self.axisMenu = None
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
+
+    def OnGotoZero(self, e):
+        print(f"Goto Zero for {self.axisMenu}")
+        dictAxisCoor = {self.axisMenu.lower(): 0}
+        self.axisMenu = None
+        self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
 
     def OnRefresh(self, e):
         self.mainWindow.GetMachineStatus()
