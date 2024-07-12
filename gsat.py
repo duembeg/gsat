@@ -115,6 +115,9 @@ if __name__ == '__main__':
     import faulthandler
     faulthandler.enable()
 
+    if 'ubuntu' in os.getenv('DESKTOP_SESSION', 'unknown'):
+        os.environ["UBUNTU_MENUPROXY"] = "0"
+
     cmd_line_options = get_cli_params()
 
     config_fname = cmd_line_options.config

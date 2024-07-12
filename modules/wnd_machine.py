@@ -27,6 +27,7 @@ from wx.lib import newevent as newev
 
 import modules.config as gc
 import modules.wnd_numeric_entry as ne
+import images.icons as ico
 
 
 class gsatMachineStatusPanel(wx.ScrolledWindow):
@@ -203,13 +204,18 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.menu = wx.Menu()
 
         # Create icons (you'll need to replace these with actual icon files)
-        icon1 = wx.ArtProvider.GetBitmap(wx.ART_NEW, wx.ART_MENU, (16, 16))
+        # home_icon = ico.imgPosX.GetBitmap()
+        home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
+        image = home_icon.ConvertToImage()
+        scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
+        home_icon = wx.Bitmap(scaledImage)
+
         icon2 = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_MENU, (16, 16))
         icon3 = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_MENU, (16, 16))
 
         # Add menu items with icons
-        item1 = wx.MenuItem(self.menu, 1, "Home Axis")
-        item1.SetBitmap(icon1)
+        item1 = wx.MenuItem(self.menu, wx.ID_ANY, "Home Axis")
+        item1.SetBitmap(home_icon)
         self.menu.Append(item1)
 
         item2 = wx.MenuItem(self.menu, 2, "Zero Axis")

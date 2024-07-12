@@ -106,8 +106,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
     def InitConfig(self):
         # jogging data
-        self.configNumKeypadPendant = self.configData.get(
-            '/jogging/NumKeypadPendant')
+        self.configNumKeypadPendant = self.configData.get('/jogging/NumKeypadPendant')
 
         self.configSpindleSpeed = self.configData.get('/jogging/SpindleSpeed')
 
