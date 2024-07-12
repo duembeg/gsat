@@ -203,28 +203,40 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         # Create menu with icons
         self.menu = wx.Menu()
 
-        # Create icons (you'll need to replace these with actual icon files)
-        # home_icon = ico.imgPosX.GetBitmap()
-        home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
+        # home_icon = wx.ArtProvider.GetBitmap(wx.ART_GO_HOME, wx.ART_MENU, (16, 16))
+        # zero_icon = wx.ArtProvider.GetBitmap(wx.ART_, wx.ART_MENU, (16, 16))
+        # icon3 = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_MENU, (16, 16))
+
+        home_icon = ico.imgHomeXYZ.GetBitmap()
+        # home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
         image = home_icon.ConvertToImage()
         scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
         home_icon = wx.Bitmap(scaledImage)
 
-        icon2 = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_MENU, (16, 16))
-        icon3 = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_MENU, (16, 16))
-
         # Add menu items with icons
-        item1 = wx.MenuItem(self.menu, wx.ID_ANY, "Home Axis")
-        item1.SetBitmap(home_icon)
-        self.menu.Append(item1)
+        home_item = wx.MenuItem(self.menu, wx.ID_ANY, "Home Axis")
+        home_item.SetBitmap(home_icon)
+        self.menu.Append(home_item)
 
-        item2 = wx.MenuItem(self.menu, 2, "Zero Axis")
-        item2.SetBitmap(icon2)
-        self.menu.Append(item2)
+        zero_icon = ico.imgSetToZero.GetBitmap()
+        # home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
+        image = zero_icon.ConvertToImage()
+        scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
+        zero_icon = wx.Bitmap(scaledImage)
 
-        item3 = wx.MenuItem(self.menu, 3, "Goto Zero")
-        item3.SetBitmap(icon3)
-        self.menu.Append(item3)
+        zero_item = wx.MenuItem(self.menu, wx.ID_ANY, "Zero Axis")
+        zero_item.SetBitmap(zero_icon)
+        self.menu.Append(zero_item)
+
+        goto_icon = ico.imgMove.GetBitmap()
+        # home_icon = wx.Bitmap("images/icons/color/jogging_home_xyz_48x48.png", wx.BITMAP_TYPE_PNG)
+        image = goto_icon.ConvertToImage()
+        scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
+        goto_icon = wx.Bitmap(scaledImage)
+
+        goto_item = wx.MenuItem(self.menu, 3, "Goto Zero")
+        goto_item.SetBitmap(goto_icon)
+        self.menu.Append(goto_item)
 
     def UpdateUI(self, stateData, statusData=None):
         self.stateData = stateData

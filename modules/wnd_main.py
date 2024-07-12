@@ -496,8 +496,19 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.menuBar.Append(remoteMenu, "R&emote")
 
         remoteMenu.AppendCheckItem(gID_MENU_REMOTE_CONNECT, "&Connect")
-        remoteMenu.Append(gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
-        remoteMenu.Append(gID_MENU_REMOTE_SETTINGS, "&Settings")
+
+        #remoteMenu.Append(gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
+        remoteGetGcode = wx.MenuItem(remoteMenu, gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
+        if os.name != 'nt':
+            remoteGetGcode.SetBitmap(ico.imgRemoteGcode.GetBitmap())
+        remoteMenu.Append(remoteGetGcode)
+
+
+        #remoteMenu.Append(gID_MENU_REMOTE_SETTINGS, "&Settings")
+        remoteSettings = wx.MenuItem(remoteMenu, gID_MENU_REMOTE_SETTINGS, "&Settings")
+        if os.name != 'nt':
+            remoteSettings.SetBitmap(ico.imgRemoteSettings.GetBitmap())
+        remoteMenu.Append(remoteSettings)
 
         # ---------------------------------------------------------------------
         # Tool menu
