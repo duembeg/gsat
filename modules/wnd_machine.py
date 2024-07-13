@@ -232,16 +232,16 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.menu.Append(zero_item)
         self.Bind(wx.EVT_MENU, self.OnZeroAxis, id=zero_item_id)
 
-        goto_icon = ico.imgMove.GetBitmap()
-        image = goto_icon.ConvertToImage()
+        set_to_icon = ico.imgSettings.GetBitmap()
+        image = set_to_icon.ConvertToImage()
         scaledImage = image.Scale(16, 16, wx.IMAGE_QUALITY_HIGH)
-        goto_icon = wx.Bitmap(scaledImage)
+        set_to_icon = wx.Bitmap(scaledImage)
 
-        goto_item_id = wx.NewId()
-        goto_item = wx.MenuItem(self.menu, goto_item_id, "Goto Zero")
-        goto_item.SetBitmap(goto_icon)
-        self.menu.Append(goto_item)
-        self.Bind(wx.EVT_MENU, self.OnGotoZero, id=goto_item_id)
+        set_to_value_item_id = wx.NewId()
+        set_to_value_item = wx.MenuItem(self.menu, set_to_value_item_id, "Set to value")
+        set_to_value_item.SetBitmap(set_to_icon)
+        self.menu.Append(set_to_value_item)
+        self.Bind(wx.EVT_MENU, self.OnSetToValue, id=set_to_value_item_id)
 
     def UpdateUI(self, stateData, statusData=None):
         self.stateData = stateData
@@ -499,7 +499,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             if eventControl in self.droObj2AxisDict.keys():
                 axis = self.droObj2AxisDict[eventControl].get('axis')
                 if isinstance(eventControl, wx.TextCtrl):
-                    with ne.gsatNumericEntryDialog(self, "Goto", f"Enter new value for {axis} axis") as dlg:
+                    with ne.gsatNumericEntryDialog(self, "Goto", f"Enter go to value for {axis} axis") as dlg:
                         if dlg.ShowModal() == wx.ID_OK:
                             dictAxisCoor = {axis.lower(): dlg.GetValue()}
                             self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
@@ -520,11 +520,16 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         self.axisMenu = None
         self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
-    def OnGotoZero(self, e):
+    def OnSetToValue(self, e):
         print(f"Goto Zero for {self.axisMenu}")
-        dictAxisCoor = {self.axisMenu.lower(): 0}
+        axis = self.axisMenu
         self.axisMenu = None
-        self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
+        dictAxisCoor = {axis.lower(): 0}
+
+        with ne.gsatNumericEntryDialog(self, "Set To Value", f"Enter new value for {axis} axis") as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                dictAxisCoor = {axis.lower(): dlg.GetValue()}
+                self.mainWindow.eventForward2Machif(gc.EV_CMD_SET_AXIS, dictAxisCoor)
 
     def OnRefresh(self, e):
         self.mainWindow.GetMachineStatus()

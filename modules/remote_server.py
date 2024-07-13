@@ -708,9 +708,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             python_ver = sys.version.replace('\n', "")
                             sys_str = str(os.uname()).replace("posix.uname_result", "")
                             welcome_str = \
-                                "=========================================\n"\
+                                "==========================================\n"\
                                 f"Welcome to gsat server {vinfo.__version__}, running on:\n"\
-                                f"Server: {self.host} on port {soc.getsockname()[1]}\n"\
+                                f"Server: {self.host} port: {soc.getsockname()[1]}\n"\
                                 f"Python: {python_ver}\n"\
                                 f"System: {sys_str}\n"\
                                 "\n"
