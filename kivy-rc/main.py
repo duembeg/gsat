@@ -33,7 +33,7 @@ import hashlib
 import queue
 import threading
 
-#from kivy.lang import Builder
+# from kivy.lang import Builder
 from kivy.config import Config
 from kivy.utils import platform
 from kivy.metrics import sp, dp, mm
@@ -43,7 +43,7 @@ from kivy.metrics import sp, dp, mm
 Config.set('graphics', 'KIVY_CLOCK', 'interrupt')
 
 if platform != 'android':
-    Config.set('kivy','window_icon','gsat-rc-32x32.png')
+    Config.set('kivy', 'window_icon', 'gsat-rc-32x32.png')
     # Config.set('kivy','icon','gsat-rc-32x32.png')
 
     # Lenovo M8 Tablet 1280 x 800
@@ -75,13 +75,13 @@ from kivymd.uix.screen import Screen
 from kivymd.uix.boxlayout import MDBoxLayout
 # from kivymd.uix.floatlayout import FloatLayout
 from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.button import MDFlatButton, MDIconButton #, MDRectangleFlatButton, , MDRoundImageButton
-from kivymd.uix.textfield import MDTextField #, MDTextFieldRect
+from kivymd.uix.button import MDFlatButton, MDIconButton  # , MDRectangleFlatButton, , MDRoundImageButton
+from kivymd.uix.textfield import MDTextField  # , MDTextFieldRect
 from kivymd.uix.list import MDList, OneLineListItem, TwoLineListItem, OneLineIconListItem
 # from kivymd.uix.dropdownitem import MDDropDownItem
 from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.list import IRightBodyTouch
-from kivymd.uix.selectioncontrol import MDCheckbox #, MDSwitch
+from kivymd.uix.list import IRightBodyTouch, IconLeftWidget
+from kivymd.uix.selectioncontrol import MDCheckbox  # , MDSwitch
 from kivymd.uix.dialog import MDDialog
 from kivymd.theming import ThemeManager
 from kivymd.toast import toast
@@ -95,7 +95,6 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.factory import Factory
 
-
 from modules.version_info import *
 import modules.config as gc
 import modules.remote_client as rc
@@ -103,6 +102,7 @@ import modules.remote_client as rc
 
 def no_machine_detected():
     toast("There is no machine connected/detected")
+
 
 def jog_not_permitted_run_state():
     toast("JOG operations not permitted while in RUN state")
@@ -124,8 +124,10 @@ class TextInputTouchScroll(TextInput):
 
     # @mainthread
     def append_text(self, str_data, from_undo=False):
-        ''' Append text to end of self.text
-        '''
+        """
+        Append text to end of self.text
+
+        """
         try:
             # self.text = "".join([self.text, str_data])
             self.readonly = False
@@ -151,16 +153,21 @@ class TextInputTouchScroll(TextInput):
         super(TextInputTouchScroll, self).insert_text(substring, from_undo)
 
 
-class InputDialagoContent(MDBoxLayout):
-    ''' General config custom input dialog content '''
+class InputDialogContent(MDBoxLayout):
+    """
+    General config custom input dialog content
+
+    """
 
     value = ObjectProperty(None)
-    #enter = ObjectProperty(None)
+    # enter = ObjectProperty(None)
 
     def __init__(self, val, **kwargs):
-        ''' init function for object
-        '''
-        super(InputDialagoContent, self).__init__(**kwargs)
+        """
+        Init function for object
+
+        """
+        super(InputDialogContent, self).__init__(**kwargs)
         self.value = val
         self.register_event_type('on_enter')
 
@@ -172,8 +179,10 @@ class InputDialagoContent(MDBoxLayout):
         self.ids.text_field.text = self.value
 
     def on_number_button_release(self, instance):
-        ''' replace txt field with button text
-        '''
+        """
+        Replace txt field with button text
+
+        """
         self.ids.text_field.text = instance.text
         self.value = self.ids.text_field.text
         # self.ids.text_field.focus = True
@@ -185,15 +194,18 @@ class InputDialagoContent(MDBoxLayout):
     def on_text_validate(self, instance):
         self.value = instance.text
         self.dispatch('on_enter')
-        #self.enter = True
-        #self.enter = False
+        # self.enter = True
+        # self.enter = False
 
     def on_enter(self, *args):
         pass
 
 
-class StepSizeDialogContent(InputDialagoContent):
-    ''' Step size config custom dialog content '''
+class StepSizeDialogContent(InputDialogContent):
+    """
+    Step size config custom dialog content
+
+    """
 
     def on_init(self, *args):
         super(StepSizeDialogContent, self).on_init(args)
@@ -201,14 +213,13 @@ class StepSizeDialogContent(InputDialagoContent):
         self.height = "200dp"
         self.ids.text_field.input_filter = 'float'
 
-        for bt_text in ['0.1', '0.5', '1', '5', '10', '20', '50','100', '150', '200', '400', '500']:
+        for bt_text in ['0.1', '0.5', '1', '5', '10', '20', '50', '100', '150', '200', '400', '500']:
             bt = MDFlatButton(
                 text=bt_text, on_release=self.on_number_button_release,
-                text_color=MDApp.get_running_app().theme_cls.primary_color
-            )
+                text_color=MDApp.get_running_app().theme_cls.primary_color)
             self.ids.step_size_buttons.add_widget(bt)
 
-        self.size_hint_y=None
+        self.size_hint_y = None
         bt = MDFlatButton(text='dummy', on_release=self.on_number_button_release)
 
     def on_number_button_release(self, instance):
@@ -216,19 +227,25 @@ class StepSizeDialogContent(InputDialagoContent):
         self.on_text_validate(instance)
 
 
-class ServerDialagoContent(InputDialagoContent):
-    ''' Server config custom dialog content '''
+class ServerDialogContent(InputDialogContent):
+    """
+    Server config custom dialog content
+
+    """
+
     def __init__(self, hostname, tcp_port, udp_port, use_udp_broadcast, **kwargs):
-        ''' init function for object
-        '''
+        """
+        Init function for object
+
+        """
         self.hostname = hostname
         self.tcp_port = tcp_port
         self.udp_port = udp_port
         self.use_udp_broadcast = use_udp_broadcast
-        super(ServerDialagoContent, self).__init__(hostname, **kwargs)
+        super(ServerDialogContent, self).__init__(hostname, **kwargs)
 
     def on_init(self, *args):
-        super(ServerDialagoContent, self).on_init(args)
+        super(ServerDialogContent, self).on_init(args)
 
         self.height = "240dp"
         self.ids.text_field.input_filter = None
@@ -269,22 +286,35 @@ class ServerDialagoContent(InputDialagoContent):
 
 
 class OneListItemWithCheckbox(OneLineListItem):
-    '''Custom list item.'''
+    """
+    Custom list item.
+
+    """
 
 
 class TwoListItemWithCheckbox(TwoLineListItem):
-    '''Custom list item.'''
+    """
+    Custom list item.
+
+    """
 
 
 class RightCheckbox(IRightBodyTouch, MDCheckbox):
-    '''Custom right container.'''
+    """
+    Custom right container.
+
+    """
+
 
 class IconListItem(OneLineIconListItem):
     icon = StringProperty()
 
+
 class MDBoxLayoutDRO(MDBoxLayout):
-    ''' Class to handle DRO panel list items
-    '''
+    """
+    Class to handle DRO panel list items
+
+    """
     rc_connect = ObjectProperty(None)
     server_hostname = ObjectProperty(None)
     server_tcp_port = ObjectProperty(None)
@@ -295,8 +325,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
     sw_state = ObjectProperty(None)
 
     def __init__(self, **kwargs):
-        ''' Constructor
-        '''
+        """
+        Constructor
+
+        """
         super(MDBoxLayoutDRO, self).__init__(**kwargs)
 
         self.register_event_type('on_display_gcode_filename')
@@ -304,9 +336,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
         Clock.schedule_once(self.on_init)
         # self.on_init()
 
-    def init_a_menu (self, data, list_items):
-        ''' Init a single menu from data array
-        '''
+    def init_a_menu(self, data, list_items):
+        """
+        Init a single menu from data array
+
+        """
         menu_items = []
         for di in data:
             if di:
@@ -329,7 +363,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                             "viewclass": "IconListItem",
                             "icon": di['icon'],
                             "text": di['name'],
-                            #"font_style": "Caption",
+                            # "font_style": "Caption",
                             # "height": "36dp",
                             # "top_pad": "10dp",
                             # "bot_pad": "10dp",
@@ -340,9 +374,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
             else:
                 menu_items.append({"viewclass": "MDSeparator", "height": 1})
 
-        #menu = MDDropdownMenu(caller=self, items=menu_items, width_mult=4)
-        #menu = MDDropdownMenu(caller=self, items=menu_items, always_release=True)
-        #menu = MDDropdownMenu(caller=self, items=menu_items, on_release=self.menu_callback)
+        # menu = MDDropdownMenu(caller=self, items=menu_items, width_mult=4)
+        # menu = MDDropdownMenu(caller=self, items=menu_items, always_release=True)
+        # menu = MDDropdownMenu(caller=self, items=menu_items, on_release=self.menu_callback)
         menu = MDDropdownMenu(caller=self, items=menu_items)
 
         if type(list_items) is not list:
@@ -356,10 +390,19 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
     def init_dialog(self):
         self.server_config_dialog = self.on_init_value_dialog('server_config')
+        self.got_to_axis_dialog = self.on_init_value_dialog('got_to_axis')
+        self.set_value_axis_dialog = self.on_init_value_dialog('set_value_axis')
+
+        # all axis list items have the same dialog
+        for li in self.axis_list_items_dialog:
+            if li in self.list_items:
+                self.list_items[li].dialog = self.got_to_axis_dialog
 
     def init_list(self):
-        ''' Init MD lists
-        '''
+        """
+        Init MD lists
+
+        """
         # update DRO list
         items = list(self.ids.dro_list.children)
         for li in items:
@@ -377,18 +420,20 @@ class MDBoxLayoutDRO(MDBoxLayout):
             self.ids.info_list.add_widget(self.list_items[li])
 
     def init_menu(self):
-        ''' Init menus for the different widgets
-        '''
+        """
+        Init menus for the different widgets
+
+        """
         icon = 'icon'
         name = 'name'
 
         # axis menus
         items = [
-            {icon: "numeric-0-circle-outline", name: "Zero Axis"},
             {icon: "home-search-outline", name: "Home Axis"},
-            {icon: "target", name: "Go to Zero"},
+            {icon: "numeric-0-circle-outline", name: "Zero Axis"},
+            {icon: "tools", name: "Set to value"},
         ]
-        self.init_a_menu(items, self.axis_list_items)
+        self.init_a_menu(items, self.axis_list_items_menu)
 
         # device menu
         items = [
@@ -410,10 +455,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
         ]
         self.init_a_menu(items, 'rc')
 
-
     def menu_callback(self, menu_text, list_item):
-        ''' menu callback event handler
-        '''
+        """
+        Menu callback event handler
+
+        """
         if isinstance(list_item, list):
             list_item = list_item[0]
 
@@ -424,8 +470,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
         li = ""
         for i in self.list_items:
             if id(self.list_items[i]) == caller:
-               li = i
-               break
+                li = i
+                break
 
         # handle remote server
         if li == 'rc':
@@ -452,18 +498,18 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_RESET)
 
         # handle axis menus
-        elif li in self.axis_list_items and gc.gsatrc_remote_client:
-            if self.sw_state in [gc.STATE_RUN]:
+        elif li in self.axis_list_items_menu:
+            if self.sw_state in [gc.STATE_RUN] and gc.gsatrc_remote_client:
                 jog_not_permitted_run_state()
                 return
 
             if gc.gsatrc_remote_client and self.serial_port_open:
                 if menu_text == "Zero Axis":
-                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li: 0})
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {li.lower(): 0})
                 elif menu_text == "Home Axis":
-                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li: 0})
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li.lower(): 0})
                 elif menu_text == "Go to Zero":
-                    axis = {li: 0}
+                    axis = {li.lower(): 0}
                     if self.jog_feed_rate == "Rapid":
                         gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
                     else:
@@ -473,14 +519,16 @@ class MDBoxLayoutDRO(MDBoxLayout):
             else:
                 no_machine_detected()
 
-
     def on_display_gcode_filename(self, *args):
         pass
 
     def on_init(self, *args):
-        ''' init event after construction
-        '''
-        self.axis_list_items = ['x', 'y', 'z', 'a', 'b', 'c']
+        """
+        Init event after construction
+
+        """
+        self.axis_list_items_menu = ['X', 'Y', 'Z', 'A', 'B', 'C']
+        self.axis_list_items_dialog = ['x', 'y', 'z', 'a', 'b', 'c']
         self.dro_list_enable = ['x', 'z', 'fr', 'pc', 'mi', 'swst']
         self.info_list_enable = ['y', 'a', 'st', 'rt', 'rc', 'gfn']
         self.list_items_enable = list(self.dro_list_enable)
@@ -493,11 +541,17 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
         self.list_items = {
             'x': self.ids.x_axis,
+            'X': self.ids.x_axis_icon,
             'y': self.ids.y_axis,
+            'Y': self.ids.y_axis_icon,
             'z': self.ids.z_axis,
+            'Z': self.ids.z_axis_icon,
             'a': self.ids.a_axis,
+            'A': self.ids.a_axis_icon,
             'b': self.ids.b_axis,
+            'B': self.ids.b_axis_icon,
             'c': self.ids.c_axis,
+            'C': self.ids.c_axis_icon,
             'fr': self.ids.feed_rate,
             'st': self.ids.status,
             'swst': self.ids.sw_status,
@@ -508,8 +562,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
             'gfn': self.ids.gcode_fname,
         }
 
+        self.list_items_ids = {id(v): k for k, v in self.list_items.items()}
+
         for li in self.list_items:
             self.list_items[li].menu = None
+            self.list_items[li].dialog = None
 
         self.server_hostname = MDApp.get_running_app().config.get(__appname__, 'server_hostname')
         self.server_tcp_port = MDApp.get_running_app().config.get(__appname__, 'server_tcp_port')
@@ -521,8 +578,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
         self.init_dialog()
 
     def on_init_value_dialog(self, data_key):
-        ''' setup jog step size dialog
-        '''
+        """
+        Setup jog step size dialog
+
+        """
         button_text_color = MDApp.get_running_app().theme_cls.primary_color
 
         dialog_title = ""
@@ -530,14 +589,26 @@ class MDBoxLayoutDRO(MDBoxLayout):
         value_dialog = None
 
         if data_key == "server_config":
-            content_cls = ServerDialagoContent(
+            content_cls = ServerDialogContent(
                 self.server_hostname, self.server_tcp_port, self.server_udp_port, eval(self.server_use_udp_broadcast)
             )
             dialog_title = 'Remote Server'
 
+        elif data_key == "got_to_axis":
+            content_cls = InputDialogContent(val="")
+            content_cls.ids.text_field.input_filter = 'float'
+            content_cls.ids.text_field.input_type = 'number'
+            dialog_title = 'Go to Axis'
+
+        elif data_key == "set_value_axis":
+            content_cls = InputDialogContent(val="")
+            content_cls.ids.text_field.input_filter = 'float'
+            content_cls.ids.text_field.input_type = 'number'
+            dialog_title = 'Set Axis Value'
+
         if content_cls is not None:
 
-            dialog_buttons=[
+            dialog_buttons = [
                 MDFlatButton(text="CANCEL", text_color=button_text_color, on_release=self.on_value_dialog_cancel),
                 MDFlatButton(text="OK", text_color=button_text_color, on_release=self.on_value_dialog_ok),
             ]
@@ -552,14 +623,34 @@ class MDBoxLayoutDRO(MDBoxLayout):
         return value_dialog
 
     def on_list_item_release(self, instance):
-        ''' On list item release event handler
-        '''
+        """
+        On list item release event handler
+
+        """
+        instance_id = id(instance)
         if instance is not None:
             # print(instance.text, instance.x, instance.y)
             # print(instance.to_window(instance.center_x, instance.center_y), instance.text)
             if instance.menu:
                 instance.menu.caller = instance
                 instance.menu.open()
+
+            elif instance.dialog:
+                self.value_dialog = None
+                i = self.list_items_ids.get(instance_id)
+
+                if i in self.axis_list_items_dialog:
+                    # is one of the axis items
+                    self.value_dialog = self.got_to_axis_dialog
+                    self.value_dialog_data_key = f"got_to_axis:{i}"
+                    self.value_dialog.title = f"Move axis {i.upper()}"
+
+                if self.value_dialog:
+                    self.value_dialog.open()
+
+            else:
+                pass
+                # print("No menu for this item")
 
     def on_serial_port_open(self, instance, val):
 
@@ -600,8 +691,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
             MDApp.get_running_app().config.write()
 
     def on_update(self, sr):
-        ''' Update DRO fields
-        '''
+        """
+        Update DRO fields
+
+        """
         if 'st' in self.list_items_enable and 'stat' in sr:
             if self.list_items['st'].text != sr['stat']:
                 self.list_items['st'].text = sr['stat']
@@ -661,7 +754,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 firmware_version_str = "fb:{} fv:{}".format(firmware_version_str, sr['fv'])
 
             machif_str = ""
-            if len (sr['machif']):
+            if len(sr['machif']):
                 machif_str = "{} ({})".format(sr['machif'], firmware_version_str)
 
             if self.list_items['mi'].text != machif_str:
@@ -674,7 +767,6 @@ class MDBoxLayoutDRO(MDBoxLayout):
         if 'gfn' in self.list_items_enable and 'gfn' in sr:
             if self.list_items['gfn'].text != sr['gfn']:
                 self.list_items['gfn'].text = sr['gfn']
-
 
     def on_value_dialog_cancel(self, instance):
         self.value_dialog.dismiss()
@@ -689,6 +781,22 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 self.server_tcp_port = self.value_dialog.content_cls.tf_tcp_port.text
                 self.server_udp_port = self.value_dialog.content_cls.tf_udp_port.text
                 self.server_use_udp_broadcast = str(self.value_dialog.content_cls.cb_use_udp_broadcast.active)
+            elif 'got_to_axis' in self.value_dialog_data_key:
+                axis = self.value_dialog_data_key.split(':')[-1]
+                value = self.value_dialog.content_cls.ids.text_field.text
+                self.value_dialog.content_cls.ids.text_field.text = ""
+                # print(f"Move axis {axis} to value: {value}")
+                if gc.gsatrc_remote_client and self.serial_port_open:
+                    axis_dict = {axis.lower(): value}
+                    if self.jog_feed_rate == "Rapid":
+                        gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
+                    else:
+                        gc_cmd = gc.EV_CMD_JOG_MOVE
+                        axis_dict['feed'] = int(self.jog_feed_rate)
+                    gc.gsatrc_remote_client.add_event(gc_cmd, axis_dict)
+                else:
+                    no_machine_detected()
+
 
         self.value_dialog.dismiss()
         self.value_dialog = None
@@ -711,7 +819,7 @@ class MDGridLayoutButtons(MDGridLayout):
     def __init__(self, **args):
         super(MDGridLayoutButtons, self).__init__(**args)
 
-        self.gc = gc # for access via kv lang
+        self.gc = gc  # for access via kv lang
 
         Clock.schedule_once(self.on_init)
 
@@ -727,8 +835,10 @@ class MDGridLayoutButtons(MDGridLayout):
         self.on_jog_step_size_value_update()
 
     def on_init_config_dialog(self, data_key):
-        ''' setup jog step size dialog
-        '''
+        """
+        Setup jog step size dialog
+
+        """
         button_text_color = MDApp.get_running_app().theme_cls.primary_color
 
         dialog_title = ""
@@ -739,7 +849,7 @@ class MDGridLayoutButtons(MDGridLayout):
         config_dialog = None
 
         if data_key in ['jsz']:
-            content_cls=StepSizeDialogContent(val="")
+            content_cls = StepSizeDialogContent(val="")
             content_cls.ids.text_field.input_filter = 'float'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Step Size'
@@ -747,7 +857,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_step_size_value
             content_cls_on_cancel = self.on_jog_step_size_cancel
         elif data_key == 'jfr':
-            content_cls = InputDialagoContent(val="")
+            content_cls = InputDialogContent(val="")
             content_cls.ids.text_field.input_filter = 'int'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Feed Rate'
@@ -755,7 +865,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_feed_rate_value
             content_cls_on_cancel = self.on_jog_feed_rate_cancel
         elif data_key == 'jrpm':
-            content_cls = InputDialagoContent(val="")
+            content_cls = InputDialogContent(val="")
             content_cls.ids.text_field.input_filter = 'int'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Spindle RPM'
@@ -763,7 +873,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_spindle_rpm_value
             content_cls_on_cancel = self.on_jog_spindle_rpm_cancel
         elif data_key == "jgcmd":
-            content_cls = InputDialagoContent(val="")
+            content_cls = InputDialogContent(val="")
             content_cls.ids.text_field.input_filter = None
             content_cls.ids.text_field.input_type = 'text'
             dialog_title = 'G-Code Command'
@@ -773,7 +883,7 @@ class MDGridLayoutButtons(MDGridLayout):
 
         if content_cls is not None:
 
-            dialog_buttons=[
+            dialog_buttons = [
                 MDFlatButton(text="CANCEL", text_color=button_text_color, on_release=content_cls_on_cancel),
                 MDFlatButton(text="OK", text_color=button_text_color, on_release=content_cls_on_ok),
             ]
@@ -796,28 +906,36 @@ class MDGridLayoutButtons(MDGridLayout):
         return config_dialog
 
     def on_jog_feed_rate_bt(self):
-        ''' setup jog step size dialog
-        '''
+        """
+        Setup jog step size dialog
+
+        """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_feed_rate')
         self.jog_feed_rate_dlg.content_cls.ids.text_field.text = ""
         if value != "Rapid":
-           self.jog_feed_rate_dlg.content_cls.ids.text_field.text = value
+            self.jog_feed_rate_dlg.content_cls.ids.text_field.text = value
         self.jog_feed_rate_dlg.open()
 
     def on_jog_feed_rate_cancel(self, *args):
-        ''' handle cancel button on dialog
-        '''
+        """
+        Handle cancel button on dialog
+
+        """
         self.jog_feed_rate_dlg.dismiss()
 
     def on_jog_feed_rate_rapid_bt(self, *args):
-        ''' handle special Rapid button
-        '''
-        value = self.jog_feed_rate_dlg.content_cls.ids.text_field.text = "Rapid"
+        """
+        Handle special Rapid button
+
+        """
+        # value = self.jog_feed_rate_dlg.content_cls.ids.text_field.text = "Rapid"
         self.on_jog_feed_rate_value()
 
     def on_jog_feed_rate_value(self, *args):
-        ''' Get and save value
-        '''
+        """
+        Get and save value
+
+        """
         self.jog_feed_rate_dlg.dismiss()
         value = self.jog_feed_rate_dlg.content_cls.ids.text_field.text
         value_key = 'jog_feed_rate'
@@ -828,25 +946,33 @@ class MDGridLayoutButtons(MDGridLayout):
             self.on_jog_feed_rate_value_update()
 
     def on_jog_feed_rate_value_update(self, *args):
-        ''' Update UI
-        '''
+        """
+        Update UI
+
+        """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_feed_rate')
         self.ids.feed_rate.text = "Feed Rate\n{}".format(value)
         self.jog_feed_rate = value
 
     def on_jog_g_code_cmd_bt(self):
-        ''' setup G-code cmd dialog
-        '''
+        """
+        Setup G-code cmd dialog
+
+        """
         self.jog_g_code_cmd_dlg.open()
 
     def on_jog_g_code_cmd_cancel(self, *args):
-        ''' handle cancel button on dialog
-        '''
+        """
+        Handle cancel button on dialog
+
+        """
         self.jog_g_code_cmd_dlg.dismiss()
 
     def on_jog_g_code_cmd_value(self, *args):
-        ''' Get value and send to remote server
-        '''
+        """
+        Get value and send to remote server
+
+        """
         self.jog_g_code_cmd_dlg.dismiss()
         value = self.jog_g_code_cmd_dlg.content_cls.ids.text_field.text
 
@@ -856,20 +982,26 @@ class MDGridLayoutButtons(MDGridLayout):
             self.on_no_serial_port_open()
 
     def on_jog_spindle_rpm_bt(self):
-        ''' setup spindle rpm dialog
-        '''
+        """
+        Setup spindle rpm dialog
+
+        """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_spindle_rpm')
         self.jog_spindle_rpm_dlg.content_cls.ids.text_field.text = value
         self.jog_spindle_rpm_dlg.open()
 
     def on_jog_spindle_rpm_cancel(self, *args):
-        ''' handle cancel button on dialog
-        '''
+        """
+        Handle cancel button on dialog
+
+        """
         self.jog_spindle_rpm_dlg.dismiss()
 
     def on_jog_spindle_rpm_value(self, *args):
-        ''' Get and save value
-        '''
+        """
+        Get and save value
+
+        """
         self.jog_spindle_rpm_dlg.dismiss()
         value = self.jog_spindle_rpm_dlg.content_cls.ids.text_field.text
         value_key = 'jog_spindle_rpm'
@@ -880,22 +1012,28 @@ class MDGridLayoutButtons(MDGridLayout):
             self.on_jog_spindle_rpm_value_update()
 
     def on_jog_spindle_rpm_value_update(self, *args):
-        ''' Update UI
-        '''
+        """
+        Update UI
+
+        """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_spindle_rpm')
         self.ids.spindle_rpm.text = "Spindle RPM\n{}".format(value)
         self.jog_spindle_rpm = value
 
     def on_jog_step_size_bt(self):
-        ''' setup jog step size dialog
-        '''
+        """
+        Setup jog step size dialog
+
+        """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_step_size')
         self.jog_step_size_dlg.content_cls.ids.text_field.text = value
         self.jog_step_size_dlg.open()
 
     def on_jog_step_size_cancel(self, *args):
-        ''' handle cancel button on dialog
-        '''
+        """
+        Handle cancel button on dialog
+
+        """
         self.jog_step_size_dlg.dismiss()
 
     def on_jog_step_size_value(self, *args):
@@ -909,8 +1047,10 @@ class MDGridLayoutButtons(MDGridLayout):
             self.on_jog_step_size_value_update()
 
     def on_jog_step_size_value_update(self, *args):
-        ''' Update UI
-        '''
+        """
+        Update UI
+
+        """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_step_size')
         self.ids.step_size.text = "Step Size\n{}".format(value)
         self.jog_step_size = value
@@ -1001,7 +1141,6 @@ class MDGridLayoutButtons(MDGridLayout):
             self.ids.machine_hold.disabled = True
 
 
-
 class MDGridLayoutJogControls(MDGridLayout):
     sw_state = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
@@ -1034,12 +1173,11 @@ class MDGridLayoutJogControls(MDGridLayout):
         br = 7  # 7 buttons per row
         space = self.spacing[0] + 2 # 18 spacing
         sz = abs(int((self.parent.width - (space * (br-1))) / 7))
-        print (self.parent.width)
+        # print(self.parent.width)
         # print (self.parent.width - (sp * (br-1)))
         # print (sz)
         # print (sp(1))
         # print ("{:.2f}sp".format(sz/sp(1)))
-
 
         if sz > 60:
             for widget in self.walk():
@@ -1050,8 +1188,10 @@ class MDGridLayoutJogControls(MDGridLayout):
                     # widget.canvas.ask_update()
 
     def on_jog_button_long_press(self, time):
-        ''' handle long press for a few jog buttons (part 3)
-        '''
+        """
+        Handle long press for a few jog buttons (part 3)
+
+        """
         if self.sw_state in [gc.STATE_RUN]:
             jog_not_permitted_run_state()
             return
@@ -1072,8 +1212,10 @@ class MDGridLayoutJogControls(MDGridLayout):
         self.on_jog_move_relative(self.jog_long_press_key[1:], step_size=float(big_val * dir))
 
     def on_jog_button_press(self, key):
-        ''' handle long press for a few jog buttons (part 1)
-        '''
+        """
+        Handle long press for a few jog buttons (part 1)
+
+        """
         if self.sw_state in [gc.STATE_RUN]:
             jog_not_permitted_run_state()
             return
@@ -1083,8 +1225,10 @@ class MDGridLayoutJogControls(MDGridLayout):
             self.long_press_clk_ev = Clock.schedule_once(self.on_jog_button_long_press, self.jog_long_press_time)
 
     def on_jog_button_release(self, key):
-        ''' handle long press for a few jog buttons (part 2)
-        '''
+        """
+        Handle long press for a few jog buttons (part 2)
+
+        """
         if self.sw_state in [gc.STATE_RUN]:
             jog_not_permitted_run_state()
             return
@@ -1112,7 +1256,6 @@ class MDGridLayoutJogControls(MDGridLayout):
                 )
         else:
             no_machine_detected()
-
 
     def on_jog_home_axis(self, axis):
         if self.sw_state in [gc.STATE_RUN]:
@@ -1230,8 +1373,8 @@ class RootWidget(Screen, gc.EventQueueIf):
         # self.dispatch('on_process_queue')
 
     def append_text(self, str_data):
-        ''' text output
-        '''
+        """ text output
+        """
         self.text_out.append_text(str_data)
 
     def on_open(self):
@@ -1274,7 +1417,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.jog_ctrl.serial_port_open = value
         self.ids.dro_panel.serial_port_open = value
 
-        if value == False and self.update_dro:
+        if value is False and self.update_dro:
             self.remote_gcode_md5 = 0
             self.remote_gcode_filename = ""
 
@@ -1285,8 +1428,10 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.dro_panel.sw_state = value
 
     def on_process_queue(self, *args):
-        ''' Process evens on queue
-        '''
+        """
+        Process evens on queue
+
+        """
         try:
             ev = self._eventQueue.get_nowait()
         except queue.Empty:
@@ -1369,7 +1514,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_HIT_MSG [%s]" % ev.data.strip())
 
-                self.append_text("** MSG: {}\n".fromat(ev.data.strip()))
+                self.append_text("** MSG: {}\n".format(ev.data.strip()))
 
                 # if lastSwState == gc.STATE_RUN:
                 #     if sys.platform in 'darwin':
@@ -1474,7 +1619,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                 self.serial_port_open = False
                 self.device_detected = False
 
-            elif  ev.event_id == gc.EV_RMT_CONFIG_DATA:
+            elif ev.event_id == gc.EV_RMT_CONFIG_DATA:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(ev.sender), ev.sender))
 
@@ -1568,8 +1713,10 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.jog_ctrl.jog_step_size = self.jog_step_size
 
     def on_value_rc_connect(self, instance, value):
-        ''' Handle remote server open/close events from DRO panel
-        '''
+        """
+        Handle remote server open/close events from DRO panel
+
+        """
         if value:
             self.on_open()
         else:
@@ -1601,6 +1748,7 @@ class MDBoxLayoutAutoRotate(MDBoxLayout):
         else:
             self.orientation = 'vertical'
 
+
 class MainApp(MDApp):
     # icon = "gsat-rc-32x32.png"
 
@@ -1608,8 +1756,8 @@ class MainApp(MDApp):
         self.title = __appname_brief__
         self.icon = "gsat-rc-32x32.png"
         config = self.config
-        #self.theme_cls.primary_palette = "Green"
-        #self.theme_cls.primary_hue = "A700"
+        # self.theme_cls.primary_palette = "Green"
+        # self.theme_cls.primary_hue = "A700"
         self.theme_cls.theme_style = "Light"
         # screen = Builder.load_string(kv_helper)
         # return screen
@@ -1639,10 +1787,10 @@ class MainApp(MDApp):
             from jnius import autoclass, JavaException
 
             version = autoclass("android.os.Build$VERSION")
-            version_codes =  autoclass("android.os.Build$VERSION_CODES")
+            version_codes = autoclass("android.os.Build$VERSION_CODES")
 
             if (version.SDK_INT >= version_codes.M):
-                PythonActivity =  autoclass("org.kivy.android.PythonActivity")
+                PythonActivity = autoclass("org.kivy.android.PythonActivity")
                 activity = PythonActivity.mActivity
 
                 Context = autoclass('android.content.Context')
@@ -1685,6 +1833,7 @@ class MainApp(MDApp):
 
     def get_color_random(self):
         return (random.random(), random.random(), random.random(), 1)
+
 
 if __name__ == '__main__':
     MainApp().run()

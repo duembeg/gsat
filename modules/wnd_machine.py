@@ -499,7 +499,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
             if eventControl in self.droObj2AxisDict.keys():
                 axis = self.droObj2AxisDict[eventControl].get('axis')
                 if isinstance(eventControl, wx.TextCtrl):
-                    with ne.gsatNumericEntryDialog(self, "Goto", f"Enter go to value for {axis} axis") as dlg:
+                    with ne.gsatNumericEntryDialog(self, "Move to", f"Enter new position for {axis} axis") as dlg:
                         if dlg.ShowModal() == wx.ID_OK:
                             dictAxisCoor = {axis.lower(): dlg.GetValue()}
                             self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
