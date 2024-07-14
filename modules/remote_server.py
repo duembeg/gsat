@@ -45,11 +45,7 @@ def verbose_data_ascii(direction, data):
 
 
 def verbose_data_hex(direction, data):
-    return "[%03d] %s ASCII:%s HEX:%s" % (
-        len(data),
-        direction,
-        data.strip(),
-        ':'.join(x.encode('hex') for x in data))
+    return "[%03d] %s ASCII:%s HEX:%s" % (len(data), direction, data.strip(), ':'.join(f"{x:02x}" for x in data))
 
 
 class RemoteServerThread(threading.Thread, gc.EventQueueIf):

@@ -39,11 +39,7 @@ def verbose_data_ascii(direction, data):
 
 def verbose_data_hex(direction, data):
     return "[%03d] %s ASCII:%s HEX:%s" % (
-        len(data),
-        direction,
-        data.strip(),
-        ':'.join(x.encode("utf-8").hex() for x in data)
-    )
+        len(data), direction, data.strip(), ':'.join(x.encode("utf-8").hex() for x in data))
 
 
 class SerialPortThread(threading.Thread, gc.EventQueueIf):
