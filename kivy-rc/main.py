@@ -189,7 +189,7 @@ class InputDialogContent(MDBoxLayout):
 
     def on_open(self, instance):
         pass
-        # self.ids.text_field.focus = True
+        self.ids.text_field.focus = True
 
     def on_text_validate(self, instance):
         self.value = instance.text
@@ -769,6 +769,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 self.list_items['gfn'].text = sr['gfn']
 
     def on_value_dialog_cancel(self, instance):
+        if 'got_to_axis' in self.value_dialog_data_key:
+            self.value_dialog.content_cls.ids.text_field.text = ""
+
         self.value_dialog.dismiss()
         self.value_dialog = None
 
@@ -796,7 +799,6 @@ class MDBoxLayoutDRO(MDBoxLayout):
                     gc.gsatrc_remote_client.add_event(gc_cmd, axis_dict)
                 else:
                     no_machine_detected()
-
 
         self.value_dialog.dismiss()
         self.value_dialog = None
