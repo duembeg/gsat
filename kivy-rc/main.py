@@ -1385,7 +1385,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.register_event_type('on_process_queue')
 
         # init variables
-        self.gc = gc # for access via kv lang
+        self.gc = gc  # for access via kv lang
         gc.gsatrc_remote_client = None
         self.device_detected = False
         self.jog_step_size = ""
@@ -1557,39 +1557,6 @@ class RootWidget(Screen, gc.EventQueueIf):
                     self.logger.info("EV_HIT_MSG [%s]" % ev.data.strip())
 
                 self.append_text("** MSG: {}\n".format(ev.data.strip()))
-
-                # if lastSwState == gc.STATE_RUN:
-                #     if sys.platform in 'darwin':
-                #         # because dialog icons where not working correctly in
-                #         # Mac OS X
-                #         dlg = gmd.GenericMessageDialog(
-                #             self, ev.data.strip() +
-                #             "\n\nContinue program?", "G-Code Message",
-                #             wx.YES_NO | wx.YES_DEFAULT |
-                #             wx.ICON_INFORMATION)
-                #     else:
-                #         dlg = wx.MessageDialog(
-                #             self, ev.data.strip() +
-                #             "\n\nContinue program?", "G-Code Message",
-                #             wx.YES_NO | wx.YES_DEFAULT |
-                #             wx.ICON_INFORMATION)
-                # else:
-                #     if sys.platform in 'darwin':
-                #         # because dialog icons where not working correctly in
-                #         # Mac OS X
-                #         dlg = gmd.GenericMessageDialog(
-                #             self, ev.data.strip(),
-                #             "G-Code Message", wx.OK | wx.ICON_INFORMATION)
-                #     else:
-                #         dlg = wx.MessageDialog(
-                #             self, ev.data.strip(),
-                #             "G-Code Message", wx.OK | wx.ICON_INFORMATION)
-
-                # result = dlg.ShowModal()
-                # dlg.Destroy()
-
-                # if result == wx.ID_YES:
-                #     self.OnRun()
 
             elif ev.event_id == gc.EV_SER_PORT_OPEN:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:

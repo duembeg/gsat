@@ -304,6 +304,12 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                 os.system('sudo reboot')
 
+            elif e.event_id == gc.EV_RMT_PING:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                    self.logger.info("EV_RMT_PING from client{}".format(self.inputsAddr[e.sender]))
+
+                self.send(e.sender, gc.SimpleEvent(gc.EV_RMT_PONG, 0, id(self.socServer)))
+
             else:
                 # # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
                 # self.logger.error(

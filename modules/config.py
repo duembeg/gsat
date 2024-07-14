@@ -207,6 +207,8 @@ EV_RMT_PORT_OPEN = 2230
 EV_RMT_PORT_CLOSE = 2240
 EV_RMT_CONFIG_DATA = 2250
 EV_RMT_SERIAL_PORTS = 2260
+EV_RMT_PING = 2270
+EV_RMT_PONG = 2280
 
 # --------------------------------------------------------------------------
 # VERBOSE MASK
