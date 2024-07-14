@@ -105,6 +105,7 @@ if platform == 'android':
     LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
     Version = autoclass("android.os.Build$VERSION")
     Version_codes = autoclass("android.os.Build$VERSION_CODES")
+    PowerManager = autoclass('android.os.PowerManager')
 
 
 from modules.version_info import *
@@ -1293,9 +1294,7 @@ class MDGridLayoutJogControls(MDGridLayout):
                 elif key[:1] == "-":
                     dir = -1
 
-                self.on_jog_move_relative(
-                    self.jog_long_press_key[1:], step_size=float(self.jog_step_size * dir)
-                )
+                self.on_jog_move_relative(self.jog_long_press_key[1:], step_size=float(self.jog_step_size * dir))
         else:
             no_machine_detected()
 
@@ -1415,15 +1414,16 @@ class RootWidget(Screen, gc.EventQueueIf):
         # self.dispatch('on_process_queue')
 
     def append_text(self, str_data):
-        """ text output
+        """
+        Text output
+
         """
         self.text_out.append_text(str_data)
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:
             gc.gsatrc_remote_client = rc.RemoteClientThread(
-                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast
-            )
+                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast)
 
     def on_cli_text_validate(self, text, *args):
         if gc.gsatrc_remote_client and self.serial_port_open:
@@ -1748,6 +1748,8 @@ class MDBoxLayoutAutoRotate(MDBoxLayout):
     def __init__(self, **kwargs):
         super(MDBoxLayoutAutoRotate, self).__init__(**kwargs)
 
+        self.wake_lock = None
+
     def on_size(self, *args):
         # print (self.size)
         # print (self.width)
@@ -1804,6 +1806,9 @@ class MainApp(MDApp):
             power = activity.getSystemService(Context.POWER_SERVICE)
             ignore_batt_opt = power.isIgnoringBatteryOptimizations(activity.getPackageName())
 
+            self.wake_lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag")
+            self.wake_lock.acquire()
+
             if ignore_batt_opt:
                 pass
             else:
@@ -1848,6 +1853,9 @@ class MainApp(MDApp):
     def on_stop(self):
         self.root.on_stop()
         self.config.write()
+
+        if self.wake_lock:
+            self.wake_lock.release()
 
     def get_color_random(self):
         return (random.random(), random.random(), random.random(), 1)
