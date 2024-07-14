@@ -175,7 +175,7 @@ class InputDialogContent(MDBoxLayout):
         # self.on_init()
 
     def on_init(self, *args):
-        #self.ids.text_field.focus = True
+        # self.ids.text_field.focus = True
         self.ids.text_field.text = self.value
 
     def on_number_button_release(self, instance):
@@ -279,7 +279,7 @@ class ServerDialogContent(InputDialogContent):
         cb_l.size_hint_x = None
         cb_l.width = cb_l.text_size[0] + 48
         bl.add_widget(cb_l)
-        cb = MDCheckbox(pos_hint={'left':1})
+        cb = MDCheckbox(pos_hint={'left': 1})
         cb.active = self.use_udp_broadcast
         cb.size_hint_x = None
         cb.width = "48dp"
@@ -519,6 +519,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
                         gc_cmd = gc.EV_CMD_JOG_MOVE
                         axis['feed'] = int(self.jog_feed_rate)
                     gc.gsatrc_remote_client.add_event(gc_cmd, axis)
+                elif menu_text == "Set to value":
+                    self.value_dialog_data_key = f"set_value_axis:{li}"
+                    self.value_dialog = self.set_value_axis_dialog
+                    self.value_dialog.title = f"Set axis {li.upper()}"
+                    self.value_dialog.open()
             else:
                 no_machine_detected()
 
@@ -800,6 +805,15 @@ class MDBoxLayoutDRO(MDBoxLayout):
                         gc_cmd = gc.EV_CMD_JOG_MOVE
                         axis_dict['feed'] = int(self.jog_feed_rate)
                     gc.gsatrc_remote_client.add_event(gc_cmd, axis_dict)
+                else:
+                    no_machine_detected()
+            elif 'set_value_axis' in self.value_dialog_data_key:
+                axis = self.value_dialog_data_key.split(':')[-1]
+                value = self.value_dialog.content_cls.ids.text_field.text
+                self.value_dialog.content_cls.ids.text_field.text = ""
+                # print(f"Set axis {axis} to value: {value}")
+                if gc.gsatrc_remote_client and self.serial_port_open:
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_SET_AXIS, {axis.lower(): value})
                 else:
                     no_machine_detected()
 
