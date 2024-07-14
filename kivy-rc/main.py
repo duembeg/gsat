@@ -1423,7 +1423,8 @@ class RootWidget(Screen, gc.EventQueueIf):
     def on_open(self):
         if gc.gsatrc_remote_client is None:
             gc.gsatrc_remote_client = rc.RemoteClientThread(
-                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast)
+                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast,
+                timeout=0)
 
     def on_cli_text_validate(self, text, *args):
         if gc.gsatrc_remote_client and self.serial_port_open:
@@ -1767,6 +1768,7 @@ class MainApp(MDApp):
         self.title = __appname_brief__
         self.icon = "gsat-rc-32x32.png"
         config = self.config
+        self.wake_lock = None
         # self.theme_cls.primary_palette = "Green"
         # self.theme_cls.primary_hue = "A700"
         self.theme_cls.theme_style = "Light"

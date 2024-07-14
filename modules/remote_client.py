@@ -52,8 +52,10 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
     """
 
-    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None):
-        """ Init remote client class
+    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None, timeout=None):
+        """
+        Init remote client class
+
         """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
@@ -78,6 +80,11 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.useUdpBroadcast = use_udp_broadcast
         else:
             self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
+
+        if timeout is not None:
+            self.timeout = timeout
+        else:
+            self.timeout = gc.CONFIG_DATA.get('/remote/timeout', 0)
 
         # self.host = "river"
         self.socServer = None
