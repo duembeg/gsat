@@ -175,7 +175,7 @@ class InputDialogContent(MDBoxLayout):
         # self.on_init()
 
     def on_init(self, *args):
-        # self.ids.text_field.focus = True
+        #self.ids.text_field.focus = True
         self.ids.text_field.text = self.value
 
     def on_number_button_release(self, instance):
@@ -188,7 +188,10 @@ class InputDialogContent(MDBoxLayout):
         # self.ids.text_field.focus = True
 
     def on_open(self, instance):
-        pass
+        Clock.schedule_once(self.on_open_after, 0.1)
+        # self.ids.text_field.focus = True
+
+    def on_open_after(self, *args):
         self.ids.text_field.focus = True
 
     def on_text_validate(self, instance):
