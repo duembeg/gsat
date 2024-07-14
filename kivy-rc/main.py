@@ -25,18 +25,18 @@
 
 ----------------------------------------------------------------------------"""
 
-import sys
+# import sys
 import os
 import time
 import random
 import hashlib
 import queue
-import threading
+# import threading
 
 # from kivy.lang import Builder
 from kivy.config import Config
 from kivy.utils import platform
-from kivy.metrics import sp, dp, mm
+# from kivy.metrics import sp, dp, mm
 
 # dealing with some issue on scheduling events, coming
 # from networking thread, interrupt mode is faster
@@ -1403,6 +1403,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.button_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
         self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
 
+        Clock.schedule_once(self.on_keep_alive, 60)
         Clock.schedule_once(self.on_init)
         # self.on_init()
 
@@ -1446,6 +1447,12 @@ class RootWidget(Screen, gc.EventQueueIf):
         # print ("*******************")
         # print (Window.size)
         # print ("################# {}".format(self.size))
+
+    def on_keep_alive(self, *args):
+        if gc.gsatrc_remote_client:
+            gc.gsatrc_remote_client.add_event(gc.EV_RMT_PING)
+            Clock.schedule_once(self.on_keep_alive, 60)
+            print("Keep Alive")
 
     def on_display_gcode_filename(self, *args):
         if len(self.remote_gcode_filename):
@@ -1820,22 +1827,6 @@ class MainApp(MDApp):
                 Uri = autoclass('android.net.Uri')
 
                 intent = Intent()
-
-                # try:
-                #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                #     intent.setData(Uri.parse("package:" + activity.getPackageName()))
-                #     activity.startActivity(intent)
-                # except JavaException as err:
-                #     print ("Got Java exceptions")
-                #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                #     toast("Please mark gsat rc as not optimized in the next screen", length_long=20)
-                #     activity.startActivity(intent)
-
-                # except Exception as err:
-                #     print ("Got exceptions")
-
-                # except:
-                #     print ("Why here??")
 
                 intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 toast("Please mark ( gsat rc ) as not optimized", length_long=20)
