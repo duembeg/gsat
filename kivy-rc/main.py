@@ -95,6 +95,18 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.factory import Factory
 
+if platform == 'android':
+    from jnius import autoclass
+    from android.runnable import run_on_ui_thread
+
+    # Import Android-specific classes
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    WindowManager = autoclass('android.view.WindowManager')
+    LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
+    Version = autoclass("android.os.Build$VERSION")
+    Version_codes = autoclass("android.os.Build$VERSION_CODES")
+
+
 from modules.version_info import *
 import modules.config as gc
 import modules.remote_client as rc
@@ -1167,7 +1179,7 @@ class MDGridLayoutJogControls(MDGridLayout):
     def __init__(self, **args):
         super(MDGridLayoutJogControls, self).__init__(**args)
 
-        self.gc = gc # for access via kv lang
+        self.gc = gc  # for access via kv lang
         self.jog_step_size = ""
         self.jog_feed_rate = ""
         self.jog_spindle_rpm = ""
@@ -1176,10 +1188,21 @@ class MDGridLayoutJogControls(MDGridLayout):
         self.jog_long_press_ev = False
         self.jog_long_press_key = ""
 
-        Clock.schedule_once(self.on_init, 1)
+        Clock.schedule_once(self.on_init, 3)
 
     def on_init(self, *args):
         pass
+        # # Calculate available space
+        # available_width = self.width - sum(child.width for child in self.children)
+        # available_height = self.height - sum(child.height for child in self.children)
+
+        # # Calculate spacing
+        # h_spacing = available_width / (self.cols + 1)
+        # v_spacing = available_height / (self.rows + 1)
+
+        # # Set spacing
+        # self.spacing = (h_spacing, v_spacing)
+
         # print ("$$$$$$$$$$$$$$$$$  {}".format(self.parent.width))
 
     # def on_size (self, *args):
@@ -1190,7 +1213,7 @@ class MDGridLayoutJogControls(MDGridLayout):
         # print (self.width)
 
         br = 7  # 7 buttons per row
-        space = self.spacing[0] + 2 # 18 spacing
+        space = self.spacing[0] + 2  # 18 spacing
         sz = abs(int((self.parent.width - (space * (br-1))) / 7))
         # print(self.parent.width)
         # print (self.parent.width - (sp * (br-1)))
@@ -1780,6 +1803,10 @@ class MainApp(MDApp):
         self.theme_cls.theme_style = "Light"
         # screen = Builder.load_string(kv_helper)
         # return screen
+
+        if platform == 'android':
+            Clock.schedule_once(self.set_wake_lock, 0)
+
         return RootWidget()
 
     def build_config(self, config):
@@ -1803,48 +1830,53 @@ class MainApp(MDApp):
             # mess socket connection, resulting in a non responsive network connection
             # if version M or newer ask user to add this app to the
             # "NO BATT OPTIMIZATION" list
-            from jnius import autoclass, JavaException
 
-            version = autoclass("android.os.Build$VERSION")
-            version_codes = autoclass("android.os.Build$VERSION_CODES")
+            activity = PythonActivity.mActivity
 
-            if (version.SDK_INT >= version_codes.M):
-                PythonActivity = autoclass("org.kivy.android.PythonActivity")
-                activity = PythonActivity.mActivity
+            Context = autoclass('android.content.Context')
+            power = activity.getSystemService(Context.POWER_SERVICE)
+            ignore_batt_opt = power.isIgnoringBatteryOptimizations(activity.getPackageName())
 
-                Context = autoclass('android.content.Context')
-                power = activity.getSystemService(Context.POWER_SERVICE)
-                ignore_batt_opt = power.isIgnoringBatteryOptimizations(activity.getPackageName())
+            if ignore_batt_opt:
+                pass
+            else:
+                Intent = autoclass('android.content.Intent')
+                Settings = autoclass('android.provider.Settings')
+                # pm = autoclass('android.content.pm.PackageManager')
+                Uri = autoclass('android.net.Uri')
 
-                if ignore_batt_opt:
-                    pass
-                else:
-                    Intent = autoclass('android.content.Intent')
-                    Settings = autoclass('android.provider.Settings')
-                    # pm = autoclass('android.content.pm.PackageManager')
-                    Uri = autoclass('android.net.Uri')
+                intent = Intent()
 
-                    intent = Intent()
+                # try:
+                #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                #     intent.setData(Uri.parse("package:" + activity.getPackageName()))
+                #     activity.startActivity(intent)
+                # except JavaException as err:
+                #     print ("Got Java exceptions")
+                #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                #     toast("Please mark gsat rc as not optimized in the next screen", length_long=20)
+                #     activity.startActivity(intent)
 
-                    # try:
-                    #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                    #     intent.setData(Uri.parse("package:" + activity.getPackageName()))
-                    #     activity.startActivity(intent)
-                    # except JavaException as err:
-                    #     print ("Got Java exceptions")
-                    #     intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                    #     toast("Please mark gsat rc as not optimized in the next screen", length_long=20)
-                    #     activity.startActivity(intent)
+                # except Exception as err:
+                #     print ("Got exceptions")
 
-                    # except Exception as err:
-                    #     print ("Got exceptions")
+                # except:
+                #     print ("Why here??")
 
-                    # except:
-                    #     print ("Why here??")
+                intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                toast("Please mark ( gsat rc ) as not optimized", length_long=20)
+                activity.startActivity(intent)
 
-                    intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                    toast("Please mark ( gsat rc ) as not optimized", length_long=20)
-                    activity.startActivity(intent)
+    def set_wake_lock(self, *args):
+        if platform == 'android':
+            self._android_set_wake_lock()
+
+    if platform == 'android':
+        @run_on_ui_thread
+        def _android_set_wake_lock(self):
+            activity = PythonActivity.mActivity
+            window = activity.getWindow()
+            window.addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
 
     def on_stop(self):
         self.root.on_stop()
