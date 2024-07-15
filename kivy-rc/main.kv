@@ -88,6 +88,9 @@
     # height: self.minimum_height
     MDBoxLayout:
         # orientation: 'vertical'
+        # adaptive_size: True
+        # size_hint: None, None
+        # size: self.minimum_size
         height: self.minimum_height
         ScrollView:
             MDList:
@@ -359,9 +362,10 @@
     # button_size: pt(24) #"38sp"
     button_size: sp(48)
     # spacing: 24
-    size_hint:(None, None)
-    width: self.minimum_width
-    height: self.minimum_height
+    # size_hint:(None, None)
+    # width: self.minimum_width
+    # height: self.minimum_height
+    adaptive_size: True
     pos_hint: {'center_x':0.5, 'center_y':0.5}
     MDIconButton:
     # Button:

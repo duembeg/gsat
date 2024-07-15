@@ -31,6 +31,7 @@ import time
 import random
 import hashlib
 import queue
+from functools import partial
 # import threading
 
 # from kivy.lang import Builder
@@ -94,6 +95,7 @@ from kivy.clock import Clock, mainthread
 from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.factory import Factory
+from kivy.uix.widget import Widget
 
 if platform == 'android':
     from jnius import autoclass
@@ -249,7 +251,8 @@ class ServerDialogContent(InputDialogContent):
 
     """
 
-    def __init__(self, hostname, tcp_port, udp_port, use_udp_broadcast, **kwargs):
+    def __init__(
+            self, hostname, tcp_port, udp_port, enable_udp_broadcast, keep_alive_period, enable_keep_alive, **kwargs):
         """
         Init function for object
 
@@ -257,7 +260,9 @@ class ServerDialogContent(InputDialogContent):
         self.hostname = hostname
         self.tcp_port = tcp_port
         self.udp_port = udp_port
-        self.use_udp_broadcast = use_udp_broadcast
+        self.udp_broadcast = enable_udp_broadcast
+        self.keep_alive_period = keep_alive_period
+        self.keep_alive = enable_keep_alive
         super(ServerDialogContent, self).__init__(hostname, **kwargs)
 
     def on_init(self, *args):
@@ -269,35 +274,67 @@ class ServerDialogContent(InputDialogContent):
         self.ids.text_field.hint_text = "Server Hostname"
         self.tf_server = self.ids.text_field
 
-        tf = MDTextField()
-        tf.text = self.tcp_port
-        tf.hint_text = "TCP Port"
-        tf.input_type = 'number'
-        tf.input_filter = 'int'
-        tf.on_text_validate = self.on_text_validate
-        self.tf_tcp_port = tf
-        self.add_widget(tf)
-
-        tf = MDTextField()
-        tf.text = self.udp_port
-        tf.hint_text = "UDP Port"
-        tf.input_type = 'number'
-        tf.input_filter = 'int'
-        tf.on_text_validate = self.on_text_validate
-        self.tf_udp_port = tf
-        self.add_widget(tf)
-
         bl = MDBoxLayout()
-        cb_l = MDLabel(text="Use UDP Broadcast")
-        cb_l.size_hint_x = None
-        cb_l.width = cb_l.text_size[0] + 48
-        bl.add_widget(cb_l)
-        cb = MDCheckbox(pos_hint={'left': 1})
-        cb.active = self.use_udp_broadcast
-        cb.size_hint_x = None
-        cb.width = "48dp"
-        self.cb_use_udp_broadcast = cb
-        bl.add_widget(cb)
+        tf_tcp_port = MDTextField()
+        tf_tcp_port.text = self.tcp_port
+        tf_tcp_port.hint_text = "TCP Port"
+        tf_tcp_port.input_type = 'number'
+        tf_tcp_port.input_filter = 'int'
+        tf_tcp_port.on_text_validate = partial(self.on_text_validate, tf_tcp_port)
+        self.tf_tcp_port = tf_tcp_port
+        bl.add_widget(tf_tcp_port)
+        self.add_widget(bl)
+
+        # UDP Port controls
+        bl = MDBoxLayout()
+        tf_udp_port = MDTextField()
+        tf_udp_port.text = self.udp_port
+        tf_udp_port.hint_text = "UDP Port"
+        tf_udp_port.input_type = 'number'
+        tf_udp_port.input_filter = 'int'
+        tf_udp_port.on_text_validate = partial(self.on_text_validate, tf_udp_port)
+        self.tf_udp_port = tf_udp_port
+        bl.add_widget(tf_udp_port)
+        spacer = Widget()
+        spacer.size_hint_x = None
+        spacer.width = "20dp"
+        bl.add_widget(spacer)
+        l_udp_port = MDLabel(text="Enable UDP Broadcast")
+        l_udp_port.size_hint_x = None
+        # l_udp_port.width = cb_l.text_size[0] + 48
+        bl.add_widget(l_udp_port)
+        cb_udp_port = MDCheckbox()
+        cb_udp_port.active = self.udp_broadcast
+        cb_udp_port.size_hint_x = None
+        cb_udp_port.width = "32dp"
+        self.cb_udp_broadcast = cb_udp_port
+        bl.add_widget(cb_udp_port)
+        self.add_widget(bl)
+
+        # Keep alive controls
+        bl = MDBoxLayout()
+        tf_keep_alive = MDTextField()
+        tf_keep_alive.text = self.keep_alive_period
+        tf_keep_alive.hint_text = "Keep Alive Period (sec)"
+        tf_keep_alive.input_type = 'number'
+        tf_keep_alive.input_filter = 'int'
+        tf_keep_alive.on_text_validate = partial(self.on_text_validate, tf_keep_alive)
+        self.tf_keep_alive = tf_keep_alive
+        bl.add_widget(tf_keep_alive)
+        spacer = Widget()
+        spacer.size_hint_x = None
+        spacer.width = "20dp"
+        bl.add_widget(spacer)
+        l_keep_alive = MDLabel(text="Enable Keep Alive")
+        l_keep_alive.size_hint_x = None
+        # l_keep_alive.width = l_keep_alive.text_size[0]
+        bl.add_widget(l_keep_alive)
+        cb_keep_alive = MDCheckbox()
+        cb_keep_alive.active = self.keep_alive
+        cb_keep_alive.size_hint_x = None
+        cb_keep_alive.width = "32dp"
+        self.cb_keep_alive = cb_keep_alive
+        bl.add_widget(cb_keep_alive)
         self.add_widget(bl)
 
 
@@ -335,7 +372,9 @@ class MDBoxLayoutDRO(MDBoxLayout):
     server_hostname = ObjectProperty(None)
     server_tcp_port = ObjectProperty(None)
     server_udp_port = ObjectProperty(None)
-    server_use_udp_broadcast = ObjectProperty(None)
+    server_udp_broadcast = ObjectProperty(None)
+    server_keep_alive_period = ObjectProperty(None)
+    server_keep_alive = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
     jog_feed_rate = ObjectProperty(None)
     sw_state = ObjectProperty(None)
@@ -592,7 +631,16 @@ class MDBoxLayoutDRO(MDBoxLayout):
         self.server_hostname = MDApp.get_running_app().config.get(__appname__, 'server_hostname')
         self.server_tcp_port = MDApp.get_running_app().config.get(__appname__, 'server_tcp_port')
         self.server_udp_port = MDApp.get_running_app().config.get(__appname__, 'server_udp_port')
-        self.server_use_udp_broadcast = MDApp.get_running_app().config.get(__appname__, 'server_use_udp_broadcast')
+        self.server_udp_broadcast = MDApp.get_running_app().config.get(__appname__, 'server_udp_broadcast')
+        self.server_keep_alive_period = MDApp.get_running_app().config.get(__appname__, 'server_keep_alive_period')
+        self.server_keep_alive = MDApp.get_running_app().config.get(__appname__, 'server_keep_alive')
+
+        # print(f"Server hostname: {self.server_hostname}")
+        # print(f"Server TCP port: {self.server_tcp_port}")
+        # print(f"Server UDP port: {self.server_udp_port}")
+        # print(f"Server UDP broadcast: {self.server_udp_broadcast}")
+        # print(f"Server keep alive period: {self.server_keep_alive_period}")
+        # print(f"Server keep alive: {self.server_keep_alive}")
 
         self.init_menu()
         self.init_list()
@@ -611,8 +659,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
         if data_key == "server_config":
             content_cls = ServerDialogContent(
-                self.server_hostname, self.server_tcp_port, self.server_udp_port, eval(self.server_use_udp_broadcast)
-            )
+                self.server_hostname, self.server_tcp_port, self.server_udp_port, eval(self.server_udp_broadcast),
+                self.server_keep_alive_period, eval(self.server_keep_alive))
             dialog_title = 'Remote Server'
 
         elif data_key == "got_to_axis":
@@ -704,8 +752,22 @@ class MDBoxLayoutDRO(MDBoxLayout):
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
 
-    def on_server_use_udp_broadcast(self, instance, value):
-        value_key = 'server_use_udp_broadcast'
+    def on_server_udp_broadcast(self, instance, value):
+        value_key = 'server_udp_broadcast'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+
+    def on_server_keep_alive_period(self, instance, value):
+        value_key = 'server_keep_alive_period'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+
+    def on_server_keep_alive(self, instance, value):
+        value_key = 'server_keep_alive'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
@@ -804,7 +866,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 self.server_hostname = self.value_dialog.content_cls.tf_server.text
                 self.server_tcp_port = self.value_dialog.content_cls.tf_tcp_port.text
                 self.server_udp_port = self.value_dialog.content_cls.tf_udp_port.text
-                self.server_use_udp_broadcast = str(self.value_dialog.content_cls.cb_use_udp_broadcast.active)
+                self.server_udp_broadcast = str(self.value_dialog.content_cls.cb_udp_broadcast.active)
+                self.server_keep_alive_period = self.value_dialog.content_cls.tf_keep_alive.text
+                self.server_keep_alive = str(self.value_dialog.content_cls.cb_keep_alive.active)
+
             elif 'got_to_axis' in self.value_dialog_data_key:
                 axis = self.value_dialog_data_key.split(':')[-1]
                 value = self.value_dialog.content_cls.ids.text_field.text
@@ -1396,14 +1461,16 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.dro_panel.bind(server_hostname=self.on_value_server_hostname)
         self.ids.dro_panel.bind(server_tcp_port=self.on_value_server_tcp_port)
         self.ids.dro_panel.bind(server_udp_port=self.on_value_server_udp_port)
-        self.ids.dro_panel.bind(server_use_udp_broadcast=self.on_value_server_use_udp_broadcast)
+        self.ids.dro_panel.bind(server_udp_broadcast=self.on_value_server_udp_broadcast)
+        self.ids.dro_panel.bind(server_keep_alive_period=self.on_value_server_keep_alive_period)
+        self.ids.dro_panel.bind(server_keep_alive=self.on_value_server_keep_alive)
         self.ids.dro_panel.bind(on_display_gcode_filename=self.on_display_gcode_filename)
 
         self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
         self.ids.button_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
         self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
 
-        Clock.schedule_once(self.on_keep_alive, 60)
+        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive)
         Clock.schedule_once(self.on_init)
         # self.on_init()
 
@@ -1424,7 +1491,7 @@ class RootWidget(Screen, gc.EventQueueIf):
     def on_open(self):
         if gc.gsatrc_remote_client is None:
             gc.gsatrc_remote_client = rc.RemoteClientThread(
-                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_use_udp_broadcast,
+                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_udp_broadcast,
                 timeout=0)
 
     def on_cli_text_validate(self, text, *args):
@@ -1449,10 +1516,10 @@ class RootWidget(Screen, gc.EventQueueIf):
         # print ("################# {}".format(self.size))
 
     def on_keep_alive(self, *args):
-        if gc.gsatrc_remote_client:
+        if gc.gsatrc_remote_client and self.on_keep_alive:
             gc.gsatrc_remote_client.add_event(gc.EV_RMT_PING)
-            Clock.schedule_once(self.on_keep_alive, 60)
-            print("Keep Alive")
+
+        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.server_keep_alive_period)
 
     def on_display_gcode_filename(self, *args):
         if len(self.remote_gcode_filename):
@@ -1748,8 +1815,17 @@ class RootWidget(Screen, gc.EventQueueIf):
     def on_value_server_udp_port(self, instance, value):
         self.server_udp_port = int(value)
 
-    def on_value_server_use_udp_broadcast(self, instance, value):
-        self.server_use_udp_broadcast = eval(value)
+    def on_value_server_udp_broadcast(self, instance, value):
+        self.server_udp_broadcast = eval(value)
+
+    def on_value_server_keep_alive_period(self, instance, value):
+        self.server_keep_alive_period = int(value)
+        Clock.unschedule(self.keep_alive_clock)
+        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.server_keep_alive_period)
+
+    def on_value_server_keep_alive(self, instance, value):
+        self.server_keep_alive = eval(value)
+
 
 
 class MDBoxLayoutAutoRotate(MDBoxLayout):
@@ -1792,7 +1868,9 @@ class MainApp(MDApp):
             'server_hostname': "hostname",
             'server_tcp_port': "61801",
             'server_udp_port': "61802",
-            'server_use_udp_broadcast': False,
+            'server_udp_broadcast': False,
+            'server_keep_alive_period': 60,
+            'server_keep_alive': True,
             'jog_step_size': "1",
             'jog_feed_rate': "Rapid",
             'Jog_spindle_rpm': "18000"
