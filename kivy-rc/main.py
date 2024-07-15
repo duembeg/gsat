@@ -1770,6 +1770,9 @@ class RootWidget(Screen, gc.EventQueueIf):
                 #     for bp in break_points:
                 #         self.gcText.UpdateBreakPoint(bp, True)
 
+            elif ev.event_id == gc.EV_RMT_PONG:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                    self.logger.info("EV_RMT_PONG")
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.error(
