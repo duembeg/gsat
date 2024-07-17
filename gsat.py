@@ -107,7 +107,7 @@ def get_cli_params():
         parser.error("** Required wxPython 4.x or grater.")
         sys.exit(1)
 
-    if sys.version_info < (3, 8, 2):
+    if sys.version_info < (3, 8, 0):
         parser.error("** Required Python 3.8.2 or grater.")
         sys.exit(1)
 
