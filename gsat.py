@@ -102,9 +102,13 @@ def get_cli_params():
     if options.vverbose:
         options.verbose = True
 
-    if wx.VERSION < (2, 8, 0, 0):
+    if wx.VERSION < (4, 0, 0, 0):
         # print ("** Required wxPython 2.7 or grater.")
-        parser.error("** Required wxPython 2.7 or grater.")
+        parser.error("** Required wxPython 4.x or grater.")
+        sys.exit(1)
+
+    if sys.version_info < (3, 8, 2):
+        parser.error("** Required Python 3.8.2 or grater.")
         sys.exit(1)
 
     return options
@@ -125,7 +129,7 @@ if __name__ == '__main__':
     if config_fname is None:
         config_fname = os.path.abspath(os.path.abspath(os.path.expanduser("~/.gsat.json")))
 
-    gc.init_config(cmd_line_options, config_fname, "foo")
+    gc.init_config(cmd_line_options, config_fname, "x")
 
     app = wx.App(0)
     mw.gsatMainWindow(None, title=vinfo.__appname__, cmd_line_options=cmd_line_options)

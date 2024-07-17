@@ -524,7 +524,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         exFlag = False
         exMsg = ""
 
-        pickle_data = pickle.dumps(data, protocol=2)
+        pickle_data = pickle.dumps(data, protocol=5)
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
@@ -579,7 +579,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         exFlag = False
         exMsg = ""
 
-        pickle_data = pickle.dumps(data, protocol=2)
+        pickle_data = pickle.dumps(data, protocol=5)
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
