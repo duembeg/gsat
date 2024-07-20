@@ -353,7 +353,7 @@ def verbose_data_hex(direction, data):
         return "[%03d] HEX:%s" % (len(data), ':'.join(f"{x:02x}" for x in data))
 
 def verbose_hex_dump(direction, data):
-    hex_dump_data = get_hex_dump(data, 32)
+    hex_dump_data = get_hex_dump(data, 16)
     if direction:
         return "[%03d] %s hex_dump\n%s" % (len(data), direction, '\n'.join(hex_dump_data))
     else:
