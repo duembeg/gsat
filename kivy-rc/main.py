@@ -177,7 +177,7 @@ class InputDialogContent(MDBoxLayout):
     value = ObjectProperty(None)
     # enter = ObjectProperty(None)
 
-    def __init__(self, val, **kwargs):
+    def __init__(self, val, edit_auto_focus=True, **kwargs):
         """
         Init function for object
 
@@ -185,6 +185,7 @@ class InputDialogContent(MDBoxLayout):
         super(InputDialogContent, self).__init__(**kwargs)
         self.value = val
         self.register_event_type('on_enter')
+        self.edit_auto_focus = edit_auto_focus
 
         Clock.schedule_once(self.on_init)
         # self.on_init()
@@ -207,7 +208,8 @@ class InputDialogContent(MDBoxLayout):
         # self.ids.text_field.focus = True
 
     def on_open_after(self, *args):
-        self.ids.text_field.focus = True
+        if self.edit_auto_focus:
+            self.ids.text_field.focus = True
 
     def on_text_validate(self, instance):
         self.value = instance.text
@@ -505,7 +507,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
             {icon: "lan-connect", name: "Connect"},
             {icon: "lan-disconnect", name: "Disconnect"},
             # {icon: "power", name: "Reset"},
-            {icon: "refresh", name: "Reset"},
+            # {icon: "refresh", name: "Reset"},
             {icon: "cog-outline", name: "Configure"},
         ]
         self.init_a_menu(items, 'rc')
@@ -660,7 +662,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         if data_key == "server_config":
             content_cls = ServerDialogContent(
                 self.server_hostname, self.server_tcp_port, self.server_udp_port, eval(self.server_udp_broadcast),
-                self.server_keep_alive_period, eval(self.server_keep_alive))
+                self.server_keep_alive_period, eval(self.server_keep_alive), edit_auto_focus=False)
             dialog_title = 'Remote Server'
 
         elif data_key == "got_to_axis":
