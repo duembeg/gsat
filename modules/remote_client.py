@@ -22,7 +22,6 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import sys
 import threading
 import logging
 import socket
@@ -33,14 +32,6 @@ import queue
 import pickle
 
 import modules.config as gc
-
-
-def verbose_data_ascii(direction, data):
-    return "[%03d] %s %s" % (len(data), direction, data.strip())
-
-
-def verbose_data_hex(direction, data):
-    return "[%03d] %s ASCII:%s HEX:%s" % (len(data), direction, data.strip(), ':'.join(f"{x:02x}" for x in data))
 
 
 class RemoteClientThread(threading.Thread, gc.EventQueueIf):
@@ -280,22 +271,24 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.rxBufferLen -= len(msg)
                 self.rxBuffer += msg
 
-                # got the entire message decode
                 if self.rxBufferLen <= 0:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("<-", self.rxBuffer))
-
-                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("<-", self.rxBuffer))
-
+                    # got the entire message decode it
                     data = pickle.loads(self.rxBuffer)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-                        self.logger.info(
-                            "Recv msg id:{} obj:0x{:x} len:{} from {}".format(
-                                data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[self.socServer]
-                            )
-                        )
+                        log_msg =  "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
+                            data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc])
+
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                            log_msg = log_msg + gc.verbose_hex_dump("", self.rxBuffer)
+
+                        elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                            log_msg = log_msg + gc.verbose_data_hex("", self.rxBuffer)
+
+                        elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                            log_msg = log_msg + gc.verbose_data_ascii("", self.rxBuffer)
+
+                        self.logger.info(log_msg)
 
                     # init rxBuffer last
                     self.rxBuffer = b""
@@ -358,18 +351,22 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
             if len(msg):
                 # got the entire message decode
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                    self.logger.info(verbose_data_hex("<-", msg))
-
-                elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                    self.logger.info(verbose_data_ascii("<-", msg))
-
                 data = pickle.loads(msg)
 
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-                    self.logger.info(
-                        "Recv msg id:{} obj:0x{:x} len:{} from {}".format(data.event_id, id(data), len(msg), from_data)
-                    )
+                    log_msg = "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
+                        data.event_id, id(data), len(msg), from_data)
+
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                        log_msg = log_msg + gc.verbose_hex_dump("", msg)
+
+                    elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                        log_msg = log_msg + gc.verbose_data_hex("", msg)
+
+                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                        log_msg = log_msg + gc.verbose_data_ascii("", msg)
+
+                    self.logger.info(log_msg)
 
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
@@ -456,11 +453,19 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             #     exFlag = True
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-            self.logger.info(
-                "Send msg id:{} obj:0x{:x} len:{} to {}".format(
-                    data.event_id, id(data), msg_len, self.inputsAddr[self.socServer]
-                )
-            )
+            log_msg = "Send msg id:{} obj:0x{:x} len:{} to {} ".format(
+                data.event_id, id(data), msg_len, self.inputsAddr[soc])
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                log_msg = log_msg + gc.verbose_hex_dump("", pickle_data)
+
+            elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                log_msg = log_msg + gc.verbose_data_hex("", pickle_data)
+
+            elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                log_msg = log_msg + gc.verbose_data_ascii("", pickle_data)
+
+            self.logger.info(log_msg)
 
         if exFlag:
             # make sure we stop processing any states...

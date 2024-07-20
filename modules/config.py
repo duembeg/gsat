@@ -234,10 +234,11 @@ VERBOSE_MASK_SERIALIF_ALL = 0x0000F000
 
 VERBOSE_MASK_REMOTEIF_STR = 0x00010000
 VERBOSE_MASK_REMOTEIF_HEX = 0x00020000
-VERBOSE_MASK_REMOTEIF_CLIENT = 0x00040000
-VERBOSE_MASK_REMOTEIF_SERVER = 0x00080000
+VERBOSE_MASK_REMOTEIF_HEX_DUMP = 0x00040000
+VERBOSE_MASK_REMOTEIF_CLIENT = 0x00080000
+VERBOSE_MASK_REMOTEIF_SERVER = 0x00100000
 VERBOSE_MASK_REMOTEIF = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_REMOTEIF_SERVER
-VERBOSE_MASK_REMOTEIF_EV = 0x00100000
+VERBOSE_MASK_REMOTEIF_EV = 0x00200000
 VERBOSE_MASK_REMOTEIF_ALL = 0x00FF0000
 
 VERBOSE_MASK_EVENTIF = \
@@ -264,6 +265,7 @@ VERBOSE_MASK_DICT = {
     "remoteif_server": VERBOSE_MASK_REMOTEIF_SERVER,
     "remoteif_str": VERBOSE_MASK_REMOTEIF_STR,
     "remoteif_hex": VERBOSE_MASK_REMOTEIF_HEX,
+    "remoteif_hex_dump": VERBOSE_MASK_REMOTEIF_HEX_DUMP,
     "remoteif_ev": VERBOSE_MASK_REMOTEIF_EV,
     "remoteif_all": VERBOSE_MASK_REMOTEIF_ALL,
     "eventif": VERBOSE_MASK_EVENTIF,
@@ -335,6 +337,44 @@ def init_config(cmd_line_options, config_file, log_file, log_handler=None):
     CONFIG_DATA.load()
 
     STATE_DATA = gsatStateData()
+
+
+def verbose_data_ascii(direction, data):
+    if direction:
+        return "[%03d] %s %s" % (len(data), direction, data.strip())
+    else:
+        return "[%03d] %s" % (len(data), data.strip())
+
+
+def verbose_data_hex(direction, data):
+    if direction:
+        return "[%03d] %s HEX:%s" % (len(data), direction, ':'.join(f"{x:02x}" for x in data))
+    else:
+        return "[%03d] HEX:%s" % (len(data), ':'.join(f"{x:02x}" for x in data))
+
+def verbose_hex_dump(direction, data):
+    hex_dump_data = get_hex_dump(data, 32)
+    if direction:
+        return "[%03d] %s hex_dump\n%s" % (len(data), direction, '\n'.join(hex_dump_data))
+    else:
+        return "[%03d] hex_dump\n%s" % (len(data), '\n'.join(hex_dump_data))
+
+
+def hex_dump(data, bytes_per_line=16):
+    hex_dump_data = get_hex_dump(data, bytes_per_line)
+    for line in hex_dump_data:
+        print(line)
+
+
+def get_hex_dump(data, bytes_per_line=16):
+    hex_dump_data = []
+    for i in range(0, len(data), bytes_per_line):
+        chunk = data[i:i+bytes_per_line]
+        hex_repr = ' '.join([f'{byte:02x}' for byte in chunk])
+        ascii_repr = ''.join([chr(byte) if 32 <= byte <= 126 else '.' for byte in chunk])
+        hex_dump_data.append(f'{i:04x}: {hex_repr:<{bytes_per_line*3}} {ascii_repr}')
+
+    return hex_dump_data
 
 
 class gsatStateData():

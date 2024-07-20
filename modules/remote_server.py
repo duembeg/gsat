@@ -40,14 +40,6 @@ import modules.machif_progexec as mi_progexec
 import modules.version_info as vinfo
 
 
-def verbose_data_ascii(direction, data):
-    return "[%03d] %s %s" % (len(data), direction, data.strip())
-
-
-def verbose_data_hex(direction, data):
-    return "[%03d] %s ASCII:%s HEX:%s" % (len(data), direction, data.strip(), ':'.join(f"{x:02x}" for x in data))
-
-
 class RemoteServerThread(threading.Thread, gc.EventQueueIf):
     """
     Threads to send and monitor network socket for new data.
@@ -461,20 +453,22 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                 # got the entire message decode
                 if self.rxBufferLen <= 0:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("<-", self.rxBuffer))
-
-                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("<-", self.rxBuffer))
-
                     data = pickle.loads(self.rxBuffer)
 
                     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
-                        self.logger.info(
-                            "Recv msg id:{} obj:0x{:x} len:{} from {}".format(
-                                data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc]
-                            )
-                        )
+                        log_msg =  "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
+                            data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc])
+
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                            log_msg = log_msg + gc.verbose_hex_dump("", self.rxBuffer)
+
+                        elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                            log_msg = log_msg + gc.verbose_data_hex("", self.rxBuffer)
+
+                        elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                            log_msg = log_msg + gc.verbose_data_ascii("", self.rxBuffer)
+
+                        self.logger.info(log_msg)
 
                     # init rxBuffer last
                     self.rxBuffer = b""
@@ -563,11 +557,19 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             #     exFlag = True
 
         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
-            self.logger.info(
-                "Send msg id:{} obj:0x{:x} len:{} to {}".format(
-                    data.event_id, id(data), msg_len, self.inputsAddr[soc]
-                )
-            )
+            log_msg = "Send msg id:{} obj:0x{:x} len:{} to {} ".format(
+                data.event_id, id(data), msg_len, self.inputsAddr[soc])
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                log_msg = log_msg + gc.verbose_hex_dump("->", pickle_data)
+
+            elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                log_msg = log_msg + gc.verbose_data_hex("->", pickle_data)
+
+            elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                log_msg = log_msg + gc.verbose_data_ascii("->", pickle_data)
+
+            self.logger.info(log_msg)
 
         if exFlag:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
@@ -588,9 +590,18 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             self.socBroadcast.sendto(bytes(msg), ('255.255.255.255', self.udpPort))
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
-                self.logger.info(
-                    "Send broadcast msg id:{} obj:0x{:x} len:{}".format(data.event_id, id(data), msg_len)
-                )
+                log_msg = "Send broadcast msg id:{} obj:0x{:x} len:{} ".format(data.event_id, id(data), msg_len)
+
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                    log_msg = log_msg + gc.verbose_hex_dump("->", pickle_data)
+
+                elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                    log_msg = log_msg + gc.verbose_data_hex("->", pickle_data)
+
+                elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                    log_msg = log_msg + gc.verbose_data_ascii("->", pickle_data)
+
+                self.logger.info(log_msg)
 
         except OSError as e:
             exMsg = "** OSError exception: {}\n".format(str(e))
