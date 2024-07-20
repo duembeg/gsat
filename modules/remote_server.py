@@ -88,7 +88,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         self.logger = logging.getLogger()
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
             self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
 
         if event_handler is not None:
@@ -328,7 +328,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
             self.socServer = None
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.info("Close clients and server port")
 
             self.notify_event_listeners(gc.EV_RMT_PORT_CLOSE)
@@ -424,14 +424,14 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
 
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
             self.notify_event_listeners(gc.EV_ABORT, exMsg)
         else:
             msg = "Server listening on {}{}\n".format(self.host, self.socServer.getsockname())
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.info(msg.strip())
 
             # sending directly to who created us
@@ -469,7 +469,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     data = pickle.loads(self.rxBuffer)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                         self.logger.info(
                             "Recv msg id:{} obj:0x{:x} len:{} from {}".format(
                                 data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc]
@@ -510,7 +510,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.error(exMsg.strip())
 
             # add data to queue
@@ -562,7 +562,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             #     exMsg = "** Unexpected exception: {}\n".format(str(e))
             #     exFlag = True
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
             self.logger.info(
                 "Send msg id:{} obj:0x{:x} len:{} to {}".format(
                     data.event_id, id(data), msg_len, self.inputsAddr[soc]
@@ -570,7 +570,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             )
 
         if exFlag:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.error(exMsg.strip())
 
             self.clean_up(soc)
@@ -587,7 +587,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         try:
             self.socBroadcast.sendto(bytes(msg), ('255.255.255.255', self.udpPort))
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.info(
                     "Send broadcast msg id:{} obj:0x{:x} len:{}".format(data.event_id, id(data), msg_len)
                 )
@@ -610,7 +610,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         #     exFlag = True
 
         if exFlag:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.error(exMsg.strip())
 
     def send_broadcast(self, data):
@@ -645,7 +645,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             init_script = str(gc.CONFIG_DATA.get('/machine/InitScript')).splitlines()
 
             if len(init_script) > 0:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                     self.logger.info("RemoteServerThread queuing machine init script...")
 
                 for init_line in init_script:
@@ -659,7 +659,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                         if self.machifProgExec is not None:
                             self.machifProgExec.add_event(gc.EV_CMD_SEND, init_line)
 
-                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                                 self.logger.info(init_line.strip())
 
     def run(self):
@@ -670,7 +670,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
         # This is the code executing in the new thread.
         self.endThread = False
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
             self.logger.info("thread start")
 
         self.open()
@@ -699,7 +699,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             self.messageQueues[connection] = queue.Queue()
 
                             msg = "Server stablish connection to client{}\n".format(self.inputsAddr[connection])
-                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                                 self.logger.info(msg.strip())
                                 self.logger.info("Server report [{}] connected client(s)".format(len(self.inputs)-1))
 
@@ -737,13 +737,13 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             else:
                                 if not self.rxBufferLen:
                                     # no data client disconnected, clean up
-                                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                                         self.logger.info(
                                             "Connection reset by peer, client {}".format(self.inputsAddr[soc]))
 
                                     self.clean_up(soc)
 
-                                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                                         self.logger.info(
                                             "Server report [{}] connected client(s)".format(len(self.inputs)-1))
 
@@ -765,7 +765,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
                     # handle exceptions
                     for soc in exceptional:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                             self.logger.info("Unknown exception from client {}".format(self.inputsAddr[soc]))
 
                         self.clean_up(soc)
@@ -777,7 +777,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                     exMsg = "unexpected state [%d], Aborting..." \
                             % (self.swState)
 
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                     self.logger.error(exMsg.strip())
 
                     self.notify_event_listeners(gc.EV_ABORT, exMsg)
@@ -785,7 +785,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
             else:
                 message = "Remote port is close, terminating.\n"
 
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
                 self.logger.error(message.strip())
 
                 # make sure we stop processing any states...
@@ -799,7 +799,7 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
 
         # exit thread
         self.close()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_SERVER:
             self.logger.info("thread exit")
 
         self.notify_event_listeners(gc.EV_EXIT, "")
