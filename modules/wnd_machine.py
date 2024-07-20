@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   wnd_machine.py
+    wnd_machine.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import wx
@@ -502,7 +502,12 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
                     with ne.gsatNumericEntryDialog(self, "Move to", f"Enter new position for {axis} axis") as dlg:
                         if dlg.ShowModal() == wx.ID_OK:
                             dictAxisCoor = {axis.lower(): dlg.GetValue()}
-                            self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
+                            if self.stateData.joggingRapid:
+                                self.mainWindow.eventForward2Machif(gc.EV_CMD_RAPID_MOVE, dictAxisCoor)
+                            else:
+                                dictAxisCoor['feed'] = self.stateData.joggingFeedRate
+                                self.mainWindow.eventForward2Machif(gc.EV_CMD_MOVE, dictAxisCoor)
+                                print(f"Move Axis {axis} to {dictAxisCoor}")
                 elif isinstance(eventControl, wx.StaticText):
                     self.axisMenu = axis
                     pos = eventControl.GetPosition() + (0, eventControl.GetSize().height)

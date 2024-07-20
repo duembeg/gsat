@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   wnd_jogging.py
+    wnd_jogging.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import wx
@@ -116,9 +116,9 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         self.customButtonsDict = self.configData.get('/jogging/CustomButtons')
 
-        self.configJogFeedRate = self.configData.get('/jogging/JogFeedRate')
         self.configJogInteractive = self.configData.get('/jogging/JogInteractive')
-        self.configJogRapid = self.configData.get('/jogging/JogRapid')
+        self.stateData.joggingFeedRate = self.configData.get('/jogging/JogFeedRate')
+        self.stateData.joggingRapid = self.configData.get('/jogging/JogRapid')
 
         # cli data
         self.cliSaveCmdHistory = self.configData.get('/cli/SaveCmdHistory')
@@ -129,8 +129,8 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         self.configData = config_data
         self.InitConfig()
 
-        self.rapidJogCheckBox.SetValue(self.configJogRapid)
-        self.feedRateSpinCtrl.SetValue(self.configJogFeedRate)
+        self.rapidJogCheckBox.SetValue(self.stateData.joggingRapid)
+        self.feedRateSpinCtrl.SetValue(self.stateData.joggingFeedRate)
         self.spindleSpeedSpinCtrl.SetValue(self.configSpindleSpeed)
 
         for customButton in self.customButtonsObjDict:
@@ -453,17 +453,18 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         # add rapid jog check box controls
         self.rapidJogCheckBox = wx.CheckBox(self, label='Rapid')
-        self.rapidJogCheckBox.SetValue(self.configJogRapid)
+        self.rapidJogCheckBox.SetValue(self.stateData.joggingRapid)
         self.rapidJogCheckBox.SetToolTip(wx.ToolTip("Enables rapid jog positioning, otherwise feed rate"))
-        self.Bind(wx.EVT_CHECKBOX, self.OnJogRapid, self.rapidJogCheckBox)
+        self.rapidJogCheckBox.Bind(wx.EVT_CHECKBOX, self.OnJogRapid)
 
         gbJogSpindleGridSizer.Add(self.rapidJogCheckBox, pos=(0, 0), span=(1, 2), flag=wx.TOP, border=5)
 
         self.feedRateSpinCtrl = wx.SpinCtrlDouble(
-            self, -1, size=(stepButtonSize[0]*3, -1), min=0, max=99999, initial=self.configJogFeedRate, inc=1)
+            self, -1, size=(stepButtonSize[0]*3, -1), min=0, max=99999, initial=self.stateData.joggingFeedRate, inc=1)
 
         self.feedRateSpinCtrl.SetDigits(0)
         self.feedRateSpinCtrl.SetToolTip(wx.ToolTip("Spindle feed rate"))
+        self.feedRateSpinCtrl.Bind(wx.EVT_SPINCTRLDOUBLE, self.OnJogFeedRate)
 
         gbJogSpindleGridSizer.Add(self.feedRateSpinCtrl, pos=(1, 0), span=(1, 3), flag=wx.ALIGN_CENTER_VERTICAL)
 
@@ -563,11 +564,11 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
         dictAxisCoor[str(axis).lower()] = fAxisStrPos
 
-        if self.configJogRapid:
+        if self.stateData.joggingRapid:
             gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE
         else:
             gc_cmd = gc.EV_CMD_JOG_MOVE_RELATIVE
-            dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
+            dictAxisCoor['feed'] = self.stateData.joggingFeedRate
 
         self.mainWindow.eventForward2Machif(gc_cmd, dictAxisCoor)
 
@@ -673,21 +674,23 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         """
         dictAxisCoor = {'x': 0, 'y': 0}
 
-        if self.configJogRapid:
+        if self.stateData.joggingRapid:
             gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
         else:
             gc_cmd = gc.EV_CMD_JOG_MOVE
-            dictAxisCoor['feed'] = self.feedRateSpinCtrl.GetValue()
+            dictAxisCoor['feed'] = self.stateData.joggingFeedRate
 
         self.mainWindow.eventForward2Machif(gc_cmd, dictAxisCoor)
 
     def OnSetStepSize(self, e):
         buttonById = self.FindWindowById(e.GetId())
         self.stepSpinCtrl.SetValue(float(buttonById.GetLabel()))
-        # self.stepSpinCtrl.SetValue(buttonById.GetLabel())
 
     def OnJogRapid(self, e):
-        self.configJogRapid = e.IsChecked()
+        self.stateData.joggingRapid = e.IsChecked()
+
+    def OnJogFeedRate(self, e):
+        self.stateData.joggingFeedRate = self.feedRateSpinCtrl.GetValue()
 
     def OnCustomButton(self, e):
         buttonById = self.FindWindowById(e.GetId())
