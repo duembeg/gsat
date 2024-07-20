@@ -49,7 +49,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
     """
 
-    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None, timeout=None):
+    def __init__(
+            self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None, keep_alive=False):
         """
         Init remote client class
 
@@ -78,10 +79,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
 
-        if timeout is not None:
-            self.timeout = timeout
-        else:
-            self.timeout = gc.CONFIG_DATA.get('/remote/timeout', 0)
+        # if timeout is not None:
+        #     self.timeout = timeout
+        # else:
+        #     self.timeout = gc.CONFIG_DATA.get('/remote/timeout', 0)
+
+        # so far this has only been needed on Android devices
+        self.keep_alive = keep_alive
 
         # self.host = "river"
         self.socServer = None
@@ -198,7 +202,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)        # Internet, UDP
             self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)    # disables the Nagle algorithm on TCP connections.
 
-            if 'android' in sys.platform.lower():
+            if self.keep_alive:
                 # Android keeps on shutting down sockets we need to keep them alive
                 # from information other eit seems to be a 20 idle time out
                 self.socServer.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)

@@ -1493,9 +1493,13 @@ class RootWidget(Screen, gc.EventQueueIf):
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:
-            gc.gsatrc_remote_client = rc.RemoteClientThread(
-                self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_udp_broadcast,
-                timeout=0)
+            if platform == 'android':
+                gc.gsatrc_remote_client = rc.RemoteClientThread(
+                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_udp_broadcast,
+                    keep_alive=True)
+            else:
+                gc.gsatrc_remote_client = rc.RemoteClientThread(
+                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_udp_broadcast)
 
     def on_cli_text_validate(self, text, *args):
         if gc.gsatrc_remote_client and self.serial_port_open:
