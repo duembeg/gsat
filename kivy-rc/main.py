@@ -1929,6 +1929,7 @@ class MainApp(MDApp):
             self.wake_lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag")
             self.wake_lock.acquire()
 
+            # check battery optimization setting for this app
             if ignore_batt_opt:
                 pass
             else:
@@ -1942,6 +1943,11 @@ class MainApp(MDApp):
                 intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 toast("Please mark ( gsat rc ) as not optimized", length_long=20)
                 activity.startActivity(intent)
+
+            # Lets make sure we follow android rotation setting
+            ActivityInfo = autoclass("android.content.pm.ActivityInfo")
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER)
+
 
     def set_wake_lock(self, *args):
         if platform == 'android':
