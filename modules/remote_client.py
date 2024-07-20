@@ -22,6 +22,7 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import sys
 import threading
 import logging
 import socket
@@ -195,7 +196,16 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         try:
             self.socServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Internet, TCP
             # self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)        # Internet, UDP
-            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)    # for TCP
+            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)    # disables the Nagle algorithm on TCP connections.
+
+            if 'android' in sys.platform.lower():
+                # Android keeps on shutting down sockets we need to keep them alive
+                # from information other eit seems to be a 20 idle time out
+                self.socServer.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 10)
+                self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 10)
+                self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
+
             self.socServer.connect((self.host, self.tcpPort))
             self.inputs.append(self.socServer)
             self.inputsAddr[self.socServer] = self.socServer.getpeername()

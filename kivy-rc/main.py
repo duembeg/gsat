@@ -1456,6 +1456,9 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.jog_feed_rate = ""
         self.jog_spindle_rpm = ""
         self.update_dro = None
+        self.ping_lost_count = 0
+        self.ping_out_time = 0
+        self.ping_in_time = 0
 
         self.ids.dro_panel.bind(rc_connect=self.on_value_rc_connect)
         self.ids.dro_panel.bind(server_hostname=self.on_value_server_hostname)
@@ -1516,8 +1519,24 @@ class RootWidget(Screen, gc.EventQueueIf):
         # print ("################# {}".format(self.size))
 
     def on_keep_alive(self, *args):
-        if gc.gsatrc_remote_client and self.on_keep_alive:
+        if gc.gsatrc_remote_client and self.server_keep_alive:
             gc.gsatrc_remote_client.add_event(gc.EV_RMT_PING)
+
+            # debug_str = f"Ping lost:{self.ping_lost_count} time:{time.strftime('%X %x %Z')} ping-pong delta:{self.ping_in_time - self.ping_out_time:.4f}"
+            # print(debug_str)
+
+            # if self.ping_lost_count > 0:
+            #     self.append_text(debug_str)
+            # if self.ping_lost_count > 2:
+            #     self.append_text("Passed 2 ping lost FAIL!!")
+            #     # self.server_keep_alive = False
+            #     self.on_close()
+            #     gc.gsatrc_remote_client = None
+            #     self.on_open()
+            #     self.ping_lost_count = 0
+
+            self.ping_lost_count = self.ping_lost_count + 1
+            self.ping_out_time = time.time()
 
         self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.server_keep_alive_period)
 
@@ -1773,6 +1792,14 @@ class RootWidget(Screen, gc.EventQueueIf):
             elif ev.event_id == gc.EV_RMT_PONG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_RMT_PONG")
+
+                # subtract from ping lost counter, ideally after this
+                # subtraction the counter should be zero, it should
+                # never have more then 1, and it should be 0 after
+                # the subtraction
+                self.ping_lost_count = self.ping_lost_count - 1
+                self.ping_in_time = time.time()
+
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.error(
@@ -1830,7 +1857,6 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.server_keep_alive = eval(value)
 
 
-
 class MDBoxLayoutAutoRotate(MDBoxLayout):
     def __init__(self, **kwargs):
         super(MDBoxLayoutAutoRotate, self).__init__(**kwargs)
@@ -1872,8 +1898,8 @@ class MainApp(MDApp):
             'server_tcp_port': "61801",
             'server_udp_port': "61802",
             'server_udp_broadcast': False,
-            'server_keep_alive_period': 60,
-            'server_keep_alive': True,
+            'server_keep_alive_period': 20,
+            'server_keep_alive': False,
             'jog_step_size': "1",
             'jog_feed_rate': "Rapid",
             'Jog_spindle_rpm': "18000"
