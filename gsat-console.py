@@ -41,46 +41,53 @@ def get_cli_params():
     # parser = argparse.ArgumentParser(description=__description__)
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--version',
-                        action='version',
-                        version=f"{sys.argv[0]} {vinfo.__revision__} ({vinfo.__appname__})")
+    parser.add_argument(
+        '-V', '--version',
+        action='version',
+        version=f"{sys.argv[0]} {vinfo.__revision__} ({vinfo.__appname__})")
 
-    parser.add_argument("-c", "--config",
-                        dest="config",
-                        default=None,
-                        help="Use alternate configuration file name",
-                        metavar="FILE")
+    parser.add_argument(
+        "-c", "--config",
+        dest="config",
+        default=None,
+        help="Use alternate configuration file name",
+        metavar="FILE")
 
-    parser.add_argument("-g", "--gcode",
-                        dest="gcode",
-                        default="None",
-                        help="gcode file.",
-                        metavar="FILE")
+    parser.add_argument(
+        "-g", "--gcode",
+        dest="gcode",
+        default="None",
+        help="gcode file.",
+        metavar="FILE")
 
-    parser.add_argument("-r", "--run",
-                        dest="run",
-                        action="store_true",
-                        default=False,
-                        help="run gcode immediately, must have --gcode")
+    parser.add_argument(
+        "-r", "--run",
+        dest="run",
+        action="store_true",
+        default=False,
+        help="run gcode immediately, must have --gcode")
 
-    parser.add_argument("-s", "--server",
-                        dest="server",
-                        action="store_true",
-                        default=False,
-                        help="run gsat server on local host, and automatically connect")
+    parser.add_argument(
+        "-s", "--server",
+        dest="server",
+        action="store_true",
+        default=False,
+        help="run gsat server on local host, and automatically connect")
 
-    parser.add_argument("--nc", "--ncurses", "--no-curses",
-                        dest="no_curses",
-                        action="store_true",
-                        default=False,
-                        help="Don't use curses user interface")
+    parser.add_argument(
+        "--nc", "--ncurses", "--no-curses",
+        dest="no_curses",
+        action="store_true",
+        default=False,
+        help="Don't use curses user interface")
 
     mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
-    parser.add_argument("--vm", "--verbose_mask",
-                        dest="verbose_mask",
-                        default=None,
-                        help="select verbose mask(s) separated by ',' options are {}".format(mask_str),
-                        metavar="MASK")
+    parser.add_argument(
+        "--vm", "--verbose_mask",
+        dest="verbose_mask",
+        default=None,
+        help="select verbose mask(s) separated by ',' options are {}".format(mask_str),
+        metavar="MASK")
 
     options = parser.parse_args()
 

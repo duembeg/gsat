@@ -40,15 +40,6 @@ import modules.remote_client as remote_client
 text_queue = queue.Queue()
 
 
-def verbose_data_ascii(direction, data):
-    return "[%03d] %s %s" % (len(data), direction, data.strip())
-
-
-def verbose_data_hex(direction, data):
-    return "[%03d] %s ASCII:%s HEX:%s" % (
-        len(data), direction, data.strip(), ':'.join(x.encode("utf-8").hex() for x in data))
-
-
 class StdoutWrapper(object):
     def __init__(self, win):
         self.out = sys.stdout
@@ -440,7 +431,7 @@ class ConsoleApp(gc.EventQueueIf):
             if len(text.strip()):
                 if text.endswith('\n'):
                     self.stdout_box.addstr(text)
-                    # self.stdout_box.addstr("{}\n".format(verbose_data_hex("#", text)))
+                    # self.stdout_box.addstr("{}\n".format(gc.verbose_data_hex("#", text)))
                 else:
                     self.stdout_box.addstr("{}\n".format(text))
                 self.stdout_box.refresh()

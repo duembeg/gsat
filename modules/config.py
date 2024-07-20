@@ -323,7 +323,9 @@ def init_logger(filename, log_handler=None):
 
 
 def init_config(cmd_line_options, config_file, log_file, log_handler=None):
-    """ Initialize config vars
+    """
+    Initialize config vars
+
     """
     global CMD_LINE_OPTIONS
     global CONFIG_DATA
@@ -352,6 +354,7 @@ def verbose_data_hex(direction, data):
     else:
         return "[%03d] HEX:%s" % (len(data), ':'.join(f"{x:02x}" for x in data))
 
+
 def verbose_hex_dump(direction, data):
     hex_dump_data = get_hex_dump(data, 16)
     if direction:
@@ -378,7 +381,9 @@ def get_hex_dump(data, bytes_per_line=16):
 
 
 class gsatStateData():
-    """ Provides various data information
+    """
+    Provides various data information
+
     """
 
     def __init__(self):

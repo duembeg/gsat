@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
-   gsat.py:
+   gsat-server.py:
 
-   Copyright (C) 2013 Wilhelm Duembeg
+   Copyright (C) 2018 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -25,12 +25,11 @@
 ----------------------------------------------------------------------------"""
 import os
 import sys
+import logging
 import argparse
-import wx
 
 import modules.config as gc
-import modules.wnd_main as mw
-
+import modules.remote_server as remote_server
 import modules.version_info as vinfo
 
 
@@ -40,7 +39,8 @@ def get_cli_params():
 
     """
 
-    parser = argparse.ArgumentParser(description=vinfo.__description__)
+    # parser = argparse.ArgumentParser(description=__description__)
+    parser = argparse.ArgumentParser()
 
     parser.add_argument(
         '-V', '--version',
@@ -50,61 +50,22 @@ def get_cli_params():
     parser.add_argument(
         "-c", "--config",
         dest="config",
+        default=None,
         help="Use alternate configuration file name",
         metavar="FILE")
-
-    parser.add_argument(
-        "-v", "--verbose",
-        dest="verbose",
-        action="store_true",
-        default=False,
-        help="print extra information to stdout")
-
-    parser.add_argument(
-        "--vv", "--vverbose",
-        dest="vverbose",
-        action="store_true",
-        default=False,
-        help="print extra++ information to stdout")
 
     mask_str = str(sorted(gc.VERBOSE_MASK_DICT.keys()))
     parser.add_argument(
         "--vm", "--verbose_mask",
         dest="verbose_mask",
         default=None,
-        help="select verbose mask(s) separated by ','; the options are {}".format(mask_str),
+        help="select verbose mask(s) separated by ',' options are {}".format(mask_str),
         metavar="MASK")
-
-    parser.add_argument(
-        "-s", "--server",
-        dest="server",
-        action="store_true",
-        default=False,
-        help="run gsat server, allows other UIs like cnc pendants to connect via socket, "
-        " on this mode remote host name config is ignored and localhost is used")
 
     options = parser.parse_args()
 
     if options.verbose_mask is not None:
         options.verbose_mask = gc.decode_verbose_mask_string(options.verbose_mask)
-
-    elif options.verbose:
-        options.verbose_mask = gc.VERBOSE_MASK_SERIALIF_STR
-
-    elif options.vverbose:
-        options.verbose_mask = gc.VERBOSE_MASK_SERIALIF_HEX
-
-    else:
-        options.verbose_mask = 0
-
-    # check arguments sanity
-    if options.vverbose:
-        options.verbose = True
-
-    if wx.VERSION < (4, 0, 0, 0):
-        # print ("** Required wxPython 2.7 or grater.")
-        parser.error("** Required wxPython 4.x or grater.")
-        sys.exit(1)
 
     if sys.version_info < (3, 8, 0):
         parser.error("** Required Python 3.8.2 or grater.")
@@ -113,24 +74,57 @@ def get_cli_params():
     return options
 
 
-if __name__ == '__main__':
+"""----------------------------------------------------------------------------
+    main
+----------------------------------------------------------------------------"""
 
-    import faulthandler
-    faulthandler.enable()
 
-    if 'ubuntu' in os.getenv('DESKTOP_SESSION', 'unknown'):
-        os.environ["UBUNTU_MENUPROXY"] = "0"
+class GsatServer(gc.EventQueueIf):
+    def __init__(self):
+        gc.EventQueueIf.__init__(self)
 
-    cmd_line_options = get_cli_params()
+        self.logger = logging.getLogger()
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_ALL:
+            self.logger.info("init logging id:0x%x" % id(self))
 
-    config_fname = cmd_line_options.config
+    def __del__(self):
+        pass
+
+    def run(self):
+        try:
+            server = remote_server.RemoteServerThread(None)
+
+            # wait for server events
+            while True:
+                e = self._eventQueue.get()
+
+                if e.event_id == gc.EV_HELLO:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                        self.logger.info("EV_HELLO from 0x{:x}".format(id(e.sender)))
+
+                elif e.event_id == gc.EV_GOOD_BYE:
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                        self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
+
+        finally:
+            if server is not None:
+                server.add_event(gc.EV_CMD_EXIT, 0, -1)
+
+
+def main():
+    cli_options = get_cli_params()
+    config_fname = cli_options.config
 
     if config_fname is None:
         config_fname = os.path.abspath(os.path.abspath(os.path.expanduser("~/.gsat.json")))
 
-    gc.init_config(cmd_line_options, config_fname, "log_file")
+    gc.init_config(cli_options, config_fname, "log_file")
 
-    app = wx.App(0)
-    mw.gsatMainWindow(None, title=vinfo.__appname__, cmd_line_options=cmd_line_options)
+    server = GsatServer()
+    server.run()
 
-    app.MainLoop()
+    print("gsat-server: exiting")
+
+
+if __name__ == '__main__':
+    main()
