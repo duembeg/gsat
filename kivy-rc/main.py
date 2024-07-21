@@ -950,7 +950,7 @@ class MDGridLayoutButtons(MDGridLayout):
         config_dialog = None
 
         if data_key in ['jsz']:
-            content_cls = StepSizeDialogContent(val="")
+            content_cls = StepSizeDialogContent(val="", edit_auto_focus=False)
             content_cls.ids.text_field.input_filter = 'float'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Step Size'
@@ -958,7 +958,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_step_size_value
             content_cls_on_cancel = self.on_jog_step_size_cancel
         elif data_key == 'jfr':
-            content_cls = InputDialogContent(val="")
+            content_cls = InputDialogContent(val="", edit_auto_focus=False)
             content_cls.ids.text_field.input_filter = 'int'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Feed Rate'
@@ -966,7 +966,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_feed_rate_value
             content_cls_on_cancel = self.on_jog_feed_rate_cancel
         elif data_key == 'jrpm':
-            content_cls = InputDialogContent(val="")
+            content_cls = InputDialogContent(val="", edit_auto_focus=False)
             content_cls.ids.text_field.input_filter = 'int'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Spindle RPM'
