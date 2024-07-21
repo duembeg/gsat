@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   remote_server.py
+    remote_server.py
 
-   Copyright (C) 2020 Wilhelm Duembeg
+    Copyright (C) 2020 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import os
@@ -723,9 +723,9 @@ class RemoteServerThread(threading.Thread, gc.EventQueueIf):
                             welcome_str = \
                                 "==========================================\n"\
                                 f"Welcome to gsat server {vinfo.__version__}, running on:\n"\
-                                f"Server: {self.host} port: {soc.getsockname()[1]}\n"\
-                                f"Python: {python_ver}\n"\
-                                f"System: {sys_str}\n"\
+                                f"host: {self.host} port: {soc.getsockname()[1]}\n"\
+                                f"python: {python_ver}\n"\
+                                f"system: {sys_str}\n"\
                                 "\n"
 
                             msg = gc.SimpleEvent(gc.EV_RMT_HELLO, welcome_str, id(self))
