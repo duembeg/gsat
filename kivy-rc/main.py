@@ -1072,7 +1072,7 @@ class MDGridLayoutButtons(MDGridLayout):
             self.jog_rapid = False
 
         self.ids.feed_rate.text = "Feed Rate\n{}".format(value)
-        print(f"Feed rate: {self.jog_feed_rate} Rapid: {self.jog_rapid}")
+        # print(f"Feed rate: {self.jog_feed_rate} Rapid: {self.jog_rapid}")
 
     def on_jog_g_code_cmd_bt(self):
         """
