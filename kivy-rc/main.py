@@ -1,27 +1,27 @@
 """----------------------------------------------------------------------------
-   main.py
+    main.py
 
-   Copyright (C) 2021 Wilhelm Duembeg
+    Copyright (C) 2021 Wilhelm Duembeg
 
-   gsatrc kivy
+    gsatrc kivy
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 
@@ -379,6 +379,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
     server_keep_alive = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
     jog_feed_rate = ObjectProperty(None)
+    jog_rapid = ObjectProperty(None)
     sw_state = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -567,7 +568,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_HOME, {li.lower(): 0})
                 elif menu_text == "Go to Zero":
                     axis = {li.lower(): 0}
-                    if self.jog_feed_rate == "Rapid":
+                    if self.jog_rapid:
                         gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
                     else:
                         gc_cmd = gc.EV_CMD_JOG_MOVE
@@ -879,7 +880,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 # print(f"Move axis {axis} to value: {value}")
                 if gc.gsatrc_remote_client and self.serial_port_open:
                     axis_dict = {axis.lower(): value}
-                    if self.jog_feed_rate == "Rapid":
+                    if self.jog_rapid:
                         gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
                     else:
                         gc_cmd = gc.EV_CMD_JOG_MOVE
@@ -911,6 +912,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
 class MDGridLayoutButtons(MDGridLayout):
     jog_step_size = ObjectProperty(None)
     jog_feed_rate = ObjectProperty(None)
+    jog_rapid = ObjectProperty(None)
     jog_spindle_rpm = ObjectProperty(None)
     sw_state = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
@@ -1027,8 +1029,16 @@ class MDGridLayoutButtons(MDGridLayout):
         Handle special Rapid button
 
         """
-        # value = self.jog_feed_rate_dlg.content_cls.ids.text_field.text = "Rapid"
-        self.on_jog_feed_rate_value()
+        self.jog_feed_rate_dlg.dismiss()
+        self.on_jog_feed_rate_rapid("True")
+
+    def on_jog_feed_rate_rapid(self, value):
+        value_key = 'jog_rapid'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+            self.on_jog_feed_rate_value_update()
 
     def on_jog_feed_rate_value(self, *args):
         """
@@ -1044,14 +1054,25 @@ class MDGridLayoutButtons(MDGridLayout):
             MDApp.get_running_app().config.write()
             self.on_jog_feed_rate_value_update()
 
+        self.on_jog_feed_rate_rapid("False")
+
     def on_jog_feed_rate_value_update(self, *args):
         """
         Update UI
 
         """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_feed_rate')
-        self.ids.feed_rate.text = "Feed Rate\n{}".format(value)
         self.jog_feed_rate = value
+
+        rapid_value = MDApp.get_running_app().config.get(__appname__, 'jog_rapid')
+        if rapid_value == "True":
+            self.jog_rapid = True
+            value = "RAPID"
+        else:
+            self.jog_rapid = False
+
+        self.ids.feed_rate.text = "Feed Rate\n{}".format(value)
+        print(f"Feed rate: {self.jog_feed_rate} Rapid: {self.jog_rapid}")
 
     def on_jog_g_code_cmd_bt(self):
         """
@@ -1250,6 +1271,7 @@ class MDGridLayoutJogControls(MDGridLayout):
         self.gc = gc  # for access via kv lang
         self.jog_step_size = ""
         self.jog_feed_rate = ""
+        self.jog_rapid = ""
         self.jog_spindle_rpm = ""
         self.jog_long_press_time = 0.4
         self.jog_long_press_clk_ev = None
@@ -1381,7 +1403,7 @@ class MDGridLayoutJogControls(MDGridLayout):
             return
 
         if gc.gsatrc_remote_client:
-            if self.jog_feed_rate == "Rapid":
+            if self.jog_rapid == "True":
                 gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
             else:
                 gc_cmd = gc.EV_CMD_JOG_MOVE
@@ -1398,7 +1420,7 @@ class MDGridLayoutJogControls(MDGridLayout):
                 step_size = float(self.jog_step_size)
 
             axis = {axis_str: step_size}
-            if self.jog_feed_rate == "Rapid":
+            if self.jog_rapid == "True":
                 gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE
             else:
                 gc_cmd = gc.EV_CMD_JOG_MOVE_RELATIVE
@@ -1456,6 +1478,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.device_detected = False
         self.jog_step_size = ""
         self.jog_feed_rate = ""
+        self.jog_rapid = ""
         self.jog_spindle_rpm = ""
         self.update_dro = None
         self.ping_lost_count = 0
@@ -1473,6 +1496,7 @@ class RootWidget(Screen, gc.EventQueueIf):
 
         self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
         self.ids.button_panel.bind(jog_feed_rate=self.on_value_jog_feed_rate)
+        self.ids.button_panel.bind(jog_rapid=self.on_value_jog_rapid)
         self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
 
         self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive)
@@ -1816,6 +1840,11 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.jog_ctrl.jog_feed_rate = self.jog_feed_rate
         self.ids.dro_panel.jog_feed_rate = self.jog_feed_rate
 
+    def on_value_jog_rapid(self, instance, value):
+        self.jog_rapid = value
+        self.ids.jog_ctrl.jog_rapid = self.jog_rapid
+        self.ids.dro_panel.jog_rapid = self.jog_rapid
+
     def on_value_jog_spindle_rpm(self, instance, value):
         try:
             self.jog_spindle_rpm = int(value)
@@ -1885,7 +1914,6 @@ class MainApp(MDApp):
     def build(self):
         self.title = __appname_brief__
         self.icon = "gsat-rc-32x32.png"
-        config = self.config
         self.wake_lock = None
         # self.theme_cls.primary_palette = "Green"
         # self.theme_cls.primary_hue = "A700"
@@ -1901,14 +1929,15 @@ class MainApp(MDApp):
     def build_config(self, config):
         config.setdefaults(__appname__, {
             'server_hostname': "hostname",
-            'server_tcp_port': "61801",
-            'server_udp_port': "61802",
+            'server_tcp_port': 61801,
+            'server_udp_port': 61802,
             'server_udp_broadcast': False,
             'server_keep_alive_period': 20,
             'server_keep_alive': False,
-            'jog_step_size': "1",
-            'jog_feed_rate': "Rapid",
-            'Jog_spindle_rpm': "18000"
+            'jog_step_size': 1,
+            'jog_feed_rate': 1000,
+            'jog_rapid': False,
+            'Jog_spindle_rpm': 18000
         })
 
     def on_start(self):
