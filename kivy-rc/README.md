@@ -6,7 +6,7 @@ gsat remote control (gsatrc) is a kivyMD Application that can be compiled into a
 Development Environment
 ---------------------
 ### gsatrc's dependencies are:
-* [python 3](http://www.python.org/) or later.
+* [python 3.8](http://www.python.org/) or later.
 * [kivy 2.3.0](http://https://kivy.org/)
 * [kivyMD 1.3.0](https://github.com/kivymd/)
 
@@ -39,6 +39,7 @@ Development Environment
     ```
 2) Install pip dependecies
     ```
+    pip install -U pip
     pip install kivy kivymd buildozer Cython==0.29.33 setuptools
     ```
 3) Build android app, install and run on device
