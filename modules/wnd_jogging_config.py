@@ -210,8 +210,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
         tcScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         tcScript.SetValue(cDict["Script"])
-        tcScript.SetToolTip(wx.ToolTip(
-            "This script is sent to device when custom button is pressed"))
+        tcScript.SetToolTip(wx.ToolTip("This script is sent to device when custom button is pressed"))
         vBoxSizer.Add(tcScript, proportion=1, flag=wx.EXPAND | wx.LEFT | wx.BOTTOM, border=10)
 
         vBoxSizerRoot.Add(vBoxSizer, proportion=1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
@@ -219,22 +218,22 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         return vBoxSizerRoot, {'name': cName, 'label': tcLabel, 'script': tcScript}
 
     def UpdateConfigData(self):
-        self.configData.set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
-        self.configData.set('/jogging/AutoMPOS', self.cbAutoMPOS.GetValue())
-        self.configData.set('/jogging/ReqUpdateOnJogSetOp', self.cbReqUpdateOnJogSetOp.GetValue())
-        self.configData.set('/jogging/NumKeypadPendant', self.cbNumKeypadPendant.GetValue())
-        self.configData.set('/jogging/ZJogSafeMove', self.cbZJogSafeMove.GetValue())
+        self.configData.set("/jogging/XYZReadOnly", self.cbXYZReadOnly.GetValue())
+        self.configData.set("/jogging/AutoMPOS", self.cbAutoMPOS.GetValue())
+        self.configData.set("/jogging/ReqUpdateOnJogSetOp", self.cbReqUpdateOnJogSetOp.GetValue())
+        self.configData.set("/jogging/NumKeypadPendant", self.cbNumKeypadPendant.GetValue())
+        self.configData.set("/jogging/ZJogSafeMove", self.cbZJogSafeMove.GetValue())
 
-        self.configData.set('/jogging/SpindleSpeed', self.spindleSpeedSpinCtrl.GetValue())
+        self.configData.set("/jogging/SpindleSpeed", self.spindleSpeedSpinCtrl.GetValue())
 
-        self.configData.set('/jogging/JogInteractive', self.cbJogInteractive.GetValue())
+        self.configData.set("/jogging/JogInteractive", self.cbJogInteractive.GetValue())
 
-        self.configData.set('/jogging/JogRapid', self.cbJogRapid.GetValue())
+        self.configData.set("/jogging/JogRapid", self.cbJogRapid.GetValue())
 
-        self.configData.set('/jogging/JogFeedRate', self.jogFeedRateSpinCtrl.GetValue())
+        self.configData.set("/jogging/JogFeedRate", self.jogFeedRateSpinCtrl.GetValue())
 
         for custom_ctrl in self.customCtrlArray:
             self.configData.set(
-                f'/jogging/CustomButtons/{custom_ctrl.get('name')}/Label', custom_ctrl.get('label').GetValue())
+                f"/jogging/CustomButtons/{custom_ctrl.get('name')}/Label", custom_ctrl.get('label').GetValue())
             self.configData.set(
-                f'/jogging/CustomButtons/{custom_ctrl.get('name')}/Script', custom_ctrl.get('script').GetValue())
+                f"/jogging/CustomButtons/{custom_ctrl.get('name')}/Script", custom_ctrl.get('script').GetValue())
