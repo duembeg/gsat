@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   machif.py
+    machif.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import re
@@ -93,8 +93,7 @@ class MachIf_Base(gc.EventQueueIf):
 
         self._sendAxisCmd(move_code, dict_axis_coor)
 
-        if machine_current_position_mode != self.machinePositionMode and\
-           reset_pos_mode:
+        if machine_current_position_mode != self.machinePositionMode and reset_pos_mode:
             self.add_event(gc.EV_TXDATA, "{}\n".format(machine_current_position_mode))
             self.write("".join([machine_current_position_mode, "\n"]))
 
@@ -112,24 +111,11 @@ class MachIf_Base(gc.EventQueueIf):
 
         """
         machine_code = code
+        tokens = ['x', 'y', 'z', 'a', 'b', 'c']
 
-        if 'x' in dict_axis_coor:
-            machine_code = "".join([machine_code, " X", str(dict_axis_coor.get('x'))])
-
-        if 'y' in dict_axis_coor:
-            machine_code = "".join([machine_code, " Y", str(dict_axis_coor.get('y'))])
-
-        if 'z' in dict_axis_coor:
-            machine_code = "".join([machine_code, " Z", str(dict_axis_coor.get('z'))])
-
-        if 'a' in dict_axis_coor:
-            machine_code = "".join([machine_code, " A", str(dict_axis_coor.get('a'))])
-
-        if 'b' in dict_axis_coor:
-            machine_code = "".join([machine_code, " B", str(dict_axis_coor.get('b'))])
-
-        if 'c' in dict_axis_coor:
-            machine_code = "".join([machine_code, " C", str(dict_axis_coor.get('c'))])
+        for token in tokens:
+            if token in dict_axis_coor:
+                machine_code = "".join([machine_code, " ", token.upper(), str(dict_axis_coor.get(token))])
 
         if 'feed' in dict_axis_coor:
             machine_code = "".join([machine_code, " F", str(dict_axis_coor.get('feed'))])

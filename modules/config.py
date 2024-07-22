@@ -165,6 +165,7 @@ EV_CMD_RAPID_MOVE = 1160
 EV_CMD_RAPID_MOVE_RELATIVE = 1170
 EV_CMD_CLEAR_ALARM = 1180
 EV_CMD_PROBE = 1190
+EV_CMD_PROBE_HELPER = 1192
 EV_CMD_SET_AXIS = 1200
 EV_CMD_HOME = 1210
 EV_CMD_JOG_MOVE = 1220
@@ -632,13 +633,12 @@ class gsatConfigData(ConfigData):
             "FilterGcodes": "",
             "InitScript": "",
             "InitScriptEnable": False,
-            "Port": "",
             "MachIfSpecific": {
                 "grbl": {
                     "AutoRefreshPeriod": {
                         "Value": 200,
                         "Name": "Auto Refresh Period (msec)",
-                        "ToolTip": "How often so send request",
+                        "ToolTip": "How often so send refresh request (msec)",
                     }
                 },
                 "TinyG": {
@@ -649,8 +649,47 @@ class gsatConfigData(ConfigData):
                     "AutoRefreshPeriod": {
                         "Value": 200,
                         "Name": "Auto Refresh Period (msec)",
-                        "ToolTip": "How often so send status request",
+                        "ToolTip": "How often so send refresh request (msec)",
                     }
+                }
+            },
+            "Port": "",
+            "Probe": {
+                "X": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "Y": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "Z": {
+                    "FeedRate": 100,
+                    "Offset": 19.6,
+                    "Retract": 2.0,
+                    "TravelLimit": 40.0,
+                },
+                "A": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "B": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "C": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
                 }
             }
         },
@@ -693,7 +732,7 @@ class gsatConfigData(ConfigData):
 
 
 """----------------------------------------------------------------------------
-   EVENTS definitions to interact with multiple windows:
+    EVENTS definitions to interact with multiple windows:
 ----------------------------------------------------------------------------"""
 EVT_THREAD_QUEUE_EVENT_ID = 0x7ECAFE
 

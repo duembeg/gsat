@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   wnd_jogging_config.py
+    wnd_jogging_config.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import wx
@@ -166,48 +166,6 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
         vBoxSizer.AddSpacer(20)
 
-        # Z probe
-        text = wx.StaticText(self, label="Z Probe Default Settings")
-        font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-        text.SetFont(font)
-        vBoxSizer.Add(text, flag=wx.ALL, border=5)
-
-        hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.probeZDistanceSpinCtrl = wx.SpinCtrlDouble(
-            self, -1, size=(-1, -1), min=-9999, max=9999,
-            initial=self.configData.get('/jogging/ProbeDistance'), inc=0.1)
-        self.probeZDistanceSpinCtrl.SetDigits(4)
-        self.probeZDistanceSpinCtrl.SetToolTip(wx.ToolTip("Probe Z height"))
-        hBoxSizer.Add(self.probeZDistanceSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-        st = wx.StaticText(self, wx.ID_ANY, "Probe Z height")
-        hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-        vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
-
-        hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.probeZMaxDistanceSpinCtrl = wx.SpinCtrlDouble(
-            self, -1, size=(-1, -1), min=-9999, max=9999,
-            initial=self.configData.get('/jogging/ProbeMaxDistance'), inc=0.1)
-        self.probeZMaxDistanceSpinCtrl.SetDigits(4)
-        self.probeZMaxDistanceSpinCtrl.SetToolTip(wx.ToolTip("Probe Z max travel"))
-
-        hBoxSizer.Add(self.probeZMaxDistanceSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-        st = wx.StaticText(self, wx.ID_ANY, "Probe Z max travel")
-        hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-        vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
-
-        hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.probeZFeedRateSpinCtrl = wx.SpinCtrlDouble(
-            self, -1, size=(-1, -1), min=0, max=99999,
-            initial=self.configData.get('/jogging/ProbeFeedRate'), inc=1)
-        self.probeZFeedRateSpinCtrl.SetDigits(0)
-        self.probeZFeedRateSpinCtrl.SetToolTip(wx.ToolTip("Probe Z feed rate"))
-        hBoxSizer.Add(self.probeZFeedRateSpinCtrl, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-        st = wx.StaticText(self, wx.ID_ANY, "Probe Z feed rate")
-        hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-        vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
-
-        vBoxSizer.AddSpacer(20)
-
         # Custom controls
         text = wx.StaticText(self, label="Custom Controls")
         font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
@@ -258,7 +216,7 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
         vBoxSizerRoot.Add(vBoxSizer, proportion=1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
 
-        return vBoxSizerRoot, [cName, tcLabel, tcScript]
+        return vBoxSizerRoot, {'name': cName, 'label': tcLabel, 'script': tcScript}
 
     def UpdateConfigData(self):
         self.configData.set('/jogging/XYZReadOnly', self.cbXYZReadOnly.GetValue())
@@ -269,16 +227,14 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
 
         self.configData.set('/jogging/SpindleSpeed', self.spindleSpeedSpinCtrl.GetValue())
 
-        self.configData.set('/jogging/ProbeDistance', self.probeZDistanceSpinCtrl.GetValue())
-        self.configData.set('/jogging/ProbeMaxDistance', self.probeZMaxDistanceSpinCtrl.GetValue())
-        self.configData.set('/jogging/ProbeFeedRate', self.probeZFeedRateSpinCtrl.GetValue())
-
         self.configData.set('/jogging/JogInteractive', self.cbJogInteractive.GetValue())
 
         self.configData.set('/jogging/JogRapid', self.cbJogRapid.GetValue())
 
         self.configData.set('/jogging/JogFeedRate', self.jogFeedRateSpinCtrl.GetValue())
 
-        for i in self.customCtrlArray:
-            self.configData.set('/jogging/CustomButtons/%s/Label' % i[0], i[1].GetValue())
-            self.configData.set('/jogging/CustomButtons/%s/Script' % i[0], i[2].GetValue())
+        for custom_ctrl in self.customCtrlArray:
+            self.configData.set(
+                f'/jogging/CustomButtons/{custom_ctrl.get('name')}/Label', custom_ctrl.get('label').GetValue())
+            self.configData.set(
+                f'/jogging/CustomButtons/{custom_ctrl.get('name')}/Script', custom_ctrl.get('script').GetValue())
