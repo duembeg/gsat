@@ -447,7 +447,7 @@
         icon: "images/icons/color/jogging_probe_48x48.png"
         icon_size: jog.button_size
         # user_font_size: jog.button_size
-        on_press: root.on_jog_probe("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
+        on_press: root.on_jog_probe({'z': -1})
     MDIconButton:
         id: negative_x
         icon: "images/icons/color/jogging_neg_x_48x48.png"

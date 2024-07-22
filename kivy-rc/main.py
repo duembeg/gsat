@@ -1432,11 +1432,8 @@ class MDGridLayoutJogControls(MDGridLayout):
             jog_not_permitted_run_state()
             return
 
-        # TODO: does pendant really need to keep this config??
-        # probe command should be sent to server, server should
-        # the information of the prove offset, etc.
         if gc.gsatrc_remote_client and self.serial_port_open:
-            gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, data)
+            gc.gsatrc_remote_client.add_event(gc.EV_CMD_PROBE_HELPER, data)
         else:
             no_machine_detected()
 
