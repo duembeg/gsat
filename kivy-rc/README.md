@@ -14,18 +14,18 @@ Development Environment
 * [Ubuntu 20.04, 22.04](http://www.ubuntu.com/)
    * Installing dependencies:
    ```
-    sudo apt install -y python3 python3-pip python3-venv git
-    sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+    sudo apt install python3 python3-pip python3-venv git
+    sudo apt install git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
    ```
 * [Ubuntu 18.04](http://www.ubuntu.com/)
    * Special Installing dependencies:
    ```
    sudo apt install python3.8 python3-pip python3.8-venv git
-   sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+   sudo apt install git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
    ```
 * Optional to install on an android device
    ```
-    sudo apt-get install -y adb android-sdk-platform-tools-common && sudo cp /lib/udev/rules.d/51-android.rules /etc/udev/rules.d/
+    sudo apt-get install adb android-sdk-platform-tools-common && sudo cp /lib/udev/rules.d/51-android.rules /etc/udev/rules.d/
     sudo udevadm control --reload-rules
     sudo udevadm trigger
    ```
