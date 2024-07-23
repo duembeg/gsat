@@ -38,7 +38,8 @@ Development Environment
 * For detail instructions see [kivy packing-android](https://kivy.org/doc/stable/guide/packaging-android.html)
 
 ### Quick instructions:
-1) create venv and activate venv (use python3.8 for 18.04)
+    * NOTE: For Ubuntu 18.04 replace all the python3 commands with python3.8
+1) create venv and activate venv
     ```
     python3 -m venv .venv
     source .venv/bin/activate
@@ -51,6 +52,10 @@ Development Environment
 3) Build android app, install and run on device
     ```
     cd kivy-rc
+    python3 main.py
+    ```
+4) Build android app, install and run on device
+    ```
     buildozer android debug deploy run logcat
     ```
 
