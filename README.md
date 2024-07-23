@@ -81,6 +81,9 @@ Changelog
 * Python3.x and wxPython 4.x Migration
    * Updated dependencies instructions
 * Fix CV2 issues
+* Update to UI for quality of life, DRO edits and axis letters are now clickable
+* Added gsat-server.py it stats enough to control the machine and server for remote UIs
+* Moved probe settings to machine configuration. A UI can connect to multiple machines, it doesn't make sense for the UI to have multiple settings one for each machine. Remote UIs might not even have the ability to configure the machine itself.
 
 ### 1.7.0
 * Remote Interface and Android Remote Pendant
