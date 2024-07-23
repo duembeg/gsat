@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   machif_grbl.py
+    machif_grbl.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 
@@ -52,75 +52,56 @@ GRBL_ERROR_CODE_2_STR_DICT = {
     5: "Homing cycle is not enabled via settings",
     6: "Minimum step pulse time must be greater than 3 usec",
     7: "EEPROM read failed. Reset and restored to default values",
-    8: "grbl '$' command cannot be used unless Grbl is IDLE. Ensures smooth "
-       "operation during a job",
+    8: "grbl '$' command cannot be used unless Grbl is IDLE. Ensures smooth operation during a job",
     9: "GCODE locked out during alarm or jog state",
     10: "Soft limits cannot be enabled without homing also enabled",
-    11: "Max characters per line exceeded. Line was not processed and "
-        "executed",
-    12: "(Compile Option) grbl '$' setting value exceeds the maximum step "
-        "rate supported",
+    11: "Max characters per line exceeded. Line was not processed and executed",
+    12: "(Compile Option) grbl '$' setting value exceeds the maximum step rate supported",
     13: "Safety door detected as opened and door state initiated",
-    14: "(grbl-Mega Only) Build info or startup line exceeded EEPROM line "
-        "length limit",
+    14: "(grbl-Mega Only) Build info or startup line exceeded EEPROM line length limit",
     15: "Jog target exceeds machine travel. Command ignored",
     16: "Jog command with no '=' or contains prohibited GCODE",
     20: "Unsupported or invalid GCODE command found in block",
     21: "More than one GCODE command from same modal group found in block",
     22: "Feed rate has not yet been set or is undefined",
     23: "GCODE command in block requires an integer value",
-    24: "Two GCODE commands that both require the use of the XYZ axis words "
-        "were detected in the block",
+    24: "Two GCODE commands that both require the use of the XYZ axis words were detected in the block",
     25: "A GCODE word was repeated in the block",
-    26: "A GCODE command implicitly or explicitly requires XYZ axis words "
-        "in the block, but none were detected",
+    26: "A GCODE command implicitly or explicitly requires XYZ axis words in the block, but none were detected",
     27: "N line number value is not within the valid range of 1 - 9,999,999",
-    28: "A GCODE command was sent, but is missing some required P or L "
-        "value words in the line",
-    29: "grbl supports six work coordinate systems G54-G59. G59.1, G59.2, "
-        "and G59.3 are not supported",
-    30: "The G53 GCODE command requires either a G0 seek or G1 feed motion "
-        "mode to be active. A different motion was active",
-    31: "There are unused axis words in the block and G80 motion mode cancel "
-        "is active",
-    32: "A G2 or G3 arc was commanded but there are no XYZ axis words in the "
-        "selected plane to trace the arc",
-    33: "The motion command has an invalid target. G2, G3, and G38.2 "
-        "generates this error, if the arc is impossible to generate or if "
-        "the probe target is the current position",
-    34: "A G2 or G3 arc, traced with the radius definition, had a "
-        "mathematical error when computing the arc geometry. Try either "
-        "breaking up the arc into semi-circles or quadrants, or redefine "
-        "them with the arc offset definition",
-    35: "A G2 or G3 arc, traced with the offset definition, is missing the "
-        "IJK offset word in the selected plane to trace the arc",
-    36: "There are unused, leftover GCODE words that aren't used by any "
-        "command in the block",
-    37: "The G43.1 dynamic tool length offset command cannot apply an "
-        "offset to an axis other than its configured axis. The Grbl default "
-        "axis is the Z-axis",
+    28: "A GCODE command was sent, but is missing some required P or L value words in the line",
+    29: "grbl supports six work coordinate systems G54-G59. G59.1, G59.2, and G59.3 are not supported",
+    30: "The G53 GCODE command requires either a G0 seek or G1 feed motion mode to be active. A different motion was "
+        "active",
+    31: "There are unused axis words in the block and G80 motion mode cancel is active",
+    32: "A G2 or G3 arc was commanded but there are no XYZ axis words in the selected plane to trace the arc",
+    33: "The motion command has an invalid target. G2, G3, and G38.2 generates this error, if the arc is impossible to"
+        " generate or if the probe target is the current position",
+    34: "A G2 or G3 arc, traced with the radius definition, had a mathematical error when computing the arc geometry. "
+        "Try either breaking up the arc into semi-circles or quadrants, or redefine them with the arc offset "
+        "definition",
+    35: "A G2 or G3 arc, traced with the offset definition, is missing the IJK offset word in the selected plane to "
+        "trace the arc",
+    36: "There are unused, leftover GCODE words that aren't used by any command in the block",
+    37: "The G43.1 dynamic tool length offset command cannot apply an offset to an axis other than its configured "
+        "axis. The Grbl default axis is the Z-axis",
     38: "An invalid tool number sent to the parser"
 }
 
 GRBL_ALARM_CODE_2_STR_DICT = {
-    1: "Hard limit triggered. Machine position is likely lost due to sudden "
-       "and immediate halt. Re-homing is highly recommended",
-    2: "GCODE motion target exceeds machine travel. Machine position safely "
-       "retained. Alarm may be unlocked",
-    3: "Reset while in motion. grbl cannot guarantee position. Lost steps "
-       "are likely. Re-homing is highly recommended",
-    4: "Probe fail. The probe is not in the expected initial state before "
-       "starting probe cycle, where G38.2 and G38.3 is not triggered and "
-       "G38.4 and G38.5 is triggered",
-    5: "Probe fail. Probe did not contact the workpiece within the "
-       "programmed travel for G38.2 and G38.4",
+    1: "Hard limit triggered. Machine position is likely lost due to sudden and immediate halt. Re-homing is highly "
+       "recommended",
+    2: "GCODE motion target exceeds machine travel. Machine position safely retained. Alarm may be unlocked",
+    3: "Reset while in motion. grbl cannot guarantee position. Lost steps are likely. Re-homing is highly recommended",
+    4: "Probe fail. The probe is not in the expected initial state before starting probe cycle, where G38.2 and G38.3 "
+       "is not triggered and G38.4 and G38.5 is triggered",
+    5: "Probe fail. Probe did not contact the workpiece within the programmed travel for G38.2 and G38.4",
     6: "Homing fail. Reset during active homing cycle",
     7: "Homing fail. Safety door was opened during active homing cycle",
-    8: "Homing fail. Cycle failed to clear limit switch when pulling off. "
-       "Try increasing pull-off setting or check wiring",
-    9: "Homing fail. Could not find limit switch within search distance. "
-       "Defined as 1.5 * max_travel on search and 5 * pulloff on locate "
-       "phases",
+    8: "Homing fail. Cycle failed to clear limit switch when pulling off. Try increasing pull-off setting or check "
+       "wiring",
+    9: "Homing fail. Could not find limit switch within search distance. Defined as 1.5 * max_travel on search and "
+       "5 * pulloff on locate phases",
 }
 
 GRBL_HOLD_CODE_2_STR_DICT = {
@@ -131,10 +112,8 @@ GRBL_HOLD_CODE_2_STR_DICT = {
 GRBL_DOOR_CODE_2_STR_DICT = {
     0: "Door closed. Ready to resume",
     1: "Machine stopped. Door still ajar. Can't resume until closed",
-    2: "Door opened. Hold (or parking retract) in-progress. Reset will "
-       "throw an alarm",
-    3: "Door closed and resuming. Restoring from park, if applicable. "
-       "Reset will throw an alarm",
+    2: "Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm",
+    3: "Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm",
 }
 
 GRBL_CONFIG_2_STR_DICT = {
@@ -282,9 +261,8 @@ class MachIf_GRBL(mi.MachIf_Base):
     reGrblConfig = re.compile(r'^\$(\d+)=\d+.*\s*')
 
     def __init__(self):
-        super(MachIf_GRBL, self).__init__(ID, NAME,
-                                          BUFFER_MAX_SIZE, BUFFER_INIT_VAL,
-                                          BUFFER_WATERMARK_PRCNT)
+        super(MachIf_GRBL, self).__init__(
+            ID, NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -312,11 +290,11 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.systemInfo = ""
 
     def _init(self):
-        """ Init object variables, ala soft-reset in hw
         """
-        super(MachIf_GRBL, self)._reset(
-            BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT
-        )
+        Init object variables, ala soft-reset in hw
+
+        """
+        super(MachIf_GRBL, self)._reset(BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -360,11 +338,8 @@ class MachIf_GRBL(mi.MachIf_Base):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 self.logger.info("status match %s" % str(statusData))
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("decode, input buffer free: %d, buffer size: "
-                                 "%d, %.2f%% full" % (
-                                        bufferPart,
-                                        self._inputBufferSize,
-                                        (100*prcnt)))
+                self.logger.info(
+                    f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
             # check on status change
             decodedStatus = self.stat_dict.get(
@@ -399,11 +374,8 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("decode, input buffer free: %d, buffer size: "
-                                 "%d, %.2f%% full" % (
-                                        bufferPart,
-                                        self._inputBufferSize,
-                                        (100*prcnt)))
+                self.logger.info(
+                    f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
         alarm = self.reGrblAlarm.search(data)
         if alarm is not None:
@@ -457,9 +429,7 @@ class MachIf_GRBL(mi.MachIf_Base):
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 error_msg = "found error [%s]" % data.strip()
                 if 'rx_data_info' in dataDict:
-                    error_msg = "found %s, %s" % (
-                                data.strip(),
-                                dataDict['rx_data_info'].strip())
+                    error_msg = "found %s, %s" % (data.strip(), dataDict['rx_data_info'].strip())
                 self.logger.info(error_msg)
 
             dataDict['f'] = [0, error_code, bufferPart, error_code]
@@ -467,17 +437,13 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("decode, input buffer free: %d, buffer size: "
-                                 "%d, %.2f%% full" % (
-                                        bufferPart,
-                                        self._inputBufferSize,
-                                        (100*prcnt)))
+                self.logger.info(
+                    f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
         version = self.reGrblVersion.match(data)
         if version is not None:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("found version [%s]" %
-                                 version.group(1).strip())
+                self.logger.info("found version [%s]" % version.group(1).strip())
 
             if 'r' not in dataDict:
                 r = {}
@@ -492,8 +458,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         initStr = self.reGrblInitStr.match(data)
         if initStr is not None:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("found device init string [%s]" %
-                                 initStr.group(1).strip())
+                self.logger.info("found device init string [%s]" % initStr.group(1).strip())
 
             self.initStringDetectFlag = True
 
@@ -508,10 +473,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         if config is not None:
             data_len = len(data)
             fill = 20 - data_len
-            dataDict['rx_data_info'] = "%s%s\n" % (
-                ' '*fill,
-                GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), "")
-            )
+            dataDict['rx_data_info'] = "%s%s\n" % (' '*fill, GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), ""))
 
         return dataDict
 
@@ -529,14 +491,18 @@ class MachIf_GRBL(mi.MachIf_Base):
             self.add_event(gc.EV_RXDATA, msg)
 
     def doInitComm(self):
-        """ soft reset grbl to get it to talk to is hw version info
-            not all arduino boards reset on connect.
+        """
+        Soft reset grbl to get it to talk to is hw version info, not all
+        arduino boards reset on connect.
+
         """
         self.write(self.cmdInitComm)
         self._init()
 
     def doJogFastMove(self, dict_axis_coor):
-        """ Jog Fast (rapid) move to a coordinate in obsolete position mode
+        """
+        Jog Fast (rapid) move to a coordinate in obsolete position mode
+
         """
         if 'f' not in dict_axis_coor:
             dict_axis_coor['feed'] = 10000
@@ -544,7 +510,9 @@ class MachIf_GRBL(mi.MachIf_Base):
         self._move("$J=G90", dict_axis_coor, reset_pos_mode=False)
 
     def doJogFastMoveRelative(self, dict_axis_coor):
-        """ Jog Fast (rapid) move to a coordinate in relative position mode
+        """
+        Jog Fast (rapid) move to a coordinate in relative position mode
+
         """
         if 'f' not in dict_axis_coor:
             dict_axis_coor['feed'] = 10000
@@ -552,12 +520,16 @@ class MachIf_GRBL(mi.MachIf_Base):
         self._move("$J=G91", dict_axis_coor, reset_pos_mode=False)
 
     def doJogMove(self, dict_axis_coor):
-        """ Jog Move to a coordinate in obsolete position mode
+        """
+        Jog Move to a coordinate in obsolete position mode
+
         """
         self._move("$J=G90", dict_axis_coor, reset_pos_mode=False)
 
     def doJogMoveRelative(self, dict_axis_coor):
-        """ Jog Move to a coordinate in relative position mode
+        """
+        Jog Move to a coordinate in relative position mode
+
         """
         self._move("$J=G91", dict_axis_coor, reset_pos_mode=False)
 
@@ -565,7 +537,9 @@ class MachIf_GRBL(mi.MachIf_Base):
         self.doFeedHold()
 
     def encode(self, data, bookkeeping=True):
-        """ Encodes data properly to be sent to controller
+        """
+        Encodes data properly to be sent to controller
+
         """
         if len(data) == 0:
             return data
@@ -594,11 +568,8 @@ class MachIf_GRBL(mi.MachIf_Base):
         if data == self.cmdStatus and bookkeeping:
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("encode, input buffer used: %d, buffer "
-                                 "size: %d, %.2f%% full" % (
-                                    1,
-                                    self._inputBufferSize,
-                                    (100*prcnt)))
+                self.logger.info(
+                    f"encode, input buffer used: 1, buffer size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
         elif data in [self.getCycleStartCmd(), self.getFeedHoldCmd()]:
             pass
@@ -610,11 +581,8 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("encode, input buffer used: %d, buffer "
-                                 "size: %d, %.2f%% full" % (
-                                    dataLen,
-                                    self._inputBufferSize,
-                                    (100*prcnt)))
+                self.logger.info(
+                    f"encode, input buffer used: {dataLen}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
         return data
 
     def factory(self):
@@ -623,8 +591,7 @@ class MachIf_GRBL(mi.MachIf_Base):
     def init(self):
         super(MachIf_GRBL, self).init()
         self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-            '/machine/MachIfSpecific/{}/AutoRefreshPeriod/Value'.format(self.name)
-        )
+            f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value")
         self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))
 
     def tick(self):
@@ -636,7 +603,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         else:
             self.timeOut.disable()
 
-        configAutoRefresh = gc.CONFIG_DATA.get('/machine/MachIfSpecific/{}/AutoRefreshPeriod/Value'.format(self.name))
+        configAutoRefresh = gc.CONFIG_DATA.get(f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value")
         if self.machineAutoRefreshPeriod != configAutoRefresh:
             self.machineAutoRefreshPeriod = configAutoRefresh
             self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))

@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   machif_g2core.py
+    machif_g2core.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import re
@@ -289,7 +289,9 @@ class MachIf_g2core(mi.MachIf_Base):
         self.cmdSystemInfo = '{"sys":{"fv":"n","fb":"n"}}\n'
 
     def _init(self):
-        """ Init object variables, ala soft-reset in hw
+        """
+        Init object variables, ala soft-reset in hw
+
         """
         super(MachIf_g2core, self)._reset(
             BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT
@@ -314,8 +316,7 @@ class MachIf_g2core(mi.MachIf_Base):
                 if 'msg' in r:
                     if r['msg'] == "SYSTEM READY":
                         if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                            self.logger.info("found device init string [%s]" %
-                                             r['msg'])
+                            self.logger.info(f"found device init string [{r['msg']}]")
 
                         dataDict['r']['init'] = r['msg']
 
@@ -393,11 +394,9 @@ class MachIf_g2core(mi.MachIf_Base):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                     prcnt = float(self._inputBufferSize) / \
                             self._inputBufferMaxSize
-                    self.logger.info("decode, input buffer free: %d,"
-                                     "buffer size: %d, %.2f%% full" % (
-                                         bufferPart,
-                                         self._inputBufferSize,
-                                         (100*prcnt)))
+                    self.logger.info(
+                        f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}%"
+                        " full")
 
         if 'sr' in dataDict:
             sr = dataDict['sr']
@@ -410,7 +409,9 @@ class MachIf_g2core(mi.MachIf_Base):
         return dataDict
 
     def encode(self, data, bookkeeping=True):
-        """ Encodes data properly to be sent to controller
+        """
+        Encodes data properly to be sent to controller
+
         """
         if type(data) is bytes:
             data = data.decode('utf-8')
@@ -427,11 +428,8 @@ class MachIf_g2core(mi.MachIf_Base):
 
             if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("encode, input buffer used: %d, buffer "
-                                 "size: %d, %.2f%% full" % (
-                                    dataLen,
-                                    self._inputBufferSize,
-                                    (100*prcnt)))
+                self.logger.info(
+                    f"encode, input buffer used: {dataLen}, size: {self._inputBufferSize}, {(100*prcnt):.2f} full")
 
         return data
 

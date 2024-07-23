@@ -235,7 +235,18 @@ class MachIf_Base(gc.EventQueueIf):
         Probe toward work piece, coordinate and feed rate required Errors/Alarm if probe fails
 
         """
-        self._sendAxisCmd(self.cmdProbeAxis, dict_axis_coor)
+        # self._sendAxisCmd(self.cmdProbeAxis, dict_axis_coor)
+
+        machine_current_position_mode = self.machinePositionMode
+
+        if self.machinePositionMode == "G91":
+            self._sendAxisCmd(self.cmdProbeAxis, dict_axis_coor)
+        else:
+            self._sendAxisCmd(f"G91 {self.cmdProbeAxis}", dict_axis_coor)
+
+        if machine_current_position_mode != self.machinePositionMode:
+            self.add_event(gc.EV_TXDATA, "{}\n".format(machine_current_position_mode))
+            self.write("".join([machine_current_position_mode, "\n"]))
 
     def doQueueFlush(self):
         self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdQueueFlush.strip())
@@ -245,6 +256,20 @@ class MachIf_Base(gc.EventQueueIf):
     def doReset(self):
         self.write(self.cmdReset)
         self._init()
+
+    def doRapidMove(self, dict_axis_coor):
+        """
+        Ra[id Move to a coordinate in obsolete position mode
+
+        """
+        self.doFastMove(dict_axis_coor)
+
+    def doRapidMoveRelative(self, dict_axis_coor):
+        """
+        Rapid Move to a coordinate in relative position mode
+
+        """
+        self.doFastMoveRelative(dict_axis_coor)
 
     def doSetAxis(self, dict_axis_coor):
         """
