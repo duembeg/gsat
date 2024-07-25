@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    con_main.py
 
-   Copyright (C) 2021-2021 Wilhelm Duembeg
+   Copyright (C) 2021 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    grbl like GCODE interpreters. With features similar to software debuggers.
@@ -27,38 +27,18 @@ import os
 import sys
 import logging
 import time
-# import pyfiglet
 import signal
 import curses
-import string
-import re
-import threading
+import queue
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-from modules.version_info import *
+import modules.version_info as vinfo
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
 import modules.remote_server as remote_server
 import modules.remote_client as remote_client
 
-
 text_queue = queue.Queue()
 
-def verbose_data_ascii(direction, data):
-    return "[%03d] %s %s" % (len(data), direction, data.strip())
-
-
-def verbose_data_hex(direction, data):
-    return "[%03d] %s ASCII:%s HEX:%s" % (
-        len(data),
-        direction,
-        data.strip(),
-        ':'.join(x.encode("utf-8").hex() for x in data)
-    )
 
 class StdoutWrapper(object):
     def __init__(self, win):
@@ -93,8 +73,6 @@ class CursesHandler(logging.Handler):
             # self.win.refresh()
 
         except (KeyboardInterrupt, SystemExit):
-            raise
-        except:
             raise
 
 
@@ -212,14 +190,14 @@ class ConsoleApp(gc.EventQueueIf):
         self.stdout_begin_x = 0
         self.stdout_begin_y = (self.sta_begin_y + self.sta_height)
 
-    def proccess_keypad(self):
+    def process_keypad(self):
         retVal = False
 
         c = self.sta_box.getch(1, len(self.user_cmd)+1)
 
         if (c != -1):
             # print c
-            print (curses.keyname(c))
+            print(curses.keyname(c))
 
             if c in [curses.KEY_RESIZE]:
                 self.resize()
@@ -370,7 +348,7 @@ class ConsoleApp(gc.EventQueueIf):
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
                     self.logger.info("EV_DATA_OUT")
 
-                print ("> {}".format(str(e.data).strip()))
+                print("> {}".format(str(e.data).strip()))
 
             elif e.event_id == gc.EV_HELLO:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
@@ -453,7 +431,7 @@ class ConsoleApp(gc.EventQueueIf):
             if len(text.strip()):
                 if text.endswith('\n'):
                     self.stdout_box.addstr(text)
-                    # self.stdout_box.addstr("{}\n".format(verbose_data_hex("#", text)))
+                    # self.stdout_box.addstr("{}\n".format(gc.verbose_data_hex("#", text)))
                 else:
                     self.stdout_box.addstr("{}\n".format(text))
                 self.stdout_box.refresh()
@@ -469,7 +447,7 @@ class ConsoleApp(gc.EventQueueIf):
         self.sta_box.erase()
         self.sta_box.resize(self.sta_height, self.sta_width)
         self.sta_box.box()
-        self.sta_box.addstr(0, 2, "{} Console {}".format(__appname__, __revision__))
+        self.sta_box.addstr(0, 2, f"{vinfo.__appname__} Console {vinfo.__version__}")
         self.sta_box.addstr(1, 2, "DRO")
         self.sta_box.refresh()
 
@@ -506,8 +484,8 @@ class ConsoleApp(gc.EventQueueIf):
                 self.remoteClient = remote_client.RemoteClientThread(self, host='localhost')
 
             if os.path.exists(os.path.expanduser(self.cmd_line_options.gcode)):
-                gcode_file = file(os.path.expanduser(self.cmd_line_options.gcode))
-                gcode_data = gcode_file.read()
+                with open("foobar.txt") as gcode_file:
+                    gcode_data = gcode_file.read()
 
                 gcodeFileLines = gcode_data.splitlines(True)
 
@@ -535,7 +513,7 @@ class ConsoleApp(gc.EventQueueIf):
             while not self.time_to_exit_gracefully:
                 self.process_text_queue()
                 self.process_queue()
-                self.proccess_keypad()
+                self.process_keypad()
                 time.sleep(0.010)
 
         finally:
@@ -602,8 +580,7 @@ class ConsoleApp(gc.EventQueueIf):
                     if 'fv' in r:
                         firmware_version_str = "fb:{} fv:{}".format(firmware_version_str, r['fv'])
 
-                    machif_str = ""
-                    if len (r['machif']):
+                    if len(r['machif']):
                         self.device_str = "{} ({})".format(r['machif'], firmware_version_str)
 
             if 'swstate' in data:
@@ -611,14 +588,14 @@ class ConsoleApp(gc.EventQueueIf):
 
             if 'rx_data' in data:
                 rx_data = str(data['rx_data']).strip()
-                print ("{}".format(rx_data))
+                print("{}".format(rx_data))
 
         if (self.cmd_line_options.no_curses is False):
             self.sta_box.erase()
-            #self.sta_box.clear()
+            # self.sta_box.clear()
             self.sta_box.box()
 
-            self.sta_box.addstr(0, 2, "{} Console {}".format(__appname__, __revision__))
+            self.sta_box.addstr(0, 2, f"{vinfo.__appname__} Console {vinfo.__version__}")
             self.sta_box.addstr(2, 2, "{:<30}".format("DRO"), curses.A_REVERSE)
 
             self.sta_box.addstr(3, 3, "X:{:>9.3f}  ".format(self.posx))
@@ -663,7 +640,6 @@ class ConsoleApp(gc.EventQueueIf):
             self.sta_box.addstr(11, 23, "F10:Refresh")
             self.sta_box.addstr(11, 43, "F11:Cycle Start")
             self.sta_box.addstr(11, 63, "F12:Hold")
-
 
             # self.sta_box.touchwin()
             self.sta_box.refresh()

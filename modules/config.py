@@ -1,46 +1,36 @@
 """----------------------------------------------------------------------------
-   config.py
+    config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-import logging
-from logging import handlers, Formatter
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
-
 import os
 import time
-
+import queue
+import json
+import logging
+from logging import Formatter
 
 """----------------------------------------------------------------------------
-   Globals:
+    Globals:
 ----------------------------------------------------------------------------"""
 FILE_WILDCARD = \
     "gcode (*.ngc; *.nc; *.gcode)|*.ngc;*.nc;*.gcode|"\
@@ -113,6 +103,7 @@ STATE_STEP = 300
 STATE_BREAK = 400
 STATE_PAUSE = 500
 
+
 def get_sw_status_str(sw_status):
     sw_status_str = "Unknown"
 
@@ -130,6 +121,7 @@ def get_sw_status_str(sw_status):
         sw_status_str = "ABORT"
 
     return sw_status_str
+
 
 '''
 Notes:
@@ -173,6 +165,7 @@ EV_CMD_RAPID_MOVE = 1160
 EV_CMD_RAPID_MOVE_RELATIVE = 1170
 EV_CMD_CLEAR_ALARM = 1180
 EV_CMD_PROBE = 1190
+EV_CMD_PROBE_HELPER = 1192
 EV_CMD_SET_AXIS = 1200
 EV_CMD_HOME = 1210
 EV_CMD_JOG_MOVE = 1220
@@ -215,34 +208,40 @@ EV_RMT_PORT_OPEN = 2230
 EV_RMT_PORT_CLOSE = 2240
 EV_RMT_CONFIG_DATA = 2250
 EV_RMT_SERIAL_PORTS = 2260
+EV_RMT_PING = 2270
+EV_RMT_PONG = 2280
 
 # --------------------------------------------------------------------------
 # VERBOSE MASK
 # --------------------------------------------------------------------------
 VERBOSE_MASK = 0
 
-VERBOSE_MASK_UI_ALL = 0x000000FF
+VERBOSE_MASK_UI_ALL = 0x00000000F
 VERBOSE_MASK_UI = 0x00000001
 VERBOSE_MASK_UI_EV = 0x00000002
 
-VERBOSE_MASK_MACHIF_ALL = 0x0000FF00
-VERBOSE_MASK_MACHIF_EXEC = 0x00000F00
-VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000100
-VERBOSE_MASK_MACHIF_MOD = 0x0000F000
-VERBOSE_MASK_MACHIF_MOD_EV = 0x00001000
+VERBOSE_MASK_MACHIF_ALL = 0x00000FF0
+VERBOSE_MASK_MACHIF_EXEC = 0x000000F0
+VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000010
+VERBOSE_MASK_MACHIF_MOD = 0x00000F00
+VERBOSE_MASK_MACHIF_MOD_EV = 0x00000100
 VERBOSE_MASK_MACHIF_EV = VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV
 
-VERBOSE_MASK_SERIALIF_STR = 0x00010000
-VERBOSE_MASK_SERIALIF_HEX = 0x00020000
-VERBOSE_MASK_SERIALIF = 0x00040000
-VERBOSE_MASK_SERIALIF_EV = 0x00080000
-VERBOSE_MASK_SERIALIF_ALL = 0x000F0000
+VERBOSE_MASK_SERIALIF_STR = 0x00001000
+VERBOSE_MASK_SERIALIF_HEX = 0x00002000
+VERBOSE_MASK_SERIALIF_HEX_DUMP = 0x00004000
+VERBOSE_MASK_SERIALIF = 0x00008000
+VERBOSE_MASK_SERIALIF_EV = 0x00010000
+VERBOSE_MASK_SERIALIF_ALL = 0x0001F000
 
-VERBOSE_MASK_REMOTEIF_STR = 0x00100000
-VERBOSE_MASK_REMOTEIF_HEX = 0x00200000
-VERBOSE_MASK_REMOTEIF = 0x00400000
-VERBOSE_MASK_REMOTEIF_EV = 0x00800000
-VERBOSE_MASK_REMOTEIF_ALL = 0x00F00000
+VERBOSE_MASK_REMOTEIF_STR = 0x00020000
+VERBOSE_MASK_REMOTEIF_HEX = 0x00040000
+VERBOSE_MASK_REMOTEIF_HEX_DUMP = 0x00080000
+VERBOSE_MASK_REMOTEIF_CLIENT = 0x00100000
+VERBOSE_MASK_REMOTEIF_SERVER = 0x00200000
+VERBOSE_MASK_REMOTEIF = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_REMOTEIF_SERVER
+VERBOSE_MASK_REMOTEIF_EV = 0x00400000
+VERBOSE_MASK_REMOTEIF_ALL = 0x00FF0000
 
 VERBOSE_MASK_EVENTIF = \
     VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV |\
@@ -264,12 +263,16 @@ VERBOSE_MASK_DICT = {
     "serialif_ev": VERBOSE_MASK_SERIALIF_EV,
     "serialif_all": VERBOSE_MASK_SERIALIF_ALL,
     "remoteif": VERBOSE_MASK_REMOTEIF,
+    "remoteif_client": VERBOSE_MASK_REMOTEIF_CLIENT,
+    "remoteif_server": VERBOSE_MASK_REMOTEIF_SERVER,
     "remoteif_str": VERBOSE_MASK_REMOTEIF_STR,
     "remoteif_hex": VERBOSE_MASK_REMOTEIF_HEX,
+    "remoteif_hex_dump": VERBOSE_MASK_REMOTEIF_HEX_DUMP,
     "remoteif_ev": VERBOSE_MASK_REMOTEIF_EV,
     "remoteif_all": VERBOSE_MASK_REMOTEIF_ALL,
     "eventif": VERBOSE_MASK_EVENTIF,
 }
+
 
 def decode_verbose_mask_string(verbose_mask_str):
     """ Decode and init gc VERBOSE_MASK
@@ -291,7 +294,7 @@ def decode_verbose_mask_string(verbose_mask_str):
 # --------------------------------------------------------------------------
 
 def init_logger(filename, log_handler=None):
-    log_path = filename
+    # log_path = filename
 
     logger = logging.getLogger()
 
@@ -301,10 +304,8 @@ def init_logger(filename, log_handler=None):
         ch = logging.StreamHandler()
 
     # ch_format = Formatter("%(levelname)s : %(message)s")
-    ch_format = Formatter("%(asctime)s - m:%(module)s l:%(lineno)d >> "
-                          "%(levelname)s :"
-                          "%(message)s",
-                          datefmt='%Y%m%d %I:%M:%S %p')
+    ch_format = Formatter(
+        "%(asctime)s - m:%(module)s l:%(lineno)d >> %(levelname)s :%(message)s", datefmt='%Y%m%d %I:%M:%S %p')
     ch.setFormatter(ch_format)
     logger.addHandler(ch)
 
@@ -324,7 +325,9 @@ def init_logger(filename, log_handler=None):
 
 
 def init_config(cmd_line_options, config_file, log_file, log_handler=None):
-    """ Initialize config vars
+    """
+    Initialize config vars
+
     """
     global CMD_LINE_OPTIONS
     global CONFIG_DATA
@@ -340,8 +343,49 @@ def init_config(cmd_line_options, config_file, log_file, log_handler=None):
     STATE_DATA = gsatStateData()
 
 
+def verbose_data_ascii(direction, data):
+    if direction:
+        return "[%03d] %s %s" % (len(data), direction, data.strip())
+    else:
+        return "[%03d] %s" % (len(data), data.strip())
+
+
+def verbose_data_hex(direction, data):
+    if direction:
+        return "[%03d] %s HEX:%s" % (len(data), direction, ':'.join(f"{x:02x}" for x in data))
+    else:
+        return "[%03d] HEX:%s" % (len(data), ':'.join(f"{x:02x}" for x in data))
+
+
+def verbose_hex_dump(direction, data):
+    hex_dump_data = get_hex_dump(data, 16)
+    if direction:
+        return "[%03d] %s hex_dump\n%s" % (len(data), direction, '\n'.join(hex_dump_data))
+    else:
+        return "[%03d] hex_dump\n%s" % (len(data), '\n'.join(hex_dump_data))
+
+
+def hex_dump(data, bytes_per_line=16):
+    hex_dump_data = get_hex_dump(data, bytes_per_line)
+    for line in hex_dump_data:
+        print(line)
+
+
+def get_hex_dump(data, bytes_per_line=16):
+    hex_dump_data = []
+    for i in range(0, len(data), bytes_per_line):
+        chunk = data[i:i+bytes_per_line]
+        hex_repr = ' '.join([f'{byte:02x}' for byte in chunk])
+        ascii_repr = ''.join([chr(byte) if 32 <= byte <= 126 else '.' for byte in chunk])
+        hex_dump_data.append(f'{i:04x}: {hex_repr:<{bytes_per_line*3}} {ascii_repr}')
+
+    return hex_dump_data
+
+
 class gsatStateData():
-    """ Provides various data information
+    """
+    Provides various data information
+
     """
 
     def __init__(self):
@@ -360,6 +404,10 @@ class gsatStateData():
         # machine status
         self.machineStatusString = "Idle"
 
+        # jogging status
+        self.joggingRapid = False
+        self.joggingFeedRate = 1000
+
         # program status
         self.programCounter = 0
         self.breakPoints = set()
@@ -369,7 +417,9 @@ class gsatStateData():
 
 
 class ConfigData(object):
-    """ Provides various data information
+    """
+    Provides various data information
+
     """
     def __init__(self, config_fname=None):
 
@@ -378,7 +428,9 @@ class ConfigData(object):
         self.datastore = dict()
 
     def add(self, key_path, val):
-        """ Add new key value pair
+        """
+        Add new key value pair
+
         """
         if type(key_path) is list:
             key_list = key_path
@@ -403,7 +455,9 @@ class ConfigData(object):
         node[key_list[-1:][0]] = val
 
     def get(self, key_path, default_rv=None):
-        """ Get value for a given key
+        """
+        Get value for a given key
+
         """
         return_val = default_rv
 
@@ -432,12 +486,16 @@ class ConfigData(object):
         return return_val
 
     def set(self, key_path, val):
-        """ Set value for a given key
+        """
+        Set value for a given key
+
         """
         self.add(key_path, val)
 
     def load(self):
-        """ Load data from config file
+        """
+        Load data from config file
+
         """
         if self.configFileName is not None:
             if os.path.exists(self.configFileName):
@@ -459,7 +517,9 @@ class ConfigData(object):
                 deep_update(self.datastore, datastore)
 
     def save(self):
-        """ Save data to config file
+        """
+        Save data to config file
+
         """
         if self.configFileName is not None:
             temp_store = None
@@ -474,10 +534,12 @@ class ConfigData(object):
                 self.datastore = temp_store
 
     def dump(self):
-        """ dumps config to stdout
+        """
+        dumps config to stdout
+
         """
         data = json.dumps(self.datastore, indent=3, sort_keys=True)
-        print (data)
+        print(data)
 
 
 class gsatConfigData(ConfigData):
@@ -572,25 +634,63 @@ class gsatConfigData(ConfigData):
             "FilterGcodes": "",
             "InitScript": "",
             "InitScriptEnable": False,
-            "Port": "",
             "MachIfSpecific": {
                 "grbl": {
                     "AutoRefreshPeriod": {
                         "Value": 200,
                         "Name": "Auto Refresh Period (msec)",
-                        "ToolTip": "How often so send request",
+                        "ToolTip": "How often so send refresh request (msec)",
                     }
                 },
                 "TinyG": {
                 },
                 "g2core": {
                 },
-                "Smoothie":{
+                "Smoothie": {
                     "AutoRefreshPeriod": {
                         "Value": 200,
                         "Name": "Auto Refresh Period (msec)",
-                        "ToolTip": "How often so send status request",
+                        "ToolTip": "How often so send refresh request (msec)",
                     }
+                }
+            },
+            "Port": "",
+            "Probe": {
+                "X": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "Y": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "Z": {
+                    "FeedRate": 100,
+                    "Offset": 19.6,
+                    "Retract": 2.0,
+                    "TravelLimit": 40.0,
+                },
+                "A": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "B": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
+                },
+                "C": {
+                    "FeedRate": 100,
+                    "Offset": 0.0,
+                    "Retract": 2.0,
+                    "TravelLimit": 10.0,
                 }
             }
         },
@@ -633,18 +733,21 @@ class gsatConfigData(ConfigData):
 
 
 """----------------------------------------------------------------------------
-   EVENTS definitions to interact with multiple windows:
+    EVENTS definitions to interact with multiple windows:
 ----------------------------------------------------------------------------"""
-EVT_THREAD_QUEQUE_EVENT_ID = 0x7ECAFE
+EVT_THREAD_QUEUE_EVENT_ID = 0x7ECAFE
 
 
 def reg_thread_queue_data_event(win, func):
     """ register for thread queue data event.
     """
-    win.Connect(-1, -1, EVT_THREAD_QUEQUE_EVENT_ID, func)
+    win.Connect(-1, -1, EVT_THREAD_QUEUE_EVENT_ID, func)
+
 
 class SimpleEvent(object):
-    """ Simple event to carry arbitrary data.
+    """
+    Simple event to carry arbitrary data.
+
     """
 
     def __init__(self, event_id, data, sender=None):
@@ -654,7 +757,9 @@ class SimpleEvent(object):
 
 
 class EventQueueIf(object):
-    """ Class that implement simple queue APIs
+    """
+    Class that implement simple queue APIs
+
     """
 
     def __init__(self):
@@ -684,8 +789,11 @@ class EventQueueIf(object):
         else:
             other.add_event(event_id, event_data, self)
 
+
 class TimeOut(object):
-    """ Class that implement timeout timer
+    """
+    Class that implement timeout timer
+
     """
 
     def __init__(self, timeout):

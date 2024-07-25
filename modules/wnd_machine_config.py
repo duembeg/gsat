@@ -1,39 +1,40 @@
 """----------------------------------------------------------------------------
-   wnd_machine_config.py
+    wnd_machine_config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import os
 import wx
 from wx.lib import scrolledpanel as scrolled
-import wx.propgrid as wxpg
+import wx.propgrid as pg
 
 import modules.machif_config as mi
-
 import images.icons as ico
 
+
 class Factory():
-    """ Factory class to init config page
+    """
+    Factory class to init config page
+
     """
 
     @staticmethod
@@ -50,33 +51,42 @@ class Factory():
 
         return settings_page
 
+
 class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
-    """ Machine settings
+    """
+    Machine settings
+
     """
 
     def __init__(self, parent, config_data, **args):
         super(gsatMachineSettingsPanel, self).__init__(parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
-        self.lastSpecificProperty = ""
 
         self.InitConfig()
         self.InitUI()
         self.SetAutoLayout(True)
         self.SetupScrolling()
-        # self.FitInside()
+        self.FitInside()
+
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.OnLateInit, self.timer)
+        self.timer.Start(500, wx.TIMER_ONE_SHOT)
 
     def InitConfig(self):
+        self.axisList = ['X', 'Y', 'Z', 'A', 'B', 'C']
         self.machIfName = self.configData.get('/machine/Device')
         self.machIfId = mi.GetMachIfId(self.machIfName)
-        self.machIfConfig = self.configData.get('/machine/MachIfSpecific')
+        self.machIfConfig = self.configData.get('/machine/MachIfSpecific', {})
+        self.machIfProbe = self.configData.get('/machine/Probe', {})
 
     def InitUI(self):
         vBoxSizerRoot = wx.BoxSizer(wx.VERTICAL)
+        hBoxSizerRoot = wx.BoxSizer(wx.HORIZONTAL)
 
         # Add device type select
         flexGridSizer = wx.FlexGridSizer(5, 2, 5, 5)
-        flexGridSizer.AddGrowableCol(1)
+        # flexGridSizer.AddGrowableCol(1)
 
         st = wx.StaticText(self, label="Device")
         self.deviceComboBox = wx.ComboBox(
@@ -84,11 +94,10 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
             choices=sorted(mi.MACHIF_LIST, key=str.lower),
             style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.CB_READONLY
         )
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.deviceComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.deviceComboBox, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
 
-        self.Bind(
-            wx.EVT_COMBOBOX, self.OnDeviceComboBoxSelect, self.deviceComboBox)
+        self.Bind(wx.EVT_COMBOBOX, self.OnDeviceComboBoxSelect, self.deviceComboBox)
 
         # get serial port list and baud rate speeds
         brList = ['1200', '2400', '4800', '9600', '19200', '38400', '57600', '115200', '230400']
@@ -97,192 +106,213 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         st = wx.StaticText(self, label="Serial Port")
         self.spComboBox = wx.ComboBox(
             self, -1, value=self.configData.get('/machine/Port'),
-            choices=['None'], style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
-        )
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.spComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+            choices=self.GetListOfSerialPorts(), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+        flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.spComboBox, flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
 
-        self.Bind(
-            wx.EVT_COMBOBOX, self.OnSpComboBoxSelect, self.spComboBox)
+        self.Bind(wx.EVT_COMBOBOX, self.OnSpComboBoxSelect, self.spComboBox)
 
         # Older version of wx (available in *12.04, 14.04) doesn't support
         # EVT_COMBOBOX_DROPDOWN
         try:
-            self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown)
+            self.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.OnSpComboBoxDropDown, self.spComboBox)
         except:
             self.OnSpComboBoxDropDown(None)
 
         # Add baud rate controls
         st = wx.StaticText(self, label="Baud Rate")
         self.sbrComboBox = wx.ComboBox(
-            self, -1, value=self.configData.get('/machine/Baud'),
-            choices=brList, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
+            self, -1, value=self.configData.get('/machine/Baud'), choices=brList,
+            style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER
         )
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.sbrComboBox, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
+        flexGridSizer.Add(self.sbrComboBox, flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
 
-        # DRO Font
-        st = wx.StaticText(self, label="DRO Font")
-        self.fontSelect = wx.FontPickerCtrl(self, size=(300, -1))
+        hBoxSizerRoot.Add(flexGridSizer, proportion=0, flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND, border=20)
 
-        self.fontSelect.SetToolTip(
-            wx.ToolTip("DRO Font updates after application restart"))
-
-        font = wx.Font(self.configData.get('/machine/DRO/FontSize'),
-                       wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, unicode(self.configData.get('/machine/DRO/FontFace')))
-
-        font_style_str = self.configData.get('/machine/DRO/FontStyle')
-
-        if "bold" in font_style_str:
-            font.MakeBold()
-
-        if "italic" in font_style_str:
-            font.MakeItalic()
-
-        self.fontSelect.SetSelectedFont(font)
-
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(self.fontSelect, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-
-        # add DRO enable axes
-        st = wx.StaticText(self, label="DRO Axes")
-        hBoxSz = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.cbDroEnX = wx.CheckBox(self, wx.ID_ANY, "X   ")
-        self.cbDroEnX.SetValue(self.configData.get('/machine/DRO/EnableX'))
-        self.cbDroEnX.SetToolTip(wx.ToolTip("DRO Enable X axis"))
-
-        self.cbDroEnY = wx.CheckBox(self, wx.ID_ANY, "Y   ")
-        self.cbDroEnY.SetValue(self.configData.get('/machine/DRO/EnableY'))
-        self.cbDroEnY.SetToolTip(wx.ToolTip("DRO Enable Y axis"))
-
-        self.cbDroEnZ = wx.CheckBox(self, wx.ID_ANY, "Z   ")
-        self.cbDroEnZ.SetValue(self.configData.get('/machine/DRO/EnableZ'))
-        self.cbDroEnZ.SetToolTip(wx.ToolTip("DRO Enable Z axis"))
-
-        self.cbDroEnA = wx.CheckBox(self, wx.ID_ANY, "A   ")
-        self.cbDroEnA.SetValue(self.configData.get('/machine/DRO/EnableA'))
-        self.cbDroEnA.SetToolTip(wx.ToolTip("DRO Enable A axis"))
-
-        self.cbDroEnB = wx.CheckBox(self, wx.ID_ANY, "B   ")
-        self.cbDroEnB.SetValue(self.configData.get('/machine/DRO/EnableB'))
-        self.cbDroEnB.SetToolTip(wx.ToolTip("DRO Enable B axis"))
-
-        self.cbDroEnC = wx.CheckBox(self, wx.ID_ANY, "C   ")
-        self.cbDroEnC.SetValue(self.configData.get('/machine/DRO/EnableC'))
-        self.cbDroEnC.SetToolTip(wx.ToolTip("DRO Enable C axis"))
-
-        hBoxSz.Add(self.cbDroEnX, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        hBoxSz.Add(self.cbDroEnY, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        hBoxSz.Add(self.cbDroEnZ, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        hBoxSz.Add(self.cbDroEnA, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        hBoxSz.Add(self.cbDroEnB, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        hBoxSz.Add(self.cbDroEnC, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-
-        flexGridSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-        flexGridSizer.Add(hBoxSz, 0, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-
-        vBoxSizerRoot.Add(flexGridSizer, 0, flag=wx.EXPAND |
-                          wx.TOP | wx.LEFT | wx.RIGHT, border=20)
-
-        self.pg = wxpg.PropertyGrid(self, wx.ID_ANY)
-        self.pg.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
+        self.pg = pg.PropertyGrid(self, wx.ID_ANY, style=wx.propgrid.PG_BOLD_MODIFIED | wx.propgrid.PG_TOOLTIPS)
+        self.pg.SetExtraStyle(pg.PG_EX_HELP_AS_TOOLTIPS)
         self.pg.EnableScrolling(True, True)
 
-        self.pg.Append(wxpg.PropertyCategory("General Settings"))
-
-        prop = "Enable init script"
-        self.cbInitScript = self.pg.Append(wxpg.BoolProperty(
-            prop, value=self.configData.get('/machine/InitScriptEnable')))
-        self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
-        self.pg.SetPropertyHelpString(prop, "Enable initialization script")
-
-        prop = "Enable filter G-codes"
-        self.cbFilterGcodes = self.pg.Append(wxpg.BoolProperty(
-            prop, value=self.configData.get('/machine/FilterGcodesEnable')))
-        self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
-        self.pg.SetPropertyHelpString(
-            prop, "When enabled, skip filtered G-codes")
-
-        prop = "Filter G-codes list"
-        self.tcFilterGcodes = self.pg.Append(wxpg.StringProperty(
-            prop, value=self.configData.get('/machine/FilterGcodes')))
-        self.pg.SetPropertyHelpString(
-            prop,
-            "When enabled, If a line contains one of these G-codes it wil be "
-            "skipped (',' separated)")
-
+        # add machif specific settings
         self.CreateMachIfSpecificCtrls()
 
-        vBoxSizerRoot.Add(
-            self.pg, 1,
-            flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=20)
+        # add DRO settings
+        self.CreateMachIfDROCtrls()
 
-        vBoxSizerRoot.AddSpacer(10, -1)
+        # add general settings
+        self.CreateMachIfGeneralCtrls()
+
+        # add probe settings
+        self.CreateMachIfProbeCtrls()
+
+        hBoxSizerRoot.Add(self.pg, proportion=2, flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, border=20)
+        vBoxSizerRoot.Add(hBoxSizerRoot, 1, flag=wx.EXPAND)
+
+        vBoxSizerRoot.AddSpacer(10)
 
         # add edit control for init script
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
         st = wx.StaticText(self, label="Init script")
-        vBoxSizer.Add(st, 0, flag=wx.ALIGN_CENTER_VERTICAL)
+        vBoxSizer.Add(st, 0)
 
-        self.tcInitScript = wx.TextCtrl(
-            self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
+        self.tcInitScript = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.tcInitScript.SetValue(self.configData.get('/machine/InitScript'))
-        self.tcInitScript.SetToolTip(wx.ToolTip(
-            "This script is sent to device upon connect detect"))
-        vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL |
-                      wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
+        self.tcInitScript.SetToolTip(wx.ToolTip("This script is sent to device upon connect detect"))
+        vBoxSizer.Add(self.tcInitScript, 1, flag=wx.ALL | wx.EXPAND)
 
-        vBoxSizerRoot.Add(
-            vBoxSizer, 2, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
+        vBoxSizerRoot.Add(vBoxSizer, 1, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=20)
 
-        vBoxSizerRoot.AddSpacer(10, -1)
+        vBoxSizerRoot.AddSpacer(10)
 
+        self.pg.Bind(pg.EVT_PG_CHANGED, self.OnPropertyChanged)
+
+        self.UpdateUI()
         self.SetSizer(vBoxSizerRoot)
 
+    def CreateMachIfDROCtrls(self):
+        """
+        Add DRO specific config
+
+        """
+        # add DRO font and enable axes
+        self.pg.Append(pg.PropertyCategory("DRO Settings"))
+
+        font = wx.Font(
+            self.configData.get('/machine/DRO/FontSize'), wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
+            self.configData.get('/machine/DRO/FontFace'))
+        font_style_str = self.configData.get('/machine/DRO/FontStyle')
+
+        if "bold" in font_style_str:
+            font.MakeBold()
+        if "italic" in font_style_str:
+            font.MakeItalic()
+
+        prop = "Font"
+        self.fontDroProp = self.pg.Append(pg.FontProperty(prop, value=font))
+        self.pg.SetPropertyHelpString(prop, "Font used in DRO axis display, requires application restart")
+
+        self.dictDroCbEnableAxis = {}
+
+        for axis in self.axisList:
+            prop = f"Enable {axis} axis"
+            self.dictDroCbEnableAxis[axis] = self.pg.Append(
+                pg.BoolProperty(prop, value=self.configData.get(f'/machine/DRO/Enable{axis}')))
+            self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
+            self.pg.SetPropertyHelpString(prop, f"Enable {axis} axis in DRO Panel")
+
+    def CreateMachIfGeneralCtrls(self):
+        self.pg.Append(pg.PropertyCategory("General Settings"))
+
+        prop = "Enable init script"
+        self.cbInitScript = self.pg.Append(pg.BoolProperty(
+            prop, value=self.configData.get('/machine/InitScriptEnable')))
+        self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
+        self.pg.SetPropertyHelpString(prop, "Enable initialization script")
+
+        prop = "Enable filter G-codes"
+        self.cbFilterGcodes = self.pg.Append(pg.BoolProperty(
+            prop, value=self.configData.get('/machine/FilterGcodesEnable')))
+        self.pg.SetPropertyAttribute(prop, "UseCheckbox", True)
+        self.pg.SetPropertyHelpString(prop, "When enabled, skip filtered G-codes")
+
+        prop = "Filter G-codes list"
+        self.tcFilterGcodes = self.pg.Append(
+            pg.StringProperty(prop, value=self.configData.get('/machine/FilterGcodes')))
+        self.pg.SetPropertyHelpString(
+            prop, "When enabled, If a line contains one of these G-codes it wil be skipped (',' separated)")
+
     def CreateMachIfSpecificCtrls(self):
-        ''' Add machif specific config
-        '''
-        self.machIfConfigCtrl = dict()
-        self.machIfConfigDic = self.machIfConfig.get(self.machIfName, {})
+        """
+        Add machif specific config
 
-        if len(self.machIfConfigDic):
+        """
 
-            self.pg.Append(wxpg.PropertyCategory(
-                "%s Specific Stettings" % self.machIfName))
+        self.dictMachineIfProp = {}
 
-            for i in sorted(self.machIfConfigDic.keys()):
-                name = self.machIfConfigDic[i]['Name']
-                value = self.machIfConfigDic[i]['Value']
-                tooltip = self.machIfConfigDic[i].get('ToolTip', "")
+        for machine in self.machIfConfig:
 
-                if type(value) == int:
-                    cp = self.pg.Append(wxpg.IntProperty(name, value=value))
+            if self.machIfConfig[machine]:
+                prop_cat = self.pg.Append(pg.PropertyCategory(f"{machine} Specific Settings"))
+                self.dictMachineIfProp[machine] = {}
+                self.dictMachineIfProp[machine]['prop_cat'] = prop_cat
+                self.dictMachineIfProp[machine]['prop'] = []
+
+            for prop in self.machIfConfig[machine]:
+                name = self.machIfConfig[machine][prop]['Name']
+                value = self.machIfConfig[machine][prop]['Value']
+                tooltip = self.machIfConfig[machine][prop].get('ToolTip', "")
+
+                self.dictMachineIfProp[machine]['prop'].append(prop)
+
+                if isinstance(value, int):
+                    self.pg.AppendIn(prop_cat, pg.IntProperty(name, f"{machine}_{prop}", value=value))
                     # pg.SetPropertyEditor(name,"SpinCtrl")
-                elif type(value) == float:
-                    cp = self.pg.Append(wxpg.FloatProperty(name, value=value))
-                elif type(value) == bool:
-                    cp = self.pg.Append(wxpg.BoolProperty(name, value=value))
+                elif isinstance(value, float):
+                    self.pg.AppendIn(prop_cat, pg.FloatProperty(name, f"{machine}_{prop}", value=value))
+                elif isinstance(value, bool):
+                    self.pg.AppendIn(prop_cat, pg.BoolProperty(name, f"{machine}_{prop}", value=value))
                     self.pg.SetPropertyAttribute(name, "UseCheckbox", True)
-                elif type(value) == str:
-                    cp = self.pg.Append(wxpg.StringProperty(name, value=value))
+                elif isinstance(value, str):
+                    self.pg.AppendIn(prop_cat, pg.StringProperty(name, f"{machine}_{prop}", value=value))
                 else:
-                    cp = None
-                    self.pg.Append(wxpg.StringProperty(
-                        name,
-                        value="type not supported: ToDo add type handling"))
+                    self.pg.Append(pg.StringProperty(
+                        name, f"{machine}_{prop}", value="type not supported: TODO: add type handling"))
 
                 if len(tooltip):
-                    self.pg.SetPropertyHelpString(name, tooltip)
+                    self.pg.SetPropertyHelpString(f"{machine}_{prop}", tooltip)
 
-                if cp is not None:
-                    self.machIfConfigCtrl[i] = cp
+                self.pg.Grid.FitColumns()
 
-        elif len(self.lastSpecificProperty):
-            self.pg.DeleteProperty(self.lastSpecificProperty)
+    def CreateMachIfProbeCtrls(self):
+        self.probe_cat = self.pg.Append(pg.PropertyCategory("Probe Settings"))
 
-        self.lastSpecificProperty = "%s Specific Stettings" % self.machIfName
+        self.dictProbeProp = {}
+
+        for axis in self.axisList:
+            prob_cat = self.pg.AppendIn(self.probe_cat, pg.PropertyCategory(f"{axis} Probe"))
+
+            self.pg.AppendIn(prob_cat, pg.FloatProperty(
+                "Offset", f"{axis}O", value=self.machIfProbe.get(axis, {}).get('Offset', 0)))
+            self.pg.SetPropertyHelpString(
+                f"{axis}O", "Specifies the value of the axis after the probe triggers")
+
+            self.pg.AppendIn(prob_cat, pg.IntProperty(
+                "Feed Rate", f"{axis}FR", value=self.machIfProbe.get(axis, {}).get('FeedRate', 0)))
+            self.pg.SetPropertyHelpString(
+                f"{axis}FR", "Speed at which the probe moves when it is seeking the surface or edge")
+
+            self.pg.AppendIn(prob_cat, pg.FloatProperty(
+                "Travel Limit", f"{axis}TL", value=self.machIfProbe.get(axis, {}).get('TravelLimit', 0)))
+            self.pg.SetPropertyHelpString(
+                f"{axis}TL", "Defines the maximum distance the probe can travel before it stops and gives up")
+
+            self.pg.AppendIn(prob_cat, pg.FloatProperty(
+                "Retract Distance", f"{axis}RD", value=self.machIfProbe.get(axis, {}).get('Retract', 0)))
+            self.pg.SetPropertyHelpString(
+                f"{axis}RD", "Distance the probe will retract after touching the surface or edge")
+
+            self.dictProbeProp[axis] = prob_cat
+
+    def UpdateUI(self):
+        """
+        Update UI with config data
+
+        """
+        for machine in self.dictMachineIfProp:
+            if self.machIfName == machine:
+                self.pg.HideProperty(self.dictMachineIfProp[machine]['prop_cat'], hide=False)
+            else:
+                self.pg.HideProperty(self.dictMachineIfProp[machine]['prop_cat'], hide=True)
+
+        for axis in self.axisList:
+            if self.dictDroCbEnableAxis[axis].GetValue():
+                self.pg.HideProperty(self.dictProbeProp[axis], hide=False)
+            else:
+                self.pg.HideProperty(self.dictProbeProp[axis], hide=True)
+
+        self.pg.Grid.FitColumns()
 
     def UpdateConfigData(self):
         self.machIfName = self.deviceComboBox.GetValue()
@@ -290,7 +320,8 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/machine/Port', self.spComboBox.GetValue())
         self.configData.set('/machine/Baud', self.sbrComboBox.GetValue())
 
-        font = self.fontSelect.GetSelectedFont()
+        # save DRO settings
+        font = self.fontDroProp.GetValue()
         font_style_list = []
         font_style_str = ""
 
@@ -309,13 +340,10 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/machine/DRO/FontSize', font.GetPointSize())
         self.configData.set('/machine/DRO/FontStyle', font_style_str)
 
-        self.configData.set('/machine/DRO/EnableX', self.cbDroEnX.GetValue())
-        self.configData.set('/machine/DRO/EnableY', self.cbDroEnY.GetValue())
-        self.configData.set('/machine/DRO/EnableZ', self.cbDroEnZ.GetValue())
-        self.configData.set('/machine/DRO/EnableA', self.cbDroEnA.GetValue())
-        self.configData.set('/machine/DRO/EnableB', self.cbDroEnB.GetValue())
-        self.configData.set('/machine/DRO/EnableC', self.cbDroEnC.GetValue())
+        for axis in self.axisList:
+            self.configData.set(f'/machine/DRO/Enable{axis}', self.dictDroCbEnableAxis[axis].GetValue())
 
+        # save general settings
         self.configData.set('/machine/FilterGcodesEnable', self.cbFilterGcodes.GetValue())
 
         filterGcodeList = self.tcFilterGcodes.GetValue().split(',')
@@ -326,14 +354,37 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.configData.set('/machine/InitScriptEnable', self.cbInitScript.GetValue())
         self.configData.set('/machine/InitScript', self.tcInitScript.GetValue())
 
-        if len(self.machIfConfigCtrl):
-            for i in self.machIfConfigCtrl:
-                value = self.machIfConfigCtrl[i].GetValue()
-                self.configData.set('/machine/MachIfSpecific/{}/{}/Value'.format(self.machIfName, i), value)
+        # save machine specific settings
+        for machine in self.dictMachineIfProp:
+            for prop in self.dictMachineIfProp[machine].get('prop', []):
+                value = self.pg.GetPropertyByName(f"{machine}_{prop}").GetValue()
+                self.configData.set(f'/machine/MachIfSpecific/{machine}/{prop}/Value', value)
+                # print(f"Set {machine}_{prop} to {value}")
+
+        # save probe settings
+        for axis in self.axisList:
+            self.configData.set(f'/machine/Probe/{axis}/Offset', self.pg.GetPropertyByName(f"{axis}O").GetValue())
+            self.configData.set(f'/machine/Probe/{axis}/FeedRate', self.pg.GetPropertyByName(f"{axis}FR").GetValue())
+            self.configData.set(f'/machine/Probe/{axis}/TravelLimit', self.pg.GetPropertyByName(f"{axis}TL").GetValue())
+            self.configData.set(f'/machine/Probe/{axis}/Retract', self.pg.GetPropertyByName(f"{axis}RD").GetValue())
 
     def OnDeviceComboBoxSelect(self, event):
         self.machIfName = self.deviceComboBox.GetValue()
-        self.CreateMachIfSpecificCtrls()
+        self.UpdateUI()
+
+    def OnLateInit(self, event):
+        # We need to do this to updated width of pull down list
+        # if we do it too early the pull down will have the full
+        # size of port + description
+        serList = self.GetListOfSerialPorts(description=True)
+        value = self.spComboBox.GetValue()
+        self.spComboBox.SetItems(serList)
+        self.spComboBox.SetValue(value)  # restore value
+
+    def OnPropertyChanged(self, event):
+        # property = event.GetProperty()
+        # print(f"Property {property.GetName()} changed")
+        self.UpdateUI()
 
     def OnSpComboBoxSelect(self, event):
         value = self.spComboBox.GetValue()
@@ -341,6 +392,12 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         self.spComboBox.SetValue(port)
 
     def OnSpComboBoxDropDown(self, event):
+        serList = self.GetListOfSerialPorts(description=True)
+        value = self.spComboBox.GetValue()
+        self.spComboBox.SetItems(serList)
+        self.spComboBox.SetValue(value)  # restore value
+
+    def GetListOfSerialPorts(self, description=False):
         portSearchFailSafe = False
 
         serList = self.configData.get('/temp/SerialPorts')
@@ -355,14 +412,20 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                 serListInfo = serial.tools.list_ports.comports()
 
                 if len(serListInfo) > 0:
-                    if type(serListInfo[0]) == tuple:
-                        serList = ["%s, %s, %s" %
-                                (i[0], i[1], i[2]) for i in serListInfo]
+                    if os.name != 'nt':
+                        for ser in serListInfo:
+                            if "USB" in ser.device or "ACM" in ser.device or "cu" in ser.device:
+                                if description:
+                                    serList.append(f"{ser.device}, {ser.description}")
+                                else:
+                                    serList.append(ser.device)
                     else:
-                        serList = ["%s, %s" % (i.device, i.description)
-                                for i in serListInfo]
+                        if description:
+                            serList = [f"{i.device}, {i.description}" for i in serListInfo]
+                        else:
+                            serList = [i.device for i in serListInfo]
 
-                    serList.sort()
+                serList.sort()
 
             except ImportError:
                 portSearchFailSafe = True
@@ -376,9 +439,9 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                         try:
                             serial.Serial(i)
                             serList.append('COM'+str(i + 1))
-                        except serial.SerialException as e:
+                        except serial.SerialException:
                             pass
-                        except OSError as e:
+                        except OSError:
                             pass
                 else:
                     serList = glob.glob('/dev/ttyUSB*') + \
@@ -388,5 +451,4 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
                 if len(serList) < 1:
                     serList = ['None']
 
-        self.spComboBox.SetItems(serList)
-
+        return serList

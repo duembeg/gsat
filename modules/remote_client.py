@@ -22,44 +22,29 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import threading
 import logging
 import socket
 import select
 import time
 import errno
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
+import queue
+import pickle
 
 import modules.config as gc
 
-def verbose_data_ascii(direction, data):
-    return "[%03d] %s %s" % (len(data), direction, data.strip())
-
-
-def verbose_data_hex(direction, data):
-    return "[%03d] %s ASCII:%s HEX:%s" % (
-        len(data),
-        direction,
-        data.strip(),
-        ':'.join(x.encode('hex') for x in data))
-
 
 class RemoteClientThread(threading.Thread, gc.EventQueueIf):
-    """ Threads to send and monitor network socket for new data.
+    """
+    Threads to send and monitor network socket for new data.
+
     """
 
-    def __init__(self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None):
-        """ Init remote client class
+    def __init__(
+            self, event_handler, host=None, tcp_port=None, udp_port=None, use_udp_broadcast=None, keep_alive=False):
+        """
+        Init remote client class
+
         """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
@@ -85,6 +70,14 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
 
+        # if timeout is not None:
+        #     self.timeout = timeout
+        # else:
+        #     self.timeout = gc.CONFIG_DATA.get('/remote/timeout', 0)
+
+        # so far this has only been needed on Android devices
+        self.keep_alive = keep_alive
+
         # self.host = "river"
         self.socServer = None
         self.socBroadcast = None
@@ -101,7 +94,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         self.logger = logging.getLogger()
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
             self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
 
         if event_handler is not None:
@@ -111,7 +104,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.start()
 
     def process_queue(self):
-        """ Event handlers
+        """
+        Event handlers
+
         """
         # process events from queue
         try:
@@ -148,7 +143,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.send(self.socServer, e)
 
     def get_hostname(self):
-        """ Get server host info
+        """
+        Get server host info
+
         """
         hostname = ""
 
@@ -158,7 +155,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         return hostname
 
     def close(self):
-        """ Close serial port
+        """
+        Close serial port
+
         """
         if self.socServer is not None:
 
@@ -170,7 +169,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
             self.socServer = None
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.info(msg.strip())
 
             self.notify_event_listeners(gc.EV_RMT_PORT_CLOSE, msg)
@@ -180,7 +179,9 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             self.socBroadcast = None
 
     def open(self):
-        """ Open serial port
+        """
+        Open serial port
+
         """
         exFlag = False
         exMsg = ""
@@ -188,15 +189,24 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         self.close()
 
         try:
-            self.socServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # Internet, TCP
-            #self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
-            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # for TCP
+            self.socServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)      # Internet, TCP
+            # self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)        # Internet, UDP
+            self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)    # disables the Nagle algorithm on TCP connections.
+
+            if self.keep_alive:
+                # Android keeps on shutting down sockets we need to keep them alive
+                # from information other eit seems to be a 20 idle time out
+                self.socServer.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 10)
+                self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 10)
+                self.socServer.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
+
             self.socServer.connect((self.host, self.tcpPort))
             self.inputs.append(self.socServer)
             self.inputsAddr[self.socServer] = self.socServer.getpeername()
 
             if self.useUdpBroadcast:
-                self.socBroadcast = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
+                self.socBroadcast = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)  # UDP
                 self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                 self.socBroadcast.bind(("", self.udpPort))
@@ -225,7 +235,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.socServer.close()
             self.socServer = None
 
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
@@ -233,7 +243,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             msg = "Open remote connection to {}{}\n".format(self.host, self.inputsAddr[self.socServer])
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.info(msg.strip())
 
             # sending directly to who created us
@@ -261,22 +271,24 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.rxBufferLen -= len(msg)
                 self.rxBuffer += msg
 
-                # got the entire mesage decode
                 if self.rxBufferLen <= 0:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                        self.logger.info(verbose_data_hex("<-", self.rxBuffer))
-
-                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                        self.logger.info(verbose_data_ascii("<-", self.rxBuffer))
-
+                    # got the entire message decode it
                     data = pickle.loads(self.rxBuffer)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                        self.logger.info(
-                            "Recv msg id:{} obj:0x{:x} len:{} from {}".format(
-                                data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[self.socServer]
-                            )
-                        )
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+                        log_msg =  "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
+                            data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc])
+
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                            log_msg = log_msg + gc.verbose_hex_dump("", self.rxBuffer)
+
+                        elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                            log_msg = log_msg + gc.verbose_data_hex("", self.rxBuffer)
+
+                        elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                            log_msg = log_msg + gc.verbose_data_ascii("", self.rxBuffer)
+
+                        self.logger.info(log_msg)
 
                     # init rxBuffer last
                     self.rxBuffer = b""
@@ -284,8 +296,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** OSError exception: {}\n".format(str(e))
                 exFlag = True
@@ -293,8 +305,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except IOError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** IOError exception: {}\n".format(str(e))
                 exFlag = True
@@ -312,7 +324,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.error(exMsg.strip())
 
             # add data to queue
@@ -338,25 +350,29 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             msg = data[gc.SOCK_HEADER_SIZE:]
 
             if len(msg):
-                # got the entire mesage decode
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
-                    self.logger.info(verbose_data_hex("<-", msg))
-
-                elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
-                    self.logger.info(verbose_data_ascii("<-", msg))
-
+                # got the entire message decode
                 data = pickle.loads(msg)
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-                    self.logger.info(
-                        "Recv msg id:{} obj:0x{:x} len:{} from {}".format(data.event_id, id(data), len(msg), from_data)
-                    )
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+                    log_msg = "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
+                        data.event_id, id(data), len(msg), from_data)
+
+                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                        log_msg = log_msg + gc.verbose_hex_dump("", msg)
+
+                    elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                        log_msg = log_msg + gc.verbose_data_hex("", msg)
+
+                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                        log_msg = log_msg + gc.verbose_data_ascii("", msg)
+
+                    self.logger.info(log_msg)
 
         except OSError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** OSError exception: {}\n".format(str(e))
                 exFlag = True
@@ -364,8 +380,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         except IOError as e:
             # This is normal on non blocking connections - when there are no incoming data error is going to be raised
             # Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-            # We are going to check for both - if one of them - that's expected, means no incoming data, continue as normal
-            # If we got different error code - something happened
+            # We are going to check for both - if one of them - that's expected, means no incoming data, continue
+            # as normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                 exMsg = "** IOError exception: {}\n".format(str(e))
                 exFlag = True
@@ -383,7 +399,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.error(exMsg.strip())
 
             # add data to queue
@@ -397,14 +413,14 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         exFlag = False
         exMsg = ""
 
-        pickle_data = pickle.dumps(data, protocol=2)
+        pickle_data = pickle.dumps(data, protocol=5)
         msg_len = len(pickle_data)
         msg = "{:{header_size}}".format(msg_len, header_size=gc.SOCK_HEADER_SIZE).encode('utf-8')
         msg += pickle_data
         data_len = len(msg)
         data_sent_len = 0
 
-        while (not exFlag and data_sent_len<data_len):
+        while (not exFlag and data_sent_len < data_len):
 
             try:
                 data_sent_len += soc.send(bytes(msg[data_sent_len:]))
@@ -436,18 +452,26 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             #     exMsg = "** Unexpected exception: {}\n".format(str(e))
             #     exFlag = True
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
-            self.logger.info(
-                "Send msg id:{} obj:0x{:x} len:{} to {}".format(
-                    data.event_id, id(data), msg_len, self.inputsAddr[self.socServer]
-                )
-            )
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+            log_msg = "Send msg id:{} obj:0x{:x} len:{} to {} ".format(
+                data.event_id, id(data), msg_len, self.inputsAddr[soc])
+
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
+                log_msg = log_msg + gc.verbose_hex_dump("", pickle_data)
+
+            elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                log_msg = log_msg + gc.verbose_data_hex("", pickle_data)
+
+            elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                log_msg = log_msg + gc.verbose_data_ascii("", pickle_data)
+
+            self.logger.info(log_msg)
 
         if exFlag:
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.error(exMsg.strip())
 
             # add data to queue
@@ -455,16 +479,19 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # self.close()
 
     def run(self):
-        """Run Worker Thread."""
+        """
+        Run Worker Thread.
+
+        """
         # This is the code executing in the new thread.
         self.endThread = False
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
             self.logger.info("thread start")
 
         self.open()
 
-        while (not self.endThread): # and (self.serialPort is not None):
+        while (not self.endThread):  # and (self.serialPort is not None):
 
             # process input queue for new commands or actions
             self.process_queue()
@@ -488,7 +515,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                                     self.host, self.inputsAddr[self.socServer]
                                 )
 
-                                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                                     self.logger.info(msg.strip())
 
                                 self.swState = gc.STATE_ABORT
@@ -499,7 +526,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         pass
 
                     if self.useUdpBroadcast:
-                        udp_readable, udp_writable, udp_exceptional = select.select([self.socBroadcast], self.outputs, self.inputs, 0)
+                        udp_readable, udp_writable, udp_exceptional = select.select(
+                            [self.socBroadcast], self.outputs, self.inputs, 0)
 
                         if len(udp_readable):
                             data = self.recv_from()
@@ -520,7 +548,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     # handle exceptions
                     for soc in exceptional:
                         msg = "Unknown exception from client{}\n".format(self.inputsAddr[soc])
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                             self.logger.info(msg.strip())
 
                         self.swState = gc.STATE_ABORT
@@ -534,7 +562,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     exMsg = "Unexpected state [%d], Aborting..." \
                             % (self.swState)
 
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                     self.logger.error(exMsg.strip())
 
                     self.notify_event_listeners(gc.EV_ABORT, exMsg)
@@ -542,7 +570,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             else:
                 message = "Remote port is close, terminating.\n"
 
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.error(message.strip())
 
                 # make sure we stop processing any states...
@@ -556,8 +584,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         # exit thread
         self.close()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF:
+        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
             self.logger.info("thread exit")
 
         self.notify_event_listeners(gc.EV_EXIT, "")
-

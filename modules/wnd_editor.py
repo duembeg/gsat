@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_editor.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,12 +22,9 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import re
 import wx
 from wx import stc as stc
-from wx.lib import scrolledpanel as scrolled
-from wx.lib import colourselect as csel
 import string
 
 import modules.config as gc
@@ -40,8 +37,11 @@ def hex_to_rgb(hex_color):
 
 
 class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
-    """ gsatStcStyledTextCtrl:
-        Text control to display data
+    """
+    gsatStcStyledTextCtrl:
+
+    Text control to display data
+
     """
 
     def __init__(self, parent, config_data, state_data, id=wx.ID_ANY,
@@ -68,20 +68,14 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
     def InitConfig(self):
         self.configReadOnly = self.configData.get('/output/ReadOnly')
         self.configAutoScroll = self.configData.get('/output/AutoScroll')
-        self.configWindowForeground = self.configData.get(
-            '/output/WindowForeground')
-        self.configWindowBackground = self.configData.get(
-            '/output/WindowBackground')
+        self.configWindowForeground = self.configData.get('/output/WindowForeground')
+        self.configWindowBackground = self.configData.get('/output/WindowBackground')
         self.configLineNumber = self.configData.get('/output/LineNumber')
-        self.configLineNumberForeground = self.configData.get(
-            '/output/LineNumberForeground')
-        self.configLineNumberBackground = self.configData.get(
-            '/output/LineNumberBackground')
+        self.configLineNumberForeground = self.configData.get('/output/LineNumberForeground')
+        self.configLineNumberBackground = self.configData.get('/output/LineNumberBackground')
         self.configCaretLine = self.configData.get('/output/CaretLine')
-        self.configCaretLineForeground = self.configData.get(
-            '/output/CaretLineForeground')
-        self.configCaretLineBackground = self.configData.get(
-            '/output/CaretLineBackground')
+        self.configCaretLineForeground = self.configData.get('/output/CaretLineForeground')
+        self.configCaretLineBackground = self.configData.get('/output/CaretLineBackground')
 
         self.configFontFace = self.configData.get('/output/FontFace')
         self.configFontSize = self.configData.get('/output/FontSize')
@@ -153,8 +147,8 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         # define markers
         self.markerCaretLine = 2
         self.MarkerDefine(
-            self.markerCaretLine, stc.STC_MARK_ROUNDRECT,
-            self.configCaretLineForeground, self.configCaretLineBackground)
+            self.markerCaretLine, stc.STC_MARK_ROUNDRECT, self.configCaretLineForeground,
+            self.configCaretLineBackground)
 
         # disable two other margins
         self.SetMarginMask(1, pow(2, 0))
@@ -267,31 +261,21 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
     def InitConfig(self):
         self.configReadOnly = self.configData.get('/code/ReadOnly')
         self.configAutoScroll = self.configData.get('/code/AutoScroll')
-        self.configWindowForeground = self.configData.get(
-            '/code/WindowForeground')
-        self.configWindowBackground = self.configData.get(
-            '/code/WindowBackground')
+        self.configWindowForeground = self.configData.get('/code/WindowForeground')
+        self.configWindowBackground = self.configData.get('/code/WindowBackground')
         self.configLineNumber = self.configData.get('/code/LineNumber')
-        self.configLineNumberForeground = self.configData.get(
-            '/code/LineNumberForeground')
-        self.configLineNumberBackground = self.configData.get(
-            '/code/LineNumberBackground')
+        self.configLineNumberForeground = self.configData.get('/code/LineNumberForeground')
+        self.configLineNumberBackground = self.configData.get('/code/LineNumberBackground')
         self.configCaretLine = self.configData.get('/code/CaretLine')
-        self.configCaretLineForeground = self.configData.get(
-            '/code/CaretLineForeground')
-        self.configCaretLineBackground = self.configData.get(
-            '/code/CaretLineBackground')
+        self.configCaretLineForeground = self.configData.get('/code/CaretLineForeground')
+        self.configCaretLineBackground = self.configData.get('/code/CaretLineBackground')
         self.configGCodeHighlight = self.configData.get('/code/GCodeHighlight')
         self.configMCodeHighlight = self.configData.get('/code/MCodeHighlight')
         self.configAxisHighlight = self.configData.get('/code/AxisHighlight')
-        self.configParametersHighlight = self.configData.get(
-            '/code/ParametersHighlight')
-        self.configParameters2Highlight = self.configData.get(
-            '/code/Parameters2Highlight')
-        self.configGCodeLineNumberHighlight = self.configData.get(
-            '/code/GCodeLineNumberHighlight')
-        self.configCommentsHighlight = self.configData.get(
-            '/code/CommentsHighlight')
+        self.configParametersHighlight = self.configData.get('/code/ParametersHighlight')
+        self.configParameters2Highlight = self.configData.get('/code/Parameters2Highlight')
+        self.configGCodeLineNumberHighlight = self.configData.get('/code/GCodeLineNumberHighlight')
+        self.configCommentsHighlight = self.configData.get('/code/CommentsHighlight')
 
         self.configFontFace = self.configData.get('/code/FontFace')
         self.configFontSize = self.configData.get('/code/FontSize')
@@ -370,11 +354,10 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         self.markerBreakpoint = 1
         self.markerCaretLine = 2
         self.MarkerDefine(self.markerPC, stc.STC_MARK_ARROW, "BLACK", "GREEN")
+        self.MarkerDefine(self.markerBreakpoint, stc.STC_MARK_CIRCLE, "BLACK", "RED")
         self.MarkerDefine(
-            self.markerBreakpoint, stc.STC_MARK_CIRCLE, "BLACK", "RED")
-        self.MarkerDefine(
-            self.markerCaretLine, stc.STC_MARK_ROUNDRECT,
-            self.configCaretLineForeground, self.configCaretLineBackground)
+            self.markerCaretLine, stc.STC_MARK_ROUNDRECT, self.configCaretLineForeground,
+            self.configCaretLineBackground)
 
         self.SetMarginMask(1, pow(2, self.markerBreakpoint))
         self.SetMarginMask(2, pow(2, self.markerPC))
@@ -384,40 +367,31 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         self.Bind(stc.EVT_STC_STYLENEEDED, self.onStyleNeeded)
 
         # g-code
-        self.StyleSetSpec(stc.STC_P_OPERATOR, "fore:%s" %
-                          self.configGCodeHighlight)
+        self.StyleSetSpec(stc.STC_P_OPERATOR, "fore:%s" % self.configGCodeHighlight)
         self.reGCode = re.compile(r'[G]\d+\.{0,1}\d*', re.IGNORECASE)
 
         # m-code
-        self.StyleSetSpec(stc.STC_P_CLASSNAME, "fore:%s" %
-                          self.configMCodeHighlight)
+        self.StyleSetSpec(stc.STC_P_CLASSNAME, "fore:%s" % self.configMCodeHighlight)
         self.reMCode = re.compile(r'[M]\d+\.{0,1}\d*', re.IGNORECASE)
 
         # axis
         self.StyleSetSpec(stc.STC_P_WORD, "fore:%s" % self.configAxisHighlight)
-        self.reAxis = re.compile(
-            r'([ABCIJKUVWXYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
+        self.reAxis = re.compile(r'([ABCIJKUVWXYZ])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
         # parameters
-        self.StyleSetSpec(stc.STC_P_WORD2, "fore:%s" %
-                          self.configParametersHighlight)
-        self.reParams = re.compile(
-            r'([DEFHLOPQRST])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
+        self.StyleSetSpec(stc.STC_P_WORD2, "fore:%s" % self.configParametersHighlight)
+        self.reParams = re.compile(r'([DEFHLOPQRST])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
         # parameters 2
-        self.StyleSetSpec(stc.STC_P_DEFNAME, "fore:%s" %
-                          self.configParameters2Highlight)
-        self.reParams2 = re.compile(
-            r'([EF])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
+        self.StyleSetSpec(stc.STC_P_DEFNAME, "fore:%s" % self.configParameters2Highlight)
+        self.reParams2 = re.compile(r'([EF])(\s*[-+]*\d+\.{0,1}\d*)', re.IGNORECASE)
 
         # g-code line number
-        self.StyleSetSpec(stc.STC_P_IDENTIFIER, "fore:%s" %
-                          self.configGCodeLineNumberHighlight)
+        self.StyleSetSpec(stc.STC_P_IDENTIFIER, "fore:%s" % self.configGCodeLineNumberHighlight)
         self.reLineNumber = re.compile(r'N\d+', re.IGNORECASE)
 
         # comments
-        self.StyleSetSpec(stc.STC_P_COMMENTLINE, "fore:%s" %
-                          self.configCommentsHighlight)
+        self.StyleSetSpec(stc.STC_P_COMMENTLINE, "fore:%s" % self.configCommentsHighlight)
         self.reComments = []
         self.reComments.append(re.compile(r'\(.*\)'))
         self.reComments.append(re.compile(r';.*'))
@@ -438,11 +412,11 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         stStart = self.PositionFromLine(stLine)
         stData = self.GetTextRange(stStart, stEnd)
 
-        #print stStart, stEnd, stLine
+        # print stStart, stEnd, stLine
 
         # start with default (revert to default, if text gets modify)
         # in this example, only style the text style bits
-        self.StartStyling(stStart, 31)
+        self.StartStyling(stStart)
         self.SetStyling(len(stData), stc.STC_P_DEFAULT)
 
         # match gcodes
@@ -450,7 +424,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_OPERATOR)
 
         # match mcodes
@@ -458,7 +432,7 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_CLASSNAME)
 
         # match line number
@@ -466,22 +440,22 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_IDENTIFIER)
 
-        # match paramters
+        # match parameters
         mArray = self.reParams.finditer(stData)
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(1), 31)
+            self.StartStyling(stStart+m.start(1))
             self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD2)
 
         mArray = self.reParams2.finditer(stData)
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(0), 31)
+            self.StartStyling(stStart+m.start(0))
             self.SetStyling(m.end(0)-m.start(0), stc.STC_P_DEFNAME)
 
         # match axis
@@ -489,17 +463,17 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
 
         for m in mArray:
             # in this example, only style the text style bits
-            self.StartStyling(stStart+m.start(1), 31)
+            self.StartStyling(stStart+m.start(1))
             self.SetStyling(m.end(1)-m.start(1), stc.STC_P_WORD)
 
         # match comments or skip code
-        # *** must be last to catch any keywords or numbers in commnets
+        # *** must be last to catch any keywords or numbers in comments
         for regex in self.reComments:
             mArray = regex.finditer(stData)
 
             for m in mArray:
                 # in this example, only style the text style bits
-                self.StartStyling(stStart+m.start(0), 31)
+                self.StartStyling(stStart+m.start(0))
                 self.SetStyling(m.end(0)-m.start(0), stc.STC_P_COMMENTLINE)
 
     def UpdateUI(self, stateData):
@@ -558,4 +532,3 @@ class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
         if evt.GetMargin() == self.markerBreakpoint:
             line_clicked = self.LineFromPosition(evt.GetPosition())
             self.ToggleBreakPoint(line_clicked)
-

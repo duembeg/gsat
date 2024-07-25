@@ -1,3 +1,4 @@
+#:kivy 2.3.0
 # """--------------------------------------------------------------------------
 #   main.kv
 #
@@ -88,6 +89,9 @@
     # height: self.minimum_height
     MDBoxLayout:
         # orientation: 'vertical'
+        # adaptive_size: True
+        # size_hint: None, None
+        # size: self.minimum_size
         height: self.minimum_height
         ScrollView:
             MDList:
@@ -106,6 +110,8 @@
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
                         icon: "images/icons/color/x.png"
+                        id: x_axis_icon
+                        on_release: root.on_list_item_release(self)
                 #TwoLineListItem:
                 OneLineAvatarIconListItem:
                     id: y_axis
@@ -117,6 +123,8 @@
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
                         icon: "images/icons/color/y.png"
+                        id: y_axis_icon
+                        on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: z_axis
                     text: dro_list.axis_text
@@ -127,6 +135,8 @@
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
                         icon: "images/icons/color/z.png"
+                        id: z_axis_icon
+                        on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: a_axis
                     text: dro_list.axis_text
@@ -137,6 +147,8 @@
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
                         icon: "images/icons/color/a.png"
+                        id: a_axis_icon
+                        on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: b_axis
                     text: dro_list.axis_text
@@ -147,6 +159,8 @@
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
                         icon: "images/icons/color/b.png"
+                        id: b_axis_icon
+                        on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: c_axis
                     text: dro_list.axis_text
@@ -157,6 +171,8 @@
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
                         icon: "images/icons/color/c.png"
+                        id: c_axis_icon
+                        on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: feed_rate
                     text: "0.00"
@@ -346,10 +362,11 @@
     # button_size: sp(24) #"38sp"
     # button_size: pt(24) #"38sp"
     button_size: sp(48)
-    spacing: 24
-    size_hint:(None, None)
-    width: self.minimum_width
-    height: self.minimum_height
+    # spacing: 24
+    # size_hint:(None, None)
+    # width: self.minimum_width
+    # height: self.minimum_height
+    adaptive_size: True
     pos_hint: {'center_x':0.5, 'center_y':0.5}
     MDIconButton:
     # Button:
@@ -430,7 +447,7 @@
         icon: "images/icons/color/jogging_probe_48x48.png"
         icon_size: jog.button_size
         # user_font_size: jog.button_size
-        on_press: root.on_jog_probe("{}\n".format(root.gc.DEVICE_CMD_COOLANT_OFF))
+        on_press: root.on_jog_probe({'z': -1})
     MDIconButton:
         id: negative_x
         icon: "images/icons/color/jogging_neg_x_48x48.png"
@@ -506,7 +523,7 @@
 
 
 
-<InputDialagoContent>
+<InputDialogContent>
     id: top
     orientation: "vertical"
     spacing: "12dp"

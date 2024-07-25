@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    script_progexec.py
 
-   Copyright (C) 2013-2018 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    Grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,9 +22,6 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
-# import os
-# import re
 import threading
 import time
 
@@ -32,15 +29,20 @@ import modules.config as gc
 
 
 class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
-    """  Threads that executes the scripts that directly interface with
+    """
+    Threads that executes the scripts that directly interface with
     machif_progexec.
     This thread allows the UI to continue being responsive to user input
     while this thread is busy executing program or waiting for serial
     events.
+
     """
 
     def __init__(self, event_handler, state_data, cmd_line_options):
-        """Init Worker Thread Class."""
+        """
+        Init Worker Thread Class.
+
+        """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
 
@@ -56,7 +58,9 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
         self.start()
 
     def processQueue(self):
-        """ Handle events coming from main UI
+        """
+        Handle events coming from main UI
+
         """
         # process events from queue
         if not self._eventQueue.empty():
@@ -67,33 +71,29 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
 
             if e.event_id == gc.EV_CMD_EXIT:
                 if self.cmdLineOptions.vverbose:
-                    print "** scriptExecuteThread got event gc.gEV_CMD_EXIT."
+                    print("** scriptExecuteThread got event gc.gEV_CMD_EXIT.")
 
                 self.endThread = True
                 self.swState = gc.STATE_IDLE
 
             elif e.event_id == gc.EV_CMD_RUN:
                 if self.cmdLineOptions.vverbose:
-                    print "** scriptExecuteThread got event gc.gEV_CMD_RUN, "\
-                        "swState->gc.gSTATE_RUN"
+                    print("** scriptExecuteThread got event gc.gEV_CMD_RUN, swState->gc.gSTATE_RUN")
                 self.swState = gc.STATE_RUN
 
             elif e.event_id == gc.EV_CMD_STOP:
                 if self.cmdLineOptions.vverbose:
-                    print "** scriptExecuteThread got event gc.gEV_CMD_STOP, "\
-                        "swState->gc.gSTATE_IDLE"
+                    print("** scriptExecuteThread got event gc.gEV_CMD_STOP, swState->gc.gSTATE_IDLE")
 
                 self.swState = gc.STATE_IDLE
 
             elif e.event_id == gc.EV_CMD_GET_STATUS:
                 if self.cmdLineOptions.vverbose:
-                    print "** scriptExecuteThread got event "\
-                        "gc.gEV_CMD_GET_STATUS."
+                    print("** scriptExecuteThread got event gc.gEV_CMD_GET_STATUS.")
 
             else:
                 if self.cmdLineOptions.vverbose:
-                    print "** scriptExecuteThread got unknown event!!"\
-                        " [%s]." % str(e.event_id)
+                    print(f"** scriptExecuteThread got unknown event!! [{str(e.event_id)}].")
 
     def tick(self):
         return
@@ -102,7 +102,9 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
         return
 
     def processRunSate(self):
-        """ Process RUN state and update counters or end state
+        """
+        Process RUN state and update counters or end state
+
         """
         return
 
@@ -113,19 +115,22 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
         pass
 
     def run(self):
-        """Run Worker Thread."""
+        """
+        Run Worker Thread.
+
+        """
         # This is the code executing in the new thread.
         self.endThread = False
 
         if self.cmdLineOptions.vverbose:
-            print "** scriptExecuteThread start."
+            print("** scriptExecuteThread start.")
 
         # inti machine interface
         self.machIfModule.open()
 
         while not self.endThread:
 
-            # process bookeeping input queue for new commands or actions
+            # process bookkeeping input queue for new commands or actions
             self.tick()
 
             # process write queue from UI cmds
@@ -144,9 +149,9 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
                 break
             else:
                 if self.cmdLineOptions.verbose:
-                    print "** scriptExecuteThread unexpected state "\
-                        "[%d], moving back to IDLE." \
-                        ", swState->gc.gSTATE_IDLE " % (self.swState)
+                    print(
+                        f"** scriptExecuteThread unexpected state [{self.swState}], moving back to IDLE, "
+                        "swState->gc.gSTATE_IDLE")
 
                 self.processIdleSate()
                 self.swState = gc.STATE_IDLE
@@ -154,7 +159,6 @@ class ScriptExecuteThread(threading.Thread, gc.EventQueueIf):
             time.sleep(0.01)
 
         if self.cmdLineOptions.vverbose:
-            print "** scriptExecuteThread exit."
+            print("** scriptExecuteThread exit.")
 
-        self.eventHandler.add_evevent(gc.EV_EXIT, "")
-
+        self.eventHandler.add_event(gc.EV_EXIT, "")

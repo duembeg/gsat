@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
    wnd_cli_config.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+   Copyright (C) 2013 Wilhelm Duembeg
 
    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
    grbl like GCODE interpreters. With features similar to software debuggers.
@@ -22,16 +22,16 @@
    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
-import re
 import wx
 from wx.lib import scrolledpanel as scrolled
-from wx.lib.agw import floatspin as fs
 
 import images.icons as ico
 
+
 class Factory():
-    """ Factory class to init config page
+    """
+    Factory class to init config page
+
     """
 
     @staticmethod
@@ -40,8 +40,10 @@ class Factory():
 
     @staticmethod
     def AddPage(parent_wnd, config, page):
-        ''' Function to create and inti settings page
-        '''
+        """
+        Function to create and inti settings page
+
+        """
         settings_page = gsatCliSettingsPanel(parent_wnd, config)
         parent_wnd.AddPage(settings_page, "Cli")
         parent_wnd.SetPageImage(page, page)
@@ -50,7 +52,9 @@ class Factory():
 
 
 class gsatCliSettingsPanel(scrolled.ScrolledPanel):
-    """ CLI settings
+    """
+    CLI settings
+
     """
 
     def __init__(self, parent, config_data, **args):
@@ -62,13 +66,13 @@ class gsatCliSettingsPanel(scrolled.ScrolledPanel):
         self.SetAutoLayout(True)
         self.SetupScrolling()
         self.stateData = None
-        self.keybaordJoggingEnable = False
+        self.keyboardJoggingEnable = False
         # self.FitInside()
 
     def InitUI(self):
         vBoxSizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Add cehck box
+        # Add check box
         hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.cb = wx.CheckBox(self, wx.ID_ANY, "Save Command History")
         self.cb.SetValue(self.configData.get('/cli/SaveCmdHistory'))

@@ -25,13 +25,8 @@
 ----------------------------------------------------------------------------"""
 
 import os
-import sys
+import json
 from optparse import OptionParser
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
 
 import wx
 
@@ -250,7 +245,7 @@ class toolJsonData():
 
     def dump(self):
         data = json.dumps(self.workingConfigData, indent=3, sort_keys=True)
-        print data
+        print(data)
 
 class toolConfigData():
     """ Provides various data information

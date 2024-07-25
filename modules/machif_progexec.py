@@ -1,38 +1,33 @@
 """----------------------------------------------------------------------------
-   machif_progexec.py
+    machif_progexec.py
 
-   Copyright (C) 2013-2020 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
-
 import re
 import threading
 import time
 import logging
 import hashlib
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 
 import modules.config as gc
 import modules.machif_config as mi
@@ -112,6 +107,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         self.filterGCodes = gc.CONFIG_DATA.get('/machine/FilterGcodes')
         filterGcodeList = self.filterGCodes.split(',')
         self.filterGCodesList = [x.strip() for x in filterGcodeList]
+        self.dictProbeSettings = gc.CONFIG_DATA.get('/machine/Probe')
 
     def process_queue(self):
         """ Handle events coming from main UI
@@ -177,7 +173,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 if 'breakPoints' in e.data:
                     self.breakPointSet = e.data['breakPoints']
 
-                # init time only if we got new lines or previous satate was
+                # init time only if we got new lines or previous state was
                 # IDLE (if we stop or step operations)
                 h2 = hashlib.md5(str(self.gcodeDataLines).encode('utf-8')).hexdigest()
                 if h1 != h2 or self.swState == gc.STATE_IDLE:
@@ -308,7 +304,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
             elif e.event_id == gc.EV_CMD_JOG_MOVE_RELATIVE:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
-                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE ".format(e.data))
+                    self.logger.info("EV_CMD_JOG_MOVE_RELATIVE {}".format(e.data))
 
                 self.machIfModule.doJogMoveRelative(e.data)
 
@@ -374,6 +370,46 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
                 self.machIfModule.doProbe(e.data)
 
+            elif e.event_id == gc.EV_CMD_PROBE_HELPER:
+                # This helper takes care of
+                #   Running the probe command
+                #   Setting probe offset
+                #   Retract using settings saved settings
+                # all the commands are sent to the machine interface, it is
+                # expected that if a probe error happens the machine will
+                # ignore the the set axis command anf the retract command
+                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
+                    self.logger.info("EV_CMD_PROBE_HELPER {}".format(e.data))
+
+                # expectation is a dictionary with a single key (the axis)
+                # and a positive or negative value indicating direction,
+                # the actual value is not important
+                axis = list(e.data.keys())[0]
+                direction = e.data[axis]
+
+                feed_rate = self.dictProbeSettings[axis.upper()]['FeedRate']
+                travel_limit = self.dictProbeSettings[axis.upper()]['TravelLimit']
+                retract = self.dictProbeSettings[axis.upper()]['Retract']
+                offset = self.dictProbeSettings[axis.upper()]['Offset']
+
+                # depending on probe direction we need to update some values
+                if direction > 0:
+                    travel_limit = abs(travel_limit)
+                    retract = -abs(retract)
+                else:
+                    travel_limit = -abs(travel_limit)
+                    retract = abs(retract)
+
+                probe = {axis: travel_limit, 'feed': feed_rate}
+                self.machIfModule.doProbe(probe)
+
+                set_axis = {axis: offset}
+                self.machIfModule.doSetAxis(set_axis)
+
+                if retract != 0:
+                    retract_axis = {axis: retract}
+                    self.machIfModule.doFastMoveRelative(retract_axis)
+
             elif e.event_id == gc.EV_CMD_UPDATE_CONFIG:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC_EV:
                     self.logger.info("EV_CMD_UPDATE_CONFIG")
@@ -415,8 +451,8 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     self.logger.error("got unknown event!! [{}]".format(str(e.event_id)))
 
     """-------------------------------------------------------------------------
-   programExecuteThread: General Functions
-   -------------------------------------------------------------------------"""
+    programExecuteThread: General Functions
+    -------------------------------------------------------------------------"""
 
     def init_machine_if_module(self):
         self.machIfModule = mi.GetMachIfModule(self.machIfId)
@@ -475,11 +511,11 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                     pass
 
                     # notify listeners
-                    #self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
+                    # self.notifyEventListeners(gc.EV_DATA_IN, rx_data)
 
                 if 'sr' in rxData:
                     if len(self.gcodeDataLines):
-                        # at this point we haven't completed and added progaram counter
+                        # at this point we haven't completed and added program counter
                         # we need to +1, also array starts at 0 and gcode page starts at 1
                         # nee another +1
                         gcode_lines_len = len(self.gcodeDataLines)
@@ -718,9 +754,9 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # update PC
         if self.lastWorkingProgramCounter != self.workingProgramCounter:
-        #     # notify listeners
-        #     self.notifyEventListeners(gc.EV_PC_UPDATE,
-        #                               self.workingProgramCounter)
+            #     # notify listeners
+            #     self.notifyEventListeners(gc.EV_PC_UPDATE,
+            #                               self.workingProgramCounter)
             self.lastWorkingProgramCounter = self.workingProgramCounter
 
         # check for break point hit
@@ -801,7 +837,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         # update PC
         # self.notifyEventListeners(gc.EV_PC_UPDATE, self.workingProgramCounter)
-        self.notify_event_listeners(gc.EV_DATA_STATUS, {'pc':self.workingProgramCounter})
+        self.notify_event_listeners(gc.EV_DATA_STATUS, {'pc': self.workingProgramCounter})
 
         # end move to IDLE state
         if self.workingProgramCounter > self.initialProgramCounter:
@@ -892,7 +928,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         while not self.endThread:
 
-            # process bookeeping input queue for new commands or actions
+            # process bookkeeping input queue for new commands or actions
             self.tick()
 
             # process write queue from UI cmds
@@ -915,9 +951,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
                 break
             else:
                 if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_EXEC:
-                    msg = "unexpected state [%d], moving back to IDLE, "\
-                          "swState->gc.STATE_IDLE " % (self.swState)
-
+                    msg = "unexpected state [%d], moving back to IDLE, swState->gc.STATE_IDLE " % (self.swState)
                     self.logger.info(msg)
 
                 self.process_idle_sate()
