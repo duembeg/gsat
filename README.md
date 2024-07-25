@@ -89,7 +89,7 @@ python3.8 -m pip install opencv-python
   - Updated dependencies instructions
 - Fix CV2 issues
 - Update to UI for quality of life, DRO edits, and axis letters are now clickable
-- Added `gsat-server.py` to control the machine and server for remote UIs
+- Added `gsat-server.py` starts enough code to control the machine and server for remote UIs
 - Moved probe settings to machine configuration. A UI can connect to multiple machines, making it illogical for the UI to have multiple settings for each machine. Remote UIs might not even have the ability to configure the machine itself.
 
 ### 1.7.0
