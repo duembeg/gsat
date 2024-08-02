@@ -1601,7 +1601,7 @@ class RootWidget(Screen, gc.EventQueueIf):
             pass
         else:
             if ev.event_id == gc.EV_DATA_STATUS:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_STATUS")
 
                 if 'sr' in ev.data:
@@ -1634,14 +1634,14 @@ class RootWidget(Screen, gc.EventQueueIf):
                         self.update_dro(r)
 
             elif ev.event_id == gc.EV_DATA_IN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_IN")
 
                 # TODO: control this via config
                 self.append_text(ev.data)
 
             elif ev.event_id == gc.EV_DATA_OUT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_OUT")
 
                 # TODO: control this via config
@@ -1651,37 +1651,37 @@ class RootWidget(Screen, gc.EventQueueIf):
                 self.append_text("> {}".format(ev.data))
 
             elif ev.event_id == gc.EV_PC_UPDATE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_PC_UPDATE [%s]" % str(ev.data))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_PC_UPDATE [{str(ev.data)}]")
 
                 # self.SetPC(ev.data)
 
             elif ev.event_id == gc.EV_RUN_END:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RUN_END")
 
                 # self.runEndWaitingForMachIfIdle = True
                 # self.UpdateUI()
 
             elif ev.event_id == gc.EV_STEP_END:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_STEP_END")
 
                 # self.UpdateUI()
 
             elif ev.event_id == gc.EV_BRK_PT_STOP:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_HIT_BRK_PT")
 
             elif ev.event_id == gc.EV_GCODE_MSG:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_HIT_MSG [%s]" % ev.data.strip())
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_HIT_MSG [{ev.data.strip()}]")
 
-                self.append_text("** MSG: {}\n".format(ev.data.strip()))
+                self.append_text(f"** MSG: {ev.data.strip()}\n")
 
             elif ev.event_id == gc.EV_SER_PORT_OPEN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_SER_PORT_OPEN from 0x{id(ev.sender):x} {ev.sender}")
 
                 self.serial_port_open = True
 
@@ -1689,8 +1689,8 @@ class RootWidget(Screen, gc.EventQueueIf):
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_STATUS)
 
             elif ev.event_id == gc.EV_SER_PORT_CLOSE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_SER_PORT_CLOSE from 0x{id(ev.sender):x} {ev.sender}")
 
                 # order matters in this case sw_state must be first
                 self.sw_state = gc.STATE_IDLE
@@ -1698,8 +1698,8 @@ class RootWidget(Screen, gc.EventQueueIf):
                 self.device_detected = False
 
             elif ev.event_id == gc.EV_EXIT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_EXIT from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_EXIT from 0x{id(ev.sender):x} {ev.sender}")
 
                 if id(ev.sender) == id(gc.gsatrc_remote_client):
                     gc.gsatrc_remote_client = None
@@ -1711,14 +1711,14 @@ class RootWidget(Screen, gc.EventQueueIf):
                     self.ids.dro_panel.rc_connect = False
 
             elif ev.event_id == gc.EV_DEVICE_DETECTED:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DEVICE_DETECTED")
 
                 self.device_detected = True
 
             elif ev.event_id == gc.EV_ABORT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_ABORT from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_ABORT from 0x{id(ev.sender):x} {ev.sender}")
 
                 self.append_text(ev.data)
 
@@ -1730,8 +1730,8 @@ class RootWidget(Screen, gc.EventQueueIf):
                 self.device_detected = False
 
             elif ev.event_id == gc.EV_RMT_PORT_OPEN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_RMT_PORT_OPEN from 0x{id(ev.sender):x} {ev.sender}")
 
                 self.append_text(ev.data)
 
@@ -1741,8 +1741,8 @@ class RootWidget(Screen, gc.EventQueueIf):
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_GCODE_MD5)
 
             elif ev.event_id == gc.EV_RMT_PORT_CLOSE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_RMT_PORT_CLOSE from 0x{id(ev.sender):x} {ev.sender}")
 
                 self.append_text(ev.data)
                 self.sw_state = gc.STATE_IDLE
@@ -1750,35 +1750,35 @@ class RootWidget(Screen, gc.EventQueueIf):
                 self.device_detected = False
 
             elif ev.event_id == gc.EV_RMT_CONFIG_DATA:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_RMT_CONFIG_DATA from 0x{id(ev.sender):x} {ev.sender}")
 
                 # self.configRemoteData = ev.data
                 # self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
 
             elif ev.event_id == gc.EV_RMT_HELLO:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_RMT_HELLO from 0x{id(ev.sender):x} {ev.sender}")
 
                 self.append_text(ev.data)
-                hostname = "{}".format(gc.gsatrc_remote_client.get_hostname())
+                hostname = gc.gsatrc_remote_client.get_hostname()
                 self.update_dro({'rc': hostname})
 
             elif ev.event_id == gc.EV_RMT_GOOD_BYE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                    self.logger.info("EV_RMT_GOOD_BYE from 0x{:x} {}".format(id(ev.sender), ev.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                    self.logger.info(f"EV_RMT_GOOD_BYE from 0x{id(ev.sender):x} {ev.sender}")
 
                 self.append_text(ev.data)
 
             elif ev.event_id == gc.EV_SW_STATE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_SW_STATE")
 
                 self.sw_state = ev.data
                 self.update_dro({'swst': gc.get_sw_status_str(self.sw_state)})
 
             elif ev.event_id == gc.EV_GCODE_MD5:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_GCODE_MD5")
 
                 old_md5_hash = self.remote_gcode_md5
@@ -1790,23 +1790,24 @@ class RootWidget(Screen, gc.EventQueueIf):
                         gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_GCODE)
 
             elif ev.event_id == gc.EV_GCODE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_GCODE")
 
                 if 'gcodeFileName' in ev.data:
                     self.remote_gcode_filename = os.path.basename(ev.data['gcodeFileName'])
-                    self.update_dro({'gfn': self.remote_gcode_filename})
-                    self.append_text("G-code filename: {}\n".format(self.remote_gcode_filename))
+                    if self.update_dro:
+                        self.update_dro({'gfn': self.remote_gcode_filename})
+                    self.append_text(f"G-code filename: {self.remote_gcode_filename}\n")
 
             elif ev.event_id == gc.EV_BRK_PT_CHG:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_BRK_PT_CHG")
 
                 # if self.machifProgExec is not None:
                 #     self.machifProgExec.add_event(gc.EV_CMD_GET_BRK_PT)
 
             elif ev.event_id == gc.EV_BRK_PT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_BRK_PT")
 
                 # break_points = ev.data
@@ -1817,7 +1818,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                 #         self.gcText.UpdateBreakPoint(bp, True)
 
             elif ev.event_id == gc.EV_RMT_PONG:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PONG")
 
                 # subtract from ping lost counter, ideally after this
@@ -1828,9 +1829,9 @@ class RootWidget(Screen, gc.EventQueueIf):
                 self.ping_in_time = time.time()
 
             else:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.error(
-                        "got UNKNOWN event id[{}] from 0x{:x} {}".format(ev.event_id, id(ev.sender), ev.sender))
+                        f"got UNKNOWN event id[{ev.event_id}] from 0x{id(ev.sender):x} {ev.sender}")
 
     def on_value_jog_feed_rate(self, instance, value):
         self.jog_feed_rate = value

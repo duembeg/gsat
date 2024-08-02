@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   machif_smoothie.py
+    machif_smoothie.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 
@@ -175,22 +175,19 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             dataDict['sr'] = sr
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie re Smoothie status match {}".format(str(statusData)))
                 print("** MachIf_Smoothie str match from {}".format(str(data.strip())))
-                print(
-                    "** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % (
-                        bufferPart, self._inputBufferSize, (100 * (float(
-                            self._inputBufferSize)/self._inputBufferMaxSize))))
+                print("** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % (
+                    bufferPart, self._inputBufferSize, (100 * (float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
             # check on status change
             decodedStatus = self.stat_dict.get(
                 statusData[0], SMOOTHIE_STATE_UNKNOWN)
             if self.currentStatus != decodedStatus:
                 if decodedStatus in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]:
-                    self.autoStatusNextMicro = dt.datetime.now() + \
-                        dt.timedelta(
-                            microseconds=self.machineAutoRefreshPeriod * 1000)
+                    self.autoStatusNextMicro = dt.datetime.now() + dt.timedelta(
+                        microseconds=self.machineAutoRefreshPeriod * 1000)
 
                 self.currentStatus = decodedStatus
 
@@ -203,7 +200,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie found acknowledgement [{}]".format(data.strip()))
 
             r = {}
@@ -211,7 +208,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
             dataDict['f'] = [0, 0, bufferPart]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie input buffer decode returned: %d, buffer size: %d, %.2f%% full" % (
                     bufferPart, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
@@ -224,7 +221,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie found error [{}]".format(data.strip()))
 
             if 'r' not in dataDict:
@@ -240,13 +237,13 @@ class MachIf_Smoothie(mi.MachIf_Base):
             dataDict['f'] = [0, error_code, bufferPart, error.group(1).strip()]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie input buffer decode returned: {}, buffer size: {}, {:.2f}%% full".format(
                     bufferPart, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
         version = self.reSmoothieVersion.match(data)
         if version is not None:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie found device version [{}]".format(version.group(1).strip()))
 
             if 'r' not in dataDict:
@@ -295,7 +292,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
                 self._inputBufferSize = self._inputBufferSize + 1
 
         if data == self.cmdStatus and bookkeeping:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie input buffer encode used: {}, buffer size: {}, {:.2f}%% full".format(
                     1, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 
@@ -307,7 +304,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 print("** MachIf_Smoothie input buffer encode used: {}, buffer size: {}, {:.2f}%% full".format(
                     dataLen, self._inputBufferSize, (100*(float(self._inputBufferSize)/self._inputBufferMaxSize))))
 

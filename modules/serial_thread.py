@@ -58,7 +58,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         self.logger = logging.getLogger()
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
             self.logger.info(f"init logging id:0x{id(self):x}")
 
         if event_handler is not None:
@@ -78,25 +78,25 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             e = self._eventQueue.get()
 
             if e.event_id == gc.EV_CMD_TXDATA:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_EV):
                     self.logger.info("EV_CMD_TXDATA")
 
                 self.write(e.data)
 
             elif e.event_id == gc.EV_HELLO:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_EV):
                     self.logger.info(f"EV_HELLO from 0x{id(e.sender):x}")
 
                 self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_EV):
                     self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x}")
 
                 self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_EXIT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_EV):
                     self.logger.info("EV_CMD_EXIT")
 
                 self.close()
@@ -104,7 +104,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.endThread = True
 
             else:
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_EV:
                 self.logger.error(f"EV_?? got unknown event!! [{str(e.event_id)}]")
 
     def close(self):
@@ -117,7 +116,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 # self.serialPort.flushInput()
                 self.serialPort.close()
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
                     self.logger.info("close serial port")
 
                 self.notify_event_listeners(gc.EV_SER_PORT_CLOSE, 0)
@@ -156,10 +155,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 exMsg = f"** PySerial exception: {str(e)}\n"
                 exFlag = True
 
-            except OSError as e:
-                exMsg = f"** OSError exception: {str(e)}\n"
-                exFlag = True
-
             except IOError as e:
                 exMsg = f"** IOError exception: {str(e)}%s"
                 exFlag = True
@@ -179,7 +174,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                     serial_fd = self.serialPort.fileno()
                     tty.setraw(serial_fd)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
                         msg = f"open serial port [{portName}] at {baud} bps"
                         self.logger.info(msg)
 
@@ -196,7 +191,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
 
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
@@ -225,15 +219,15 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                     serialData, self.rxBuffer = self.rxBuffer.split('\n', 1)
 
                     if serialData:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
 
-                            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_HEX:
-                                self.logger.info(gc.verbose_hex_dump("<-", serialData))
+                            if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_HEXDUMP):
+                                self.logger.info(gc.verbose_hexdump("<-", serialData))
 
-                            elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_HEX:
-                                self.logger.info(gc.verbose_data_hex("<-", serialData))
+                            elif gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_HEX):
+                                self.logger.info(gc.verbose_data_hex('<-', serialData))
 
-                            elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_STR):
+                            elif gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_STR):
                                 self.logger.info(gc.verbose_data_ascii("<-", serialData))
 
                         self.notify_event_listeners(gc.EV_RXDATA, f"{serialData}\n")
@@ -246,10 +240,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         except serial.SerialException as e:
             exMsg = f"** PySerial exception: {e.message}\n"
-            exFlag = True
-
-        except OSError as e:
-            exMsg = f"** OSError exception: {str(e)}\n"
             exFlag = True
 
         except IOError as e:
@@ -265,7 +255,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             self.swState = gc.STATE_ABORT
 
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
             self.logger.error(exMsg.strip())
 
             # add data to queue
@@ -283,24 +272,20 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
             try:
                 # send command
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_HEX_DUMP:
-                        self.logger.info(gc.verbose_hex_dump("->", serialData))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_HEXDUMP):
+                        self.logger.info(gc.verbose_hexdump("->", serialData))
 
-                    elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_HEX:
+                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_HEX):
                         self.logger.info(gc.verbose_data_hex("->", serialData))
 
-                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF_STR):
+                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF_STR):
                         self.logger.info(gc.verbose_data_ascii("->", serialData))
 
                 self.serialPort.write(serialData.encode('utf8'))
 
             except serial.SerialException as e:
                 exMsg = f"** PySerial exception: {e.message}\n"
-                exFlag = True
-
-            except OSError as e:
-                exMsg = f"** OSError exception: {str(e)}\n"
                 exFlag = True
 
             except IOError as e:
@@ -316,7 +301,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 # make sure we stop processing any states...
                 self.swState = gc.STATE_ABORT
 
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                 self.logger.error(exMsg.strip())
 
                 # add data to queue
@@ -331,7 +315,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         # This is the code executing in the new thread.
         self.endThread = False
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
             self.logger.info("thread start")
 
         self.open()
@@ -354,7 +338,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 else:
                     exMsg = f"unexpected state [{self.swState}], Aborting..."
 
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                     self.logger.error(exMsg.strip())
 
                     self.notify_event_listeners(gc.EV_ABORT, exMsg)
@@ -362,7 +345,6 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             else:
                 message = "serial port is close, terminating.\n"
 
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
                 self.logger.error(message.strip())
 
                 # make sure we stop processing any states...
@@ -375,7 +357,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
             time.sleep(0.01)
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_SERIALIF:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
             self.logger.info("thread exit")
 
         self.notify_event_listeners(gc.EV_EXIT, "")

@@ -339,27 +339,27 @@ class ConsoleApp(gc.EventQueueIf):
             self.lastEventID = e.event_id
 
             if e.event_id == gc.EV_DATA_STATUS:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_STATUS from 0x{:x}".format(id(e.sender)))
 
                 self.update_status(e.data)
 
             elif e.event_id == gc.EV_DATA_OUT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_OUT")
 
                 print("> {}".format(str(e.data).strip()))
 
             elif e.event_id == gc.EV_HELLO:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_HELLO from 0x{:x}".format(id(e.sender)))
 
             elif e.event_id == gc.EV_GOOD_BYE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
 
             elif e.event_id == gc.EV_SER_PORT_OPEN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 if self.remoteClient is not None:
@@ -369,27 +369,27 @@ class ConsoleApp(gc.EventQueueIf):
                     self.machif = self.machifProgExec
 
             elif e.event_id == gc.EV_SER_PORT_CLOSE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 self.device_str = ""
                 self.machif = None
 
             elif e.event_id == gc.EV_RMT_HELLO:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 print(e.data)
 
             elif e.event_id == gc.EV_RMT_GOOD_BYE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 self.remote_str = ""
                 self.device_str = ""
 
             elif e.event_id == gc.EV_RMT_PORT_OPEN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 print(e.data)
@@ -403,11 +403,11 @@ class ConsoleApp(gc.EventQueueIf):
                     #     self.machif.add_event(gc.EV_CMD_GET_GCODE)
 
             elif e.event_id == gc.EV_RMT_PORT_CLOSE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(e.sender), e.sender))
 
             elif e.event_id == gc.EV_EXIT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_EXIT from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 self.remote_str = ""
@@ -416,7 +416,7 @@ class ConsoleApp(gc.EventQueueIf):
                 self.machifProgExec = None
 
             else:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.error("got unknown event!! [{}]".format(str(e.event_id)))
 
             self.update_status()

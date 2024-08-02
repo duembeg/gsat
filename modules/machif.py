@@ -55,8 +55,8 @@ class MachIf_Base(gc.EventQueueIf):
         self._inputBufferSize = self._inputBufferInitVal
 
         self.logger = logging.getLogger()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-            self.logger.info("init logging id:0x%x" % id(self))
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+            self.logger.info(f"init logging id:0x{id(self):x}")
 
         self._serialPortOpen = False
         self._serialTxRxThread = None
@@ -249,7 +249,7 @@ class MachIf_Base(gc.EventQueueIf):
             self.write("".join([machine_current_position_mode, "\n"]))
 
     def doQueueFlush(self):
-        self.add_event(gc.EV_TXDATA, "%s\n" % self.cmdQueueFlush.strip())
+        self.add_event(gc.EV_TXDATA, f"{self.cmdQueueFlush.strip()}\n")
         self.write(self.cmdQueueFlush)
         self._init()
 
@@ -376,7 +376,7 @@ class MachIf_Base(gc.EventQueueIf):
                 pass
             else:
                 if e.event_id == gc.EV_RXDATA:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                         self.logger.info("EV_RXDATA")
 
                     if len(e.data) > 0:
@@ -384,20 +384,20 @@ class MachIf_Base(gc.EventQueueIf):
                         dictData['rx_data'] = e.data
 
                 elif e.event_id == gc.EV_TXDATA:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                         self.logger.info("EV_TXDATA")
 
                     if len(e.data) > 0:
                         dictData['tx_data'] = e.data
 
                 elif e.event_id == gc.EV_HELLO:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                         self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
 
                     self.add_event_listener(e.sender)
 
                 elif e.event_id == gc.EV_GOOD_BYE:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                         self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
 
                     self.remove_event_listener(e.sender)
@@ -409,26 +409,26 @@ class MachIf_Base(gc.EventQueueIf):
                     dictData['event']['data'] = e.data
 
                     if e.event_id == gc.EV_SER_PORT_OPEN:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                             self.logger.info("EV_SER_PORT_OPEN")
 
                         self._serialPortOpen = True
 
                     elif e.event_id == gc.EV_SER_PORT_CLOSE:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                             self.logger.info("EV_SER_PORT_CLOSE")
 
                         self._serialPortOpen = False
 
                     elif e.event_id == gc.EV_ABORT:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                             self.logger.info("EV_ABORT")
 
                     elif e.event_id == gc.EV_EXIT:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                             self.logger.info("EV_EXIT")
                 else:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD_EV:
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                         self.logger.error("EV_?? got unknown event!! [%s]" % str(e.event_id))
 
         return dictData

@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
-   gsat-server.py:
+    gsat-server.py:
 
-   Copyright (C) 2018 Wilhelm Duembeg
+    Copyright (C) 2018 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import os
@@ -84,8 +84,8 @@ class GsatServer(gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         self.logger = logging.getLogger()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_ALL:
-            self.logger.info("init logging id:0x%x" % id(self))
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_ALL):
+            self.logger.info(f"init logging id:0x{id(self):x}")
 
     def __del__(self):
         pass
@@ -99,12 +99,12 @@ class GsatServer(gc.EventQueueIf):
                 e = self._eventQueue.get()
 
                 if e.event_id == gc.EV_HELLO:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                        self.logger.info("EV_HELLO from 0x{:x}".format(id(e.sender)))
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                        self.logger.info(f"EV_HELLO from 0x{id(e.sender):x}")
 
                 elif e.event_id == gc.EV_GOOD_BYE:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
-                        self.logger.info("EV_GOOD_BYE from 0x{:x}".format(id(e.sender)))
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
+                        self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x}")
 
         finally:
             if server is not None:

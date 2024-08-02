@@ -335,9 +335,9 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             dataDict['sr'] = sr
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("status match %s" % str(statusData))
-                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                self.logger.info(f"status match {str(statusData)}")
+                prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
                 self.logger.info(
                     f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
@@ -364,16 +364,16 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self._inputBufferSize = self._inputBufferSize - bufferPart
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("found acknowledge [%s]" % data.strip())
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                self.logger.info(f"found acknowledge [{data.strip()}]")
 
             r = {}
             dataDict['r'] = r
             dataDict['f'] = [0, 0, bufferPart]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
                 self.logger.info(
                     f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
@@ -426,24 +426,24 @@ class MachIf_GRBL(mi.MachIf_Base):
             else:
                 error_code = -1
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                error_msg = "found error [%s]" % data.strip()
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                error_msg = f"found error [{data.strip()}]"
                 if 'rx_data_info' in dataDict:
-                    error_msg = "found %s, %s" % (data.strip(), dataDict['rx_data_info'].strip())
+                    error_msg = f"found {data.strip()}, {dataDict['rx_data_info'].strip()}"
                 self.logger.info(error_msg)
 
             dataDict['f'] = [0, error_code, bufferPart, error_code]
             dataDict['ib'] = [self._inputBufferMaxSize, self._inputBufferSize]
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
                 self.logger.info(
                     f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
 
         version = self.reGrblVersion.match(data)
         if version is not None:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("found version [%s]" % version.group(1).strip())
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                self.logger.info(f"found version [{version.group(1).strip()}]")
 
             if 'r' not in dataDict:
                 r = {}
@@ -457,8 +457,8 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         initStr = self.reGrblInitStr.match(data)
         if initStr is not None:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                self.logger.info("found device init string [%s]" % initStr.group(1).strip())
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                self.logger.info(f"found device init string [{initStr.group(1).strip()}]")
 
             self.initStringDetectFlag = True
 
@@ -473,7 +473,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         if config is not None:
             data_len = len(data)
             fill = 20 - data_len
-            dataDict['rx_data_info'] = "%s%s\n" % (' '*fill, GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), ""))
+            dataDict['rx_data_info'] = f"{' '*fill}{GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), "")}\n"
 
         return dataDict
 
@@ -566,7 +566,7 @@ class MachIf_GRBL(mi.MachIf_Base):
                 self._inputBufferSize = self._inputBufferSize + 1
 
         if data == self.cmdStatus and bookkeeping:
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
                 self.logger.info(
                     f"encode, input buffer used: 1, buffer size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")
@@ -579,7 +579,7 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                 prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
                 self.logger.info(
                     f"encode, input buffer used: {dataLen}, size: {self._inputBufferSize}, {(100*prcnt):.2f}% full")

@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   tinyg_machif.py
+    tinyg_machif.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import re
@@ -39,7 +39,7 @@ BUFFER_MAX_SIZE = 255
 BUFFER_INIT_VAL = 0
 BUFFER_WATERMARK_PRCNT = 0.90
 
-TINYG_STAT_CODE_2_STR_DICT = {
+TINYG_STAT_2_STR_DICT = {
     0: "OK",
     1: "ERROR",
     2: "EAGAIN",
@@ -256,9 +256,8 @@ class MachIf_TinyG(mi.MachIf_Base):
     }
 
     def __init__(self):
-        super(MachIf_TinyG, self).__init__(ID, NAME, BUFFER_MAX_SIZE,
-                                           BUFFER_INIT_VAL,
-                                           BUFFER_WATERMARK_PRCNT)
+        super(MachIf_TinyG, self).__init__(
+            ID, NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -276,9 +275,7 @@ class MachIf_TinyG(mi.MachIf_Base):
         Init object variables, ala soft-reset in hw
 
         """
-        super(MachIf_TinyG, self)._reset(BUFFER_MAX_SIZE,
-                                         BUFFER_INIT_VAL,
-                                         BUFFER_WATERMARK_PRCNT)
+        super(MachIf_TinyG, self)._reset(BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -313,21 +310,18 @@ class MachIf_TinyG(mi.MachIf_Base):
                         r['fv'] = sys['fv']
 
                     if 'fb' in sys and 'fv' in sys:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                            self.logger.info("found version fb[%s] "
-                                             "fv[%s]" % (sys['fb'], sys['fv']))
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                            self.logger.info(f"found version fb[{sys['fb']}] fv[{sys['fv']}]")
 
                     if 'id' in sys:
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                            self.logger.info("found device init string [%s]" %
-                                             ("id:"+sys['id']))
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                            self.logger.info(f"found device init string [id:{sys['id']}]")
 
                         dataDict['r']['init'] = "id:"+sys['id']
 
                 if 'id' in r:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                        self.logger.info("found device init string [%s]" %
-                                         ("id:"+r['id']))
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                        self.logger.info(f"found device init string [id:{r['id']}]")
 
                     dataDict['r']['init'] = "id:"+r['id']
 
@@ -353,14 +347,11 @@ class MachIf_TinyG(mi.MachIf_Base):
             if 'f' in dataDict:
                 stat_code = dataDict['f'][1]
                 if stat_code > 0:
-                    stat_str = '{"st":%d,"msg":"%s"}\n' % (
-                        stat_code,
-                        TINYG_STAT_CODE_2_STR_DICT.get(
-                            stat_code, "Unknown"))
+                    stat_str = f'{{"st": {stat_code}, "msg": "{TINYG_STAT_2_STR_DICT.get(stat_code, "Unknown")}"}}\n'
                     self.add_event(gc.EV_RXDATA, stat_str)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                        error_msg = "found error [%s]" % stat_str
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                        error_msg = f"found error [{stat_str}]"
                         self.logger.info(error_msg)
 
         except ValueError:
@@ -401,7 +392,7 @@ class MachIf_TinyG(mi.MachIf_Base):
 
             if not match:
                 pass
-            #     if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+            #     if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
             #         self.logger.info("cannot decode data!! [%s]" %
             #                          data.strip())
 
@@ -415,14 +406,11 @@ class MachIf_TinyG(mi.MachIf_Base):
 
                 self._inputBufferSize = self._inputBufferSize - bufferPart
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                    prcnt = float(self._inputBufferSize) / \
-                            self._inputBufferMaxSize
-                    self.logger.info("decode, input buffer free: %d,"
-                                     "buffer size: %d, %.2f%% full" % (
-                                         bufferPart,
-                                         self._inputBufferSize,
-                                         (100*prcnt)))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                    prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
+                    self.logger.info(
+                        f"decode, input buffer free: {bufferPart}, buffer size: {self._inputBufferSize}, "
+                        f"{(100*prcnt):.2f}%   full")
             else:
                 pass
                 # print "hmmm this could be a problem"
@@ -456,13 +444,12 @@ class MachIf_TinyG(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
-                self.logger.info("encode, input buffer used: %d, buffer "
-                                 "size: %d, %.2f%% full" % (
-                                    dataLen,
-                                    self._inputBufferSize,
-                                    (100*prcnt)))
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
+                self.logger.info(
+                    f"encode, input buffer used: {dataLen}, buffer size: {self._inputBufferSize}, "
+                    f"{(100*prcnt):.2f}% full")
+
         return data
 
     def factory(self):

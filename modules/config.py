@@ -216,32 +216,39 @@ EV_RMT_PONG = 2280
 # --------------------------------------------------------------------------
 VERBOSE_MASK = 0
 
-VERBOSE_MASK_UI_ALL = 0x00000000F
-VERBOSE_MASK_UI = 0x00000001
-VERBOSE_MASK_UI_EV = 0x00000002
+VERBOSE_MASK_STR = 0x00000001
+VERBOSE_MASK_HEX = 0x00000002
+VERBOSE_MASK_HEXDUMP = 0x00000004
 
-VERBOSE_MASK_MACHIF_ALL = 0x00000FF0
-VERBOSE_MASK_MACHIF_EXEC = 0x000000F0
-VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000010
-VERBOSE_MASK_MACHIF_MOD = 0x00000F00
-VERBOSE_MASK_MACHIF_MOD_EV = 0x00000100
+VERBOSE_MASK_UI_ALL = 0x0000000F0
+VERBOSE_MASK_UI = 0x00000010
+VERBOSE_MASK_UI_EV = 0x00000020
+
+VERBOSE_MASK_MACHIF_ALL = 0x00000F00
+VERBOSE_MASK_MACHIF_EXEC = 0x00000100
+VERBOSE_MASK_MACHIF_EXEC_EV = 0x00000200
+VERBOSE_MASK_MACHIF_MOD = 0x00000400
+VERBOSE_MASK_MACHIF_MOD_EV = 0x00000800
 VERBOSE_MASK_MACHIF_EV = VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV
 
-VERBOSE_MASK_SERIALIF_STR = 0x00001000
-VERBOSE_MASK_SERIALIF_HEX = 0x00002000
-VERBOSE_MASK_SERIALIF_HEX_DUMP = 0x00004000
-VERBOSE_MASK_SERIALIF = 0x00008000
-VERBOSE_MASK_SERIALIF_EV = 0x00010000
-VERBOSE_MASK_SERIALIF_ALL = 0x0001F000
+VERBOSE_MASK_SERIALIF = 0x00001000
+VERBOSE_MASK_SERIALIF_EV = 0x00002000
+VERBOSE_MASK_SERIALIF_ALL = 0x0000F000
+VERBOSE_MASK_SERIALIF_STR = VERBOSE_MASK_SERIALIF | VERBOSE_MASK_STR
+VERBOSE_MASK_SERIALIF_HEX = VERBOSE_MASK_SERIALIF | VERBOSE_MASK_HEX
+VERBOSE_MASK_SERIALIF_HEXDUMP = VERBOSE_MASK_SERIALIF | VERBOSE_MASK_HEXDUMP
 
-VERBOSE_MASK_REMOTEIF_STR = 0x00020000
-VERBOSE_MASK_REMOTEIF_HEX = 0x00040000
-VERBOSE_MASK_REMOTEIF_HEX_DUMP = 0x00080000
+# VERBOSE_MASK_REMOTEIF_STR = 0x00020000
+# VERBOSE_MASK_REMOTEIF_HEX = 0x00040000
+# VERBOSE_MASK_REMOTEIF_HEX_DUMP = 0x00080000
 VERBOSE_MASK_REMOTEIF_CLIENT = 0x00100000
 VERBOSE_MASK_REMOTEIF_SERVER = 0x00200000
 VERBOSE_MASK_REMOTEIF = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_REMOTEIF_SERVER
 VERBOSE_MASK_REMOTEIF_EV = 0x00400000
 VERBOSE_MASK_REMOTEIF_ALL = 0x00FF0000
+VERBOSE_MASK_REMOTEIF_STR = VERBOSE_MASK_REMOTEIF | VERBOSE_MASK_STR
+VERBOSE_MASK_REMOTEIF_HEX = VERBOSE_MASK_REMOTEIF | VERBOSE_MASK_HEX
+VERBOSE_MASK_REMOTEIF_HEXDUMP = VERBOSE_MASK_REMOTEIF | VERBOSE_MASK_HEXDUMP
 
 VERBOSE_MASK_EVENTIF = \
     VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV |\
@@ -260,6 +267,7 @@ VERBOSE_MASK_DICT = {
     "serialif": VERBOSE_MASK_SERIALIF,
     "serialif_str": VERBOSE_MASK_SERIALIF_STR,
     "serialif_hex": VERBOSE_MASK_SERIALIF_HEX,
+    "serialif_hexdump": VERBOSE_MASK_SERIALIF_HEXDUMP,
     "serialif_ev": VERBOSE_MASK_SERIALIF_EV,
     "serialif_all": VERBOSE_MASK_SERIALIF_ALL,
     "remoteif": VERBOSE_MASK_REMOTEIF,
@@ -267,15 +275,20 @@ VERBOSE_MASK_DICT = {
     "remoteif_server": VERBOSE_MASK_REMOTEIF_SERVER,
     "remoteif_str": VERBOSE_MASK_REMOTEIF_STR,
     "remoteif_hex": VERBOSE_MASK_REMOTEIF_HEX,
-    "remoteif_hex_dump": VERBOSE_MASK_REMOTEIF_HEX_DUMP,
+    "remoteif_hexdump": VERBOSE_MASK_REMOTEIF_HEXDUMP,
     "remoteif_ev": VERBOSE_MASK_REMOTEIF_EV,
     "remoteif_all": VERBOSE_MASK_REMOTEIF_ALL,
     "eventif": VERBOSE_MASK_EVENTIF,
+    "str": VERBOSE_MASK_STR,
+    "hex": VERBOSE_MASK_HEX,
+    "hexdump": VERBOSE_MASK_HEXDUMP,
 }
 
 
 def decode_verbose_mask_string(verbose_mask_str):
-    """ Decode and init gc VERBOSE_MASK
+    """
+    Decode and init gc VERBOSE_MASK
+
     """
     global VERBOSE_MASK
 
@@ -289,9 +302,59 @@ def decode_verbose_mask_string(verbose_mask_str):
     return VERBOSE_MASK
 
 
+def test_verbose_mask(mask):
+    """
+    Test that verbose mask contains the mask bits
+
+    """
+    global VERBOSE_MASK
+
+    return (VERBOSE_MASK & mask) == mask
+
+
+def verbose_data_ascii(direction, data):
+    return f"[{len(data):04d}] {direction} {data.strip()}"
+
+
+def verbose_data_hex(direction, data):
+    byte_data = data
+
+    if isinstance(data, str):
+        byte_data = bytearray(data.encode('utf-8'))
+
+    hex_data = ':'.join(f"{x:02x}" for x in byte_data)
+    ascii_str = f"   ASCII:{data.strip()}"
+    hex_str = f"   HEX  :{hex_data}"
+    return f"[{len(data):04d}] {direction}\n{ascii_str}\n{hex_str}"
+
+
+def verbose_hexdump(direction, data):
+    if isinstance(data, str):
+        data = bytearray(data.encode('utf-8'))
+    hex_dump_data = get_hex_dump(data, 16)
+    return f"[{len(data):04d}] {direction}\n{'\n'.join(hex_dump_data)}"
+
+
+def hex_dump(data, bytes_per_line=16):
+    hex_dump_data = get_hex_dump(data, bytes_per_line)
+    for line in hex_dump_data:
+        print(line)
+
+
+def get_hex_dump(data, bytes_per_line=16):
+    hex_dump_data = []
+    for i in range(0, len(data), bytes_per_line):
+        chunk = data[i:i+bytes_per_line]
+        hex_repr = ' '.join([f'{byte:02x}' for byte in chunk])
+        ascii_repr = ''.join([chr(byte) if 32 <= byte <= 126 else '.' for byte in chunk])
+        hex_dump_data.append(f'{i:04x}: {hex_repr:<{bytes_per_line*3}} {ascii_repr}')
+
+    return hex_dump_data
+
 # --------------------------------------------------------------------------
 # LOGGING MASK
 # --------------------------------------------------------------------------
+
 
 def init_logger(filename, log_handler=None):
     # log_path = filename
@@ -341,45 +404,6 @@ def init_config(cmd_line_options, config_file, log_file, log_handler=None):
     CONFIG_DATA.load()
 
     STATE_DATA = gsatStateData()
-
-
-def verbose_data_ascii(direction, data):
-    if direction:
-        return "[%03d] %s %s" % (len(data), direction, data.strip())
-    else:
-        return "[%03d] %s" % (len(data), data.strip())
-
-
-def verbose_data_hex(direction, data):
-    if direction:
-        return "[%03d] %s HEX:%s" % (len(data), direction, ':'.join(f"{x:02x}" for x in data))
-    else:
-        return "[%03d] HEX:%s" % (len(data), ':'.join(f"{x:02x}" for x in data))
-
-
-def verbose_hex_dump(direction, data):
-    hex_dump_data = get_hex_dump(data, 16)
-    if direction:
-        return "[%03d] %s hex_dump\n%s" % (len(data), direction, '\n'.join(hex_dump_data))
-    else:
-        return "[%03d] hex_dump\n%s" % (len(data), '\n'.join(hex_dump_data))
-
-
-def hex_dump(data, bytes_per_line=16):
-    hex_dump_data = get_hex_dump(data, bytes_per_line)
-    for line in hex_dump_data:
-        print(line)
-
-
-def get_hex_dump(data, bytes_per_line=16):
-    hex_dump_data = []
-    for i in range(0, len(data), bytes_per_line):
-        chunk = data[i:i+bytes_per_line]
-        hex_repr = ' '.join([f'{byte:02x}' for byte in chunk])
-        ascii_repr = ''.join([chr(byte) if 32 <= byte <= 126 else '.' for byte in chunk])
-        hex_dump_data.append(f'{i:04x}: {hex_repr:<{bytes_per_line*3}} {ascii_repr}')
-
-    return hex_dump_data
 
 
 class gsatStateData():

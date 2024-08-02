@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   remote_client.py
+    remote_client.py
 
-   Copyright (C) 2020 Wilhelm Duembeg
+    Copyright (C) 2020 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import threading
@@ -94,8 +94,8 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         self.logger = logging.getLogger()
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-            self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
+            self.logger.info(f"init logging id:0x{id(self):x} {self}")
 
         if event_handler is not None:
             self.add_event_listener(event_handler)
@@ -115,19 +115,19 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             pass
         else:
             if e.event_id == gc.EV_HELLO:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                    self.logger.info("EV_HELLO from 0x{:x} {}".format(id(e.sender), e.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
+                    self.logger.info(f"EV_HELLO from 0x{id(e.sender):x} {e.sender}")
 
                 self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
-                    self.logger.info("EV_GOOD_BYE from 0x{:x} {}".format(id(e.sender), e.sender))
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
+                    self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x} {e.sender}")
 
                 self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_EXIT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
                     self.logger.info("EV_CMD_EXIT")
 
                 self.close()
@@ -135,7 +135,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.endThread = True
 
             else:
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_EV:
+                # if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
                 # self.logger.error("EV_?? got unknown event!! from 0x{:x} {}".format(id(e.sender), e.sender))
 
                 # commands that we don't handle forward to server
@@ -169,7 +169,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
             self.socServer = None
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                 self.logger.info(msg.strip())
 
             self.notify_event_listeners(gc.EV_RMT_PORT_CLOSE, msg)
@@ -235,7 +235,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 self.socServer.close()
             self.socServer = None
 
-            # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
             self.logger.error(exMsg.strip())
 
             # sending directly to who created us
@@ -243,7 +242,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         else:
             msg = "Open remote connection to {}{}\n".format(self.host, self.inputsAddr[self.socServer])
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                 self.logger.info(msg.strip())
 
             # sending directly to who created us
@@ -275,17 +274,17 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     # got the entire message decode it
                     data = pickle.loads(self.rxBuffer)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-                        log_msg =  "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
+                        log_msg = "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
                             data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc])
 
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
-                            log_msg = log_msg + gc.verbose_hex_dump("", self.rxBuffer)
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEXDUMP):
+                            log_msg = log_msg + gc.verbose_hexdump("", self.rxBuffer)
 
-                        elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEX):
                             log_msg = log_msg + gc.verbose_data_hex("", self.rxBuffer)
 
-                        elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_STR):
                             log_msg = log_msg + gc.verbose_data_ascii("", self.rxBuffer)
 
                         self.logger.info(log_msg)
@@ -324,8 +323,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-                self.logger.error(exMsg.strip())
+            self.logger.error(exMsg.strip())
 
             # add data to queue
             # self.notifyEventListeners(gc.EV_ABORT, exMsg)
@@ -353,17 +351,17 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                 # got the entire message decode
                 data = pickle.loads(msg)
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                     log_msg = "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
                         data.event_id, id(data), len(msg), from_data)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
-                        log_msg = log_msg + gc.verbose_hex_dump("", msg)
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEXDUMP):
+                        log_msg = log_msg + gc.verbose_hexdump("", msg)
 
-                    elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEX):
                         log_msg = log_msg + gc.verbose_data_hex("", msg)
 
-                    elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_STR):
                         log_msg = log_msg + gc.verbose_data_ascii("", msg)
 
                     self.logger.info(log_msg)
@@ -399,7 +397,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                 self.logger.error(exMsg.strip())
 
             # add data to queue
@@ -425,15 +423,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             try:
                 data_sent_len += soc.send(bytes(msg[data_sent_len:]))
 
-            except OSError as e:
-                # This is normal on non blocking connections - when there are no incoming data error is going to be
-                # raised. Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
-                # We are going to check for both - if one of them - that's expected, means no incoming data, continue
-                # as normal. If we got different error code - something happened
-                if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
-                    exMsg = "** OSError exception: {}\n".format(str(e))
-                    exFlag = True
-
             except IOError as e:
                 # This is normal on non blocking connections - when there are no incoming data error is going to be
                 # raised. Some operating systems will indicate that using AGAIN, and some using WOULDBLOCK error code
@@ -452,17 +441,17 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             #     exMsg = "** Unexpected exception: {}\n".format(str(e))
             #     exFlag = True
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             log_msg = "Send msg id:{} obj:0x{:x} len:{} to {} ".format(
                 data.event_id, id(data), msg_len, self.inputsAddr[soc])
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX_DUMP:
-                log_msg = log_msg + gc.verbose_hex_dump("", pickle_data)
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEXDUMP):
+                log_msg = log_msg + gc.verbose_hexdump("", pickle_data)
 
-            elif gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_HEX:
+            elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEX):
                 log_msg = log_msg + gc.verbose_data_hex("", pickle_data)
 
-            elif (gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_STR):
+            elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_STR):
                 log_msg = log_msg + gc.verbose_data_ascii("", pickle_data)
 
             self.logger.info(log_msg)
@@ -471,8 +460,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             # make sure we stop processing any states...
             # self.swState = gc.STATE_ABORT
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
-                self.logger.error(exMsg.strip())
+            self.logger.error(exMsg.strip())
 
             # add data to queue
             # self.notifyEventListeners(gc.EV_ABORT, exMsg)
@@ -486,7 +474,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
         # This is the code executing in the new thread.
         self.endThread = False
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             self.logger.info("thread start")
 
         self.open()
@@ -515,7 +503,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                                     self.host, self.inputsAddr[self.socServer]
                                 )
 
-                                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+                                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                                     self.logger.info(msg.strip())
 
                                 self.swState = gc.STATE_ABORT
@@ -548,7 +536,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     # handle exceptions
                     for soc in exceptional:
                         msg = "Unknown exception from client{}\n".format(self.inputsAddr[soc])
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                             self.logger.info(msg.strip())
 
                         self.swState = gc.STATE_ABORT
@@ -562,7 +550,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     exMsg = "Unexpected state [%d], Aborting..." \
                             % (self.swState)
 
-                    # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                     self.logger.error(exMsg.strip())
 
                     self.notify_event_listeners(gc.EV_ABORT, exMsg)
@@ -570,7 +557,6 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             else:
                 message = "Remote port is close, terminating.\n"
 
-                # if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
                 self.logger.error(message.strip())
 
                 # make sure we stop processing any states...
@@ -584,7 +570,7 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
 
         # exit thread
         self.close()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_REMOTEIF_CLIENT:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             self.logger.info("thread exit")
 
         self.notify_event_listeners(gc.EV_EXIT, "")

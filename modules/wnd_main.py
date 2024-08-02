@@ -179,7 +179,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.stateData.machineStatusString = "None"
 
         self.logger = logging.getLogger()
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_ALL:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_ALL):
             self.logger.info("init logging id:0x%x" % id(self))
 
         self.InitConfig()
@@ -222,7 +222,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
 
-        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
             self.logger.info("Init config values...")
             self.logger.info(f"Python Version:           {sys.version}")
             self.logger.info(f"wx Version:               {wx.version()}")
@@ -2091,7 +2091,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         else:
             if te.event_id == gc.EV_DATA_STATUS:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_STATUS")
 
                 if 'sr' in te.data:
@@ -2122,13 +2122,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.machineStatusPanel.UpdateUI(self.stateData, te.data)
 
             elif te.event_id == gc.EV_DATA_IN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_IN")
 
                 self.outputText.AppendText("%s" % te.data)
 
             elif te.event_id == gc.EV_DATA_OUT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_OUT")
 
                 self.outputText.AppendText("> %s" % te.data)
@@ -2137,13 +2137,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.outputText.AppendText("\n")
 
             elif te.event_id == gc.EV_PC_UPDATE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_PC_UPDATE [%s]" % str(te.data))
 
                 self.SetPC(te.data)
 
             elif te.event_id == gc.EV_RUN_END:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RUN_END")
 
                 # self.stateData.swState = gc.STATE_IDLE
@@ -2151,21 +2151,21 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_STEP_END:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_STEP_END")
 
                 # self.stateData.swState = gc.STATE_IDLE
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_BRK_PT_STOP:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_HIT_BRK_PT")
 
                 # self.stateData.swState = gc.STATE_BREAK
                 # self.UpdateUI()
 
             elif te.event_id == gc.EV_GCODE_MSG:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_HIT_MSG [%s]" % te.data.strip())
 
                 lastSwState = self.stateData.swState
@@ -2202,7 +2202,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.OnRun()
 
             elif te.event_id == gc.EV_SER_PORT_OPEN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_SER_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.stateData.serialPortIsOpen = True
@@ -2213,7 +2213,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_SER_PORT_CLOSE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_SER_PORT_CLOSE from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.stateData.serialPortIsOpen = False
@@ -2222,7 +2222,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_EXIT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_EXIT from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 if id(te.sender) == id(self.remoteClient):
@@ -2237,7 +2237,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_DEVICE_DETECTED:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DEVICE_DETECTED")
 
                 self.stateData.deviceDetected = True
@@ -2248,7 +2248,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     # self.RunDeviceInitScript()
 
             elif te.event_id == gc.EV_ABORT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_ABORT from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.outputText.AppendText(te.data)
@@ -2270,7 +2270,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_PORT_OPEN:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.outputText.AppendText(te.data)
@@ -2288,7 +2288,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_PORT_CLOSE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.outputText.AppendText(te.data)
@@ -2301,33 +2301,33 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_RMT_CONFIG_DATA:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_CONFIG_DATA from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.configRemoteData = te.data
                 self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
 
             elif te.event_id == gc.EV_RMT_HELLO:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.outputText.AppendText(te.data)
 
             elif te.event_id == gc.EV_RMT_GOOD_BYE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_GOOD_BYE from 0x{:x} {}".format(id(te.sender), te.sender))
 
                 self.outputText.AppendText(te.data)
 
             elif te.event_id == gc.EV_SW_STATE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_SW_STATE")
 
                 self.stateData.swState = te.data
                 self.UpdateUI()
 
             elif te.event_id == gc.EV_GCODE_MD5:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_GCODE_MD5")
 
                 self.machifProgExecGcodeMd5 = te.data
@@ -2339,7 +2339,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
 
             elif te.event_id == gc.EV_GCODE:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_GCODE")
 
                 # only if there is gcode we should do do something
@@ -2414,14 +2414,14 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         self.UpdateUI()
 
             elif te.event_id == gc.EV_BRK_PT_CHG:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_BRK_PT_CHG")
 
                 if self.machifProgExec is not None:
                     self.machifProgExec.add_event(gc.EV_CMD_GET_BRK_PT)
 
             elif te.event_id == gc.EV_BRK_PT:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_BRK_PT")
 
                 break_points = te.data
@@ -2432,7 +2432,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         self.gcText.UpdateBreakPoint(bp, True)
 
             else:
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_UI_EV:
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.error(
                         "got UNKNOWN event id[{}] from 0x{:x} {}".format(te.event_id, id(te.sender), te.sender))
 

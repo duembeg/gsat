@@ -315,7 +315,7 @@ class MachIf_g2core(mi.MachIf_Base):
 
                 if 'msg' in r:
                     if r['msg'] == "SYSTEM READY":
-                        if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
                             self.logger.info(f"found device init string [{r['msg']}]")
 
                         dataDict['r']['init'] = r['msg']
@@ -347,13 +347,11 @@ class MachIf_g2core(mi.MachIf_Base):
             if 'f' in dataDict:
                 stat_code = dataDict['f'][1]
                 if stat_code > 0:
-                    stat_str = '{"st":%d,"msg":"%s"}\n' % (
-                        stat_code, G2CORE_STAT_CODE_2_STR_DICT.get(
-                            stat_code, "Unknown"))
+                    stat_str = f'{{"st":{stat_code},"msg":"{G2CORE_STAT_CODE_2_STR_DICT.get(stat_code, "Unknown")}"}}\n'
                     self.add_event(gc.EV_RXDATA, stat_str)
 
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                        error_msg = "found error [%s]" % stat_str
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                        error_msg = f"found error [{stat_str}]"
                         self.logger.info(error_msg)
 
         except ValueError:
@@ -378,8 +376,8 @@ class MachIf_g2core(mi.MachIf_Base):
                 elif stat is not None:
                     dataDict['sr']['stat'] = stat.group(1)
                 else:
-                    if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                        self.logger.info("cannot decode data!! [%s]" % data)
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                        self.logger.info(f"cannot decode data!! [{data}]")
 
         if 'r' in dataDict:
             # checking for count in "f" response doesn't always work as
@@ -391,9 +389,8 @@ class MachIf_g2core(mi.MachIf_Base):
 
                 self._inputBufferSize = self._inputBufferSize - bufferPart
 
-                if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                    prcnt = float(self._inputBufferSize) / \
-                            self._inputBufferMaxSize
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                    prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
                     self.logger.info(
                         f"decode, input buffer free: {bufferPart}, size: {self._inputBufferSize}, {(100*prcnt):.2f}%"
                         " full")
@@ -426,8 +423,8 @@ class MachIf_g2core(mi.MachIf_Base):
 
             self._inputBufferPart.append(dataLen)
 
-            if gc.VERBOSE_MASK & gc.VERBOSE_MASK_MACHIF_MOD:
-                prcnt = float(self._inputBufferSize)/self._inputBufferMaxSize
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+                prcnt = float(self._inputBufferSize) / self._inputBufferMaxSize
                 self.logger.info(
                     f"encode, input buffer used: {dataLen}, size: {self._inputBufferSize}, {(100*prcnt):.2f} full")
 

@@ -1,18 +1,4 @@
 {
-    "spellright.language": [
-        "en_US"
-    ],
-    "spellright.documentTypes": [
-        "markdown",
-        "latex",
-        "plaintext",
-        "scminput"
-    ],
-    "spellright.parserByClass": {
-        "scminput": {
-            "parser": "plain"
-        }
-    },
     "cSpell.words": [
         "ABCIJKUVWXYZ",
         "achine",
@@ -72,6 +58,7 @@
         "gsat",
         "gsatcomputer",
         "gsatrc",
+        "hexdump",
         "HORZ",
         "Iconize",
         "Iconized",
@@ -184,5 +171,9 @@
         "**/.git/subtree-cache/**": true,
         "**/kivy-rc/bin/**": true,
         "**/kivy-rc/.buildozer/**": true
-      }
+    },
+    "python.analysis.extraPaths": [
+        ".venv",
+        "venv"
+    ]
 }

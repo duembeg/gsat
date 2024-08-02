@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 """----------------------------------------------------------------------------
-   gsat.py:
+    gsat.py:
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import os
@@ -101,7 +101,7 @@ def get_cli_params():
     if options.vverbose:
         options.verbose = True
 
-    if wx.VERSION < (4, 0, 0, 0):
+    if wx.VERSION < (4, 0, 0):
         # print ("** Required wxPython 2.7 or grater.")
         parser.error("** Required wxPython 4.x or grater.")
         sys.exit(1)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     gc.init_config(cmd_line_options, config_fname, "log_file")
 
-    app = wx.App(0)
+    app = wx.App()
     mw.gsatMainWindow(None, title=vinfo.__appname__, cmd_line_options=cmd_line_options)
 
     app.MainLoop()
