@@ -131,6 +131,6 @@ if __name__ == '__main__':
     gc.init_config(cmd_line_options, config_fname, "log_file")
 
     app = wx.App()
-    mw.gsatMainWindow(None, title=vinfo.__appname__, cmd_line_options=cmd_line_options)
+    mw.gsatMainWindow(None, wx.ID_ANY, title=vinfo.__appname__, cmd_line_options=cmd_line_options)
 
     app.MainLoop()

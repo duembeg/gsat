@@ -29,7 +29,8 @@ import logging
 import argparse
 
 import modules.config as gc
-import modules.remote_server as remote_server
+import modules.remote_server as rs
+import modules.remote_ws_server as rsws
 import modules.version_info as vinfo
 
 
@@ -83,6 +84,9 @@ class GsatServer(gc.EventQueueIf):
     def __init__(self):
         gc.EventQueueIf.__init__(self)
 
+        self.useWebSockets = True
+        self.configData = gc.CONFIG_DATA
+
         self.logger = logging.getLogger()
         if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_ALL):
             self.logger.info(f"init logging id:0x{id(self):x}")
@@ -91,20 +95,25 @@ class GsatServer(gc.EventQueueIf):
         pass
 
     def run(self):
+        self.useWebSockets = self.configData.get('/remote/WebSockets')
+
         try:
-            server = remote_server.RemoteServerThread(None)
+            if self.useWebSockets:
+                server = rsws.RemoteServer(self)
+            else:
+                server = rs.RemoteServer(self)
 
             # wait for server events
             while True:
-                e = self._eventQueue.get()
+                ev = self._eventQueue.get()
 
-                if e.event_id == gc.EV_HELLO:
+                if ev.event_id == gc.EV_HELLO:
                     if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
-                        self.logger.info(f"EV_HELLO from 0x{id(e.sender):x}")
+                        self.logger.info(f"EV_HELLO from 0x{id(ev.sender):x}")
 
-                elif e.event_id == gc.EV_GOOD_BYE:
+                elif ev.event_id == gc.EV_GOOD_BYE:
                     if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
-                        self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x}")
+                        self.logger.info(f"EV_GOOD_BYE from 0x{id(ev.sender):x}")
 
         finally:
             if server is not None:

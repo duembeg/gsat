@@ -113,6 +113,7 @@ if platform == 'android':
 from modules.version_info import *
 import modules.config as gc
 import modules.remote_client as rc
+import modules.remote_ws_client as rcws
 
 
 def no_machine_detected():
@@ -377,6 +378,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
     server_udp_broadcast = ObjectProperty(None)
     server_keep_alive_period = ObjectProperty(None)
     server_keep_alive = ObjectProperty(None)
+    server_websocket = ObjectProperty(None)
+    server_api_token = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
     jog_feed_rate = ObjectProperty(None)
     jog_rapid = ObjectProperty(None)
@@ -637,6 +640,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
         self.server_udp_broadcast = MDApp.get_running_app().config.get(__appname__, 'server_udp_broadcast')
         self.server_keep_alive_period = MDApp.get_running_app().config.get(__appname__, 'server_keep_alive_period')
         self.server_keep_alive = MDApp.get_running_app().config.get(__appname__, 'server_keep_alive')
+        self.server_websocket = MDApp.get_running_app().config.get(__appname__, 'server_websocket')
+        self.server_api_token = MDApp.get_running_app().config.get(__appname__, 'server_api_token')
 
         # print(f"Server hostname: {self.server_hostname}")
         # print(f"Server TCP port: {self.server_tcp_port}")
@@ -1489,6 +1494,8 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.dro_panel.bind(server_udp_broadcast=self.on_value_server_udp_broadcast)
         self.ids.dro_panel.bind(server_keep_alive_period=self.on_value_server_keep_alive_period)
         self.ids.dro_panel.bind(server_keep_alive=self.on_value_server_keep_alive)
+        self.ids.dro_panel.bind(server_websocket=self.on_value_server_websocket)
+        self.ids.dro_panel.bind(server_api_token=self.on_value_server_api_token)
         self.ids.dro_panel.bind(on_display_gcode_filename=self.on_display_gcode_filename)
 
         self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
@@ -1516,13 +1523,21 @@ class RootWidget(Screen, gc.EventQueueIf):
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:
-            if platform == 'android':
-                gc.gsatrc_remote_client = rc.RemoteClientThread(
-                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_udp_broadcast,
-                    keep_alive=True)
+            if self.server_websocket:
+                gc.gsatrc_remote_client = rcws.RemoteClient(
+                    self, self.server_hostname, self.server_tcp_port, self.server_api_token)
+
+            elif platform == 'android':
+                gc.gsatrc_remote_client = rc.RemoteClient(
+                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port,
+                    self.server_udp_broadcast, keep_alive=True)
             else:
-                gc.gsatrc_remote_client = rc.RemoteClientThread(
-                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port, self.server_udp_broadcast)
+                gc.gsatrc_remote_client = rc.RemoteClient(
+                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port,
+                    self.server_udp_broadcast)
+
+
+
 
     def on_cli_text_validate(self, text, *args):
         if gc.gsatrc_remote_client and self.serial_port_open:
@@ -1889,6 +1904,12 @@ class RootWidget(Screen, gc.EventQueueIf):
     def on_value_server_keep_alive(self, instance, value):
         self.server_keep_alive = eval(value)
 
+    def on_value_server_websocket(self, instance, value):
+        self.server_websocket = eval(value)
+
+    def on_value_server_api_token(self, instance, value):
+        self.server_api_token = value
+
 
 class MDBoxLayoutAutoRotate(MDBoxLayout):
     def __init__(self, **kwargs):
@@ -1932,6 +1953,8 @@ class MainApp(MDApp):
             'server_udp_broadcast': False,
             'server_keep_alive_period': 20,
             'server_keep_alive': False,
+            'server_websocket': True,
+            'server_api_token': "CHANGE_THIS",
             'jog_step_size': 1,
             'jog_feed_rate': 1000,
             'jog_rapid': False,

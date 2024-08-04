@@ -34,7 +34,7 @@ import pickle
 import modules.config as gc
 
 
-class RemoteClientThread(threading.Thread, gc.EventQueueIf):
+class RemoteClient(threading.Thread, gc.EventQueueIf):
     """
     Threads to send and monitor network socket for new data.
 
@@ -115,19 +115,19 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             pass
         else:
             if e.event_id == gc.EV_HELLO:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
                     self.logger.info(f"EV_HELLO from 0x{id(e.sender):x} {e.sender}")
 
                 self.add_event_listener(e.sender)
 
             elif e.event_id == gc.EV_GOOD_BYE:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
                     self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x} {e.sender}")
 
                 self.remove_event_listener(e.sender)
 
             elif e.event_id == gc.EV_CMD_EXIT:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
+                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
                     self.logger.info("EV_CMD_EXIT")
 
                 self.close()
@@ -278,13 +278,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                         log_msg = "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
                             data.event_id, id(data), len(self.rxBuffer), self.inputsAddr[soc])
 
-                        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEXDUMP):
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_HEXDUMP):
                             log_msg = log_msg + gc.verbose_hexdump("", self.rxBuffer)
 
-                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEX):
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_HEX):
                             log_msg = log_msg + gc.verbose_data_hex("", self.rxBuffer)
 
-                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_STR):
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_STR):
                             log_msg = log_msg + gc.verbose_data_ascii("", self.rxBuffer)
 
                         self.logger.info(log_msg)
@@ -355,13 +355,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
                     log_msg = "Recv msg id:{} obj:0x{:x} len:{} from {} ".format(
                         data.event_id, id(data), len(msg), from_data)
 
-                    if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEXDUMP):
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_HEXDUMP):
                         log_msg = log_msg + gc.verbose_hexdump("", msg)
 
-                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEX):
+                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_HEX):
                         log_msg = log_msg + gc.verbose_data_hex("", msg)
 
-                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_STR):
+                    elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_STR):
                         log_msg = log_msg + gc.verbose_data_ascii("", msg)
 
                     self.logger.info(log_msg)
@@ -445,13 +445,13 @@ class RemoteClientThread(threading.Thread, gc.EventQueueIf):
             log_msg = "Send msg id:{} obj:0x{:x} len:{} to {} ".format(
                 data.event_id, id(data), msg_len, self.inputsAddr[soc])
 
-            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEXDUMP):
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_HEXDUMP):
                 log_msg = log_msg + gc.verbose_hexdump("", pickle_data)
 
-            elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_HEX):
+            elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_HEX):
                 log_msg = log_msg + gc.verbose_data_hex("", pickle_data)
 
-            elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_STR):
+            elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_STR):
                 log_msg = log_msg + gc.verbose_data_ascii("", pickle_data)
 
             self.logger.info(log_msg)

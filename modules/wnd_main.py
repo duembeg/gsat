@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   wnd_main.py
+    wnd_main.py
 
-   Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2013 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   Grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    Grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 import os
@@ -49,12 +49,14 @@ import modules.wnd_jogging as jog
 # import modules.wnd_cli as cli
 import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
-import modules.remote_client as remote_client
-import modules.remote_server as remote_server
+import modules.remote_client as rc
+import modules.remote_ws_client as rcws
+import modules.remote_server as rs
+import modules.remote_ws_server as rsws
 import modules.version_info as vinfo
 
 """----------------------------------------------------------------------------
-   Globals:
+    Globals:
 ----------------------------------------------------------------------------"""
 
 # -----------------------------------------------------------------------------
@@ -151,7 +153,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     """
 
     def __init__(
-            self, parent, wnd_id=wx.ID_ANY, title="", cmd_line_options=None, pos=wx.DefaultPosition,
+            self, parent, wnd_id, title, cmd_line_options, pos=wx.DefaultPosition,
             size=(1200, 800), style=wx.DEFAULT_FRAME_STYLE):
 
         wx.Frame.__init__(self, parent, wnd_id, title, pos, size, style)
@@ -192,6 +194,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.runEndWaitingForMachIfIdle = False
         self.eventInCount = 0
         self.eventHandleCount = 0
+        self.useWebSockets = True
 
         # register for close events
         self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -203,7 +206,10 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # start local server
         self.localServer = None
         if self.cmdLineOptions.server:
-            self.localServer = remote_server.RemoteServerThread(None)
+            if self.useWebSockets:
+                self.localServer = rsws.RemoteServer(None)
+            else:
+                self.localServer = rs.RemoteServer(None)
 
         self.late_init_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.InitLate, self.late_init_timer)
@@ -231,6 +237,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.logger.info(f"maxFileHistory:           {self.maxFileHistory}")
             self.logger.info(f"roundInch2mm:             {self.roundInch2mm}")
             self.logger.info(f"roundmm2Inch:             {self.roundmm2Inch}")
+
+        self.useWebSockets = self.configData.get('/remote/WebSockets')
 
     def InitUI(self):
         """
@@ -1049,11 +1057,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
             self.statusbar.SetStatusText(os.path.basename(self.stateData.gcodeFileName))
         else:
-            dlg = wx.MessageDialog(self,
-                                   "The file doesn't exits.\n"
-                                   "File: %s\n\n"
-                                   "Please check the path and try again." %
-                                   fileName, "", wx.OK | wx.ICON_STOP)
+            dlg = wx.MessageDialog(
+                self,
+                "The file doesn't exits.\n"
+                f"File: {fileName}\n\n"
+                "Please check the path and try again.",
+                "", wx.OK | wx.ICON_STOP)
+
             dlg.ShowModal()
             dlg.Destroy()
 
@@ -1905,7 +1915,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if self.localServer is not None:
                 hostname = "localhost"
 
-            self.remoteClient = remote_client.RemoteClientThread(self, host=hostname)
+            if self.useWebSockets:
+                self.remoteClient = rcws.RemoteClient(self, host=hostname)
+            else:
+                self.remoteClient = rc.RemoteClient(self, host=hostname)
+
             self.machifProgExec = self.remoteClient
 
     def RemoteClose(self):
@@ -2476,8 +2490,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                         gmd.GenericMessageDialog(
                             msgText, "G-Code Program", gmd.GMD_DEFAULT, wx.OK | wx.ICON_INFORMATION)
                     else:
-                        wx.MessageBox(msgText, "G-Code Program",
-                                      wx.OK | wx.ICON_INFORMATION)
+                        wx.MessageBox(msgText, "G-Code Program", wx.OK | wx.ICON_INFORMATION)
 
     def RunDeviceInitScript(self):
         initScriptEn = self.configData.get('/machine/InitScriptEnable')

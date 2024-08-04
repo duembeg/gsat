@@ -1,25 +1,25 @@
 """----------------------------------------------------------------------------
-   con_main.py
+    con_main.py
 
-   Copyright (C) 2021 Wilhelm Duembeg
+    Copyright (C) 2021 Wilhelm Duembeg
 
-   This file is part of gsat. gsat is a cross-platform GCODE debug/step for
-   grbl like GCODE interpreters. With features similar to software debuggers.
-   Features such as breakpoint, change current program counter, inspection
-   and modification of variables.
+    This file is part of gsat. gsat is a cross-platform GCODE debug/step for
+    grbl like GCODE interpreters. With features similar to software debuggers.
+    Features such as breakpoint, change current program counter, inspection
+    and modification of variables.
 
-   gsat is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 2 of the License, or
-   (at your option) any later version.
+    gsat is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
-   gsat is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    gsat is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with gsat.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
 
@@ -30,12 +30,16 @@ import time
 import signal
 import curses
 import queue
+import re
 
 import modules.version_info as vinfo
 import modules.config as gc
 import modules.machif_progexec as mi_progexec
-import modules.remote_server as remote_server
-import modules.remote_client as remote_client
+import modules.remote_server as rs
+import modules.remote_client as rc
+import modules.remote_ws_server as rsws
+import modules.remote_ws_client as rcws
+
 
 text_queue = queue.Queue()
 
@@ -74,6 +78,46 @@ class CursesHandler(logging.Handler):
 
         except (KeyboardInterrupt, SystemExit):
             raise
+
+# class CursesHandler(logging.Handler):
+#     ANSI_COLOR_CODES = {
+#         '30': curses.COLOR_BLACK,
+#         '31': curses.COLOR_RED,
+#         '32': curses.COLOR_GREEN,
+#         '33': curses.COLOR_YELLOW,
+#         '34': curses.COLOR_BLUE,
+#         '35': curses.COLOR_MAGENTA,
+#         '36': curses.COLOR_CYAN,
+#         '37': curses.COLOR_WHITE,
+#     }
+
+#     def __init__(self, win):
+#         logging.Handler.__init__(self)
+#         self.win = win
+
+#     def emit(self, record):
+#         try:
+#             msg = self.format(record)
+#             self.add_colored_message(msg)
+#         except Exception:
+#             self.handleError(record)
+
+#     def add_colored_message(self, msg):
+#         ansi_escape = re.compile(r'\x1B\[(\d+)(;\d+)*m')
+#         parts = ansi_escape.split(msg)
+#         color_pair = 0
+#         for i, part in enumerate(parts):
+#             if part:
+#                 if i % 2 == 0:
+#                         self.win.addstr(part, curses.color_pair(color_pair))
+#                 else:
+#                     color_codes = part.split(';')
+#                     for code in color_codes:
+#                         if code in self.ANSI_COLOR_CODES:
+#                             color_pair = self.ANSI_COLOR_CODES[code]
+#                             curses.init_pair(color_pair, color_pair, -1)
+#         self.win.addstr("\n")
+#         self.win.refresh()
 
 
 class ConsoleApp(gc.EventQueueIf):
@@ -121,6 +165,9 @@ class ConsoleApp(gc.EventQueueIf):
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGHUP, self.exit_gracefully)
         signal.signal(signal.SIGCONT, self.exit_gracefully)
+
+        # curses.start_color()
+        # curses.use_default_colors()
 
         if (self.cmd_line_options.no_curses is False):
             self.screen = curses.initscr()
@@ -208,9 +255,15 @@ class ConsoleApp(gc.EventQueueIf):
                         self.remoteClient.add_event(gc.EV_CMD_EXIT, 0, -1)
                     else:
                         if self.cmd_line_options.server:
-                            self.remoteClient = remote_client.RemoteClientThread(self, host='localhost')
+                            if self.websocket:
+                                self.remoteClient = rcws.RemoteClient(self, host='localhost')
+                            else:
+                                self.remoteClient = rc.RemoteClient(self, host='localhost')
                         else:
-                            self.remoteClient = remote_client.RemoteClientThread(self)
+                            if self.websocket:
+                                self.remoteClient = rcws.RemoteClient(self)
+                            else:
+                                self.remoteClient = rc.RemoteClient(self)
 
             elif c in [curses.KEY_F3]:
                 if self.remoteClient:
@@ -478,10 +531,19 @@ class ConsoleApp(gc.EventQueueIf):
 
             self.logger = logging.getLogger()
 
+            self.configData = gc.CONFIG_DATA
+
+            self.websocket = self.configData.get('/remote/WebSocket', True)
+
             if self.cmd_line_options.server:
-                self.remoteServer = remote_server.RemoteServerThread(None)
-                time.sleep(1)
-                self.remoteClient = remote_client.RemoteClientThread(self, host='localhost')
+                if self.websocket:
+                    self.remoteServer = rsws.RemoteServer(self)
+                    time.sleep(1)
+                    self.remoteClient = rcws.RemoteClient(self, host='localhost')
+                else:
+                    self.remoteServer = rs.RemoteServer(None)
+                    time.sleep(1)
+                    self.remoteClient = rc.RemoteClient(self, host='localhost')
 
             if os.path.exists(os.path.expanduser(self.cmd_line_options.gcode)):
                 with open("foobar.txt") as gcode_file:

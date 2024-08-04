@@ -28,6 +28,7 @@ import queue
 import json
 import logging
 from logging import Formatter
+from colorama import Fore, Style, init
 
 """----------------------------------------------------------------------------
     Globals:
@@ -219,6 +220,7 @@ VERBOSE_MASK = 0
 VERBOSE_MASK_STR = 0x00000001
 VERBOSE_MASK_HEX = 0x00000002
 VERBOSE_MASK_HEXDUMP = 0x00000004
+VERBOSE_MASK_EVENT = 0x00000008
 
 VERBOSE_MASK_UI_ALL = 0x0000000F0
 VERBOSE_MASK_UI = 0x00000010
@@ -238,21 +240,26 @@ VERBOSE_MASK_SERIALIF_STR = VERBOSE_MASK_SERIALIF | VERBOSE_MASK_STR
 VERBOSE_MASK_SERIALIF_HEX = VERBOSE_MASK_SERIALIF | VERBOSE_MASK_HEX
 VERBOSE_MASK_SERIALIF_HEXDUMP = VERBOSE_MASK_SERIALIF | VERBOSE_MASK_HEXDUMP
 
-# VERBOSE_MASK_REMOTEIF_STR = 0x00020000
-# VERBOSE_MASK_REMOTEIF_HEX = 0x00040000
-# VERBOSE_MASK_REMOTEIF_HEX_DUMP = 0x00080000
 VERBOSE_MASK_REMOTEIF_CLIENT = 0x00100000
+VERBOSE_MASK_REMOTEIF_CLIENT_STR = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_STR
+VERBOSE_MASK_REMOTEIF_CLIENT_HEX = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_HEX
+VERBOSE_MASK_REMOTEIF_CLIENT_HEXDUMP = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_HEXDUMP
+VERBOSE_MASK_REMOTEIF_CLIENT_EV = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_EVENT
+
 VERBOSE_MASK_REMOTEIF_SERVER = 0x00200000
+VERBOSE_MASK_REMOTEIF_SERVER_STR = VERBOSE_MASK_REMOTEIF_SERVER | VERBOSE_MASK_STR
+VERBOSE_MASK_REMOTEIF_SERVER_HEX = VERBOSE_MASK_REMOTEIF_SERVER | VERBOSE_MASK_HEX
+VERBOSE_MASK_REMOTEIF_SERVER_HEXDUMP = VERBOSE_MASK_REMOTEIF_SERVER | VERBOSE_MASK_HEXDUMP
+VERBOSE_MASK_REMOTEIF_SERVER_EV = VERBOSE_MASK_REMOTEIF_SERVER | VERBOSE_MASK_EVENT
+VERBOSE_MASK_REMOTEIF_SERVER_HEX = VERBOSE_MASK_REMOTEIF_SERVER | VERBOSE_MASK_HEX
+
 VERBOSE_MASK_REMOTEIF = VERBOSE_MASK_REMOTEIF_CLIENT | VERBOSE_MASK_REMOTEIF_SERVER
-VERBOSE_MASK_REMOTEIF_EV = 0x00400000
-VERBOSE_MASK_REMOTEIF_ALL = 0x00FF0000
-VERBOSE_MASK_REMOTEIF_STR = VERBOSE_MASK_REMOTEIF | VERBOSE_MASK_STR
-VERBOSE_MASK_REMOTEIF_HEX = VERBOSE_MASK_REMOTEIF | VERBOSE_MASK_HEX
-VERBOSE_MASK_REMOTEIF_HEXDUMP = VERBOSE_MASK_REMOTEIF | VERBOSE_MASK_HEXDUMP
+VERBOSE_MASK_REMOTEIF_ALL = \
+    0x00F00000 | VERBOSE_MASK_STR | VERBOSE_MASK_HEX | VERBOSE_MASK_HEXDUMP | VERBOSE_MASK_EVENT
 
 VERBOSE_MASK_EVENTIF = \
-    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV |\
-    VERBOSE_MASK_SERIALIF_EV | VERBOSE_MASK_REMOTEIF_EV
+    VERBOSE_MASK_MACHIF_EXEC_EV | VERBOSE_MASK_MACHIF_MOD_EV | VERBOSE_MASK_SERIALIF_EV | \
+    VERBOSE_MASK_REMOTEIF_CLIENT_EV | VERBOSE_MASK_REMOTEIF_SERVER_EV
 
 VERBOSE_MASK_DICT = {
     "ui_all": VERBOSE_MASK_UI_ALL,
@@ -273,15 +280,12 @@ VERBOSE_MASK_DICT = {
     "remoteif": VERBOSE_MASK_REMOTEIF,
     "remoteif_client": VERBOSE_MASK_REMOTEIF_CLIENT,
     "remoteif_server": VERBOSE_MASK_REMOTEIF_SERVER,
-    "remoteif_str": VERBOSE_MASK_REMOTEIF_STR,
-    "remoteif_hex": VERBOSE_MASK_REMOTEIF_HEX,
-    "remoteif_hexdump": VERBOSE_MASK_REMOTEIF_HEXDUMP,
-    "remoteif_ev": VERBOSE_MASK_REMOTEIF_EV,
     "remoteif_all": VERBOSE_MASK_REMOTEIF_ALL,
     "eventif": VERBOSE_MASK_EVENTIF,
     "str": VERBOSE_MASK_STR,
     "hex": VERBOSE_MASK_HEX,
     "hexdump": VERBOSE_MASK_HEXDUMP,
+    "event": VERBOSE_MASK_EVENT,
 }
 
 
@@ -298,6 +302,8 @@ def decode_verbose_mask_string(verbose_mask_str):
         mask = str(mask).lower()
         if mask in VERBOSE_MASK_DICT:
             VERBOSE_MASK |= VERBOSE_MASK_DICT[mask]
+        else:
+            print(f"Unknown mask {mask}")
 
     return VERBOSE_MASK
 
@@ -354,6 +360,22 @@ def get_hex_dump(data, bytes_per_line=16):
 # --------------------------------------------------------------------------
 # LOGGING MASK
 # --------------------------------------------------------------------------
+class LogFormatter(logging.Formatter):
+    """Logging Formatter to add colors and count warning / errors"""
+
+    # Define the format and colors for different log levels
+    FORMATS = {
+        logging.DEBUG: Fore.CYAN + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
+        logging.INFO: Fore.GREEN + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
+        logging.WARNING: Fore.YELLOW + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
+        logging.ERROR: Fore.RED + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
+        logging.CRITICAL: Fore.RED + Style.BRIGHT + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt='%Y%m%d %I:%M:%S %p')
+        return formatter.format(record)
 
 
 def init_logger(filename, log_handler=None):
@@ -366,10 +388,16 @@ def init_logger(filename, log_handler=None):
     else:
         ch = logging.StreamHandler()
 
-    # ch_format = Formatter("%(levelname)s : %(message)s")
-    ch_format = Formatter(
-        "%(asctime)s - m:%(module)s l:%(lineno)d >> %(levelname)s :%(message)s", datefmt='%Y%m%d %I:%M:%S %p')
-    ch.setFormatter(ch_format)
+    # ch.setLevel(logging.DEBUG)
+
+    if log_handler:
+        # ch_format = Formatter("%(levelname)s : %(message)s")
+        ch_format = Formatter(
+            "%(levelname)s: %(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s", datefmt='%Y%m%d %I:%M:%S %p')
+        ch.setFormatter(ch_format)
+    else:
+        ch.setFormatter(LogFormatter())
+
     logger.addHandler(ch)
 
     # create a rotating file handler and add it to the logger
@@ -747,7 +775,9 @@ class gsatConfigData(ConfigData):
             "TcpPort": 61801,
             "UdpPort": 61802,
             "UdpBroadcast": False,
-            "AutoGcodeRequest": False
+            "AutoGcodeRequest": False,
+            "WebSockets": True,
+            "ApiToken": "CHANGE_THIS"
         }
     }
 
