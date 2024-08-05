@@ -338,7 +338,8 @@ def verbose_hexdump(direction, data):
     if isinstance(data, str):
         data = bytearray(data.encode('utf-8'))
     hex_dump_data = get_hex_dump(data, 16)
-    return f"[{len(data):04d}] {direction}\n{'\n'.join(hex_dump_data)}"
+    hex_dump_str = '\n'.join(hex_dump_data)
+    return f"[{len(data):04d}] {direction}\n{hex_dump_str}"
 
 
 def hex_dump(data, bytes_per_line=16):
@@ -360,6 +361,12 @@ def get_hex_dump(data, bytes_per_line=16):
 # --------------------------------------------------------------------------
 # LOGGING MASK
 # --------------------------------------------------------------------------
+
+
+# Initialize colorama
+init(autoreset=True)
+
+
 class LogFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""
 

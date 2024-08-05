@@ -201,6 +201,11 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         exMsg = ""
         serialData = ""
 
+        if self.serialPort is None:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
+                self.logger.error("serial port is None")
+            return
+
         try:
             inDataCnt = self.serialPort.inWaiting()
 
@@ -264,6 +269,11 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
     def write(self, serialData):
         exFlag = False
         exMsg = ""
+
+        if self.serialPort is None:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
+                self.logger.error("serial port is None")
+            return
 
         if len(serialData) == 0:
             return

@@ -78,9 +78,10 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         self.connected = False  # Connection status flag
 
         # socket io init
+        # self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
         self.sio = socketio.AsyncClient()
         self.exit_event = asyncio.Event()
-        self.url = f"http://{self.host}:{self.port}"
+        self.url = f"ws://{self.host}:{self.port}"
         self.api_token = api_token
 
         self.sio.event(self.connect)

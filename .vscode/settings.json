@@ -73,6 +73,7 @@
         "kivymd",
         "kpoint",
         "levelname",
+        "levelno",
         "libgtk",
         "machif",
         "mainthread",

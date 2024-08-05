@@ -41,6 +41,7 @@ sudo apt install build-essential libgtk-3-dev
 python3 -m pip install -U pip
 python3 -m pip install pyserial
 python3 -m pip install wxPython
+python3 -m pip install charset-normalizer==2.0.0 aiohttp==3.8.3 fastapi uvicorn python-socketio
 ```
 
 *Optional dependencies for OpenCV*
