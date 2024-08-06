@@ -371,13 +371,19 @@ init(autoreset=True)
 class LogFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""
 
+    data_str = str(
+        "%(levelname)s: " +
+        Fore.MAGENTA + "%(asctime)s" + " " +
+        Fore.BLUE + "m:%(module)s l:%(lineno)d" +
+        Style.RESET_ALL + " >> %(message)s")
+
     # Define the format and colors for different log levels
     FORMATS = {
-        logging.DEBUG: Fore.CYAN + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
-        logging.INFO: Fore.GREEN + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
-        logging.WARNING: Fore.YELLOW + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
-        logging.ERROR: Fore.RED + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
-        logging.CRITICAL: Fore.RED + Style.BRIGHT + "%(levelname)s: " + Style.RESET_ALL + "%(asctime)s - m:%(module)s l:%(lineno)d >> %(message)s",
+        logging.DEBUG: Fore.CYAN + data_str,
+        logging.INFO: Fore.GREEN + data_str,
+        logging.WARNING: Fore.YELLOW + data_str,
+        logging.ERROR: Fore.RED + data_str,
+        logging.CRITICAL: Fore.RED + Style.BRIGHT + data_str,
     }
 
     def format(self, record):
