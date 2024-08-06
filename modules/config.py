@@ -29,6 +29,7 @@ import json
 import logging
 from logging import Formatter
 from colorama import Fore, Style, init
+from typing import TypeVar
 
 """----------------------------------------------------------------------------
     Globals:
@@ -480,6 +481,8 @@ class ConfigData(object):
     Provides various data information
 
     """
+    T = TypeVar('T')
+
     def __init__(self, config_fname=None):
 
         self.configFileName = config_fname
@@ -513,7 +516,8 @@ class ConfigData(object):
 
         node[key_list[-1:][0]] = val
 
-    def get(self, key_path, default_rv=None):
+    def get(self, key_path: str, default_rv: T = None) -> T:
+
         """
         Get value for a given key
 
@@ -602,7 +606,9 @@ class ConfigData(object):
 
 
 class gsatConfigData(ConfigData):
-    """ Provides various data information
+    """
+    Provides various data information
+
     """
     configDefault = {
         "cli": {

@@ -29,8 +29,9 @@ import logging
 import socket
 import queue
 import pickle
-
 import socketio.exceptions
+
+from datetime import datetime
 
 import modules.config as gc
 
@@ -41,7 +42,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
     """
 
-    def __init__(self, event_handler, host=None, port=None, api_token=None):
+    def __init__(self, event_handler, host="", port=None, api_token=None):
         """
         Init remote client class
 
@@ -101,8 +102,11 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         """
         if self.connected:
+            # Get the current time and format it
+            now = datetime.now()
+            formatted_time = now.strftime('%Y%m%d:%I:%M%p')
 
-            msg = f"Close remote connection to {self.url}\n"
+            msg = f"Close remote connection to {self.url} at {formatted_time}\n"
 
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
                 self.logger.info(msg.strip())
@@ -112,7 +116,11 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
             self.connected = False
 
     async def connect(self):
-        msg = f"Connected to server: {self.sio.sid} at {self.url}\n"
+        # Get the current time and format it
+        now = datetime.now()
+        formatted_time = now.strftime('%Y%m%d:%I:%M%p')
+
+        msg = f"Connected to {self.url} at {formatted_time}\n"
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             self.logger.info(msg.strip())
 

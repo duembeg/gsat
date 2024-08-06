@@ -101,10 +101,10 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
         """ Update configs that can be updated during run-time
         """
         if not run_time_safe_only:
-            self.machIfId = mi.GetMachIfId(gc.CONFIG_DATA.get('/machine/Device'))
+            self.machIfId = mi.GetMachIfId(gc.CONFIG_DATA.get('/machine/Device', ""))
 
-        self.filterGCodesEnable = gc.CONFIG_DATA.get('/machine/FilterGcodesEnable')
-        self.filterGCodes = gc.CONFIG_DATA.get('/machine/FilterGcodes')
+        self.filterGCodesEnable = gc.CONFIG_DATA.get('/machine/FilterGcodesEnable', False)
+        self.filterGCodes = gc.CONFIG_DATA.get('/machine/FilterGcodes', "")
         filterGcodeList = self.filterGCodes.split(',')
         self.filterGCodesList = [x.strip() for x in filterGcodeList]
         self.dictProbeSettings = gc.CONFIG_DATA.get('/machine/Probe')

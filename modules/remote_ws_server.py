@@ -438,11 +438,11 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER_EV):
                 self.logger.info(f"EV_CMD_UPDATE_CONFIG from client {ev.sender}")
 
-            machine_device = gc.CONFIG_DATA.get('/machine/Device')
-            machine_port = gc.CONFIG_DATA.get('/machine/Port')
+            machine_device = gc.CONFIG_DATA.get('/machine/Device', "")
+            machine_port = gc.CONFIG_DATA.get('/machine/Port', "")
             machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
 
-            tcp_port = gc.CONFIG_DATA.get('/remote/TcpPort')
+            tcp_port = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
 
             if ev.data is not None:
                 gc.CONFIG_DATA = ev.data
@@ -458,8 +458,8 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
                     self.machif_prog_exec.add_event(gc.EV_CMD_EXIT)
 
             # re start server if settings changed
-            if tcp_port != gc.CONFIG_DATA.get('/remote/TcpPort'):
-                self.port = gc.CONFIG_DATA.get('/remote/TcpPort')
+            if tcp_port != gc.CONFIG_DATA.get('/remote/TcpPort', 61801):
+                self.port = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
 
                 # send message to all clients
                 await self.send_broadcast(

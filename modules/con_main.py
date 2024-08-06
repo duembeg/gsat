@@ -30,7 +30,7 @@ import time
 import signal
 import curses
 import queue
-import re
+# import re
 
 import modules.version_info as vinfo
 import modules.config as gc
@@ -274,7 +274,7 @@ class ConsoleApp(gc.EventQueueIf):
                         self.remoteClient.add_event(gc.EV_CMD_OPEN)
                         self.machif = self.remoteClient
                 else:
-                    if self.machif:
+                    if self.machif and self.machifProgExec:
                         self.machifProgExec.add_event(gc.EV_CMD_EXIT, 0, -1)
                         self.machif = None
                     else:

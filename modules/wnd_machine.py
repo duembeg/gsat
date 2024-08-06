@@ -157,32 +157,32 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         if "italic" in font_style_str:
             fontPos.MakeItalic()
 
-        #self.xPos.SetFont(fontPos)
-        #self.yPos.SetFont(fontPos)
-        #self.zPos.SetFont(fontPos)
-        #self.aPos.SetFont(fontPos)
-        #self.bPos.SetFont(fontPos)
-        #self.cPos.SetFont(fontPos)
+        # self.xPos.SetFont(fontPos)
+        # self.yPos.SetFont(fontPos)
+        # self.zPos.SetFont(fontPos)
+        # self.aPos.SetFont(fontPos)
+        # self.bPos.SetFont(fontPos)
+        # self.cPos.SetFont(fontPos)
 
-        #self.sDroBoxSz.Fit(self)
-        #self.sDroBoxSz.Layout()
+        # self.sDroBoxSz.Fit(self)
+        # self.sDroBoxSz.Layout()
 
-        #self.sDroBoxSz.SetDimension((0, 0), self.GetClientSize())
-        #self.sDroBoxSz.Layout()
-        #self.SetAutoLayout(True)
-        #self.Center()
-        #self.InvalidateBestSize()
-        #self.EnableScrolling(False, False)
-        #self.SetVirtualSize(self.GetBestVirtualSize())
+        # self.sDroBoxSz.SetDimension((0, 0), self.GetClientSize())
+        # self.sDroBoxSz.Layout()
+        # self.SetAutoLayout(True)
+        # self.Center()
+        # self.InvalidateBestSize()
+        # self.EnableScrolling(False, False)
+        # self.SetVirtualSize(self.GetBestVirtualSize())
         self.Layout()
-        #self.FitInside()
-        #self.SetDimensions(-1, -1, size.width, size.height, wx.SIZE_USE_EXISTING)
-        #self.Update()
-        #self.sDroBoxSz.FitInside(self)
-        #self.Layout()
-        #print "bottom ---"
-        #self.test()
-        #self.SetBackgroundColour("blue")
+        # self.FitInside()
+        # self.SetDimensions(-1, -1, size.width, size.height, wx.SIZE_USE_EXISTING)
+        # self.Update()
+        # self.sDroBoxSz.FitInside(self)
+        # self.Layout()
+        # print "bottom ---"
+        # self.test()
+        # self.SetBackgroundColour("blue")
 
     def InitUI(self):
         self.vRootBoxSz = wx.BoxSizer(wx.VERTICAL)
@@ -319,7 +319,7 @@ class gsatMachineStatusPanel(wx.ScrolledWindow):
         return staticBoxSizer
 
     def CreateDroBox(self, sz):
-        fGridSizer = wx.FlexGridSizer(8,2,0,0)
+        fGridSizer = wx.FlexGridSizer(8, 2, 0, 0)
 
         # set font properties
         if self.configDroFontFace == "System" or self.configDroFontSize == -1:

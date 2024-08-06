@@ -316,7 +316,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
     def init(self):
         super(MachIf_Smoothie, self).init()
         self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-            '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value' % self.name)
+            f'/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value', 200)
 
     def tick(self):
         # check if is time for auto-refresh and send get status cmd and prepare next refresh time
@@ -330,28 +330,26 @@ class MachIf_Smoothie(mi.MachIf_Base):
                 if self.okToSend(self.cmdStatus):
                     super(MachIf_Smoothie, self).write(self.cmdStatus)
 
-                self.autoStatusNextMicro = dt.datetime.now() + \
-                    dt.timedelta(
-                        microseconds=self.machineAutoRefreshPeriod * 1000)
+                self.autoStatusNextMicro = \
+                    dt.datetime.now() + dt.timedelta(microseconds=self.machineAutoRefreshPeriod*1000)
 
         elif self.autoStatusNextMicro is not None and self.currentStatus not in [SMOOTHIE_STATE_RUN, SMOOTHIE_STATE_JOG]:
             self.autoStatusNextMicro = None
 
-        if self.machineAutoRefreshPeriod != gc.CONFIG_DATA.get(
-                '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value'
-                % self.name):
-            self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-                '/machine/MachIfSpecific/%s/AutoRefreshPeriod/Value'
-                % self.name)
+        machineAutoRefreshPeriod = \
+            gc.CONFIG_DATA.get(f'/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value', 200)
+        if self.machineAutoRefreshPeriod != machineAutoRefreshPeriod:
+            self.machineAutoRefreshPeriod = machineAutoRefreshPeriod
 
     def write(self, txData, raw_write=False):
         askForStatus = False
         bytesSent = 0
 
         # moving to active state get at least one status msg
-        if self.currentStatus in [SMOOTHIE_STATE_IDLE, SMOOTHIE_STATE_STOP,
-                                  SMOOTHIE_STATE_HOME, SMOOTHIE_STATE_SLEEP,
-                                  SMOOTHIE_STATE_HOLD]:
+        smoothie_stats = [
+            SMOOTHIE_STATE_IDLE, SMOOTHIE_STATE_STOP, SMOOTHIE_STATE_HOME, SMOOTHIE_STATE_SLEEP, SMOOTHIE_STATE_HOLD]
+
+        if self.currentStatus in smoothie_stats:
             askForStatus = True
 
         bytesSent = super(MachIf_Smoothie, self).write(txData, raw_write)
@@ -361,8 +359,7 @@ class MachIf_Smoothie(mi.MachIf_Base):
                 super(MachIf_Smoothie, self).write(self.cmdStatus)
                 super(MachIf_Smoothie, self).write(self.cmdStatus)
 
-            self.autoStatusNextMicro = dt.datetime.now() + \
-                dt.timedelta(
-                    microseconds=self.machineAutoRefreshPeriod * 1000)
+            self.autoStatusNextMicro = \
+                dt.datetime.now() + dt.timedelta(microseconds=(self.machineAutoRefreshPeriod*1000))
 
         return bytesSent

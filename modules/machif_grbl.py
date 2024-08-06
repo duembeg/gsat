@@ -379,10 +379,9 @@ class MachIf_GRBL(mi.MachIf_Base):
 
         alarm = self.reGrblAlarm.search(data)
         if alarm is not None:
+            sr = {}
             if 'sr' in dataDict:
-                sr = dataDict.get('sr')
-            else:
-                sr = {}
+                sr = dataDict.get('sr', {})
 
             sr['stat'] = "Alarm"
             decodedStatus = self.stat_dict.get(sr['stat'], GRBL_STATE_UNKNOWN)
@@ -591,8 +590,8 @@ class MachIf_GRBL(mi.MachIf_Base):
     def init(self):
         super(MachIf_GRBL, self).init()
         self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
-            f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value")
-        self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))
+            f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value", 200)
+        self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod / 1000))
 
     def tick(self):
         # check if is time for auto-refresh and send get status cmd and
@@ -603,10 +602,10 @@ class MachIf_GRBL(mi.MachIf_Base):
         else:
             self.timeOut.disable()
 
-        configAutoRefresh = gc.CONFIG_DATA.get(f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value")
+        configAutoRefresh = gc.CONFIG_DATA.get(f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value", 200)
         if self.machineAutoRefreshPeriod != configAutoRefresh:
             self.machineAutoRefreshPeriod = configAutoRefresh
-            self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod/1000))
+            self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod / 1000))
 
         # check for init condition, take action, and reset init condition
         if (self.initStringDetectFlag):

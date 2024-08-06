@@ -23,6 +23,7 @@
 
 ----------------------------------------------------------------------------"""
 
+# import modules.machif as mi
 import modules.machif_g2core as mi_g2core
 import modules.machif_tinyg as mi_tinyg
 import modules.machif_grbl as mi_grbl

@@ -112,7 +112,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
 
         """
         if self.serialPort is not None:
-            if self.serialPort.isOpen():
+            if self.serialPort.is_open:
                 # self.serialPort.flushInput()
                 self.serialPort.close()
 
@@ -165,7 +165,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             #     exFlag = True
 
             if self.serialPort is not None:
-                if self.serialPort.isOpen():
+                if self.serialPort.is_open:
                     # change tty mode, this is strange and not doing it
                     # was causing issues reconnecting to GRBL if disconnected
                     # because exception, it was fine other wise.
@@ -207,7 +207,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             return
 
         try:
-            inDataCnt = self.serialPort.inWaiting()
+            inDataCnt = self.serialPort.in_waiting
 
             while inDataCnt > 0 and not exFlag:
 
@@ -241,10 +241,10 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                         # when serial traffic is constant
                         time.sleep(0.01)
 
-                inDataCnt = self.serialPort.inWaiting()
+                inDataCnt = self.serialPort.in_waiting
 
         except serial.SerialException as e:
-            exMsg = f"** PySerial exception: {e.message}\n"
+            exMsg = f"** PySerial exception: {e}\n"
             exFlag = True
 
         except IOError as e:
@@ -278,7 +278,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         if len(serialData) == 0:
             return
 
-        if self.serialPort.isOpen():
+        if self.serialPort.is_open:
 
             try:
                 # send command
@@ -295,7 +295,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
                 self.serialPort.write(serialData.encode('utf8'))
 
             except serial.SerialException as e:
-                exMsg = f"** PySerial exception: {e.message}\n"
+                exMsg = f"** PySerial exception: {e}\n"
                 exFlag = True
 
             except IOError as e:
@@ -339,7 +339,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
             if (self.endThread):
                 break
 
-            if self.serialPort.isOpen():
+            if self.serialPort.is_open:
                 if self.swState == gc.STATE_RUN:
                     self.read()
                 elif self.swState == gc.STATE_ABORT:

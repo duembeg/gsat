@@ -505,14 +505,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         remoteMenu.AppendCheckItem(gID_MENU_REMOTE_CONNECT, "&Connect")
 
-        #remoteMenu.Append(gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
+        # remoteMenu.Append(gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
         remoteGetGcode = wx.MenuItem(remoteMenu, gID_MENU_REMOTE_GET_GCODE, "&Get G-code")
         if os.name != 'nt':
             remoteGetGcode.SetBitmap(ico.imgRemoteGcode.GetBitmap())
         remoteMenu.Append(remoteGetGcode)
 
-
-        #remoteMenu.Append(gID_MENU_REMOTE_SETTINGS, "&Settings")
+        # remoteMenu.Append(gID_MENU_REMOTE_SETTINGS, "&Settings")
         remoteSettings = wx.MenuItem(remoteMenu, gID_MENU_REMOTE_SETTINGS, "&Settings")
         if os.name != 'nt':
             remoteSettings.SetBitmap(ico.imgRemoteSettings.GetBitmap())
@@ -1038,7 +1037,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.OnDoFileOpen(e, self.stateData.gcodeFileName)
 
-    def OnDoFileOpen(self, e, fileName=None):
+    def OnDoFileOpen(self, e, fileName="none"):
         if os.path.exists(fileName):
             self.stateData.gcodeFileName = fileName
 
@@ -1713,9 +1712,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if dlg.ShowModal() == wx.ID_OK:
             rawText = self.gcText.GetText()
             self.stateData.gcodeFileLines = rawText.splitlines(True)
-            lines = self.ConvertInchAndmm(self.stateData.gcodeFileLines,
-                                          in_to_mm=True,
-                                          round_to=self.roundInch2mm)
+            lines = self.ConvertInchAndmm(
+                self.stateData.gcodeFileLines, in_to_mm=True, round_to=self.roundInch2mm)
 
             readOnly = self.gcText.GetReadOnly()
             self.gcText.SetReadOnly(False)
@@ -1738,9 +1736,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         if dlg.ShowModal() == wx.ID_OK:
             rawText = self.gcText.GetText()
             self.stateData.gcodeFileLines = rawText.splitlines(True)
-            lines = self.ConvertInchAndmm(self.stateData.gcodeFileLines,
-                                          in_to_mm=False,
-                                          round_to=self.roundmm2Inch)
+            lines = self.ConvertInchAndmm(self.stateData.gcodeFileLines, in_to_mm=False, round_to=self.roundmm2Inch)
 
             readOnly = self.gcText.GetReadOnly()
             self.gcText.SetReadOnly(False)
@@ -1911,7 +1907,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if self.machifProgExec is not None:
                 self.SerialClose()
 
-            hostname = None
+            hostname = ""
             if self.localServer is not None:
                 hostname = "localhost"
 
