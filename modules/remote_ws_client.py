@@ -137,8 +137,12 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         self.notify_event_listeners(gc.EV_RMT_PORT_OPEN, msg)
 
     async def connect_error(self, data):
+        error_msg = f"{data}\n"
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
-            self.logger.info(f"Connection failed: {data}")
+            self.logger.error(error_msg.strip())
+
+        self.notify_event_listeners(gc.EV_ABORT, error_msg)
+        self.exit_event.set()
 
         self.close()
 

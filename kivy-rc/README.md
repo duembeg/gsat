@@ -48,6 +48,7 @@ Development Environment
     ```
     pip install -U pip
     pip install kivy kivymd buildozer Cython==0.29.33 setuptools
+    pip install charset-normalizer==2.0.0 aiohttp==3.8.3 fastapi uvicorn python-socketio colorama
     ```
 3) Build android app, install and run on device
     ```
