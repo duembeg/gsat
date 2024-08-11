@@ -376,57 +376,75 @@ class MachIf_Base(gc.EventQueueIf):
                 pass
             else:
                 if e.event_id == gc.EV_RXDATA:
-                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                        self.logger.info("EV_RXDATA")
+                    log_msg = f"{gc.EV_2STR_DICT.get(e.event_id)} len:{len(e.data)} "
+
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_HEXDUMP):
+                            log_msg = log_msg + gc.verbose_hexdump("", e.data)
+
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_HEX):
+                            log_msg = log_msg + gc.verbose_data_hex("", e.data)
+
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_STR):
+                            log_msg = log_msg + gc.verbose_data_ascii("", e.data)
+
+                        self.logger.info(log_msg)
 
                     if len(e.data) > 0:
                         dictData = self.decode(e.data)
                         dictData['rx_data'] = e.data
 
                 elif e.event_id == gc.EV_TXDATA:
-                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                        self.logger.info("EV_TXDATA")
+                    log_msg = f"{gc.EV_2STR_DICT.get(e.event_id)} len:{len(e.data)} "
+
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
+
+                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_HEXDUMP):
+                            log_msg = log_msg + gc.verbose_hexdump("", e.data)
+
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_HEX):
+                            log_msg = log_msg + gc.verbose_data_hex("", e.data)
+
+                        elif gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_STR):
+                            log_msg = log_msg + gc.verbose_data_ascii("", e.data)
+
+                        self.logger.info(log_msg)
 
                     if len(e.data) > 0:
                         dictData['tx_data'] = e.data
 
                 elif e.event_id == gc.EV_HELLO:
                     if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                        self.logger.info("EV_HELLO from 0x%x" % id(e.sender))
+                        self.logger.info(f"{gc.EV_2STR_DICT.get(e.event_id)} from 0x{id(e.sender):x}")
 
                     self.add_event_listener(e.sender)
 
                 elif e.event_id == gc.EV_GOOD_BYE:
                     if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                        self.logger.info("EV_GOOD_BYE from 0x%x" % id(e.sender))
+                        self.logger.info(f"{gc.EV_2STR_DICT.get(e.event_id)} from 0x{id(e.sender):x}")
 
                     self.remove_event_listener(e.sender)
 
-                elif e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN,
-                                    gc.EV_SER_PORT_CLOSE]:
+                elif e.event_id in [gc.EV_EXIT, gc.EV_ABORT, gc.EV_SER_PORT_OPEN, gc.EV_SER_PORT_CLOSE]:
                     dictData['event'] = {}
                     dictData['event']['id'] = e.event_id
                     dictData['event']['data'] = e.data
 
-                    if e.event_id == gc.EV_SER_PORT_OPEN:
-                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                            self.logger.info("EV_SER_PORT_OPEN")
+                    if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
+                        self.logger.info(f"{gc.EV_2STR_DICT.get(e.event_id)}")
 
+                    if e.event_id == gc.EV_SER_PORT_OPEN:
                         self._serialPortOpen = True
 
                     elif e.event_id == gc.EV_SER_PORT_CLOSE:
-                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                            self.logger.info("EV_SER_PORT_CLOSE")
-
                         self._serialPortOpen = False
 
                     elif e.event_id == gc.EV_ABORT:
-                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                            self.logger.info("EV_ABORT")
+                        pass
 
                     elif e.event_id == gc.EV_EXIT:
-                        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
-                            self.logger.info("EV_EXIT")
+                        pass
                 else:
                     if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD_EV):
                         self.logger.error("EV_?? got unknown event!! [%s]" % str(e.event_id))

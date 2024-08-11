@@ -1339,7 +1339,7 @@ class MDGridLayoutJogControls(MDGridLayout):
             self.long_press_clk_ev = None
 
         dir = 0
-        big_val = 99999
+        big_val = 9999
 
         if self.jog_long_press_key[:1] == "+":
             dir = 1
@@ -1999,7 +1999,6 @@ class MainApp(MDApp):
             # Lets make sure we follow android rotation setting
             ActivityInfo = autoclass("android.content.pm.ActivityInfo")
             activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER)
-
 
     def set_wake_lock(self, *args):
         if platform == 'android':

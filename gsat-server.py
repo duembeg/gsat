@@ -88,7 +88,7 @@ class GsatServer(gc.EventQueueIf):
         self.configData = gc.CONFIG_DATA
 
         self.logger = logging.getLogger()
-        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_ALL):
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI):
             self.logger.info(f"init logging id:0x{id(self):x}")
 
     def __del__(self):
