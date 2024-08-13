@@ -169,7 +169,7 @@ class TextInputTouchScroll(TextInput):
         super(TextInputTouchScroll, self).insert_text(substring, from_undo)
 
 
-class InputDialogContent(MDBoxLayout):
+class InputDialog(MDBoxLayout):
     """
     General config custom input dialog content
 
@@ -183,7 +183,7 @@ class InputDialogContent(MDBoxLayout):
         Init function for object
 
         """
-        super(InputDialogContent, self).__init__(**kwargs)
+        super(InputDialog, self).__init__(**kwargs)
         self.value = val
         self.register_event_type('on_enter')
         self.edit_auto_focus = edit_auto_focus
@@ -222,14 +222,14 @@ class InputDialogContent(MDBoxLayout):
         pass
 
 
-class StepSizeDialogContent(InputDialogContent):
+class StepSizeDialog(InputDialog):
     """
     Step size config custom dialog content
 
     """
 
     def on_init(self, *args):
-        super(StepSizeDialogContent, self).on_init(args)
+        super(StepSizeDialog, self).on_init(args)
 
         self.height = "200dp"
         self.ids.text_field.input_filter = 'float'
@@ -244,13 +244,13 @@ class StepSizeDialogContent(InputDialogContent):
         bt = MDFlatButton(text='dummy', on_release=self.on_number_button_release)
 
     def on_number_button_release(self, instance):
-        super(StepSizeDialogContent, self).on_number_button_release(instance)
+        super(StepSizeDialog, self).on_number_button_release(instance)
         self.on_text_validate(instance)
 
 
-class ServerDialogContent(InputDialogContent):
+class RemoteDialogSocket(InputDialog):
     """
-    Server config custom dialog content
+    Remote config custom dialog content
 
     """
 
@@ -266,17 +266,18 @@ class ServerDialogContent(InputDialogContent):
         self.udp_broadcast = enable_udp_broadcast
         self.keep_alive_period = keep_alive_period
         self.keep_alive = enable_keep_alive
-        super(ServerDialogContent, self).__init__(hostname, **kwargs)
+        super(RemoteDialogSocket, self).__init__(hostname, **kwargs)
 
     def on_init(self, *args):
-        super(ServerDialogContent, self).on_init(args)
+        super(RemoteDialogSocket, self).on_init(args)
 
         self.height = "240dp"
         self.ids.text_field.input_filter = None
         self.ids.text_field.input_type = 'text'
         self.ids.text_field.hint_text = "Server Hostname"
-        self.tf_server = self.ids.text_field
+        self.tf_remote = self.ids.text_field
 
+        # TCP Port input
         bl = MDBoxLayout()
         tf_tcp_port = MDTextField()
         tf_tcp_port.text = self.tcp_port
@@ -341,6 +342,85 @@ class ServerDialogContent(InputDialogContent):
         self.add_widget(bl)
 
 
+class RemoteDialogWebSocket(InputDialog):
+    """
+    Remote config custom dialog content
+
+    """
+
+    def __init__(
+            self, hostname, port, api_token, keep_alive_period, enable_keep_alive, **kwargs):
+        """
+        Init function for object
+
+        """
+        self.hostname = hostname
+        self.port = port
+        self.api_token = api_token
+        self.keep_alive_period = keep_alive_period
+        self.keep_alive = enable_keep_alive
+        super(RemoteDialogWebSocket, self).__init__(hostname, **kwargs)
+
+    def on_init(self, *args):
+        super(RemoteDialogWebSocket, self).on_init(args)
+
+        self.height = "240dp"
+        self.ids.text_field.input_filter = None
+        self.ids.text_field.hint_text = "Server Hostname"
+        self.ids.text_field.input_type = 'text'
+        self.tf_remote = self.ids.text_field
+
+        # Port Input
+        bl = MDBoxLayout()
+        tf_port = MDTextField()
+        tf_port.text = self.port
+        tf_port.hint_text = "Port"
+        tf_port.input_type = 'number'
+        tf_port.input_filter = 'int'
+        tf_port.on_text_validate = partial(self.on_text_validate, tf_port)
+        self.tf_port = tf_port
+        bl.add_widget(tf_port)
+        self.add_widget(bl)
+
+        # API Token Input
+        bl = MDBoxLayout()
+        tf_api_token = MDTextField()
+        tf_api_token.text = self.api_token
+        tf_api_token.hint_text = "API Token"
+        tf_api_token.input_type = 'text'
+        tf_api_token.input_filter = None
+        tf_api_token.on_text_validate = partial(self.on_text_validate, tf_api_token)
+        self.tf_api_token = tf_api_token
+        bl.add_widget(tf_api_token)
+        self.add_widget(bl)
+
+        # Keep alive controls
+        bl = MDBoxLayout()
+        tf_keep_alive = MDTextField()
+        tf_keep_alive.text = self.keep_alive_period
+        tf_keep_alive.hint_text = "Keep Alive Period (sec)"
+        tf_keep_alive.input_type = 'number'
+        tf_keep_alive.input_filter = 'int'
+        tf_keep_alive.on_text_validate = partial(self.on_text_validate, tf_keep_alive)
+        self.tf_keep_alive = tf_keep_alive
+        bl.add_widget(tf_keep_alive)
+        spacer = Widget()
+        spacer.size_hint_x = None
+        spacer.width = "20dp"
+        bl.add_widget(spacer)
+        l_keep_alive = MDLabel(text="Enable Keep Alive")
+        l_keep_alive.size_hint_x = None
+        # l_keep_alive.width = l_keep_alive.text_size[0]
+        bl.add_widget(l_keep_alive)
+        cb_keep_alive = MDCheckbox()
+        cb_keep_alive.active = self.keep_alive
+        cb_keep_alive.size_hint_x = None
+        cb_keep_alive.width = "32dp"
+        self.cb_keep_alive = cb_keep_alive
+        bl.add_widget(cb_keep_alive)
+        self.add_widget(bl)
+
+
 class OneListItemWithCheckbox(OneLineListItem):
     """
     Custom list item.
@@ -372,14 +452,15 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
     """
     rc_connect = ObjectProperty(None)
-    server_hostname = ObjectProperty(None)
-    server_tcp_port = ObjectProperty(None)
-    server_udp_port = ObjectProperty(None)
-    server_udp_broadcast = ObjectProperty(None)
-    server_keep_alive_period = ObjectProperty(None)
-    server_keep_alive = ObjectProperty(None)
-    server_websocket = ObjectProperty(None)
-    server_api_token = ObjectProperty(None)
+    remote_interface = ObjectProperty(None)
+    remote_hostname = ObjectProperty(None)
+    remote_tcp_port = ObjectProperty(None)
+    remote_udp_port = ObjectProperty(None)
+    remote_udp_broadcast = ObjectProperty(None)
+    remote_keep_alive_period = ObjectProperty(None)
+    remote_keep_alive = ObjectProperty(None)
+    remote_websocket_port = ObjectProperty(None)
+    remote_api_token = ObjectProperty(None)
     serial_port_open = ObjectProperty(None)
     jog_feed_rate = ObjectProperty(None)
     jog_rapid = ObjectProperty(None)
@@ -450,7 +531,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         return menu
 
     def init_dialog(self):
-        self.server_config_dialog = self.on_init_value_dialog('server_config')
+        self.remote_config_dialog = self.on_init_value_dialog('remote_config')
         self.got_to_axis_dialog = self.on_init_value_dialog('got_to_axis')
         self.set_value_axis_dialog = self.on_init_value_dialog('set_value_axis')
 
@@ -506,7 +587,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
         ]
         self.init_a_menu(items, 'mi')
 
-        # server menu
+        # remote menu
         items = [
             {icon: "lan-connect", name: "Connect"},
             {icon: "lan-disconnect", name: "Disconnect"},
@@ -541,8 +622,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
             elif menu_text == "Disconnect":
                 self.rc_connect = False
             elif menu_text == "Configure":
-                self.value_dialog_data_key = "server_config"
-                self.value_dialog = self.server_config_dialog
+                self.value_dialog_data_key = "remote_config"
+                self.value_dialog = self.remote_config_dialog
                 self.value_dialog.open()
             elif menu_text == "Reset" and gc.gsatrc_remote_client:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_RMT_RESET)
@@ -634,21 +715,23 @@ class MDBoxLayoutDRO(MDBoxLayout):
             self.list_items[li].menu = None
             self.list_items[li].dialog = None
 
-        self.server_hostname = MDApp.get_running_app().config.get(__appname__, 'server_hostname')
-        self.server_tcp_port = MDApp.get_running_app().config.get(__appname__, 'server_tcp_port')
-        self.server_udp_port = MDApp.get_running_app().config.get(__appname__, 'server_udp_port')
-        self.server_udp_broadcast = MDApp.get_running_app().config.get(__appname__, 'server_udp_broadcast')
-        self.server_keep_alive_period = MDApp.get_running_app().config.get(__appname__, 'server_keep_alive_period')
-        self.server_keep_alive = MDApp.get_running_app().config.get(__appname__, 'server_keep_alive')
-        self.server_websocket = MDApp.get_running_app().config.get(__appname__, 'server_websocket')
-        self.server_api_token = MDApp.get_running_app().config.get(__appname__, 'server_api_token')
+        self.remote_interface = MDApp.get_running_app().config.get(__appname__, 'remote_interface')
+        self.remote_hostname = MDApp.get_running_app().config.get(__appname__, 'remote_hostname')
+        self.remote_tcp_port = MDApp.get_running_app().config.get(__appname__, 'remote_tcp_port')
+        self.remote_udp_port = MDApp.get_running_app().config.get(__appname__, 'remote_udp_port')
+        self.remote_udp_broadcast = MDApp.get_running_app().config.get(__appname__, 'remote_udp_broadcast')
+        self.remote_keep_alive_period = MDApp.get_running_app().config.get(__appname__, 'remote_keep_alive_period')
+        self.remote_keep_alive = MDApp.get_running_app().config.get(__appname__, 'remote_keep_alive')
+        self.remote_websocket_port = MDApp.get_running_app().config.get(__appname__, 'remote_websocket_port')
+        self.remote_api_token = MDApp.get_running_app().config.get(__appname__, 'remote_api_token')
 
-        # print(f"Server hostname: {self.server_hostname}")
-        # print(f"Server TCP port: {self.server_tcp_port}")
-        # print(f"Server UDP port: {self.server_udp_port}")
-        # print(f"Server UDP broadcast: {self.server_udp_broadcast}")
-        # print(f"Server keep alive period: {self.server_keep_alive_period}")
-        # print(f"Server keep alive: {self.server_keep_alive}")
+        # print(f"Remote Interface: {self.remote_interface}")
+        # print(f"Remote hostname: {self.remote_hostname}")
+        # print(f"Remote TCP port: {self.remote_tcp_port}")
+        # print(f"Remote UDP port: {self.remote_udp_port}")
+        # print(f"Remote UDP broadcast: {self.remote_udp_broadcast}")
+        # print(f"Remote keep alive period: {self.remote_keep_alive_period}")
+        # print(f"Remote keep alive: {self.remote_keep_alive}")
 
         self.init_menu()
         self.init_list()
@@ -665,20 +748,25 @@ class MDBoxLayoutDRO(MDBoxLayout):
         content_cls = None
         value_dialog = None
 
-        if data_key == "server_config":
-            content_cls = ServerDialogContent(
-                self.server_hostname, self.server_tcp_port, self.server_udp_port, eval(self.server_udp_broadcast),
-                self.server_keep_alive_period, eval(self.server_keep_alive), edit_auto_focus=False)
+        if data_key == "remote_config":
+            if self.remote_interface == 'socket':
+                content_cls = RemoteDialogSocket(
+                    self.remote_hostname, self.remote_tcp_port, self.remote_udp_port, eval(self.remote_udp_broadcast),
+                    self.remote_keep_alive_period, eval(self.remote_keep_alive), edit_auto_focus=False)
+            elif self.remote_interface == 'websocket':
+                content_cls = RemoteDialogWebSocket(
+                    self.remote_hostname, self.remote_websocket_port, self.remote_api_token,
+                    self.remote_keep_alive_period, eval(self.remote_keep_alive), edit_auto_focus=False)
             dialog_title = 'Remote Server'
 
         elif data_key == "got_to_axis":
-            content_cls = InputDialogContent(val="")
+            content_cls = InputDialog(val="")
             content_cls.ids.text_field.input_filter = 'float'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Go to Axis'
 
         elif data_key == "set_value_axis":
-            content_cls = InputDialogContent(val="")
+            content_cls = InputDialog(val="")
             content_cls.ids.text_field.input_filter = 'float'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Set Axis Value'
@@ -739,43 +827,64 @@ class MDBoxLayoutDRO(MDBoxLayout):
             self.list_items['mi'].text = ""
             self.list_items['gfn'].text = ""
 
-    def on_server_hostname(self, instance, value):
-        value_key = 'server_hostname'
+    def on_remote_interface(self, instance, value):
+        value_key = 'remote_interface'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
 
-    def on_server_tcp_port(self, instance, value):
-        value_key = 'server_tcp_port'
+    def on_remote_hostname(self, instance, value):
+        value_key = 'remote_hostname'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
 
-    def on_server_udp_port(self, instance, value):
-        value_key = 'server_udp_port'
+    def on_remote_tcp_port(self, instance, value):
+        value_key = 'remote_tcp_port'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
 
-    def on_server_udp_broadcast(self, instance, value):
-        value_key = 'server_udp_broadcast'
+    def on_remote_udp_port(self, instance, value):
+        value_key = 'remote_udp_port'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
 
-    def on_server_keep_alive_period(self, instance, value):
-        value_key = 'server_keep_alive_period'
+    def on_remote_udp_broadcast(self, instance, value):
+        value_key = 'remote_udp_broadcast'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
             MDApp.get_running_app().config.write()
 
-    def on_server_keep_alive(self, instance, value):
-        value_key = 'server_keep_alive'
+    def on_remote_keep_alive_period(self, instance, value):
+        value_key = 'remote_keep_alive_period'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+
+    def on_remote_keep_alive(self, instance, value):
+        value_key = 'remote_keep_alive'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+
+    def on_remote_websocket_port(self, instance, value):
+        value_key = 'remote_websocket_port'
+        old_value = MDApp.get_running_app().config.get(__appname__, value_key)
+        if value != old_value:
+            MDApp.get_running_app().config.set(__appname__, value_key, value)
+            MDApp.get_running_app().config.write()
+
+    def on_remote_api_token(self, instance, value):
+        value_key = 'remote_api_token'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
             MDApp.get_running_app().config.set(__appname__, value_key, value)
@@ -870,13 +979,21 @@ class MDBoxLayoutDRO(MDBoxLayout):
         # value = self.value_dialog.content_cls.value
         value = self.value_dialog.content_cls.ids.text_field.text
         if len(value):
-            if self.value_dialog_data_key == 'server_config':
-                self.server_hostname = self.value_dialog.content_cls.tf_server.text
-                self.server_tcp_port = self.value_dialog.content_cls.tf_tcp_port.text
-                self.server_udp_port = self.value_dialog.content_cls.tf_udp_port.text
-                self.server_udp_broadcast = str(self.value_dialog.content_cls.cb_udp_broadcast.active)
-                self.server_keep_alive_period = self.value_dialog.content_cls.tf_keep_alive.text
-                self.server_keep_alive = str(self.value_dialog.content_cls.cb_keep_alive.active)
+            if self.value_dialog_data_key == 'remote_config':
+                if self.remote_interface == 'socket':
+                    self.remote_hostname = self.value_dialog.content_cls.tf_remote.text
+                    self.remote_tcp_port = self.value_dialog.content_cls.tf_tcp_port.text
+                    self.remote_udp_port = self.value_dialog.content_cls.tf_udp_port.text
+                    self.remote_udp_broadcast = str(self.value_dialog.content_cls.cb_udp_broadcast.active)
+                    self.remote_keep_alive_period = self.value_dialog.content_cls.tf_keep_alive.text
+                    self.remote_keep_alive = str(self.value_dialog.content_cls.cb_keep_alive.active)
+
+                elif self.remote_interface == 'websocket':
+                    self.remote_hostname = self.value_dialog.content_cls.tf_remote.text
+                    self.remote_websocket_port = self.value_dialog.content_cls.tf_port.text
+                    self.remote_api_token = self.value_dialog.content_cls.tf_api_token.text
+                    self.remote_keep_alive_period = self.value_dialog.content_cls.tf_keep_alive.text
+                    self.remote_keep_alive = str(self.value_dialog.content_cls.cb_keep_alive.active)
 
             elif 'got_to_axis' in self.value_dialog_data_key:
                 axis = self.value_dialog_data_key.split(':')[-1]
@@ -955,7 +1072,7 @@ class MDGridLayoutButtons(MDGridLayout):
         config_dialog = None
 
         if data_key in ['jsz']:
-            content_cls = StepSizeDialogContent(val="", edit_auto_focus=False)
+            content_cls = StepSizeDialog(val="", edit_auto_focus=False)
             content_cls.ids.text_field.input_filter = 'float'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Step Size'
@@ -963,7 +1080,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_step_size_value
             content_cls_on_cancel = self.on_jog_step_size_cancel
         elif data_key == 'jfr':
-            content_cls = InputDialogContent(val="", edit_auto_focus=False)
+            content_cls = InputDialog(val="", edit_auto_focus=False)
             content_cls.ids.text_field.input_filter = 'int'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Feed Rate'
@@ -971,7 +1088,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_feed_rate_value
             content_cls_on_cancel = self.on_jog_feed_rate_cancel
         elif data_key == 'jrpm':
-            content_cls = InputDialogContent(val="", edit_auto_focus=False)
+            content_cls = InputDialog(val="", edit_auto_focus=False)
             content_cls.ids.text_field.input_filter = 'int'
             content_cls.ids.text_field.input_type = 'number'
             dialog_title = 'Jog Spindle RPM'
@@ -979,7 +1096,7 @@ class MDGridLayoutButtons(MDGridLayout):
             content_cls_on_ok = self.on_jog_spindle_rpm_value
             content_cls_on_cancel = self.on_jog_spindle_rpm_cancel
         elif data_key == "jgcmd":
-            content_cls = InputDialogContent(val="")
+            content_cls = InputDialog(val="")
             content_cls.ids.text_field.input_filter = None
             content_cls.ids.text_field.input_type = 'text'
             dialog_title = 'G-Code Command'
@@ -1488,14 +1605,15 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ping_in_time = 0
 
         self.ids.dro_panel.bind(rc_connect=self.on_value_rc_connect)
-        self.ids.dro_panel.bind(server_hostname=self.on_value_server_hostname)
-        self.ids.dro_panel.bind(server_tcp_port=self.on_value_server_tcp_port)
-        self.ids.dro_panel.bind(server_udp_port=self.on_value_server_udp_port)
-        self.ids.dro_panel.bind(server_udp_broadcast=self.on_value_server_udp_broadcast)
-        self.ids.dro_panel.bind(server_keep_alive_period=self.on_value_server_keep_alive_period)
-        self.ids.dro_panel.bind(server_keep_alive=self.on_value_server_keep_alive)
-        self.ids.dro_panel.bind(server_websocket=self.on_value_server_websocket)
-        self.ids.dro_panel.bind(server_api_token=self.on_value_server_api_token)
+        self.ids.dro_panel.bind(remote_interface=self.on_value_remote_interface)
+        self.ids.dro_panel.bind(remote_hostname=self.on_value_remote_hostname)
+        self.ids.dro_panel.bind(remote_tcp_port=self.on_value_remote_tcp_port)
+        self.ids.dro_panel.bind(remote_udp_port=self.on_value_remote_udp_port)
+        self.ids.dro_panel.bind(remote_udp_broadcast=self.on_value_remote_udp_broadcast)
+        self.ids.dro_panel.bind(remote_keep_alive_period=self.on_value_remote_keep_alive_period)
+        self.ids.dro_panel.bind(remote_keep_alive=self.on_value_remote_keep_alive)
+        self.ids.dro_panel.bind(remote_websocket_port=self.on_value_remote_websocket_port)
+        self.ids.dro_panel.bind(remote_api_token=self.on_value_remote_api_token)
         self.ids.dro_panel.bind(on_display_gcode_filename=self.on_display_gcode_filename)
 
         self.ids.button_panel.bind(jog_step_size=self.on_value_jog_step_size)
@@ -1523,18 +1641,19 @@ class RootWidget(Screen, gc.EventQueueIf):
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:
-            if self.server_websocket:
+            if self.remote_interface == 'websocket':
                 gc.gsatrc_remote_client = rcws.RemoteClient(
-                    self, self.server_hostname, self.server_tcp_port, self.server_api_token)
+                    self, self.remote_hostname, self.remote_websocket_port, self.remote_api_token)
 
-            elif platform == 'android':
-                gc.gsatrc_remote_client = rc.RemoteClient(
-                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port,
-                    self.server_udp_broadcast, keep_alive=True)
-            else:
-                gc.gsatrc_remote_client = rc.RemoteClient(
-                    self, self.server_hostname, self.server_tcp_port, self.server_udp_port,
-                    self.server_udp_broadcast)
+            elif self.remote_interface == 'socket':
+                if platform == 'android':
+                    gc.gsatrc_remote_client = rc.RemoteClient(
+                        self, self.remote_hostname, self.remote_tcp_port, self.remote_udp_port,
+                        self.remote_udp_broadcast, keep_alive=True)
+                else:
+                    gc.gsatrc_remote_client = rc.RemoteClient(
+                        self, self.remote_hostname, self.remote_tcp_port, self.remote_udp_port,
+                        self.remote_udp_broadcast)
 
 
 
@@ -1561,7 +1680,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         # print ("################# {}".format(self.size))
 
     def on_keep_alive(self, *args):
-        if gc.gsatrc_remote_client and self.server_keep_alive:
+        if gc.gsatrc_remote_client and self.remote_keep_alive:
             gc.gsatrc_remote_client.add_event(gc.EV_RMT_PING)
 
             # debug_str = f"Ping lost:{self.ping_lost_count} time:{time.strftime('%X %x %Z')} ping-pong delta:{self.ping_in_time - self.ping_out_time:.4f}"
@@ -1580,7 +1699,7 @@ class RootWidget(Screen, gc.EventQueueIf):
             self.ping_lost_count = self.ping_lost_count + 1
             self.ping_out_time = time.time()
 
-        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.server_keep_alive_period)
+        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.remote_keep_alive_period)
 
     def on_display_gcode_filename(self, *args):
         if len(self.remote_gcode_filename):
@@ -1884,31 +2003,34 @@ class RootWidget(Screen, gc.EventQueueIf):
         else:
             self.on_close()
 
-    def on_value_server_hostname(self, instance, value):
-        self.server_hostname = value
+    def on_value_remote_interface(self, instance, value):
+        self.remote_interface = value
 
-    def on_value_server_tcp_port(self, instance, value):
-        self.server_tcp_port = int(value)
+    def on_value_remote_hostname(self, instance, value):
+        self.remote_hostname = value
 
-    def on_value_server_udp_port(self, instance, value):
-        self.server_udp_port = int(value)
+    def on_value_remote_tcp_port(self, instance, value):
+        self.remote_tcp_port = int(value)
 
-    def on_value_server_udp_broadcast(self, instance, value):
-        self.server_udp_broadcast = eval(value)
+    def on_value_remote_udp_port(self, instance, value):
+        self.remote_udp_port = int(value)
 
-    def on_value_server_keep_alive_period(self, instance, value):
-        self.server_keep_alive_period = int(value)
+    def on_value_remote_udp_broadcast(self, instance, value):
+        self.remote_udp_broadcast = eval(value)
+
+    def on_value_remote_keep_alive_period(self, instance, value):
+        self.remote_keep_alive_period = int(value)
         Clock.unschedule(self.keep_alive_clock)
-        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.server_keep_alive_period)
+        self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive, self.remote_keep_alive_period)
 
-    def on_value_server_keep_alive(self, instance, value):
-        self.server_keep_alive = eval(value)
+    def on_value_remote_keep_alive(self, instance, value):
+        self.remote_keep_alive = eval(value)
 
-    def on_value_server_websocket(self, instance, value):
-        self.server_websocket = eval(value)
+    def on_value_remote_websocket_port(self, instance, value):
+        self.remote_websocket_port = value
 
-    def on_value_server_api_token(self, instance, value):
-        self.server_api_token = value
+    def on_value_remote_api_token(self, instance, value):
+        self.remote_api_token = value
 
 
 class MDBoxLayoutAutoRotate(MDBoxLayout):
@@ -1947,14 +2069,15 @@ class MainApp(MDApp):
 
     def build_config(self, config):
         config.setdefaults(__appname__, {
-            'server_hostname': "hostname",
-            'server_tcp_port': 61801,
-            'server_udp_port': 61802,
-            'server_udp_broadcast': False,
-            'server_keep_alive_period': 20,
-            'server_keep_alive': False,
-            'server_websocket': True,
-            'server_api_token': "CHANGE_THIS",
+            'remote_interface': "websocket",
+            'remote_hostname': "hostname",
+            'remote_tcp_port': 61801,
+            'remote_udp_port': 61802,
+            'remote_udp_broadcast': False,
+            'remote_keep_alive_period': 20,
+            'remote_keep_alive': False,
+            'remote_websocket_port': 61803,
+            'remote_api_token': "CHANGE_THIS",
             'jog_step_size': 1,
             'jog_feed_rate': 1000,
             'jog_rapid': False,

@@ -95,7 +95,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         self.logger = logging.getLogger()
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
-            self.logger.info(f"init logging id:0x{id(self):x} {self}")
+            self.logger.info(f"init logging id:0x{id(self):x} {type(self)}")
 
         if event_handler is not None:
             self.add_event_listener(event_handler)
@@ -114,25 +114,19 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         except queue.Empty:
             pass
         else:
-            if e.event_id == gc.EV_HELLO:
+            if e.event_id in [gc.EV_HELLO, gc.EV_GOOD_BYE, gc.EV_CMD_EXIT]:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
-                    self.logger.info(f"EV_HELLO from 0x{id(e.sender):x} {e.sender}")
+                    self.logger.info(f"{gc.EV_2STR_DICT.get(e.event_id)} from {e.sender}")
 
-                self.add_event_listener(e.sender)
+                if e.event_id == gc.EV_HELLO:
+                    self.add_event_listener(e.sender)
 
-            elif e.event_id == gc.EV_GOOD_BYE:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
-                    self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x} {e.sender}")
+                elif e.event_id == gc.EV_GOOD_BYE:
+                    self.remove_event_listener(e.sender)
 
-                self.remove_event_listener(e.sender)
-
-            elif e.event_id == gc.EV_CMD_EXIT:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
-                    self.logger.info("EV_CMD_EXIT")
-
-                self.close()
-
-                self.endThread = True
+                elif e.event_id == gc.EV_CMD_EXIT:
+                    self.close()
+                    self.endThread = True
 
             else:
                 # if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):

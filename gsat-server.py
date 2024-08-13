@@ -84,24 +84,27 @@ class GsatServer(gc.EventQueueIf):
     def __init__(self):
         gc.EventQueueIf.__init__(self)
 
-        self.useWebSockets = True
         self.configData = gc.CONFIG_DATA
 
         self.logger = logging.getLogger()
         if gc.test_verbose_mask(gc.VERBOSE_MASK_UI):
-            self.logger.info(f"init logging id:0x{id(self):x}")
+            self.logger.info(f"init logging id:0x{id(self):x} {type(self)}")
 
     def __del__(self):
         pass
 
     def run(self):
-        self.useWebSockets = self.configData.get('/remote/WebSockets')
+        self.remote_interface = self.configData.get('/remote/Interface')
 
         try:
-            if self.useWebSockets:
+            server = None
+
+            if self.remote_interface == 'websocket':
                 server = rsws.RemoteServer(self)
-            else:
+            elif self.remote_interface == 'socket':
                 server = rs.RemoteServer(self)
+            else:
+                raise ValueError(f"unknown remote interface: {self.remote_interface}")
 
             # wait for server events
             while True:

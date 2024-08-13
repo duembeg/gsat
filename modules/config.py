@@ -875,13 +875,14 @@ class gsatConfigData(ConfigData):
             "WindowForeground": "#000000"
         },
         "remote": {
-            "Host": "localhost",
-            "TcpPort": 61801,
-            "UdpPort": 61802,
-            "UdpBroadcast": False,
+            "ApiToken": "CHANGE_THIS",
             "AutoGcodeRequest": False,
-            "WebSockets": True,
-            "ApiToken": "CHANGE_THIS"
+            "Host": "localhost",
+            "Interface": "websocket",           # websocket, socket
+            "TcpPort": 61801,
+            "UdpBroadcast": False,
+            "UdpPort": 61802,
+            "WebSocketPort": 61803,
         }
     }
 

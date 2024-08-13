@@ -81,7 +81,7 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         self.logger = logging.getLogger()
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
-            self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
+            self.logger.info(f"init logging id:0x{id(self):x} {type(self)}")
 
         if event_handler is not None:
             self.add_event_listener(event_handler)
@@ -229,6 +229,7 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
                 gc.CONFIG_DATA.add('/temp/SerialPorts', port_list)
                 gc.CONFIG_DATA.add('/temp/RemoteServer', True)
                 self.send(e.sender,  gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, id(self.socServer)))
+                gc.CONFIG_DATA.add('/temp/RemoteServer', False)
 
             elif e.event_id == gc.EV_CMD_GET_GCODE:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER_EV):
@@ -473,7 +474,7 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             # We are going to check for both - if one of them - that's expected, means no incoming data, continue as
             # normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
-                exMsg = "** OSError exception: {}\n".format(str(e))
+                exMsg = f"** OSError exception: {str(e)}\n"
                 exFlag = True
 
         except IOError as e:
@@ -482,11 +483,15 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             # We are going to check for both - if one of them - that's expected, means no incoming data, continue as
             # normal. If we got different error code - something happened
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
-                exMsg = "** IOError exception: {}\n".format(str(e))
+                exMsg = f"** IOError exception: {str(e)}\n"
                 exFlag = True
 
         except socket.error as e:
-            exMsg = "** socket.error exception: {}\n".format(str(e))
+            exMsg = f"** socket.error exception: {str(e)}\n"
+            exFlag = True
+
+        except ValueError as e:
+            exMsg = f"** ValueError exception: {str(e)}\n"
             exFlag = True
 
         # except:

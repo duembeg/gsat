@@ -181,7 +181,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.stateData.machineStatusString = "None"
 
         self.logger = logging.getLogger()
-        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_ALL):
+        if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
             self.logger.info("init logging id:0x%x" % id(self))
 
         self.InitConfig()
@@ -194,7 +194,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.runEndWaitingForMachIfIdle = False
         self.eventInCount = 0
         self.eventHandleCount = 0
-        self.useWebSockets = True
 
         # register for close events
         self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -206,10 +205,12 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # start local server
         self.localServer = None
         if self.cmdLineOptions.server:
-            if self.useWebSockets:
+            if self.remoteInterface == 'websocket':
                 self.localServer = rsws.RemoteServer(None)
-            else:
+            elif self.remoteInterface == 'socket':
                 self.localServer = rs.RemoteServer(None)
+            else:
+                raise ValueError(f"unknown remote interface: {self.remoteInterface}")
 
         self.late_init_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.InitLate, self.late_init_timer)
@@ -227,6 +228,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.maxFileHistory = self.configData.get('/mainApp/FileHistory/FilesMaxHistory', 10)
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
+        self.remoteInterface = self.configData.get('/remote/Interface', "websocket")
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
             self.logger.info("Init config values...")
@@ -237,8 +239,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.logger.info(f"maxFileHistory:           {self.maxFileHistory}")
             self.logger.info(f"roundInch2mm:             {self.roundInch2mm}")
             self.logger.info(f"roundmm2Inch:             {self.roundmm2Inch}")
-
-        self.useWebSockets = self.configData.get('/remote/WebSockets')
+            self.logger.info(f"remoteInterface:          {self.remoteInterface}")
 
     def InitUI(self):
         """
@@ -1911,10 +1912,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             if self.localServer is not None:
                 hostname = "localhost"
 
-            if self.useWebSockets:
+            if self.remoteInterface == "websocket":
                 self.remoteClient = rcws.RemoteClient(self, host=hostname)
-            else:
+            elif self.remoteInterface == "socket":
                 self.remoteClient = rc.RemoteClient(self, host=hostname)
+            else:
+                raise ValueError(f"unknown remote interface: {self.remoteInterface}")
+
 
             self.machifProgExec = self.remoteClient
 

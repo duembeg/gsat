@@ -50,7 +50,8 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.port = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+        self.port = gc.CONFIG_DATA.get('/remote/webSocketPort', 61803)
+        self.api_token = gc.CONFIG_DATA.get('/remote/ApiToken', "")
         self.hostname = socket.gethostname()
         self.host_ip_address = socket.gethostbyname(self.hostname)
         self.machif_prog_exec = None
@@ -75,7 +76,7 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         # websocket init vars
         self.sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
         self.app = socketio.ASGIApp(self.sio)
-        self.VALID_TOKENS = {"secret_token_1", "secret_token_2"}
+        self.VALID_TOKENS = {self.api_token}
 
         self.sio.event(self.connect)
         self.sio.event(self.disconnect)
@@ -417,6 +418,7 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             gc.CONFIG_DATA.add('/temp/SerialPorts', port_list)
             gc.CONFIG_DATA.add('/temp/RemoteServer', True)
             await self.send(ev.sender, gc.SimpleEvent(gc.EV_RMT_CONFIG_DATA, gc.CONFIG_DATA, self.server_id))
+            gc.CONFIG_DATA.add('/temp/RemoteServer', False)
 
         elif ev.event_id == gc.EV_CMD_GET_GCODE:
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER_EV):

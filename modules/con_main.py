@@ -254,16 +254,16 @@ class ConsoleApp(gc.EventQueueIf):
                     if self.remoteClient:
                         self.remoteClient.add_event(gc.EV_CMD_EXIT, 0, -1)
                     else:
+                        host = ""
                         if self.cmd_line_options.server:
-                            if self.websocket:
-                                self.remoteClient = rcws.RemoteClient(self, host='localhost')
-                            else:
-                                self.remoteClient = rc.RemoteClient(self, host='localhost')
+                            host = "localhost"
+
+                        if self.remoteInterface == "websocket":
+                            self.remoteClient = rcws.RemoteClient(self, host=host)
+                        elif self.remoteInterface == "socket":
+                            self.remoteClient = rc.RemoteClient(self, host=host)
                         else:
-                            if self.websocket:
-                                self.remoteClient = rcws.RemoteClient(self)
-                            else:
-                                self.remoteClient = rc.RemoteClient(self)
+                            raise ValueError("Unknown remote interface [{}]".format(self.remoteInterface))
 
             elif c in [curses.KEY_F3]:
                 if self.remoteClient:
@@ -533,17 +533,19 @@ class ConsoleApp(gc.EventQueueIf):
 
             self.configData = gc.CONFIG_DATA
 
-            self.websocket = self.configData.get('/remote/WebSocket', True)
+            self.remoteInterface = self.configData.get('/remote/Interface', "websocket")
 
             if self.cmd_line_options.server:
-                if self.websocket:
+                if self.remoteInterface == "websocket":
                     self.remoteServer = rsws.RemoteServer(self)
                     time.sleep(1)
                     self.remoteClient = rcws.RemoteClient(self, host='localhost')
-                else:
+                elif self.remoteInterface == "socket":
                     self.remoteServer = rs.RemoteServer(None)
                     time.sleep(1)
                     self.remoteClient = rc.RemoteClient(self, host='localhost')
+                else:
+                    raise ValueError("Unknown remote interface [{}]".format(self.remoteInterface))
 
             if os.path.exists(os.path.expanduser(self.cmd_line_options.gcode)):
                 with open("foobar.txt") as gcode_file:

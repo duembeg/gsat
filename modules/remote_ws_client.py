@@ -59,7 +59,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         if port:
             self.port = port
         else:
-            self.port = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+            self.port = gc.CONFIG_DATA.get('/remote/WebSocketPort', 61803)
 
         if api_token:
             self.api_token = api_token
@@ -83,7 +83,6 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         self.sio = socketio.AsyncClient()
         self.exit_event = asyncio.Event()
         self.url = f"ws://{self.host}:{self.port}"
-        self.api_token = api_token
 
         self.sio.event(self.connect)
         self.sio.event(self.connect_error)
@@ -137,7 +136,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         self.notify_event_listeners(gc.EV_RMT_PORT_OPEN, msg)
 
     async def connect_error(self, data):
-        error_msg = f"{data}\n"
+        error_msg = f"Failed to connect, {data}\n"
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             self.logger.error(error_msg.strip())
 
@@ -205,7 +204,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
     async def run_loop(self):
         try:
             # await self.sio.connect(self.url, auth={'token': self.api_token})
-            await self.sio.connect(self.url, auth={'token': "secret_token_1"})
+            await self.sio.connect(self.url, auth={'token': self.api_token})
             # await self.sio.connect('http://localhost:8000', auth={'token': API_TOKEN})
 
             await asyncio.gather(
