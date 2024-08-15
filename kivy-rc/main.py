@@ -1641,19 +1641,19 @@ class RootWidget(Screen, gc.EventQueueIf):
 
     def on_open(self):
         if gc.gsatrc_remote_client is None:
+            keep_alive = False
+            if platform == 'android':
+                keep_alive = True
+
             if self.remote_interface == 'websocket':
                 gc.gsatrc_remote_client = rcws.RemoteClient(
-                    self, self.remote_hostname, self.remote_websocket_port, self.remote_api_token)
+                    self, self.remote_hostname, self.remote_websocket_port, self.remote_api_token,
+                    keep_alive=keep_alive)
 
             elif self.remote_interface == 'socket':
-                if platform == 'android':
-                    gc.gsatrc_remote_client = rc.RemoteClient(
-                        self, self.remote_hostname, self.remote_tcp_port, self.remote_udp_port,
-                        self.remote_udp_broadcast, keep_alive=True)
-                else:
-                    gc.gsatrc_remote_client = rc.RemoteClient(
-                        self, self.remote_hostname, self.remote_tcp_port, self.remote_udp_port,
-                        self.remote_udp_broadcast)
+                gc.gsatrc_remote_client = rc.RemoteClient(
+                    self, self.remote_hostname, self.remote_tcp_port, self.remote_udp_port,
+                    self.remote_udp_broadcast, keep_alive=keep_alive)
 
 
 

@@ -42,7 +42,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
     """
 
-    def __init__(self, event_handler, host="", port=None, api_token=None):
+    def __init__(self, event_handler, host="", port=None, api_token=None, keep_alive=False):
         """
         Init remote client class
 
@@ -77,10 +77,15 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
             self.add_event_listener(event_handler)
 
         self.connected = False  # Connection status flag
+        self.keep_alive = keep_alive
 
         # socket io init
         # self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
-        self.sio = socketio.AsyncClient()
+        if self.keep_alive:
+            self.sio = socketio.AsyncClient(
+                reconnection=True, reconnection_attempts=5, reconnection_delay=5, ping_interval=20, ping_timeout=30)
+        else:
+            self.sio = socketio.AsyncClient(reconnection=True, reconnection_attempts=5, reconnection_delay=5)
         self.exit_event = asyncio.Event()
         self.url = f"ws://{self.host}:{self.port}"
 
