@@ -81,11 +81,11 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         # socket io init
         # self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
+        self.sio = socketio.AsyncClient(reconnection=True, reconnection_attempts=5, reconnection_delay=5)
         if self.keep_alive:
-            self.sio = socketio.AsyncClient(
-                reconnection=True, reconnection_attempts=5, reconnection_delay=5, ping_interval=20, ping_timeout=30)
-        else:
-            self.sio = socketio.AsyncClient(reconnection=True, reconnection_attempts=5, reconnection_delay=5)
+            self.sio.eio.ping_interval = 20
+            self.sio.eio.ping_timeout = 30
+
         self.exit_event = asyncio.Event()
         self.url = f"ws://{self.host}:{self.port}"
 
