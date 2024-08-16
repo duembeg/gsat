@@ -1924,11 +1924,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def RemoteClose(self):
         if self.remoteClient is not None:
-            self.remoteClient.add_event(gc.EV_CMD_EXIT)
+            self.remoteClient.add_event(gc.EV_CMD_EXIT, sender=self)
 
     def Stop(self, toState=gc.STATE_IDLE):
         if self.machifProgExec is not None:
-            self.machifProgExec.add_event(gc.EV_CMD_STOP)
+            self.machifProgExec.add_event(gc.EV_CMD_STOP, sender=self)
 
             # self.stateData.swState = toState
             # self.UpdateUI()

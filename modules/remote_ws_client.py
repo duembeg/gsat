@@ -74,6 +74,9 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
             self.logger.info(f"init logging id:0x{id(self):x} {self}")
 
         if event_handler is not None:
+            if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
+                self.logger.info(f"Added event listener id:0x{id(event_handler):x} {event_handler}")
+
             self.add_event_listener(event_handler)
 
         self.connected = False  # Connection status flag
@@ -82,6 +85,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         # socket io init
         # self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
         self.sio = socketio.AsyncClient(reconnection=True, reconnection_attempts=5, reconnection_delay=5)
+
         if self.keep_alive:
             self.sio.eio.ping_interval = 20
             self.sio.eio.ping_timeout = 30
@@ -175,7 +179,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             if isinstance(data, gc.SimpleEvent):
-                log_msg = f"Recv msg id:{data.event_id} obj:0x{id(data):x} len:{len(rx_data)} from {self.sio.sid} "
+                log_msg = f"Recv msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(rx_data)} from {self.sio.sid} "
             else:
                 log_msg = f"Unknown msg type:{type(data)} len:{len(rx_data)} from {self.sio.sid} "
 
@@ -245,23 +249,19 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         except queue.Empty:
             pass
         else:
-            if e.event_id == gc.EV_HELLO:
+            if e.event_id in [gc.EV_HELLO, gc.EV_GOOD_BYE, gc.EV_CMD_EXIT]:
+
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
-                    self.logger.info(f"EV_HELLO from 0x{id(e.sender):x} {e.sender}")
+                    self.logger.info(f"{gc.EV_2STR_DICT.get(e.event_id)} from 0x{id(e.sender):x} {e.sender}")
 
-                self.add_event_listener(e.sender)
+                if e.event_id == gc.EV_HELLO:
+                    self.add_event_listener(e.sender)
 
-            elif e.event_id == gc.EV_GOOD_BYE:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
-                    self.logger.info(f"EV_GOOD_BYE from 0x{id(e.sender):x} {e.sender}")
+                elif e.event_id == gc.EV_GOOD_BYE:
+                    self.remove_event_listener(e.sender)
 
-                self.remove_event_listener(e.sender)
-
-            elif e.event_id == gc.EV_CMD_EXIT:
-                if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT_EV):
-                    self.logger.info("EV_CMD_EXIT")
-
-                self.close()
+                elif e.event_id == gc.EV_CMD_EXIT:
+                    self.close()
 
             else:
                 # if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_EV):
@@ -280,7 +280,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             if isinstance(data, gc.SimpleEvent):
-                log_msg = f"Send msg id:{data.event_id} obj:0x{id(data):x} to {self.sio.sid} "
+                log_msg = f"Send msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(tx_data)} to {self.sio.sid} "
             else:
                 log_msg = f"Unknown msg type:{type(data)} to {self.sio.sid} "
 
@@ -304,6 +304,6 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         loop.run_until_complete(self.run_loop())
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
-            self.logger.info("thread exit")
+            self.logger.info(f"Thread exit id:0x{id(self):x} {self}")
 
         self.notify_event_listeners(gc.EV_EXIT, "")
