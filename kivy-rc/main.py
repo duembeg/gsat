@@ -132,11 +132,21 @@ class TextInputTouchScroll(TextInput):
     def __init__(self, **kwargs):
         super(TextInputTouchScroll, self).__init__(**kwargs)
 
-    def on_touch_down(self, touch):
-        if platform != 'android':
-            super(TextInputTouchScroll, self).on_touch_down(touch)
-        else:
-            pass
+    # def on_touch_down(self, touch):
+    #     if self.collide_point(*touch.pos):
+    #         touch.grab(self)
+    #         return True
+
+    # def on_touch_move(self, touch):
+    #     if touch.grab_current is self:
+    #         self.scroll_y -= touch.dy / self.height
+    #         return True
+    #     return super().on_touch_move(touch)
+
+    # def on_touch_up(self, touch):
+    #     if touch.grab_current is self:
+    #         touch.ungrab(self)
+    #         return True
 
     # @mainthread
     def append_text(self, str_data, from_undo=False):
@@ -145,13 +155,12 @@ class TextInputTouchScroll(TextInput):
 
         """
         try:
-            # self.text = "".join([self.text, str_data])
-            self.readonly = False
+            # self.readonly = False
             self.do_cursor_movement('cursor_end', control=True)
             self.insert_text(str_data, False)
             # self.do_cursor_movement('cursor_end', control=True)
             # self.insert_text("** text_size: {}\n".format(len(self.text_out.text)), False)
-            self.readonly = True
+            # self.readonly = True
 
             if len(self.text) > self.max_text:
                 # before = len(self.text)
@@ -862,6 +871,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
             self.list_items['st'].item.text = "Stop"
             self.list_items['swst'].item.text = "Idle"
             self.list_items['mi'].item.text = ""
+            self.list_items['mi'].item.secondary_text = "Device"
             self.list_items['gfn'].item.text = ""
 
     def on_status_refresh(self, instance):
@@ -1009,10 +1019,13 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
         if 'rc' in self.list_items_enable and 'rc' in sr:
             if self.list_items['rc'].item.text != sr['rc']:
-                self.list_items['rc'].item.text = sr['rc']
                 if sr['rc']:
+                    self.list_items['rc'].item.text = sr['rc'].split(":")[0]
+                    self.list_items['rc'].item.secondary_text = sr['rc'].split(":")[1]
                     self.list_items['RC'].item.icon = "lan-connect"
                 else:
+                    self.list_items['rc'].item.text = ""
+                    self.list_items['rc'].item.secondary_text = "Remote Server"
                     self.list_items['RC'].item.icon = "lan-disconnect"
 
         if 'mi' in self.list_items_enable and 'machif' in sr:
@@ -1023,12 +1036,12 @@ class MDBoxLayoutDRO(MDBoxLayout):
             if 'fv' in sr:
                 firmware_version_str = "fb:{} fv:{}".format(firmware_version_str, sr['fv'])
 
-            machif_str = ""
-            if len(sr['machif']):
-                machif_str = "{} ({})".format(sr['machif'], firmware_version_str)
-
-            if self.list_items['mi'].item.text != machif_str:
-                self.list_items['mi'].item.text = machif_str
+            if sr['machif']:
+                self.list_items['mi'].item.text = sr['machif']
+                self.list_items['mi'].item.secondary_text = firmware_version_str
+            else:
+                self.list_items['mi'].item.text = ""
+                self.list_items['mi'].item.secondary_text = "Device"
 
         if 'swst' in self.list_items_enable and 'swst' in sr:
             if self.list_items['swst'].item.text != sr['swst']:
@@ -1329,7 +1342,7 @@ class MDGridLayoutButtons(MDGridLayout):
 
         """
         value = MDApp.get_running_app().config.get(__appname__, 'jog_spindle_rpm')
-        self.ids.spindle_rpm.text = "Spindle RPM\n{}".format(value)
+        self.ids.spindle_rpm.text = "SP RPM\n{}".format(value)
         self.jog_spindle_rpm = value
 
     def on_jog_step_size_bt(self):
