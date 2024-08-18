@@ -99,7 +99,6 @@
                 axis_font_style: "H5"
                 axis_text: "0.000"
                 list_item_height: dp(60)
-                #TwoLineListItem:
                 OneLineAvatarIconListItem:
                     id: x_axis
                     text: dro_list.axis_text
@@ -109,68 +108,64 @@
                     # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
-                        icon: "images/icons/color/x.png"
+                        #icon: "images/icons/color/x.png"
+                        icon: "alpha-x-box"
+                        icon_size: "38sp"
                         id: x_axis_icon
                         on_release: root.on_list_item_release(self)
-                #TwoLineListItem:
                 OneLineAvatarIconListItem:
                     id: y_axis
                     text: dro_list.axis_text
-                    # secondary_text: "Y axis"
                     font_style: dro_list.axis_font_style
-                    # size_hint_y: None
-                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
-                        icon: "images/icons/color/y.png"
+                        # icon: "images/icons/color/y.png"
+                        icon: "alpha-y-box"
+                        icon_size: "38sp"
                         id: y_axis_icon
                         on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: z_axis
                     text: dro_list.axis_text
-                    # secondary_text: "Z axis"
                     font_style: dro_list.axis_font_style
-                    # size_hint_y: None
-                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
-                        icon: "images/icons/color/z.png"
+                        # icon: "images/icons/color/z.png"
+                        icon: "alpha-z-box"
+                        icon_size: "38sp"
                         id: z_axis_icon
                         on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: a_axis
                     text: dro_list.axis_text
-                    # secondary_text: "A axis"
                     font_style: dro_list.axis_font_style
-                    # size_hint_y: None
-                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
-                        icon: "images/icons/color/a.png"
+                        # icon: "images/icons/color/a.png"
+                        icon: "alpha-a-box"
+                        icon_size: "38sp"
                         id: a_axis_icon
                         on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: b_axis
                     text: dro_list.axis_text
-                    # secondary_text: "B axis"
                     font_style: dro_list.axis_font_style
-                    # size_hint_y: None
-                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
-                        icon: "images/icons/color/b.png"
+                        # icon: "images/icons/color/b.png"
+                        icon: "alpha-b-box"
+                        icon_size: "38sp"
                         id: b_axis_icon
                         on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
                     id: c_axis
                     text: dro_list.axis_text
-                    # secondary_text: "C axis"
                     font_style: dro_list.axis_font_style
-                    # size_hint_y: None
-                    # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
                     IconLeftWidget:
-                        icon: "images/icons/color/c.png"
+                        # icon: "images/icons/color/c.png"
+                        icon: "alpha-c-box"
+                        icon_size: "38sp"
                         id: c_axis_icon
                         on_release: root.on_list_item_release(self)
                 OneLineAvatarIconListItem:
@@ -190,31 +185,41 @@
                     font_style: "H5"
                     # size_hint_y: None
                     # height: dro_list.list_item_height
-                    on_release: root.on_list_item_release(self)
+                    on_release: root.on_status_refresh(self)
                     IconLeftWidget:
+                        id: status_icon
                         icon: "images/icons/color/st.png"
-                TwoLineListItem:
+                        on_release: root.on_status_refresh(self)
+                TwoLineAvatarIconListItem:
                     id: sw_status
                     text: "Idle"
                     secondary_text: "SW Status"
                     font_style: "H6"
                     size_hint_y: None
                     height: dro_list.list_item_height
-                    on_release: root.on_list_item_release(self)
+                    on_release: root.on_status_refresh(self)
+                    IconLeftWidget:
+                        icon: "refresh-circle"
+                        id: sw_status_icon
+                        on_release: root.on_status_refresh(self)
         ScrollView:
             MDList:
                 id: info_list
                 font_style: "H6"
                 list_item_height: dp(60)
-                TwoLineListItem:
+                TwoLineAvatarIconListItem:
                     id: device
                     text: ""
                     secondary_text: "Device"
                     font_style: "Subtitle1"
                     size_hint_y: None
                     height: info_list.list_item_height
-                    on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    on_release: root.on_device(self)
+                    IconLeftWidget:
+                        id: device_icon
+                        icon: "chip"
+                        on_release: root.on_device(self)
+                TwoLineAvatarIconListItem:
                     id: gcode_pos
                     text: ""
                     secondary_text: "Position in G-code"
@@ -222,7 +227,9 @@
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "map-marker"
+                TwoLineAvatarIconListItem:
                     id: run_time
                     text: ""
                     secondary_text: "Run Time"
@@ -230,15 +237,21 @@
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    IconLeftWidget:
+                        icon: "progress-clock"
+                TwoLineAvatarIconListItem:
                     id: remote_server
                     text: ""
                     secondary_text: "Remote Server"
                     font_style: "Subtitle1"
                     size_hint_y: None
                     height: info_list.list_item_height
-                    on_release: root.on_list_item_release(self)
-                TwoLineListItem:
+                    on_release: root.on_server(self)
+                    IconLeftWidget:
+                        icon: "lan-disconnect"
+                        id: remote_server_icon
+                        on_release: root.on_server(self)
+                TwoLineAvatarIconListItem:
                     id: gcode_fname
                     text: ""
                     secondary_text: "G-code filename"
@@ -246,6 +259,10 @@
                     size_hint_y: None
                     height: info_list.list_item_height
                     on_release: root.dispatch('on_display_gcode_filename')
+                    IconLeftWidget:
+                        icon: "file-cog-outline"
+                        id: gcode_fname_icon
+                        on_release: root.on_list_item_release(self)
 
 
 <MDGridLayoutButtons>

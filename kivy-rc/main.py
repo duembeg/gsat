@@ -78,7 +78,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.button import MDFlatButton, MDIconButton  # , MDRectangleFlatButton, , MDRoundImageButton
 from kivymd.uix.textfield import MDTextField  # , MDTextFieldRect
-from kivymd.uix.list import MDList, OneLineListItem, TwoLineListItem, OneLineIconListItem
+from kivymd.uix.list import MDList, OneLineListItem, TwoLineListItem, OneLineIconListItem, TwoLineIconListItem
 # from kivymd.uix.dropdownitem import MDDropDownItem
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.list import IRightBodyTouch, IconLeftWidget
@@ -446,6 +446,24 @@ class IconListItem(OneLineIconListItem):
     icon = StringProperty()
 
 
+class ListItemData:
+    """
+    Class to handle list item data
+
+    """
+
+    def __init__(self, item, menu=None, dialog=None):
+        """
+        Constructor
+
+        """
+        self.item = item
+        self.menu = menu
+        self.dialog = dialog
+        self.caller = None
+        self.caller_key = None
+
+
 class MDBoxLayoutDRO(MDBoxLayout):
     """
     Class to handle DRO panel list items
@@ -511,14 +529,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
                             # "bot_pad": "10dp",
                             "divider": None,
                             "disable": True,
-                            "on_release": lambda x=di['name']: self.menu_callback(x, list_items),
+                            "on_release": lambda x=di['name']: self.menu_item_release(x, list_items),
                         })
             else:
                 menu_items.append({"viewclass": "MDSeparator", "height": 1})
 
-        # menu = MDDropdownMenu(caller=self, items=menu_items, width_mult=4)
-        # menu = MDDropdownMenu(caller=self, items=menu_items, always_release=True)
-        # menu = MDDropdownMenu(caller=self, items=menu_items, on_release=self.menu_callback)
         menu = MDDropdownMenu(caller=self, items=menu_items)
 
         if type(list_items) is not list:
@@ -555,11 +570,11 @@ class MDBoxLayoutDRO(MDBoxLayout):
         for li in items:
             self.ids.info_list.remove_widget(li)
 
-        for li in self.dro_list_enable:
-            self.ids.dro_list.add_widget(self.list_items[li])
+        for li in self.left_list_enable:
+            self.ids.dro_list.add_widget(self.list_items[li].item)
 
-        for li in self.info_list_enable:
-            self.ids.info_list.add_widget(self.list_items[li])
+        for li in self.right_list_enable:
+            self.ids.info_list.add_widget(self.list_items[li].item)
 
     def init_menu(self):
         """
@@ -585,7 +600,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
             # {icon: "power", name: "Reset"},
             {icon: "refresh", name: "Reset"},
         ]
-        self.init_a_menu(items, 'mi')
+        self.init_a_menu(items, ['mi', 'MI'])
 
         # remote menu
         items = [
@@ -595,28 +610,29 @@ class MDBoxLayoutDRO(MDBoxLayout):
             # {icon: "refresh", name: "Reset"},
             {icon: "cog-outline", name: "Configure"},
         ]
-        self.init_a_menu(items, 'rc')
+        self.init_a_menu(items, ['rc', 'RC'])
 
-    def menu_callback(self, menu_text, list_item):
+    def menu_item_release(self, menu_text, list_item):
         """
         Menu callback event handler
 
         """
+        # print(f"Menu text: {menu_text}, List item: {list_item}")
         if isinstance(list_item, list):
+            # all the items in this list share the same menu, the caller
+            # is embedded on that menu, so we need to extract it
             list_item = list_item[0]
 
         caller = id(self.list_items[list_item].menu.caller)
         self.list_items[list_item].menu.dismiss()
 
         # identify instance
-        li = ""
-        for i in self.list_items:
-            if id(self.list_items[i]) == caller:
-                li = i
-                break
+        li = self.list_items_ids.get(caller, None)
+
+        # print(f"Menu text: {menu_text}, Caller: {caller}, List item: {li}")
 
         # handle remote server
-        if li == 'rc':
+        if li == 'rc' or li == 'RC':
             if menu_text == "Connect":
                 self.rc_connect = True
             elif menu_text == "Disconnect":
@@ -629,7 +645,7 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_RMT_RESET)
 
         # handle device
-        elif li == 'mi' and gc.gsatrc_remote_client:
+        elif (li == 'mi' or li == 'MI') and gc.gsatrc_remote_client:
             if menu_text == "Connect" and not self.serial_port_open:
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_OPEN)
             elif menu_text == "Disconnect" and self.serial_port_open:
@@ -669,6 +685,17 @@ class MDBoxLayoutDRO(MDBoxLayout):
     def on_display_gcode_filename(self, *args):
         pass
 
+    def on_device(self, instance):
+        """
+        Server handler
+
+        """
+        instance_str = self.list_items_ids.get(id(instance), "")
+        if instance_str in ['mi', 'MI'] and self.list_items[instance_str].menu:
+            self.list_items[instance_str].caller = id(instance)
+            self.list_items[instance_str].menu.caller = instance
+            self.list_items[instance_str].menu.open()
+
     def on_init(self, *args):
         """
         Init event after construction
@@ -676,40 +703,43 @@ class MDBoxLayoutDRO(MDBoxLayout):
         """
         self.axis_list_items_menu = ['X', 'Y', 'Z', 'A', 'B', 'C']
         self.axis_list_items_dialog = ['x', 'y', 'z', 'a', 'b', 'c']
-        self.dro_list_enable = ['x', 'z', 'fr', 'pc', 'mi', 'swst']
-        self.info_list_enable = ['y', 'a', 'st', 'rt', 'rc', 'gfn']
-        self.list_items_enable = list(self.dro_list_enable)
-        self.list_items_enable.extend(self.info_list_enable)
+        self.left_list_enable = ['x', 'z', 'b', 'fr', 'pc', 'mi', 'swst']
+        self.right_list_enable = ['y', 'a', 'c', 'st', 'rt', 'rc', 'gfn']
+        self.list_items_enable = list(self.left_list_enable)
+        self.list_items_enable.extend(self.right_list_enable)
         # self.dro_list_enable = ['x', 'y', 'z']
         # self.info_list_enable = ['mi', 'pc', 'rt']
 
-        if (set(self.dro_list_enable) & set(self.info_list_enable)):
+        if (set(self.left_list_enable) & set(self.right_list_enable)):
             raise Exception("Cannot have same item in multiple MD lists!!")
 
         self.list_items = {
-            'x': self.ids.x_axis,
-            'X': self.ids.x_axis_icon,
-            'y': self.ids.y_axis,
-            'Y': self.ids.y_axis_icon,
-            'z': self.ids.z_axis,
-            'Z': self.ids.z_axis_icon,
-            'a': self.ids.a_axis,
-            'A': self.ids.a_axis_icon,
-            'b': self.ids.b_axis,
-            'B': self.ids.b_axis_icon,
-            'c': self.ids.c_axis,
-            'C': self.ids.c_axis_icon,
-            'fr': self.ids.feed_rate,
-            'st': self.ids.status,
-            'swst': self.ids.sw_status,
-            'mi': self.ids.device,
-            'pc': self.ids.gcode_pos,
-            'rt': self.ids.run_time,
-            'rc': self.ids.remote_server,
-            'gfn': self.ids.gcode_fname,
+            'x': ListItemData(self.ids.x_axis),
+            'X': ListItemData(self.ids.x_axis_icon),
+            'y': ListItemData(self.ids.y_axis),
+            'Y': ListItemData(self.ids.y_axis_icon),
+            'z': ListItemData(self.ids.z_axis),
+            'Z': ListItemData(self.ids.z_axis_icon),
+            'a': ListItemData(self.ids.a_axis),
+            'A': ListItemData(self.ids.a_axis_icon),
+            'b': ListItemData(self.ids.b_axis),
+            'B': ListItemData(self.ids.b_axis_icon),
+            'c': ListItemData(self.ids.c_axis),
+            'C': ListItemData(self.ids.c_axis_icon),
+            'fr': ListItemData(self.ids.feed_rate),
+            'st': ListItemData(self.ids.status),
+            'swst': ListItemData(self.ids.sw_status),
+            'SWST': ListItemData(self.ids.sw_status_icon),
+            'mi': ListItemData(self.ids.device),
+            'MI': ListItemData(self.ids.device_icon),
+            'pc': ListItemData(self.ids.gcode_pos),
+            'rt': ListItemData(self.ids.run_time),
+            'rc': ListItemData(self.ids.remote_server),
+            'RC': ListItemData(self.ids.remote_server_icon),
+            'gfn': ListItemData(self.ids.gcode_fname),
         }
 
-        self.list_items_ids = {id(v): k for k, v in self.list_items.items()}
+        self.list_items_ids = {id(v.item): k for k, v in self.list_items.items()}
 
         for li in self.list_items:
             self.list_items[li].menu = None
@@ -793,14 +823,19 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
         """
         instance_id = id(instance)
-        if instance is not None:
+        if instance and instance_id in self.list_items_ids:
             # print(instance.text, instance.x, instance.y)
             # print(instance.to_window(instance.center_x, instance.center_y), instance.text)
-            if instance.menu:
-                instance.menu.caller = instance
-                instance.menu.open()
+            li = self.list_items_ids.get(instance_id)
+            li_item = self.list_items[li]
+            # print(f"li: {li}, List: {li_item.item}, Caller: {li_item.caller}, Menu: {li_item.menu}, Dialog: {li_item.dialog}, instance: {instance}")
+            if li_item.menu:
+                li_item.caller = id(instance)
+                li_item.caller_key = li
+                li_item.menu.caller = instance
+                li_item.menu.open()
 
-            elif instance.dialog:
+            elif li_item.dialog:
                 self.value_dialog = None
                 i = self.list_items_ids.get(instance_id)
 
@@ -820,14 +855,39 @@ class MDBoxLayoutDRO(MDBoxLayout):
     def on_serial_port_open(self, instance, val):
 
         if not val:
-            self.list_items['rt'].text = ""
-            self.list_items['pc'].text = ""
-            self.list_items['st'].text = "Stop"
-            self.list_items['swst'].text = "Idle"
-            self.list_items['mi'].text = ""
-            self.list_items['gfn'].text = ""
+            self.list_items['rt'].item.text = ""
+            self.list_items['pc'].item.text = ""
+            self.list_items['st'].item.text = "Stop"
+            self.list_items['swst'].item.text = "Idle"
+            self.list_items['mi'].item.text = ""
+            self.list_items['gfn'].item.text = ""
+
+    def on_status_refresh(self, instance):
+        """
+        Refresh status event handler
+
+        """
+        if gc.gsatrc_remote_client and self.serial_port_open:
+            gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_STATUS)
+        else:
+            no_machine_detected()
+
+    def on_server(self, instance):
+        """
+        Server handler
+
+        """
+        instance_str = self.list_items_ids.get(id(instance), "")
+        if instance_str in ['rc', 'RC'] and self.list_items[instance_str].menu:
+            self.list_items[instance_str].caller = id(instance)
+            self.list_items[instance_str].menu.caller = instance
+            self.list_items[instance_str].menu.open()
 
     def on_remote_interface(self, instance, value):
+        """
+        Remote interface event handler
+
+        """
         value_key = 'remote_interface'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
@@ -835,6 +895,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
             MDApp.get_running_app().config.write()
 
     def on_remote_hostname(self, instance, value):
+        """
+        Remote hostname event handler
+
+        """
         value_key = 'remote_hostname'
         old_value = MDApp.get_running_app().config.get(__appname__, value_key)
         if value != old_value:
@@ -896,40 +960,40 @@ class MDBoxLayoutDRO(MDBoxLayout):
 
         """
         if 'st' in self.list_items_enable and 'stat' in sr:
-            if self.list_items['st'].text != sr['stat']:
-                self.list_items['st'].text = sr['stat']
+            if self.list_items['st'].item.text != sr['stat']:
+                self.list_items['st'].item.text = sr['stat']
 
         if 'x' in self.list_items_enable and 'posx' in sr:
-            if self.list_items['x'].text != "{:.3f}".format(sr['posx']):
-                self.list_items['x'].text = "{:.3f}".format(sr['posx'])
+            if self.list_items['x'].item.text != "{:.3f}".format(sr['posx']):
+                self.list_items['x'].item.text = "{:.3f}".format(sr['posx'])
 
         if 'y' in self.list_items_enable and 'posy' in sr:
-            if self.list_items['y'].text != "{:.3f}".format(sr['posy']):
-                self.list_items['y'].text = "{:.3f}".format(sr['posy'])
+            if self.list_items['y'].item.text != "{:.3f}".format(sr['posy']):
+                self.list_items['y'].item.text = "{:.3f}".format(sr['posy'])
 
         if 'z' in self.list_items_enable and 'posz' in sr:
-            if self.list_items['z'].text != "{:.3f}".format(sr['posz']):
-                self.list_items['z'].text = "{:.3f}".format(sr['posz'])
+            if self.list_items['z'].item.text != "{:.3f}".format(sr['posz']):
+                self.list_items['z'].item.text = "{:.3f}".format(sr['posz'])
 
         if 'a' in self.list_items_enable and 'posa' in sr:
-            if self.list_items['a'].text != "{:.3f}".format(sr['posa']):
-                self.list_items['a'].text = "{:.3f}".format(sr['posa'])
+            if self.list_items['a'].item.text != "{:.3f}".format(sr['posa']):
+                self.list_items['a'].item.text = "{:.3f}".format(sr['posa'])
 
         if 'b' in self.list_items_enable and 'posb' in sr:
-            if self.list_items['b'].text != "{:.3f}".format(sr['posb']):
-                self.list_items['b'].text = "{:.3f}".format(sr['posb'])
+            if self.list_items['b'].item.text != "{:.3f}".format(sr['posb']):
+                self.list_items['b'].item.text = "{:.3f}".format(sr['posb'])
 
         if 'c' in self.list_items_enable and 'posc' in sr:
-            if self.list_items['c'].text != "{:.3f}".format(sr['posc']):
-                self.list_items['c'].text = "{:.3f}".format(sr['posc'])
+            if self.list_items['c'].item.text != "{:.3f}".format(sr['posc']):
+                self.list_items['c'].item.text = "{:.3f}".format(sr['posc'])
 
         if 'fr' in self.list_items_enable and 'vel' in sr:
-            if self.list_items['fr'].text != "{:.2f}".format(sr['vel']):
-                self.list_items['fr'].text = "{:.2f}".format(sr['vel'])
+            if self.list_items['fr'].item.text != "{:.2f}".format(sr['vel']):
+                self.list_items['fr'].item.text = "{:.2f}".format(sr['vel'])
 
         if 'pc' in self.list_items_enable and 'prcnt' in sr:
-            if self.list_items['pc'].text != sr['prcnt']:
-                self.list_items['pc'].text = sr['prcnt']
+            if self.list_items['pc'].item.text != sr['prcnt']:
+                self.list_items['pc'].item.text = sr['prcnt']
 
         if 'rt' in self.list_items_enable and 'rtime' in sr:
             rtime = sr['rtime']
@@ -938,12 +1002,16 @@ class MDBoxLayoutDRO(MDBoxLayout):
             seconds, mseconds = divmod(reminder, 1)
             run_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds)
 
-            if self.list_items['rt'].text != run_time:
-                self.list_items['rt'].text = run_time
+            if self.list_items['rt'].item.text != run_time:
+                self.list_items['rt'].item.text = run_time
 
         if 'rc' in self.list_items_enable and 'rc' in sr:
-            if self.list_items['rc'].text != sr['rc']:
-                self.list_items['rc'].text = sr['rc']
+            if self.list_items['rc'].item.text != sr['rc']:
+                self.list_items['rc'].item.text = sr['rc']
+                if sr['rc']:
+                    self.list_items['RC'].item.icon = "lan-connect"
+                else:
+                    self.list_items['RC'].item.icon = "lan-disconnect"
 
         if 'mi' in self.list_items_enable and 'machif' in sr:
             firmware_version_str = ""
@@ -957,16 +1025,16 @@ class MDBoxLayoutDRO(MDBoxLayout):
             if len(sr['machif']):
                 machif_str = "{} ({})".format(sr['machif'], firmware_version_str)
 
-            if self.list_items['mi'].text != machif_str:
-                self.list_items['mi'].text = machif_str
+            if self.list_items['mi'].item.text != machif_str:
+                self.list_items['mi'].item.text = machif_str
 
         if 'swst' in self.list_items_enable and 'swst' in sr:
-            if self.list_items['swst'].text != sr['swst']:
-                self.list_items['swst'].text = sr['swst']
+            if self.list_items['swst'].item.text != sr['swst']:
+                self.list_items['swst'].item.text = sr['swst']
 
         if 'gfn' in self.list_items_enable and 'gfn' in sr:
-            if self.list_items['gfn'].text != sr['gfn']:
-                self.list_items['gfn'].text = sr['gfn']
+            if self.list_items['gfn'].item.text != sr['gfn']:
+                self.list_items['gfn'].item.text = sr['gfn']
 
     def on_value_dialog_cancel(self, instance):
         if 'got_to_axis' in self.value_dialog_data_key:
@@ -1655,9 +1723,6 @@ class RootWidget(Screen, gc.EventQueueIf):
                     self, self.remote_hostname, self.remote_tcp_port, self.remote_udp_port,
                     self.remote_udp_broadcast, keep_alive=keep_alive)
 
-
-
-
     def on_cli_text_validate(self, text, *args):
         if gc.gsatrc_remote_client and self.serial_port_open:
             gc.gsatrc_remote_client.add_event(gc.EV_CMD_SEND, "{}\n".format(str(text).strip()))
@@ -1873,6 +1938,7 @@ class RootWidget(Screen, gc.EventQueueIf):
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_SW_STATE)
                     gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_GCODE_MD5)
+                    gc.gsatrc_remote_client.add_event(gc.EV_CMD_GET_CONFIG)
 
             elif ev.event_id == gc.EV_RMT_PORT_CLOSE:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
@@ -1889,6 +1955,7 @@ class RootWidget(Screen, gc.EventQueueIf):
 
                 # self.configRemoteData = ev.data
                 # self.machineStatusPanel.UpdateSettings(self.configData, self.configRemoteData)
+                print(ev.data.get('machine/DRO'))
 
             elif ev.event_id == gc.EV_RMT_HELLO:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):

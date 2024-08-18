@@ -11,6 +11,7 @@
         "AUITOOLBAR",
         "autoclass",
         "baudrate",
+        "bidict",
         "BMAX",
         "BMIN",
         "boxlayout",

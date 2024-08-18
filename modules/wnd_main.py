@@ -1919,7 +1919,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             else:
                 raise ValueError(f"unknown remote interface: {self.remoteInterface}")
 
-
             self.machifProgExec = self.remoteClient
 
     def RemoteClose(self):
