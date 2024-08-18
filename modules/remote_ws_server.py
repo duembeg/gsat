@@ -52,8 +52,6 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         # init local variables
         self.port = gc.CONFIG_DATA.get('/remote/webSocketPort', 61803)
         self.api_token = gc.CONFIG_DATA.get('/remote/ApiToken', "")
-        self.hostname = socket.gethostname()
-        self.host_ip_address = socket.gethostbyname(self.hostname)
         self.machif_prog_exec = None
         self.serial_port_is_open = False
         self.device_detected = False
@@ -61,7 +59,9 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         self.clients = []
         self.server = None
         self.end_thread = False
-        self.server_id = f"{self.hostname}({self.host_ip_address})"
+        self.hostname = ""
+        self.host_ip_address = ""
+        self.server_id = ""
 
         self.swState = gc.STATE_RUN
 
@@ -92,6 +92,11 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         self.start()
 
     async def connect(self, sid, environ, auth):
+        if not self.hostname:
+            self.hostname = socket.gethostname()
+            self.host_ip_address = socket.gethostbyname(self.hostname)
+            self.server_id = f"{self.hostname}({self.host_ip_address})"
+
         if auth and auth.get('token') in self.VALID_TOKENS:
 
             client_ip = environ['REMOTE_ADDR']
