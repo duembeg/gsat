@@ -372,7 +372,8 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         """
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER_EV):
-            self.logger.info(f"{gc.EV_2STR_DICT.get(ev.event_id, "unknown")}({ev.event_id}) from client {ev.sender}")
+            ev_str = gc.EV_2STR_DICT.get(ev.event_id, "unknown")
+            self.logger.info(f"{ev_str}({ev.event_id}) from client {ev.sender}")
 
         # this message came from clients
         if ev.event_id == gc.EV_CMD_TXDATA:
