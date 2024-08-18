@@ -264,10 +264,15 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
 
     def run(self):
         # uvicorn.run(self.app, host="0.0.0.0", port=self.port, log_level="info")
+        log_level = "error"
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
-            config = uvicorn.Config(self.app, host="0.0.0.0", port=self.port, log_level="info")
+            log_level = "info"
+
+        if 'curses' in sys.modules:
+            self.logger.info("Warning: curses module found, using log_config=None")
+            config = uvicorn.Config(self.app, host="0.0.0.0", port=self.port, log_level=log_level, log_config=None)
         else:
-            config = uvicorn.Config(self.app, host="0.0.0.0", port=self.port, log_level="error")
+            config = uvicorn.Config(self.app, host="0.0.0.0", port=self.port, log_level=log_level)
 
         self.server = uvicorn.Server(config)
         # self.server.run()
