@@ -179,7 +179,8 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             if isinstance(data, gc.SimpleEvent):
-                log_msg = f"Recv msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(rx_data)} from {self.sio.sid} "
+                ev_str = gc.EV_2STR_DICT.get(data.event_id, "unknown")
+                log_msg = f"Recv msg {ev_str}({data.event_id}) len:{len(rx_data)} from {self.sio.sid} "
             else:
                 log_msg = f"Unknown msg type:{type(data)} len:{len(rx_data)} from {self.sio.sid} "
 
@@ -280,7 +281,8 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
             if isinstance(data, gc.SimpleEvent):
-                log_msg = f"Send msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(tx_data)} to {self.sio.sid} "
+                ev_str = gc.EV_2STR_DICT.get(data.event_id, "unknown")
+                log_msg = f"Send msg {ev_str}({data.event_id}) len:{len(tx_data)} to {self.sio.sid} "
             else:
                 log_msg = f"Unknown msg type:{type(data)} to {self.sio.sid} "
 
