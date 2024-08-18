@@ -703,8 +703,10 @@ class MDBoxLayoutDRO(MDBoxLayout):
         """
         self.axis_list_items_menu = ['X', 'Y', 'Z', 'A', 'B', 'C']
         self.axis_list_items_dialog = ['x', 'y', 'z', 'a', 'b', 'c']
-        self.left_list_enable = ['x', 'z', 'b', 'fr', 'pc', 'mi', 'swst']
-        self.right_list_enable = ['y', 'a', 'c', 'st', 'rt', 'rc', 'gfn']
+        # self.left_list_enable = ['x', 'z', 'b', 'fr', 'pc', 'mi', 'swst']
+        # self.right_list_enable = ['y', 'a', 'c', 'st', 'rt', 'rc', 'gfn']
+        self.left_list_enable = ['x', 'z', 'fr', 'pc', 'mi', 'swst']
+        self.right_list_enable = ['y', 'a', 'st', 'rt', 'rc', 'gfn']
         self.list_items_enable = list(self.left_list_enable)
         self.list_items_enable.extend(self.right_list_enable)
         # self.dro_list_enable = ['x', 'y', 'z']
