@@ -56,7 +56,7 @@ class MachIf_Base(gc.EventQueueIf):
 
         self.logger = logging.getLogger()
         if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_MOD):
-            self.logger.info(f"init logging id:0x{id(self):x}")
+            self.logger.info(f"init logging id:0x{id(self):x} {self}")
 
         self._serialPortOpen = False
         self._serialTxRxThread = None

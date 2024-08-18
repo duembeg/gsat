@@ -59,7 +59,7 @@ class SerialPortThread(threading.Thread, gc.EventQueueIf):
         self.logger = logging.getLogger()
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_SERIALIF):
-            self.logger.info(f"init logging id:0x{id(self):x}")
+            self.logger.info(f"init logging id:0x{id(self):x} {self}")
 
         if event_handler is not None:
             self.add_event_listener(event_handler)

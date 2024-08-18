@@ -182,7 +182,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         self.logger = logging.getLogger()
         if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
-            self.logger.info("init logging id:0x%x" % id(self))
+            self.logger.info(f"init logging id:0x{id(self):x} {self}")
 
         self.InitConfig()
 

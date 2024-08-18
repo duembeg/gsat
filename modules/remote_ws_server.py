@@ -68,7 +68,7 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         self.logger = logging.getLogger()
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
-            self.logger.info("init logging id:0x{:x} {}".format(id(self), self))
+            self.logger.info(f"init logging id:0x{id(self):x} {self}")
 
         if event_handler is not None:
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
