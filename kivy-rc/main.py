@@ -1608,7 +1608,7 @@ class MDGridLayoutJogControls(MDGridLayout):
             return
 
         if gc.gsatrc_remote_client:
-            if self.jog_rapid == "True":
+            if self.jog_rapid:
                 gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE
             else:
                 gc_cmd = gc.EV_CMD_JOG_MOVE
@@ -1625,7 +1625,7 @@ class MDGridLayoutJogControls(MDGridLayout):
                 step_size = float(self.jog_step_size)
 
             axis = {axis_str: step_size}
-            if self.jog_rapid == "True":
+            if self.jog_rapid:
                 gc_cmd = gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE
             else:
                 gc_cmd = gc.EV_CMD_JOG_MOVE_RELATIVE
