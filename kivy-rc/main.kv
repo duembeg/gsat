@@ -98,7 +98,7 @@
                 id: dro_list
                 axis_font_style: "H5"
                 axis_text: "0.000"
-                list_item_height: dp(60)
+                list_item_height: dp(58)
                 OneLineAvatarIconListItem:
                     id: x_axis
                     text: dro_list.axis_text
@@ -171,8 +171,9 @@
                 OneLineAvatarIconListItem:
                     id: feed_rate
                     text: "0.00"
+                    font_style: dro_list.axis_font_style
                     # secondary_text: "Feed Rate"
-                    font_style: "H6"
+                    # font_style: "H6"
                     # size_hint_y: None
                     # height: dro_list.list_item_height
                     on_release: root.on_list_item_release(self)
@@ -181,8 +182,9 @@
                 OneLineAvatarIconListItem:
                     id: status
                     text: "Stop"
+                    font_style: dro_list.axis_font_style
                     #secondary_text: "G54 1 XX"
-                    font_style: "H5"
+                    # font_style: "H5"
                     # size_hint_y: None
                     # height: dro_list.list_item_height
                     on_release: root.on_status_refresh(self)
@@ -194,7 +196,7 @@
                     id: sw_status
                     text: "Idle"
                     secondary_text: "SW Status"
-                    font_style: "H6"
+                    # font_style: "H6"
                     size_hint_y: None
                     height: dro_list.list_item_height
                     on_release: root.on_status_refresh(self)
@@ -205,8 +207,8 @@
         ScrollView:
             MDList:
                 id: info_list
-                font_style: "H6"
-                list_item_height: dp(60)
+                font_style: "H5"
+                list_item_height: dp(58)
                 TwoLineAvatarIconListItem:
                     id: device
                     text: ""
@@ -267,16 +269,17 @@
 
 <MDGridLayoutButtons>
     rows: 3
-    # columns: 4
     size_hint_y: None
     # height: self.minimum_height
     height: dp(130)
+    #adaptive_width: True
     MDRectangleFlatIconButton:
-    # Button:
         id: step_size
         text: "Step Size"
         icon: "arrow-expand-horizontal"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_jog_step_size_bt()
     MDRectangleFlatIconButton:
     # Button:
@@ -284,6 +287,8 @@
         text: "Feed Rate"
         icon: "play-speed"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_jog_feed_rate_bt()
     MDRectangleFlatIconButton:
     # Button:
@@ -291,70 +296,80 @@
         text: "Spindle RPM"
         icon: "speedometer"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_jog_spindle_rpm_bt()
     # MDRectangleFlatIconButton:
-    # # Button:
     #     id: send_gcode
     #     text: "Send G-code"
     #     icon: "console-line"
     #     size_hint: (1, 1)
     #     on_press: root.on_jog_g_code_cmd_bt()
     MDRectangleFlatIconButton:
-    # Button:
         id: machine_clear_alarm
         text: "Clear Alarm"
         icon: "progress-alert"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_machine_clear_alarm()
     MDRectangleFlatIconButton:
-    # Button:
         id: run
         text: "Run"
         icon: "play"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_run()
     MDRectangleFlatIconButton:
-    # Button:
         id: pause
         text: "Pause"
         icon: "pause"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_pause()
     MDRectangleFlatIconButton:
-    # Button:
         id: step
         text: "Step"
         icon: "step-forward"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_step()
     MDRectangleFlatIconButton:
         id: stop
         text: "Stop"
         icon: "stop"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_stop()
     MDRectangleFlatIconButton:
-    # Button:
         id: machine_flush_queue
         text: "Queue Flush"
         icon: "trash-can-outline"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_machine_queue_flush()
     MDRectangleFlatIconButton:
-    # Button:
         id: machine_refresh
         text: "Refresh"
         icon: "refresh-circle"
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_machine_refresh()
     MDRectangleFlatIconButton:
-    # Button:
         id: machine_cycle_start
         text: "Cycle Start"
         icon: "play-circle"
         text_color: 0, 0.5, 0, 1
         line_color: app.theme_cls.primary_color
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_machine_cycle_start()
     MDRectangleFlatIconButton:
         id: machine_hold
@@ -363,6 +378,8 @@
         text_color: 1, 0, 0, 0.7
         line_color: app.theme_cls.primary_color
         size_hint: (1, 1)
+        adaptive_height: False
+        adaptive_width: True
         on_press: root.on_machine_hold()
 
 
