@@ -149,7 +149,8 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
             if isinstance(data, gc.SimpleEvent):
-                log_msg = f"Recv msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(rx_data)} from {sid} "
+                ev_str = gc.EV_2STR_DICT.get(data.event_id, "unknown")
+                log_msg = f"Recv msg {ev_str}({data.event_id}) len:{len(rx_data)} from {sid} "
             else:
                 log_msg = f"Unknown msg type:{type(data)} len:{len(rx_data)} from {sid}"
 
@@ -228,7 +229,8 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         await self.sio.emit('server_message', tx_data, to=connection)
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
-            log_msg = f"Send msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(tx_data)} to {connection} "
+            ev_str = gc.EV_2STR_DICT.get(data.event_id, "unknown")
+            log_msg = f"Send msg {ev_str}({data.event_id}) len:{len(tx_data)} to {connection} "
 
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER_HEXDUMP):
                 log_msg = log_msg + gc.verbose_hexdump("->", tx_data)
@@ -246,7 +248,8 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         await self.sio.emit('server_message', tx_data)
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
-            log_msg = f"Send msg {gc.EV_2STR_DICT.get(data.event_id, "unknown")}({data.event_id}) len:{len(tx_data)} to all "
+            ev_str = gc.EV_2STR_DICT.get(data.event_id, "unknown")
+            log_msg = f"Send msg {ev_str}({data.event_id}) len:{len(tx_data)} to all "
 
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER_HEXDUMP):
                 log_msg = log_msg + gc.verbose_hexdump("->", tx_data)
