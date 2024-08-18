@@ -472,7 +472,8 @@ class MachIf_GRBL(mi.MachIf_Base):
         if config is not None:
             data_len = len(data)
             fill = 20 - data_len
-            dataDict['rx_data_info'] = f"{' '*fill}{GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), "")}\n"
+            config_str = GRBL_CONFIG_2_STR_DICT.get(int(config.group(1)), "")
+            dataDict['rx_data_info'] = f"{' '*fill}{config_str}\n"
 
         return dataDict
 
