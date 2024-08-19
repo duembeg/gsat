@@ -1536,6 +1536,7 @@ class MDGridLayoutJogControls(MDGridLayout):
         self.jog_long_press_ev = True
 
         if self.long_press_clk_ev:
+            self.long_press_clk_ev.cancel()
             self.long_press_clk_ev = None
 
         dir = 0
@@ -1572,8 +1573,8 @@ class MDGridLayoutJogControls(MDGridLayout):
 
         if gc.gsatrc_remote_client and self.serial_port_open:
             if self.jog_long_press_ev:
-                self.jog_long_press_ev = False
                 gc.gsatrc_remote_client.add_event(gc.EV_CMD_JOG_STOP)
+                self.jog_long_press_ev = False
             else:
                 if self.long_press_clk_ev:
                     self.long_press_clk_ev.cancel()
