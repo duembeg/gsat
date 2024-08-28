@@ -94,7 +94,8 @@ class GsatServer(gc.EventQueueIf):
         pass
 
     def run(self):
-        self.remote_interface = self.configData.get('/remote/Interface')
+        self.remote_index = self.configData.get('/remotes/Index')
+        self.remote_interface = self.configData.get(f'/remotes/remote{self.remote_index}/Interface')
 
         try:
             server = None

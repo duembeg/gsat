@@ -212,6 +212,7 @@ EV_RMT_CONFIG_DATA = 2250
 EV_RMT_SERIAL_PORTS = 2260
 EV_RMT_PING = 2270
 EV_RMT_PONG = 2280
+EV_RMT_NEEDS_RESET = 2290
 
 EV_2STR_DICT = {
     EV_CMD_NULL: "EV_CMD_NULL",
@@ -288,6 +289,7 @@ EV_2STR_DICT = {
     EV_RMT_SERIAL_PORTS: "EV_RMT_SERIAL_PORTS",
     EV_RMT_PING: "EV_RMT_PING",
     EV_RMT_PONG: "EV_RMT_PONG",
+    EV_RMT_NEEDS_RESET: "EV_RMT_NEEDS_RESET"
 }
 
 # --------------------------------------------------------------------------
@@ -874,15 +876,20 @@ class gsatConfigData(ConfigData):
             "WindowBackground": "#FFFFFF",
             "WindowForeground": "#000000"
         },
-        "remote": {
-            "ApiToken": "CHANGE_THIS",
-            "AutoGcodeRequest": False,
-            "Host": "localhost",
-            "Interface": "websocket",           # websocket, socket
-            "TcpPort": 61801,
-            "UdpBroadcast": False,
-            "UdpPort": 61802,
-            "WebSocketPort": 61803,
+        "remotes": {
+            "Index": 0,
+            "remote0": {
+                "ApiToken": "CHANGE_THIS",
+                "AutoGcodeRequest": False,
+                "Host": "localhost",
+                "KeepAlive": False,
+                "KeepAlivePeriod": 20,
+                "Interface": "websocket",           # websocket, socket
+                "TcpPort": 61801,
+                "UdpBroadcast": False,
+                "UdpPort": 61802,
+                "WebSocketPort": 61803,
+            }
         }
     }
 

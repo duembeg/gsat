@@ -50,25 +50,29 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
+        self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
+
         if host:
             self.host = host
         else:
-            self.host = gc.CONFIG_DATA.get('/remote/Host', "")
+            self.host = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Host', "")
 
         if tcp_port:
             self.tcpPort = tcp_port
         else:
-            self.tcpPort = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+            self.tcpPort = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/TcpPort', 61801)
 
         if udp_port:
             self.udpPort = udp_port
         else:
-            self.udpPort = gc.CONFIG_DATA.get('/remote/UdpPort', 61802)
+            self.udpPort = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpPort', 61802)
 
         if use_udp_broadcast is not None:
             self.useUdpBroadcast = use_udp_broadcast
         else:
-            self.useUdpBroadcast = gc.CONFIG_DATA.get('/remote/UdpBroadcast', False)
+            self.useUdpBroadcast = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpBroadcast', False)
+
+        self.server_ip = ""
 
         # if timeout is not None:
         #     self.timeout = timeout
@@ -144,7 +148,7 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         hostname = ""
 
         if self.socServer is not None:
-            hostname = "{}{}".format(self.host, self.inputsAddr[self.socServer])
+            hostname = f"{self.host}:{self.server_ip}"
 
         return hostname
 
@@ -204,6 +208,8 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
                 self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 self.socBroadcast.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                 self.socBroadcast.bind(("", self.udpPort))
+
+            self.server_ip = socket.gethostbyname(self.host)
 
         except socket.error as e:
             exMsg = "** socket.error exception: socket:{}:{} err:{}\n".format(self.host, self.tcpPort, str(e))

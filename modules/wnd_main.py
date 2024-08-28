@@ -228,7 +228,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.maxFileHistory = self.configData.get('/mainApp/FileHistory/FilesMaxHistory', 10)
         self.roundInch2mm = self.configData.get('/mainApp/RoundInch2mm')
         self.roundmm2Inch = self.configData.get('/mainApp/Roundmm2Inch')
-        self.remoteInterface = self.configData.get('/remote/Interface', "websocket")
+        self.remoteIndex = self.configData.get('/remotes/Index', 0)
+        self.remoteInterface = self.configData.get(f'/remotes/remote{self.remoteIndex}/Interface', "websocket")
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
             self.logger.info("Init config values...")
@@ -239,6 +240,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.logger.info(f"maxFileHistory:           {self.maxFileHistory}")
             self.logger.info(f"roundInch2mm:             {self.roundInch2mm}")
             self.logger.info(f"roundmm2Inch:             {self.roundmm2Inch}")
+            self.logger.info(f"remoteIndex:              {self.remoteIndex}")
             self.logger.info(f"remoteInterface:          {self.remoteInterface}")
 
     def InitUI(self):
@@ -2295,7 +2297,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.machifProgExec.add_event(gc.EV_CMD_GET_SYSTEM_INFO)
                     self.machifProgExec.add_event(gc.EV_CMD_GET_SW_STATE)
 
-                    if self.configData.get('/remote/AutoGcodeRequest', False):
+                    if self.configData.get(f'/remotes/remote{self.remoteIndex}/AutoGcodeRequest', False):
                         self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
 
                 self.UpdateUI()
@@ -2348,7 +2350,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 h = hashlib.md5(str([]).encode('utf-8')).hexdigest()
                 if h != te.data and self.machifProgExec is not None:
                     h = hashlib.md5(str(self.stateData.gcodeFileLines).encode('utf-8')).hexdigest()
-                    if h != te.data and self.configData.get('/remote/AutoGcodeRequest', False):
+                    if h != te.data and self.configData.get(f'/remotes/remote{self.remoteIndex}/AutoGcodeRequest', False):
                         self.machifProgExec.add_event(gc.EV_CMD_GET_GCODE)
 
             elif te.event_id == gc.EV_GCODE:

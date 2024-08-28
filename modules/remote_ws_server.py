@@ -50,8 +50,9 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
-        self.port = gc.CONFIG_DATA.get('/remote/webSocketPort', 61803)
-        self.api_token = gc.CONFIG_DATA.get('/remote/ApiToken', "")
+        self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
+        self.port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/webSocketPort', 61803)
+        self.api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "")
         self.machif_prog_exec = None
         self.serial_port_is_open = False
         self.device_detected = False
@@ -419,31 +420,48 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             machine_port = gc.CONFIG_DATA.get('/machine/Port', "")
             machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
 
-            tcp_port = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+            port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/webSocketPort', 61803)
+            api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "")
 
             if ev.data is not None:
                 gc.CONFIG_DATA = ev.data
                 gc.CONFIG_DATA.save()
 
-            if self.machif_prog_exec is not None:
-                self.machif_prog_exec.add_event(gc.EV_CMD_UPDATE_CONFIG)
+            self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
+            interface = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Interface', "websocket")
+            server_needs_restart = False
 
-                # close serial port if settings changed
-                if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
-                   machine_port != gc.CONFIG_DATA.get('/machine/Port') or
-                   machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
-                    self.machif_prog_exec.add_event(gc.EV_CMD_EXIT)
+            if interface == "websocket":
+                self.port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/webSocketPort', 61803)
+                self.api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "")
 
-            # re start server if settings changed
-            if tcp_port != gc.CONFIG_DATA.get('/remote/TcpPort', 61801):
-                self.port = gc.CONFIG_DATA.get('/remote/TcpPort', 61801)
+            if self.port != port or self.api_token != api_token:
+                server_needs_restart = True
 
+            if not server_needs_restart:
+                if self.machif_prog_exec is not None:
+                    # close serial port if settings changed and re-open
+                    if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
+                        machine_port != gc.CONFIG_DATA.get('/machine/Port') or
+                        machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
+                        self.machif_prog_exec.add_event(gc.EV_CMD_EXIT)
+                        self.machif_prog_exec = mi_progexec.MachIfExecuteThread(self)
+                    else:
+                        self.machif_prog_exec.add_event(gc.EV_CMD_UPDATE_CONFIG)
+            else:
+                server_needs_restart = True
+
+            if server_needs_restart:
                 # send message to all clients
                 await self.send_broadcast(
                     gc.SimpleEvent(gc.EV_RMT_GOOD_BYE, "** Server settings changing, restart...\n", self.server_id))
 
+                if self.machif_prog_exec is not None:
+                    self.machif_prog_exec.add_event(gc.EV_CMD_EXIT)
+                    self.machif_prog_exec = None
+
                 self.close()
-                self.open()
+                self.notify_event_listeners(gc.EV_RMT_NEEDS_RESET, "")
 
         elif ev.event_id == gc.EV_CMD_RMT_RESET:
             pass

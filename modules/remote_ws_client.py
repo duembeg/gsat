@@ -51,20 +51,22 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
         gc.EventQueueIf.__init__(self)
 
         # init local variables
+        self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
+
         if host:
             self.host = host
         else:
-            self.host = gc.CONFIG_DATA.get('/remote/Host', "")
+            self.host = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Host', "")
 
         if port:
             self.port = port
         else:
-            self.port = gc.CONFIG_DATA.get('/remote/WebSocketPort', 61803)
+            self.port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/WebSocketPort', 61803)
 
         if api_token:
             self.api_token = api_token
         else:
-            self.api_token = gc.CONFIG_DATA.get('/remote/ApiToken', "")
+            self.api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "")
 
         self.swState = gc.STATE_RUN
 
