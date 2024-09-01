@@ -712,6 +712,27 @@ class MDBoxLayoutDRO(MDBoxLayout):
         Init event after construction
 
         """
+        remotes_str = MDApp.get_running_app().config.get(__appname__, 'remotes')
+        gc.CONFIG_DATA.set('/remotes', ast.literal_eval(remotes_str))
+        self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
+        self.remote_interface = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Interface', "websocket")
+        self.remote_hostname = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Host', "localhost")
+        self.remote_tcp_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/TcpPort', 61801)
+        self.remote_udp_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpPort', 61802)
+        self.remote_udp_broadcast = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpBroadcast', False)
+        self.remote_keep_alive_period = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/KeepAlivePeriod', 20)
+        self.remote_keep_alive = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/KeepAlive', False)
+        self.remote_websocket_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/WebSocketPort', 61803)
+        self.remote_api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "CHANGE_THIS")
+
+        # print(f"Remote Interface: {self.remote_interface}")
+        # print(f"Remote hostname: {self.remote_hostname}")
+        # print(f"Remote TCP port: {self.remote_tcp_port}")
+        # print(f"Remote UDP port: {self.remote_udp_port}")
+        # print(f"Remote UDP broadcast: {self.remote_udp_broadcast}")
+        # print(f"Remote keep alive period: {self.remote_keep_alive_period}")
+        # print(f"Remote keep alive: {self.remote_keep_alive}")
+
         self.axis_list_items_menu = ['X', 'Y', 'Z', 'A', 'B', 'C']
         self.axis_list_items_dialog = ['x', 'y', 'z', 'a', 'b', 'c']
         # self.left_list_enable = ['x', 'z', 'b', 'fr', 'pc', 'mi', 'swst']
@@ -757,27 +778,6 @@ class MDBoxLayoutDRO(MDBoxLayout):
         for li in self.list_items:
             self.list_items[li].menu = None
             self.list_items[li].dialog = None
-
-        remotes_str = MDApp.get_running_app().config.get(__appname__, 'remotes')
-        gc.CONFIG_DATA.set('/remotes', ast.literal_eval(remotes_str))
-        self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
-        self.remote_interface = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Interface', "websocket")
-        self.remote_hostname = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/Host', "localhost")
-        self.remote_tcp_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/TcpPort', 61801)
-        self.remote_udp_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpPort', 61802)
-        self.remote_udp_broadcast = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpBroadcast', False)
-        self.remote_keep_alive_period = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/KeepAlivePeriod', 20)
-        self.remote_keep_alive = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/KeepAlive', False)
-        self.remote_websocket_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/WebSocketPort', 61803)
-        self.remote_api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "CHANGE_THIS")
-
-        # print(f"Remote Interface: {self.remote_interface}")
-        # print(f"Remote hostname: {self.remote_hostname}")
-        # print(f"Remote TCP port: {self.remote_tcp_port}")
-        # print(f"Remote UDP port: {self.remote_udp_port}")
-        # print(f"Remote UDP broadcast: {self.remote_udp_broadcast}")
-        # print(f"Remote keep alive period: {self.remote_keep_alive_period}")
-        # print(f"Remote keep alive: {self.remote_keep_alive}")
 
         self.init_menu()
         self.init_list()
