@@ -15,13 +15,13 @@ Development Environment
    * Installing dependencies:
    ```
     sudo apt install python3 python3-pip python3-venv git
-    sudo apt install git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+    sudo apt install git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev xclip
    ```
 * [Ubuntu 18.04](http://www.ubuntu.com/)
    * Special Installing dependencies:
    ```
    sudo apt install python3.8 python3-pip python3.8-venv git
-   sudo apt install git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+   sudo apt install git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev xclip
    ```
 * Optional to install on an android device
    ```

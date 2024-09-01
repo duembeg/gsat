@@ -1689,6 +1689,23 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ping_out_time = 0
         self.ping_in_time = 0
 
+        # init globals
+        self.rc_connect = False
+        self.remote_interface = "websocket"
+        self.remote_hostname = "localhost"
+        self.remote_tcp_port = 61801
+        self.remote_udp_port = 61802
+        self.remote_udp_broadcast = False
+        self.remote_keep_alive_period = 20
+        self.remote_keep_alive = False
+        self.remote_websocket_port = 61803
+        self.remote_api_token = "CHANGE_THIS"
+
+        self.jog_step_size = 1
+        self.jog_feed_rate = 1000
+        self.jog_rapid = False
+        self.jog_spindle_rpm = 18000
+
         self.ids.dro_panel.bind(rc_connect=self.on_value_rc_connect)
         self.ids.dro_panel.bind(remote_interface=self.on_value_remote_interface)
         self.ids.dro_panel.bind(remote_hostname=self.on_value_remote_hostname)
@@ -1707,7 +1724,7 @@ class RootWidget(Screen, gc.EventQueueIf):
         self.ids.button_panel.bind(jog_spindle_rpm=self.on_value_jog_spindle_rpm)
 
         self.keep_alive_clock = Clock.schedule_once(self.on_keep_alive)
-        Clock.schedule_once(self.on_init)
+        Clock.schedule_once(self.on_init, 1)
         # self.on_init()
 
     # @mainthread
