@@ -803,6 +803,8 @@ class MDBoxLayoutDRO(MDBoxLayout):
                 content_cls = RemoteDialogWebSocket(
                     self.remote_hostname, self.remote_websocket_port, self.remote_api_token,
                     self.remote_keep_alive_period, self.remote_keep_alive, edit_auto_focus=False)
+            else:
+                raise ValueError(f"Invalid remote interface: {self.remote_interface}")
             dialog_title = 'Remote Server'
 
         elif data_key == "got_to_axis":
