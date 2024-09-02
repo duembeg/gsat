@@ -104,9 +104,13 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
 
         # Add serial port controls
         st = wx.StaticText(self, label="Serial Port")
+
+        # force width, this wll be replace by on pull down event
+        choices = ['/dev/ttyACM11', '/dev/ttyACM12', '/dev/ttyACM13']
+
         self.spComboBox = wx.ComboBox(
             self, -1, value=self.configData.get('/machine/Port'),
-            choices=self.GetListOfSerialPorts(), style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
+            choices=choices, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER)
         flexGridSizer.Add(st, flag=wx.ALIGN_CENTER_VERTICAL)
         flexGridSizer.Add(self.spComboBox, flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
 
@@ -396,6 +400,7 @@ class gsatMachineSettingsPanel(scrolled.ScrolledPanel):
         value = self.spComboBox.GetValue()
         self.spComboBox.SetItems(serList)
         self.spComboBox.SetValue(value)  # restore value
+        self.spComboBox.Refresh()
 
     def GetListOfSerialPorts(self, description=False):
         portSearchFailSafe = False
