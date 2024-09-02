@@ -205,9 +205,9 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         endPos = self.GetLineEndPosition(lastLine)
         pos = self.FindText(0, endPos, text)
 
-        if pos > 0:
-            self.GotoPos(pos+len(text))
-            self.SetSelection(pos, pos+len(text))
+        if pos[0] > 0:
+            self.GotoPos(pos[0])
+            self.SetSelection(pos[0], pos[1])
 
     def FindNextText(self, text):
         begPos = self.GetCurrentPos()
@@ -215,9 +215,9 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         endPos = self.GetLineEndPosition(lastLine)
         pos = self.FindText(begPos, endPos, text)
 
-        if pos > 0:
-            self.GotoPos(pos+len(text))
-            self.SetSelection(pos, pos+len(text))
+        if pos[0] > 0:
+            self.GotoPos(pos[0])
+            self.SetSelection(pos[0], pos[1])
 
     def GotoLine(self, line):
         lines = self.GetLineCount()
@@ -242,15 +242,15 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
 
 
 """----------------------------------------------------------------------------
-   gsatGcodeStcStyledTextCtrl:
-   Text control to display GCODE
+    gsatGcodeStcStyledTextCtrl:
+    Text control to display GCODE
 ----------------------------------------------------------------------------"""
 
 
 class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
-    def __init__(self, parent, config_data, state_data, id=wx.ID_ANY,
-                 pos=wx.DefaultPosition, size=wx.DefaultSize, style=0,
-                 name=stc.STCNameStr):
+    def __init__(
+            self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize,
+            style=0, name=stc.STCNameStr):
 
         gsatStcStyledTextCtrl.__init__(
             self, parent, config_data, state_data, id, pos, size, style, name)
