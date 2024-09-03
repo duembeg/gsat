@@ -743,7 +743,6 @@ class gsatConfigData(ConfigData):
             "Enable": False
         },
         "jogging": {
-            "AutoMPOS": False,
             "CustomButtons": {
                 "Custom1": {
                     "Label": "Custom 1",
@@ -766,12 +765,7 @@ class gsatConfigData(ConfigData):
             "JogInteractive": True,
             "JogRapid": True,
             "NumKeypadPendant": False,
-            "ProbeDistance": 19.6,
-            "ProbeFeedRate": 100.0,
-            "ProbeMaxDistance": -40.0,
-            "ReqUpdateOnJogSetOp": True,
             "SpindleSpeed": 12000,
-            "XYZReadOnly": False,
             "ZJogSafeMove": False
         },
         "machine": {
@@ -850,7 +844,8 @@ class gsatConfigData(ConfigData):
                     "Retract": 2.0,
                     "TravelLimit": 10.0,
                 }
-            }
+            },
+            "StopOnMessage": True
         },
         "mainApp": {
             "BackupFile": True,

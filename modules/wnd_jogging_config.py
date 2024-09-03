@@ -71,30 +71,6 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         text.SetFont(font)
         vBoxSizer.Add(text, flag=wx.ALL, border=5)
 
-        # Add readonly check box
-        self.cbXYZReadOnly = wx.CheckBox(self, wx.ID_ANY, "XYZ Read Only Status")
-        self.cbXYZReadOnly.SetValue(self.configData.get('/jogging/XYZReadOnly'))
-        self.cbXYZReadOnly.SetToolTip(wx.ToolTip("If enabled the XYZ fields in jogging status become read only"))
-        vBoxSizer.Add(self.cbXYZReadOnly, flag=wx.LEFT, border=20)
-
-        # Add update from machine pos check box
-        self.cbAutoMPOS = wx.CheckBox(self, wx.ID_ANY, "Auto update from machine position")
-        self.cbAutoMPOS.SetValue(self.configData.get('/jogging/AutoMPOS'))
-        self.cbAutoMPOS.SetToolTip(wx.ToolTip(
-                "Use Machine position to auto update Jogging position, "
-                "jogging operation use these values to operate. The JOG "
-                "current position need to be in sync with machine position "
-                "before starting any jog operation. Results maybe undesirable "
-                "otherwise"))
-        vBoxSizer.Add(self.cbAutoMPOS, flag=wx.LEFT, border=20)
-
-        # Add request status after jogging set operation check box
-        self.cbReqUpdateOnJogSetOp = wx.CheckBox(self, wx.ID_ANY, "Request update after JOG set operation")
-        self.cbReqUpdateOnJogSetOp.SetValue(self.configData.get('/jogging/ReqUpdateOnJogSetOp'))
-        self.cbReqUpdateOnJogSetOp.SetToolTip(wx.ToolTip(
-            "If enable after each JOG set operation (ie set to ZERO) a machine update request will be sent to device"))
-        vBoxSizer.Add(self.cbReqUpdateOnJogSetOp, flag=wx.LEFT, border=20)
-
         # Add num keypad as pendant check box
         self.cbNumKeypadPendant = wx.CheckBox(self, wx.ID_ANY, "Numeric Keypad as cnc pendant")
         self.cbNumKeypadPendant.SetValue(self.configData.get('/jogging/NumKeypadPendant'))
@@ -107,12 +83,6 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         self.cbZJogSafeMove.SetToolTip(wx.ToolTip(
             "when enabled, if Z_destination is grater Z_current, Z axis moves first, and vise-versa"))
         vBoxSizer.Add(self.cbZJogSafeMove, flag=wx.LEFT, border=20)
-
-        # Add interactive jog
-        self.cbJogInteractive = wx.CheckBox(self, wx.ID_ANY, "Interactive Jog")
-        self.cbJogInteractive.SetValue(self.configData.get('/jogging/JogInteractive'))
-        self.cbJogInteractive.SetToolTip(wx.ToolTip("Enables interactive jog positioning"))
-        vBoxSizer.Add(self.cbJogInteractive, flag=wx.LEFT, border=20)
 
         # Add rapid jog
         self.cbJogRapid = wx.CheckBox(self, wx.ID_ANY, "Rapid Jog")
@@ -218,15 +188,10 @@ class gsatJoggingSettingsPanel(scrolled.ScrolledPanel):
         return vBoxSizerRoot, {'name': cName, 'label': tcLabel, 'script': tcScript}
 
     def UpdateConfigData(self):
-        self.configData.set("/jogging/XYZReadOnly", self.cbXYZReadOnly.GetValue())
-        self.configData.set("/jogging/AutoMPOS", self.cbAutoMPOS.GetValue())
-        self.configData.set("/jogging/ReqUpdateOnJogSetOp", self.cbReqUpdateOnJogSetOp.GetValue())
         self.configData.set("/jogging/NumKeypadPendant", self.cbNumKeypadPendant.GetValue())
         self.configData.set("/jogging/ZJogSafeMove", self.cbZJogSafeMove.GetValue())
 
         self.configData.set("/jogging/SpindleSpeed", self.spindleSpeedSpinCtrl.GetValue())
-
-        self.configData.set("/jogging/JogInteractive", self.cbJogInteractive.GetValue())
 
         self.configData.set("/jogging/JogRapid", self.cbJogRapid.GetValue())
 
