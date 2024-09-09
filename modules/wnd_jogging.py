@@ -34,9 +34,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
     Jog controls for the machine as well as custom user controls.
 
     """
-    def __init__(
-        self, parent, config_data, state_data, cmd_line_options, **args
-    ):
+    def __init__(self, parent, config_data, state_data, cmd_line_options, **args):
         wx.ScrolledWindow.__init__(self, parent, **args)
 
         self.mainWindow = parent
@@ -142,13 +140,13 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         hPanelBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         hPanelBoxSizer2 = wx.BoxSizer(wx.HORIZONTAL)
 
-        # Add CLI
-        self.cliComboBox = wx.adv.BitmapComboBox(self, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.WANTS_CHARS)
-        self.cliComboBox.SetToolTip(wx.ToolTip("Command Line Interface (CLI)"))
-        self.cliComboBox.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter)
-        self.cliComboBox.Bind(wx.EVT_KEY_DOWN, self.OnCliKeyDown)
-        self.cliComboBox.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
-        vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND | wx.ALL, border=1)
+        # # Add CLI
+        # self.cliComboBox = wx.adv.BitmapComboBox(self, style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER | wx.WANTS_CHARS)
+        # self.cliComboBox.SetToolTip(wx.ToolTip("Command Line Interface (CLI)"))
+        # self.cliComboBox.Bind(wx.EVT_TEXT_ENTER, self.OnCliEnter)
+        # self.cliComboBox.Bind(wx.EVT_KEY_DOWN, self.OnCliKeyDown)
+        # self.cliComboBox.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        # vPanelBoxSizer.Add(self.cliComboBox, 0, wx.EXPAND | wx.ALL, border=1)
 
         # Add Controls --------------------------------------------------------
         joggingControls = self.CreateJoggingControls()
@@ -703,8 +701,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         return self.cliCommand
 
     def OnCliEnter(self, e):
-        if self.stateData.serialPortIsOpen and not (
-           self.stateData.swState == gc.STATE_RUN):
+        if self.stateData.serialPortIsOpen and not (self.stateData.swState == gc.STATE_RUN):
 
             cliCommand = self.cliComboBox.GetValue()
 
@@ -719,8 +716,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
 
             self.cliIndex = self.cliComboBox.GetCount()
 
-            self.mainWindow.eventForward2Machif(
-                gc.EV_CMD_SEND, "".join([self.cliCommand, "\n"]))
+            self.mainWindow.eventForward2Machif(gc.EV_CMD_SEND, "".join([self.cliCommand, "\n"]))
 
         e.Skip()
 
@@ -742,25 +738,27 @@ class gsatJoggingPanel(wx.ScrolledWindow):
             e.Skip()
 
     def LoadCli(self):
-        # read cmd history
-        configData = self.cliCmdHistory
-        if len(configData) > 0:
-            cliCommandHistory = configData.split("|")
-            for cmd in cliCommandHistory:
-                cmd = cmd.strip()
-                if len(cmd) > 0:
-                    self.cliComboBox.Append(cmd.strip())
+        pass
+        # # read cmd history
+        # configData = self.cliCmdHistory
+        # if len(configData) > 0:
+        #     cliCommandHistory = configData.split("|")
+        #     for cmd in cliCommandHistory:
+        #         cmd = cmd.strip()
+        #         if len(cmd) > 0:
+        #             self.cliComboBox.Append(cmd.strip())
 
-            self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
-            self.cliIndex = self.cliComboBox.GetCount()
+        #     self.cliCommand = cliCommandHistory[len(cliCommandHistory) - 1]
+        #     self.cliIndex = self.cliComboBox.GetCount()
 
     def SaveCli(self):
-        # write cmd history
-        if self.cliSaveCmdHistory:
-            cliCmdHistory = self.cliComboBox.GetItems()
-            if len(cliCmdHistory) > 0:
-                cliCmdHistory = "|".join(cliCmdHistory)
-                self.configData.set('/cli/CmdHistory', cliCmdHistory)
+        pass
+        # # write cmd history
+        # if self.cliSaveCmdHistory:
+        #     cliCmdHistory = self.cliComboBox.GetItems()
+        #     if len(cliCmdHistory) > 0:
+        #         cliCmdHistory = "|".join(cliCmdHistory)
+        #         self.configData.set('/cli/CmdHistory', cliCmdHistory)
 
     def OnKeyUp(self, e):
         # print "key up event"
@@ -789,8 +787,7 @@ class gsatJoggingPanel(wx.ScrolledWindow):
         '''
         key = e.GetKeyCode()
 
-        if (not self.configNumKeypadPendant) or (
-           key not in self.numKeypadPendantKeys):
+        if (not self.configNumKeypadPendant) or (key not in self.numKeypadPendantKeys):
             e.Skip()
             return
 

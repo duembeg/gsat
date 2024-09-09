@@ -46,7 +46,6 @@ import modules.wnd_main_config as mwc
 import modules.wnd_editor as ed
 import modules.wnd_machine as mc
 import modules.wnd_jogging as jog
-# import modules.wnd_cli as cli
 import modules.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
 import modules.remote_client as rc
@@ -54,6 +53,7 @@ import modules.remote_ws_client as rcws
 import modules.remote_server as rs
 import modules.remote_ws_server as rsws
 import modules.version_info as vinfo
+import modules.wnd_console as cli
 
 """----------------------------------------------------------------------------
     Globals:
@@ -69,7 +69,7 @@ gID_MENU_SEARCH_TOOLBAR = wx.NewId()
 gID_MENU_PROGRAM_TOOLBAR = wx.NewId()
 gID_MENU_MACHINE_TOOLBAR = wx.NewId()
 gID_MENU_REMOTE_TOOLBAR = wx.NewId()
-gID_MENU_OUTPUT_PANEL = wx.NewId()
+gID_MENU_CONSOLE_PANEL = wx.NewId()
 gID_MENU_CLI_PANEL = wx.NewId()
 gID_MENU_MACHINE_STATUS_PANEL = wx.NewId()
 gID_MENU_MACHINE_JOGGING_PANEL = wx.NewId()
@@ -264,9 +264,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.CV2Panel = compv.gsatCV2Panel(self, self.configData, self.stateData, self.cmdLineOptions)
         self.machineJoggingPanel = jog.gsatJoggingPanel(self, self.configData, self.stateData, self.cmdLineOptions)
 
-        # output Window
-        self.outputText = ed.gsatStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
-        wx.Log.SetActiveTarget(gsatLog(self.outputText))
+        # Console Window
+        self.console = cli.gsatConsoleCtrl(
+            self, self.configData, self.stateData, self.cmdLineOptions, style=wx.NO_BORDER)
+
+        wx.Log.SetActiveTarget(gsatLog(self.console.GetLoggingInterface()))
 
         # for serious debugging
         # wx.Log_SetActiveTarget(wx.LogStderr())
@@ -282,8 +284,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             .BestSize(600, 600))
 
         self.aui_mgr.AddPane(
-            self.outputText,
-            aui.AuiPaneInfo().Name("OUTPUT_PANEL").Bottom().Row(1).Caption("Output").CloseButton(True)
+            self.console,
+            aui.AuiPaneInfo().Name("CONSOLE_PANEL").Bottom().Row(1).Caption("Console").CloseButton(True)
             .MaximizeButton(True).BestSize(600, 200))
 
         self.aui_mgr.AddPane(
@@ -323,7 +325,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.machineStatusPanel.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
         self.machineJoggingPanel.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
         self.CV2Panel.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
-        self.outputText.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
+        self.console.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
         self.gcText.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPress)
 
     def CreateMenu(self):
@@ -390,8 +392,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         viewMenu.AppendCheckItem(gID_MENU_MACHINE_TOOLBAR, "M&achine Tool Bar")
         viewMenu.AppendCheckItem(gID_MENU_REMOTE_TOOLBAR, "&Remote Tool Bar")
         viewMenu.AppendSeparator()
-        viewMenu.AppendCheckItem(gID_MENU_OUTPUT_PANEL, "&Output")
-        # viewMenu.AppendCheckItem(gID_MENU_CLI_PANEL, "&CLI")
+        viewMenu.AppendCheckItem(gID_MENU_CONSOLE_PANEL, "&Console")
         viewMenu.AppendCheckItem(gID_MENU_MACHINE_STATUS_PANEL, "Machine &Status")
         viewMenu.AppendCheckItem(gID_MENU_MACHINE_JOGGING_PANEL, "Machine &Jogging")
         viewMenu.AppendCheckItem(gID_MENU_CV2_PANEL, "Computer &Vision")
@@ -567,7 +568,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.Bind(wx.EVT_MENU, self.OnProgramToolBar, id=gID_MENU_PROGRAM_TOOLBAR)
         self.Bind(wx.EVT_MENU, self.OnMachineToolBar, id=gID_MENU_MACHINE_TOOLBAR)
         self.Bind(wx.EVT_MENU, self.OnRemoteToolBar, id=gID_MENU_REMOTE_TOOLBAR)
-        self.Bind(wx.EVT_MENU, self.OnOutput, id=gID_MENU_OUTPUT_PANEL)
+        self.Bind(wx.EVT_MENU, self.OnConsole, id=gID_MENU_CONSOLE_PANEL)
         # self.Bind(wx.EVT_MENU, self.OnCli, id=gID_MENU_CLI_PANEL)
         self.Bind(wx.EVT_MENU, self.OnMachineStatus, id=gID_MENU_MACHINE_STATUS_PANEL)
         self.Bind(wx.EVT_MENU, self.OnMachineJogging, id=gID_MENU_MACHINE_JOGGING_PANEL)
@@ -581,7 +582,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.Bind(wx.EVT_UPDATE_UI, self.OnProgramToolBarUpdate, id=gID_MENU_PROGRAM_TOOLBAR)
         self.Bind(wx.EVT_UPDATE_UI, self.OnMachineToolBarUpdate, id=gID_MENU_MACHINE_TOOLBAR)
         self.Bind(wx.EVT_UPDATE_UI, self.OnRemoteToolBarUpdate, id=gID_MENU_REMOTE_TOOLBAR)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnOutputUpdate, id=gID_MENU_OUTPUT_PANEL)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnConsoleUpdate, id=gID_MENU_CONSOLE_PANEL)
         # self.Bind(wx.EVT_UPDATE_UI, self.OnCliUpdate, id=gID_MENU_CLI_PANEL)
         self.Bind(wx.EVT_UPDATE_UI, self.OnMachineStatusUpdate, id=gID_MENU_MACHINE_STATUS_PANEL)
         self.Bind(wx.EVT_UPDATE_UI, self.OnMachineJoggingUpdate, id=gID_MENU_MACHINE_JOGGING_PANEL)
@@ -902,7 +903,6 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
     def UpdateUI(self):
         self.gcText.UpdateUI(self.stateData)
-        # self.cliPanel.UpdateUI(self.stateData)
         self.machineStatusPanel.UpdateUI(self.stateData)
         self.machineJoggingPanel.UpdateUI(self.stateData)
         self.CV2Panel.UpdateUI(self.stateData)
@@ -929,8 +929,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.aui_mgr.Update()
 
     """------------------------------------------------------------------------
-   gsatMainWindow: UI Event Handlers
-   -------------------------------------------------------------------------"""
+    gsatMainWindow: UI Event Handlers
+    ------------------------------------------------------------------------"""
 
     def OnAppToolBarForceUpdate(self):
         state = True
@@ -1205,17 +1205,11 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     def OnRemoteToolBarUpdate(self, e):
         self.OnViewMenuUpdate(e, self.remoteToolBar)
 
-    def OnOutput(self, e):
-        self.OnViewMenu(e, self.outputText)
+    def OnConsole(self, e):
+        self.OnViewMenu(e, self.console)
 
-    def OnOutputUpdate(self, e):
-        self.OnViewMenuUpdate(e, self.outputText)
-
-    # def OnCli(self, e):
-    #     self.OnViewMenu(e, self.cliPanel)
-
-    # def OnCliUpdate(self, e):
-    #     self.OnViewMenuUpdate(e, self.cliPanel)
+    def OnConsoleUpdate(self, e):
+        self.OnViewMenuUpdate(e, self.console)
 
     def OnMachineStatus(self, e):
         self.OnViewMenu(e, self.machineStatusPanel)
@@ -1264,8 +1258,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             self.InitConfig()
 
             self.gcText.UpdateSettings(self.configData)
-            self.outputText.UpdateSettings(self.configData)
-            # self.cliPanel(self.configData)
+            self.console.UpdateSettings(self.configData)
             self.machineStatusPanel.UpdateSettings(self.configData)
             self.machineJoggingPanel.UpdateSettings(self.configData)
             self.CV2Panel.UpdateSettings(self.configData)
@@ -1623,12 +1616,9 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
 
         mim = mi.GetMachIfModule(self.stateData.machIfId)
 
-        self.outputText.AppendText("*** ABORT!!! a feed-hold command (%s) has "
-                                   " been sent to %s, you can\n"
-                                   "    use cycle-restart command (%s) to "
-                                   "continue.\n" %
-                                   (mim.getFeedHoldCmd(), self.stateData
-                                    .machIfName, mim.getCycleStartCmd()))
+        self.console.AppendText(
+            f"*** ABORT!!! a feed-hold command ({mim.getFeedHoldCmd()}) has been sent to {self.stateData.machIfName}, "
+            f"you can use cycle-restart command ({mim.getCycleStartCmd()}) to continue.\n")
 
     def OnAbortUpdate(self, e=None):
         state = False
@@ -2122,7 +2112,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     self.machineJoggingPanel.UpdateUI(self.stateData, sr)
 
                 if 'rx_data' in te.data:
-                    self.outputText.AppendText("{}".format(te.data['rx_data']))
+                    self.console.AppendText("{}".format(te.data['rx_data']))
 
                 if 'pc' in te.data:
                     if self.stateData.programCounter != te.data['pc']:
@@ -2140,16 +2130,16 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_IN")
 
-                self.outputText.AppendText("%s" % te.data)
+                self.console.AppendText("%s" % te.data)
 
             elif te.event_id == gc.EV_DATA_OUT:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_DATA_OUT")
 
-                self.outputText.AppendText("> %s" % te.data)
+                self.console.AppendText("> %s" % te.data)
 
                 if te.data[-1:] != "\n":
-                    self.outputText.AppendText("\n")
+                    self.console.AppendText("\n")
 
             elif te.event_id == gc.EV_PC_UPDATE:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
@@ -2187,7 +2177,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 # self.stateData.swState = gc.STATE_PAUSE
                 # self.UpdateUI()
 
-                self.outputText.AppendText("** MSG: %s" % te.data.strip())
+                self.console.AppendText("** MSG: %s" % te.data.strip())
 
                 if lastSwState == gc.STATE_RUN:
                     if sys.platform in 'darwin':
@@ -2266,7 +2256,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_ABORT from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data)
+                self.console.AppendText(te.data)
 
                 if te.sender is self.remoteClient:
                     self.RemoteClose()
@@ -2288,7 +2278,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PORT_OPEN from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data)
+                self.console.AppendText(te.data)
 
                 if self.remoteClient is not None:
                     self.remoteClient.add_event(gc.EV_CMD_GET_CONFIG)
@@ -2306,7 +2296,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_PORT_CLOSE from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data)
+                self.console.AppendText(te.data)
                 self.stateData.serialPortIsOpen = False
                 self.stateData.deviceDetected = False
                 self.stateData.swState = gc.STATE_IDLE
@@ -2326,13 +2316,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_HELLO from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data)
+                self.console.AppendText(te.data)
 
             elif te.event_id == gc.EV_RMT_GOOD_BYE:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
                     self.logger.info("EV_RMT_GOOD_BYE from 0x{:x} {}".format(id(te.sender), te.sender))
 
-                self.outputText.AppendText(te.data)
+                self.console.AppendText(te.data)
 
             elif te.event_id == gc.EV_SW_STATE:
                 if gc.test_verbose_mask(gc.VERBOSE_MASK_UI_EV):
@@ -2507,7 +2497,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                 if self.cmdLineOptions.verbose:
                     print("gsatMainWindow queuing machine init script...")
 
-                self.outputText.AppendText("Queuing machine init script...\n")
+                self.console.AppendText("Queuing machine init script...\n")
                 for initLine in initScript:
 
                     for reComments in reGcodeComments:
@@ -2518,7 +2508,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
                     if len(initLine.strip()) > 0:
                         self.SerialWrite(initLine)
                         # self.SerialWriteWaitForAck(initLine)
-                        self.outputText.AppendText(initLine)
+                        self.console.AppendText(initLine)
 
     def add_event(self, id, data=None, sender=None):
         gc.EventQueueIf.add_event(self, id, data, sender)

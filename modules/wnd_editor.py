@@ -50,8 +50,7 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
             self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=0,
             name=stc.STCNameStr):
 
-        stc.StyledTextCtrl.__init__(self, parent, id, pos, size,
-                                    style, name)
+        stc.StyledTextCtrl.__init__(self, parent, id, pos, size, style, name)
 
         self.configData = config_data
         self.stateData = state_data
@@ -241,13 +240,12 @@ class gsatStcStyledTextCtrl(stc.StyledTextCtrl):
         # self.ScrollToLine(self.GetLineCount())
 
 
-"""----------------------------------------------------------------------------
+class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
+    """
     gsatGcodeStcStyledTextCtrl:
     Text control to display GCODE
-----------------------------------------------------------------------------"""
+    """
 
-
-class gsatGcodeStcStyledTextCtrl(gsatStcStyledTextCtrl):
     def __init__(
             self, parent, config_data, state_data, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize,
             style=0, name=stc.STCNameStr):
