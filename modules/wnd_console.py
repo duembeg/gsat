@@ -251,6 +251,9 @@ class gsatConsoleCtrl(wx.Window):
         self.InitUI()
         self.SetInitialSize()
 
+        self.cliCommand = ""
+        self.cliIndex = 0
+
         self.LoadCli()
 
     def InitConfig(self):
