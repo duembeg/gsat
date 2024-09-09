@@ -1,7 +1,7 @@
 """----------------------------------------------------------------------------
-    machif_grbl.py
+    machif_grblHAL.py
 
-    Copyright (C) 2013 Wilhelm Duembeg
+    Copyright (C) 2024 Wilhelm Duembeg
 
     This file is part of gsat. gsat is a cross-platform GCODE debug/step for
     grbl like GCODE interpreters. With features similar to software debuggers.
@@ -167,21 +167,21 @@ GRBL_CONFIG_2_STR_DICT = {
 
 # This values are only use to initialize or reset base class.
 # base class has internal variables tor track these
-ID = 1000
-NAME = "grbl"
-BUFFER_MAX_SIZE = 127
+ID = 1010
+NAME = "grblHAL"
+BUFFER_MAX_SIZE = 100
 BUFFER_INIT_VAL = 0
 BUFFER_WATERMARK_PRCNT = 0.90
 
 
-class MachIf_GRBL(mi.MachIf_Base):
+class MachIf_GRBLHAL(mi.MachIf_Base):
     """-----------------------------------------------------------------------
-    MachIf_GRBL:
+    MachIf_GRBLHAL:
 
     grbl machine interface
 
     ID = 1000
-    Name = "grbl"
+    Name = "grblHAL"
 
     -----------------------------------------------------------------------"""
 
@@ -237,7 +237,7 @@ class MachIf_GRBL(mi.MachIf_Base):
     #     r'([+-]{0,1}\d+\.\d+),([+-]{0,1}\d+\.\d+)\|FS:(\d+),(\d+)')
 
     reGrblMachineStatus = re.compile(
-        r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:(.+)\|FS:(\d+),(\d+)')
+        r'<(\w+)[:]{0,1}[\d]*[,\|].*[W|M]Pos:(.+)\|Bf:\d+,\d+\|FS:(\d+),(\d+)')
 
     reGrblAxes = re.compile(
         r'([+-]{0,1}\d+\.\d+),')
@@ -261,7 +261,7 @@ class MachIf_GRBL(mi.MachIf_Base):
     reGrblConfig = re.compile(r'^\$(\d+)=\d+.*\s*')
 
     def __init__(self):
-        super(MachIf_GRBL, self).__init__(
+        super(MachIf_GRBLHAL, self).__init__(
             ID, NAME, BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
@@ -296,7 +296,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         Init object variables, ala soft-reset in hw
 
         """
-        super(MachIf_GRBL, self)._reset(BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
+        super(MachIf_GRBLHAL, self)._reset(BUFFER_MAX_SIZE, BUFFER_INIT_VAL, BUFFER_WATERMARK_PRCNT)
 
         self._inputBufferPart = list()
 
@@ -331,9 +331,6 @@ class MachIf_GRBL(mi.MachIf_Base):
 
             axes = self.reGrblAxes.findall(f"{statusData[1]},")
             if len(axes):
-
-                print(f"statusData: {statusData}")
-                print(f"axes: {axes}")
 
                 for i in range(len(axes)):
                     sr['pos%s' % self.axes_list[i]] = float(axes[i])
@@ -553,7 +550,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         if type(data) is bytes:
             data = data.decode('utf-8')
 
-        data = super(MachIf_GRBL, self).encode(data)
+        data = super(MachIf_GRBLHAL, self).encode(data)
 
         # handle special cases due to status in cmd line and how GRBL
         # reports deals with this. if not careful we might get two status
@@ -592,10 +589,10 @@ class MachIf_GRBL(mi.MachIf_Base):
         return data
 
     def factory(self):
-        return MachIf_GRBL()
+        return MachIf_GRBLHAL()
 
     def init(self):
-        super(MachIf_GRBL, self).init()
+        super(MachIf_GRBLHAL, self).init()
         self.machineAutoRefreshPeriod = gc.CONFIG_DATA.get(
             f"/machine/MachIfSpecific/{self.name}/AutoRefreshPeriod/Value", 200)
         self.timeOut.set_timeout(float(self.machineAutoRefreshPeriod / 1000))
@@ -605,7 +602,7 @@ class MachIf_GRBL(mi.MachIf_Base):
         # prepare next refresh time
         if self.machineStatus in [GRBL_STATE_RUN, GRBL_STATE_JOG]:
             if self.timeOut.time_expired() and self.okToSend(self.cmdStatus):
-                super(MachIf_GRBL, self).write(self.cmdStatus)
+                super(MachIf_GRBLHAL, self).write(self.cmdStatus)
         else:
             self.timeOut.disable()
 
@@ -631,12 +628,12 @@ class MachIf_GRBL(mi.MachIf_Base):
         ]:
             askForStatus = True
 
-        bytesSent = super(MachIf_GRBL, self).write(txData, raw_write)
+        bytesSent = super(MachIf_GRBLHAL, self).write(txData, raw_write)
 
         if askForStatus:
             if self.okToSend(self.cmdStatus):
-                super(MachIf_GRBL, self).write(self.cmdStatus)
-                super(MachIf_GRBL, self).write(self.cmdStatus)
+                super(MachIf_GRBLHAL, self).write(self.cmdStatus)
+                super(MachIf_GRBLHAL, self).write(self.cmdStatus)
 
             # start timer
             self.timeOut.reset()

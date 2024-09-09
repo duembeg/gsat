@@ -27,6 +27,7 @@
 import modules.machif_g2core as mi_g2core
 import modules.machif_tinyg as mi_tinyg
 import modules.machif_grbl as mi_grbl
+import modules.machif_grblHAL as mi_grblHAL
 import modules.machif_smoothie as mi_smoothie
 
 # --------------------------------------------------------------------------
@@ -34,17 +35,20 @@ import modules.machif_smoothie as mi_smoothie
 # --------------------------------------------------------------------------
 MACHIF_NONE = None
 # gMACHIF_GRBL            = 1000
+# gMACHIF_GRBLHAL         = 1010
 # gMACHIF_TINYG           = 1100
 # gMACHIF_G2CORE          = 1200
 # gMACHIF_SMOOTHIE        = 1300
 
 MACHIF_GRBL = mi_grbl.MachIf_GRBL()
+MACHIF_GRBLHAL = mi_grblHAL.MachIf_GRBLHAL()
 MACHIF_TINYG = mi_tinyg.MachIf_TinyG()
 MACHIF_G2CORE = mi_g2core.MachIf_g2core()
 MACHIF_SMOOTHIE = mi_smoothie.MachIf_Smoothie()
 
 MACHIF_CLS_LIST = [
     MACHIF_GRBL,
+    MACHIF_GRBLHAL,
     MACHIF_TINYG,
     MACHIF_G2CORE,
     MACHIF_SMOOTHIE
