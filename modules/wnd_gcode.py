@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-    wnd_editor.py
+    wnd_gcode.py
 
     Copyright (C) 2013 Wilhelm Duembeg
 

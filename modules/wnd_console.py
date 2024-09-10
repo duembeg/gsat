@@ -59,20 +59,20 @@ class gsatStcStyledConsoleCtrl(stc.StyledTextCtrl):
         self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
 
     def InitConfig(self):
-        self.configReadOnly = self.configData.get('/output/ReadOnly')
-        self.configAutoScroll = self.configData.get('/output/AutoScroll')
-        self.configWindowForeground = self.configData.get('/output/WindowForeground')
-        self.configWindowBackground = self.configData.get('/output/WindowBackground')
-        self.configLineNumber = self.configData.get('/output/LineNumber')
-        self.configLineNumberForeground = self.configData.get('/output/LineNumberForeground')
-        self.configLineNumberBackground = self.configData.get('/output/LineNumberBackground')
-        self.configCaretLine = self.configData.get('/output/CaretLine')
-        self.configCaretLineForeground = self.configData.get('/output/CaretLineForeground')
-        self.configCaretLineBackground = self.configData.get('/output/CaretLineBackground')
+        self.configReadOnly = self.configData.get("/console/ReadOnly")
+        self.configAutoScroll = self.configData.get("/console/AutoScroll")
+        self.configWindowForeground = self.configData.get("/console/WindowForeground")
+        self.configWindowBackground = self.configData.get("/console/WindowBackground")
+        self.configLineNumber = self.configData.get("/console/LineNumber")
+        self.configLineNumberForeground = self.configData.get("/console/LineNumberForeground")
+        self.configLineNumberBackground = self.configData.get("/console/LineNumberBackground")
+        self.configCaretLine = self.configData.get("/console/CaretLine")
+        self.configCaretLineForeground = self.configData.get("/console/CaretLineForeground")
+        self.configCaretLineBackground = self.configData.get("/console/CaretLineBackground")
 
-        self.configFontFace = self.configData.get('/output/FontFace')
-        self.configFontSize = self.configData.get('/output/FontSize')
-        self.configFontStyle = self.configData.get('/output/FontStyle')
+        self.configFontFace = self.configData.get("/console/FontFace")
+        self.configFontSize = self.configData.get("/console/FontSize")
+        self.configFontStyle = self.configData.get("/console/FontStyle")
 
         self.SetReadOnly(self.configReadOnly)
 
@@ -93,9 +93,9 @@ class gsatStcStyledConsoleCtrl(stc.StyledTextCtrl):
             self.configFontFace = sysFont.GetFaceName()
             self.configFontSize = sysFont.GetPointSize()
             self.configFontStyle = "normal"
-            self.configData.set('/output/FontFace', self.configFontFace)
-            self.configData.set('/output/FontSize', self.configFontSize)
-            self.configData.set('/output/FontStyle', self.configFontStyle)
+            self.configData.set("/console/FontFace",  self.configFontFace)
+            self.configData.set("/console/FontSize",  self.configFontSize)
+            self.configData.set("/console/FontStyle",  self.configFontStyle)
 
         '''
         # global default style
@@ -258,9 +258,9 @@ class gsatConsoleCtrl(wx.Window):
 
     def InitConfig(self):
         # cli data
-        self.cliSaveCmdHistory = self.configData.get('/cli/SaveCmdHistory')
-        self.cliCmdMaxHistory = self.configData.get('/cli/CmdMaxHistory')
-        self.cliCmdHistory = self.configData.get('/cli/CmdHistory')
+        self.cliSaveCmdHistory = self.configData.get('/console/cli/SaveCmdHistory')
+        self.cliCmdMaxHistory = self.configData.get('/console/cli/CmdMaxHistory')
+        self.cliCmdHistory = self.configData.get('/console/cli/CmdHistory')
 
     def UpdateSettings(self, config_data):
         self.configData = config_data
@@ -344,4 +344,4 @@ class gsatConsoleCtrl(wx.Window):
             cliCmdHistory = self.cliComboBox.GetItems()
             if len(cliCmdHistory) > 0:
                 cliCmdHistory = "|".join(cliCmdHistory)
-                self.configData.set('/cli/CmdHistory', cliCmdHistory)
+                self.configData.set('/console/cli/CmdHistory', cliCmdHistory)

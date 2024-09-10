@@ -1,5 +1,5 @@
 """----------------------------------------------------------------------------
-    wnd_output_config.py
+    wnd_console_config.py
 
     Copyright (C) 2013 Wilhelm Duembeg
 
@@ -46,14 +46,14 @@ class Factory():
 
     @staticmethod
     def GetIcon():
-        return ico.imgLog.GetBitmap()
+        return ico.imgCli.GetBitmap()
 
     @staticmethod
     def AddPage(parent_wnd, config, page):
         ''' Function to create and inti settings page
         '''
         settings_page = gsatOutputSettingsPanel(parent_wnd, config)
-        parent_wnd.AddPage(settings_page, "Output")
+        parent_wnd.AddPage(settings_page, "Console")
         parent_wnd.SetPageImage(page, page)
 
         return settings_page
@@ -65,7 +65,7 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
 
     """
 
-    def __init__(self, parent, config_data, key="output"):
+    def __init__(self, parent, config_data, key="console"):
         super(gsatOutputSettingsPanel, self).__init__(parent, style=wx.TAB_TRAVERSAL | wx.NO_BORDER)
 
         self.configData = config_data
@@ -89,13 +89,10 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         spText = wx.StaticText(self, label="Auto Scroll")
         hBoxSizer.Add(spText, 0, flag=wx.ALIGN_CENTER_VERTICAL)
 
-        if self.key == 'code':
-            asList = ["Never", "Always", "On Kill Focus", "On Goto PC"]
-        else:
-            asList = ["Never", "Always", "On Kill Focus"]
+        asList = ["Never", "Always", "On Kill Focus"]
 
         self.asComboBox = wx.ComboBox(
-            self, -1, value=asList[self.configData.get('/%s/AutoScroll' % self.key)],
+            self, -1, value=asList[self.configData.get(f"/{self.key}/AutoScroll")],
             choices=asList, style=wx.CB_READONLY)
         hBoxSizer.Add(self.asComboBox, 0, flag=wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, border=5)
 
@@ -110,10 +107,10 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         self.fontSelect = wx.FontPickerCtrl(self, size=(300, -1))
         vBoxSizer.Add(self.fontSelect, 0, wx.LEFT | wx.ALIGN_LEFT, border=20)
         font = wx.Font(
-            self.configData.get('/%s/FontSize' % self.key), wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
-            self.configData.get('/%s/FontFace' % self.key))
+            self.configData.get(f"/{self.key}/FontSize"), wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0,
+            self.configData.get(f"/{self.key}/FontFace"))
 
-        font_style_str = self.configData.get('/%s/FontStyle' % self.key)
+        font_style_str = self.configData.get(f"/{self.key}/FontStyle")
 
         if "bold" in font_style_str:
             font.MakeBold()
@@ -128,15 +125,15 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         gBoxSizer = wx.GridSizer(1, 3, 0, 0)
 
         self.checkReadOnly = wx.CheckBox(self, label="ReadOnly")
-        self.checkReadOnly.SetValue(self.configData.get('/%s/ReadOnly' % self.key))
+        self.checkReadOnly.SetValue(self.configData.get(f"/{self.key}/ReadOnly"))
         gBoxSizer.Add(self.checkReadOnly, 0, wx.ALIGN_LEFT)
 
         self.checkLineNumbers = wx.CheckBox(self, label="Line Numbers")
-        self.checkLineNumbers.SetValue(self.configData.get('/%s/LineNumber' % self.key))
+        self.checkLineNumbers.SetValue(self.configData.get(f"/{self.key}/LineNumber"))
         gBoxSizer.Add(self.checkLineNumbers, 0, wx.ALIGN_LEFT)
 
         self.checkCaretLine = wx.CheckBox(self, label="Highlight Caret Line")
-        self.checkCaretLine.SetValue(self.configData.get('/%s/CaretLine' % self.key))
+        self.checkCaretLine.SetValue(self.configData.get(f"/{self.key}/CaretLine"))
         gBoxSizer.Add(self.checkCaretLine, 0, wx.ALIGN_LEFT)
 
         vBoxSizer.Add(gBoxSizer, 0, wx.LEFT | wx.BOTTOM, border=20)
@@ -150,7 +147,6 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         vColorSizer = wx.BoxSizer(wx.VERTICAL)
         foregroundColorSizer = wx.GridSizer(1, 6, 0, 0)
         backgroundColorSizer = wx.GridSizer(1, 6, 0, 0)
-        syntaxColorSizer = wx.GridSizer(3, 6, 0, 0)
 
         # Foreground
         text = wx.StaticText(self, label="Foreground")
@@ -160,14 +156,14 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.windowForeground = csel.ColourSelect(
             self, -1, "",
-            hex_to_rgb(self.configData.get('/%s/WindowForeground' % self.key)))
+            hex_to_rgb(self.configData.get(f"/{self.key}/WindowForeground")))
 
         foregroundColorSizer.Add(self.windowForeground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Line Numbers")
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.lineNumbersForeground = csel.ColourSelect(
-            self, -1, "", hex_to_rgb(self.configData.get('/%s/LineNumberForeground' % self.key)))
+            self, -1, "", hex_to_rgb(self.configData.get(f"/{self.key}/LineNumberForeground")))
 
         foregroundColorSizer.Add(self.lineNumbersForeground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
@@ -175,7 +171,7 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
 
         foregroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.caretLineForeground = csel.ColourSelect(
-            self, -1, "", hex_to_rgb(self.configData.get('/%s/CaretLineForeground' % self.key)))
+            self, -1, "", hex_to_rgb(self.configData.get(f"/{self.key}/CaretLineForeground")))
 
         foregroundColorSizer.Add(self.caretLineForeground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
@@ -190,82 +186,50 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         text = wx.StaticText(self, label="Window")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.windowBackground = csel.ColourSelect(
-            self, -1, "", hex_to_rgb(self.configData.get('/%s/WindowBackground' % self.key)))
+            self, -1, "", hex_to_rgb(self.configData.get(f"/{self.key}/WindowBackground")))
         backgroundColorSizer.Add(self.windowBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Line Numbers")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.lineNumbersBackground = csel.ColourSelect(
-            self, -1, "", hex_to_rgb(self.configData.get('/%s/LineNumberBackground' % self.key)))
+            self, -1, "", hex_to_rgb(self.configData.get(f"/{self.key}/LineNumberBackground")))
 
         backgroundColorSizer.Add(self.lineNumbersBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
         text = wx.StaticText(self, label="Highlight Line")
         backgroundColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
         self.caretLineBackground = csel.ColourSelect(
-            self, -1, "", hex_to_rgb(self.configData.get('/%s/CaretLineBackground' % self.key)))
+            self, -1, "", hex_to_rgb(self.configData.get(f"/{self.key}/CaretLineBackground")))
         backgroundColorSizer.Add(self.caretLineBackground, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
 
-        vColorSizer.Add(
-            backgroundColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
+        vColorSizer.Add(backgroundColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
-        if self.key == 'code':
-            # Syntax highlighting
-            text = wx.StaticText(self, label="")
-            vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
-            text = wx.StaticText(self, label="Syntax highlighting")
-            vColorSizer.Add(text, 0, flag=wx.ALL, border=5)
+        vBoxSizer.Add(vColorSizer, 0, wx.LEFT | wx.BOTTOM | wx.ALIGN_LEFT, border=20)
 
-            text = wx.StaticText(self, label="G Code")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.gCodeHighlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/GCodeHighlight' % self.key)))
-            syntaxColorSizer.Add(self.gCodeHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+        # CLI settings
+        text = wx.StaticText(self, label="Command Line Interface")
+        font = wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+        text.SetFont(font)
+        vBoxSizer.Add(text, 0, wx.ALL, border=5)
 
-            text = wx.StaticText(self, label="M Code")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.gModeHighlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/MCodeHighlight' % self.key)))
-            syntaxColorSizer.Add(self.gModeHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+        # Add check box
+        hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.cli_cb = wx.CheckBox(self, wx.ID_ANY, "Save Command History")
+        self.cli_cb.SetValue(self.configData.get(f"/{self.key}/cli/SaveCmdHistory"))
+        hBoxSizer.Add(self.cli_cb, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
+        vBoxSizer.Add(hBoxSizer, flag=wx.LEFT, border=20)
 
-            text = wx.StaticText(self, label="Axis Codes")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.axisHighlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/AxisHighlight' % self.key)))
+        # Add spin ctrl
+        hBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.cli_sc = wx.SpinCtrl(self, wx.ID_ANY, "")
+        self.cli_sc.SetRange(1, 1000)
+        self.cli_sc.SetValue(self.configData.get(f"/{self.key}/cli/CmdMaxHistory"))
+        hBoxSizer.Add(self.cli_sc, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
 
-            syntaxColorSizer.Add(self.axisHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
+        st = wx.StaticText(self, wx.ID_ANY, "Max Command History")
+        hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
 
-            text = wx.StaticText(self, label="Parameters")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.parametersHighlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/ParametersHighlight' % self.key)))
-
-            syntaxColorSizer.Add(self.parametersHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
-
-            text = wx.StaticText(self, label="Parameters2")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.parameters2Highlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/Parameters2Highlight' % self.key)))
-
-            syntaxColorSizer.Add(self.parameters2Highlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
-
-            text = wx.StaticText(self, label="Comments")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.commentsHighlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/CommentsHighlight' % self.key)))
-
-            syntaxColorSizer.Add(self.commentsHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
-
-            text = wx.StaticText(self, label="G-Code Line #")
-            syntaxColorSizer.Add(text, 0, flag=wx.ALIGN_CENTER_VERTICAL)
-            self.gCodeLineNumberHighlight = csel.ColourSelect(
-                self, -1, "", hex_to_rgb(self.configData.get('/%s/GCodeLineNumberHighlight' % self.key)))
-
-            syntaxColorSizer.Add(self.gCodeLineNumberHighlight, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_LEFT)
-
-            vColorSizer.Add(syntaxColorSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
-
-        vBoxSizer.Add(vColorSizer, 0, wx.LEFT | wx.ALIGN_LEFT, border=20)
+        vBoxSizer.Add(hBoxSizer, 0, flag=wx.LEFT | wx.EXPAND, border=20)
 
         # finish up
         self.SetSizerAndFit(vBoxSizer)
@@ -273,27 +237,27 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
     def UpdateConfigData(self):
         asValue = self.asComboBox.GetSelection()
         if asValue > 0:
-            self.configData.set(f'/{self.key}/AutoScroll', self.asComboBox.GetSelection())
+            self.configData.set(f"/{self.key}/AutoScroll", self.asComboBox.GetSelection())
 
-        self.configData.set(f'/{self.key}/ReadOnly', self.checkReadOnly.GetValue())
+        self.configData.set(f"/{self.key}/ReadOnly", self.checkReadOnly.GetValue())
 
         self.configData.set(
-            f'/{self.key}/WindowForeground', self.windowForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            f"/{self.key}/WindowForeground", self.windowForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
         self.configData.set(
-            f'/{self.key}/WindowBackground', self.windowBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            f"/{self.key}/WindowBackground", self.windowBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
-        self.configData.set(f'/{self.key}/CaretLine', self.checkCaretLine.GetValue())
+        self.configData.set(f"/{self.key}/CaretLine", self.checkCaretLine.GetValue())
         self.configData.set(
-            f'/{self.key}/CaretLineForeground', self.caretLineForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            f"/{self.key}/CaretLineForeground", self.caretLineForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
         self.configData.set(
-            f'/{self.key}/CaretLineBackground', self.caretLineBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+            f"/{self.key}/CaretLineBackground", self.caretLineBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
-        self.configData.set(f'/{self.key}/LineNumber', self.checkLineNumbers.GetValue())
+        self.configData.set(f"/{self.key}/LineNumber", self.checkLineNumbers.GetValue())
         self.configData.set(
-            f'/{self.key}/LineNumberForeground',
+            f"/{self.key}/LineNumberForeground",
             self.lineNumbersForeground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
         self.configData.set(
-            f'/{self.key}/LineNumberBackground',
+            f"/{self.key}/LineNumberBackground",
             self.lineNumbersBackground.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
 
         font = self.fontSelect.GetSelectedFont()
@@ -311,31 +275,9 @@ class gsatOutputSettingsPanel(scrolled.ScrolledPanel):
         else:
             font_style_str = ",".join(font_style_list)
 
-        self.configData.set(f'/{self.key}/FontFace', font.GetFaceName())
-        self.configData.set(f'/{self.key}/FontSize', font.GetPointSize())
-        self.configData.set(f'/{self.key}/FontStyle', font_style_str)
+        self.configData.set(f"/{self.key}/FontFace", font.GetFaceName())
+        self.configData.set(f"/{self.key}/FontSize", font.GetPointSize())
+        self.configData.set(f"/{self.key}/FontStyle", font_style_str)
 
-        if self.key == 'code':
-            self.configData.set(
-                f'/{self.key}/GCodeHighlight', self.gCodeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-
-            self.configData.set(
-                f'/{self.key}/MCodeHighlight', self.gModeHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-
-            self.configData.set(
-                f'/{self.key}/AxisHighlight', self.axisHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-
-            self.configData.set(
-                f'/{self.key}/ParametersHighlight',
-                self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-
-            self.configData.set(
-                f'/{self.key}/Parameters2Highlight',
-                self.parametersHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-
-            self.configData.set(
-                f'/{self.key}/CommentsHighlight', self.commentsHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
-
-            self.configData.set(
-                f'/{self.key}/GCodeLineNumberHighlight',
-                self.gCodeLineNumberHighlight.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+        self.configData.set(f"/{self.key}/cli/SaveCmdHistory", self.cli_cb.GetValue())
+        self.configData.set(f"/{self.key}/cli/CmdMaxHistory", self.cli_sc.GetValue())

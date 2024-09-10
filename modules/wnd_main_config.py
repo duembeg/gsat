@@ -28,10 +28,9 @@ from wx.lib import scrolledpanel as scrolled
 
 import images.icons as ico
 import modules.wnd_gcode_config as gcode_c
-import modules.wnd_output_config as output_c
 import modules.wnd_machine_config as machine_c
 import modules.wnd_jogging_config as jog_c
-import modules.wnd_cli_config as cli_c
+import modules.wnd_console_config as con_c
 import modules.wnd_compvision_config as compvision_c
 import modules.wnd_remote_config as remote_c
 main_wnd_c = sys.modules[__name__]
@@ -123,8 +122,7 @@ class gsatGeneralSettingsPanel(scrolled.ScrolledPanel):
         self.scIN2MMRound = wx.SpinCtrl(self, wx.ID_ANY, "")
         self.scIN2MMRound.SetRange(0, 100)
         self.scIN2MMRound.SetValue(self.configData.get('/mainApp/RoundInch2mm'))
-        hBoxSizer.Add(self.scIN2MMRound, flag=wx.ALL |
-                      wx.ALIGN_CENTER_VERTICAL, border=5)
+        hBoxSizer.Add(self.scIN2MMRound, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
 
         st = wx.StaticText(self, wx.ID_ANY, "Inch to mm round digits")
         hBoxSizer.Add(st, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
@@ -182,7 +180,7 @@ class gsatSettingsDialog(wx.Dialog):
         if self.configRemoteData:
             mod_settings = [machine_c, remote_c]
         else:
-            mod_settings = [main_wnd_c, gcode_c, output_c, cli_c, machine_c, jog_c, compvision_c, remote_c]
+            mod_settings = [main_wnd_c, gcode_c, con_c, machine_c, jog_c, compvision_c, remote_c]
 
         # init note book
         self.imageList = wx.ImageList(16, 16)

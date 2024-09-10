@@ -704,14 +704,6 @@ class gsatConfigData(ConfigData):
 
     """
     configDefault = {
-        "cli": {
-            "CmdHistory": "",
-            "CmdMaxHistory": 100,
-            "SaveCmdHistory": True,
-            "FontFace": "System",
-            "FontSize": -1,
-            "FontStyle": "normal",
-        },
         "code": {
             "AutoScroll": 3,
             "AxisHighlight": "#ff0000",
@@ -731,6 +723,29 @@ class gsatConfigData(ConfigData):
             "Parameters2Highlight": "#f4b730",
             "ParametersHighlight": "#ff0000",
             "ReadOnly": True,
+            "WindowBackground": "#FFFFFF",
+            "WindowForeground": "#000000"
+        },
+        "console": {
+            "AutoScroll": 2,
+            "CaretLine": False,
+            "CaretLineBackground": "#C299A9",
+            "CaretLineForeground": "#000000",
+            "cli": {
+                "CmdHistory": "",
+                "CmdMaxHistory": 100,
+                "SaveCmdHistory": True,
+                "FontFace": "System",
+                "FontSize": -1,
+                "FontStyle": "normal",
+            },
+            "FontFace": "Monospace",
+            "FontSize": 11,
+            "FontStyle": "normal",
+            "LineNumber": False,
+            "LineNumberBackground": "#FFFFFF",
+            "LineNumberForeground": "#000000",
+            "ReadOnly": False,
             "WindowBackground": "#FFFFFF",
             "WindowForeground": "#000000"
         },

@@ -43,7 +43,7 @@ import modules.machif_config as mi
 import images.icons as ico
 
 import modules.wnd_main_config as mwc
-import modules.wnd_editor as ed
+import modules.wnd_gcode as ged
 import modules.wnd_machine as mc
 import modules.wnd_jogging as jog
 import modules.wnd_compvision as compv
@@ -275,7 +275,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         # wx.Log_SetTraceMask(wx.TraceMessages)
 
         # main gcode list control
-        self.gcText = ed.gsatGcodeStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
+        self.gcText = ged.gsatGcodeStcStyledTextCtrl(self, self.configData, self.stateData, style=wx.NO_BORDER)
 
         # add the panes to the manager
         self.aui_mgr.AddPane(
@@ -1719,12 +1719,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnToolUpdateIdle(e)
 
     def Onmm2Inch(self, e):
-        dlg = wx.MessageDialog(self,
-                               "Your about to convert the current file from "
-                               "millimeter to inches.\nThis is an experimental "
-                               "feature, do you want to continue?",
-                               "millimeter to inch",
-                               wx.OK | wx.CANCEL | wx.ICON_WARNING)
+        dlg = wx.MessageDialog(
+            self,
+            "Your about to convert the current file from "
+            "millimeter to inches.\nThis is an experimental "
+            "feature, do you want to continue?",
+            "millimeter to inch",
+            wx.OK | wx.CANCEL | wx.ICON_WARNING)
 
         if dlg.ShowModal() == wx.ID_OK:
             rawText = self.gcText.GetText()
@@ -1742,12 +1743,13 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
         self.OnToolUpdateIdle(e)
 
     def OnG812G01(self, e):
-        dlg = wx.MessageDialog(self,
-                               "Your about to convert the current file from "
-                               "G81 to G01.\nThis is an experimental feature, "
-                               "do you want to continue?",
-                               "",
-                               wx.OK | wx.CANCEL | wx.ICON_WARNING)
+        dlg = wx.MessageDialog(
+            self,
+            "Your about to convert the current file from "
+            "G81 to G01.\nThis is an experimental feature, "
+            "do you want to continue?",
+            "",
+            wx.OK | wx.CANCEL | wx.ICON_WARNING)
 
         if dlg.ShowModal() == wx.ID_OK:
             rawText = self.gcText.GetText()
@@ -1797,7 +1799,7 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
     # -------------------------------------------------------------------------
     def OnClose(self, e):
 
-        self.machineJoggingPanel.SaveCli()
+        self.console.SaveCli()
 
         self.configData.save()
 
@@ -1824,8 +1826,8 @@ class gsatMainWindow(wx.Frame, gc.EventQueueIf):
             e.Skip()
 
     """------------------------------------------------------------------------
-   gsatMainWindow: General Functions
-   ------------------------------------------------------------------------"""
+    gsatMainWindow: General Functions
+    ------------------------------------------------------------------------"""
 
     def GetSerialPortList(self):
         spList = []
