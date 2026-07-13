@@ -22,6 +22,7 @@ For instance, if the GCODE file is a drill program for a PCB, gsat allows you to
 ### Supported Devices
 
 - **grbl**: [Grbl](https://github.com/grbl/grbl/wiki/) - Open source, high-performance CNC milling controller for Arduino
+- **grblHAL**: [grblHAL](https://github.com/grblHAL) - Portable grbl-compatible CNC controller for 32-bit platforms
 - **g2core**: [g2core](https://github.com/synthetos/g2/wiki/What-is-g2core) - ARM Port of TinyG motion control system for Arduino Due and Synthetos hardware
 - **TinyG**: [TinyG](https://github.com/synthetos/TinyG/wiki/) - 6-axis motion control system for small to mid-sized machines
 
@@ -83,6 +84,20 @@ python3.8 -m pip install opencv-python
 ![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog")
 
 ## Changelog
+
+### 1.8.0
+
+- WebSocket remote interface
+  - Remote UIs can connect over WebSockets (default) in addition to the existing socket path
+  - More stable remote connections with reconnection handling
+  - Updated dependency install instructions for WebSocket/server support
+- Added initial support for [grblHAL](https://github.com/grblHAL)
+- Console panel
+  - Combined the old text output and CLI into a single Console window and settings
+- Remote configuration improvements
+  - Easier switching between multiple remotes without re-editing settings each time
+- Updates to the Kivy remote control (gsat-rc) app for WebSockets and usability
+- Various bug fixes and cleanup of obsolete settings
 
 ### 1.7.5
 

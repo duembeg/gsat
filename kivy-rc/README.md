@@ -67,9 +67,14 @@ Screen Shoots
 
 Changelog
 ---------
+### 1.1
+* WebSocket remote connection support (with the gsat server WebSocket interface).
+* UI and layout updates for better fit on phone/tablet without forcing small Android font sizes.
+* Usability fixes (for example rapid jog) and improved reconnection behavior.
+
 ### 1.0
 * Many UI updates and bug fixes.
-<br/>Notes: When running on Linux all works well. For Android the socket might become stale an a reconnect maybe necessary; next version the plan to solve this is websockets and FastAPI. In here I already try all the tricks including keep alive at socket level and even ping/pong at app level... Still Android will disconnect eventually.
+<br/>Notes: When running on Linux all works well. For Android the plain socket connection could become stale and need a reconnect; WebSockets were planned for a later version (see 1.1).
 
 ### 0.1
 * Initial beta release.
