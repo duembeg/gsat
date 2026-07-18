@@ -2,21 +2,24 @@
     main_window.py
 
     Spike shell for the gsat PySide workbench:
-    connect (remote WS and/or local progexec) + status + DRO + console CLI.
+    connect + DRO + console CLI + G-code / PC.
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
 import logging
+import os
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -28,6 +31,7 @@ import modules.version_info as vinfo
 from modules.pyside_workbench.client_bridge import ClientBridge
 from modules.pyside_workbench.console_panel import ConsolePanel
 from modules.pyside_workbench.dro_panel import DroPanel
+from modules.pyside_workbench.gcode_panel import GcodePanel
 
 
 class MainWindow(QMainWindow):
@@ -37,10 +41,8 @@ class MainWindow(QMainWindow):
         self.logger = logging.getLogger(__name__)
 
         self.setWindowTitle(f"{vinfo.__appname__} — PySide workbench (spike)")
-        self.resize(900, 640)
+        self.resize(1100, 720)
 
-        # Parent to QApplication lifetime is handled via window ownership;
-        # bridge still parents to this window for normal Qt cleanup order.
         self.bridge = ClientBridge(self)
         self.bridge.backend_event.connect(self.on_backend_event)
         self.bridge.log_message.connect(self.append_log)
@@ -53,9 +55,7 @@ class MainWindow(QMainWindow):
         self._build_menu()
         self._load_remote_defaults()
         self._update_connection_ui()
-
-        # No auto-poll timers. Backend pushes EV_DATA_*; UI only renders.
-        # Manual Refresh + one-shot sync on remote connect are explicit.
+        self.set_pc(0)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -88,8 +88,12 @@ class MainWindow(QMainWindow):
         remote_row.addStretch(1)
         layout.addLayout(remote_row)
 
-        # Machine actions
+        # Machine + program actions
         machine_row = QHBoxLayout()
+        self.btn_open_file = QPushButton("Open G-code…")
+        self.btn_open_file.clicked.connect(self.on_open_gcode)
+        machine_row.addWidget(self.btn_open_file)
+
         self.btn_open = QPushButton("Open machine")
         self.btn_open.clicked.connect(self.on_open_machine)
         machine_row.addWidget(self.btn_open)
@@ -110,15 +114,48 @@ class MainWindow(QMainWindow):
         self.btn_local.clicked.connect(self.on_open_local)
         machine_row.addWidget(self.btn_local)
 
+        machine_row.addSpacing(12)
+
+        self.btn_set_pc = QPushButton("Set PC")
+        self.btn_set_pc.setToolTip("Set program counter to selected G-code line")
+        self.btn_set_pc.clicked.connect(self.on_set_pc)
+        machine_row.addWidget(self.btn_set_pc)
+
+        self.btn_reset_pc = QPushButton("Reset PC")
+        self.btn_reset_pc.clicked.connect(self.on_reset_pc)
+        machine_row.addWidget(self.btn_reset_pc)
+
+        self.btn_goto_pc = QPushButton("Goto PC")
+        self.btn_goto_pc.clicked.connect(self.on_goto_pc)
+        machine_row.addWidget(self.btn_goto_pc)
+
+        self.btn_step = QPushButton("Step")
+        self.btn_step.setToolTip("Step one G-code line (EV_CMD_STEP)")
+        self.btn_step.clicked.connect(self.on_step)
+        machine_row.addWidget(self.btn_step)
+
+        self.btn_stop = QPushButton("Stop")
+        self.btn_stop.clicked.connect(self.on_stop)
+        machine_row.addWidget(self.btn_stop)
+
         machine_row.addStretch(1)
         layout.addLayout(machine_row)
 
         self.connection_label = QLabel("Connection: idle")
         layout.addWidget(self.connection_label)
 
-        body = QHBoxLayout()
+        # Main body: G-code | DRO / console
+        body = QSplitter(Qt.Orientation.Horizontal)
+
+        self.gcode = GcodePanel()
+        self.gcode.set_pc_requested.connect(self.set_pc)
+        body.addWidget(self.gcode)
+
+        right = QWidget()
+        right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         self.dro_panel = DroPanel()
-        body.addWidget(self.dro_panel, 0)
+        right_layout.addWidget(self.dro_panel, 0)
 
         max_hist = 40
         try:
@@ -127,14 +164,25 @@ class MainWindow(QMainWindow):
             pass
         self.console = ConsolePanel(max_history=max_hist)
         self.console.line_submitted.connect(self.on_cli_submit)
-        body.addWidget(self.console, 1)
-        layout.addLayout(body, 1)
+        right_layout.addWidget(self.console, 1)
+        body.addWidget(right)
+
+        body.setStretchFactor(0, 3)
+        body.setStretchFactor(1, 2)
+        layout.addWidget(body, 1)
 
         self.setStatusBar(QStatusBar(self))
-        self.statusBar().showMessage("PySide workbench spike — connect to server or open local")
+        self.statusBar().showMessage(
+            "PySide workbench — open G-code, connect, step"
+        )
 
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
+        open_gcode = QAction("&Open G-code…", self)
+        open_gcode.setShortcut(QKeySequence.StandardKey.Open)
+        open_gcode.triggered.connect(self.on_open_gcode)
+        file_menu.addAction(open_gcode)
+        file_menu.addSeparator()
         quit_action = QAction("&Quit", self)
         quit_action.setShortcut("Ctrl+Q")
         quit_action.triggered.connect(self.close)
@@ -157,6 +205,26 @@ class MainWindow(QMainWindow):
         refresh_action.triggered.connect(self.on_refresh_status)
         machine_menu.addAction(refresh_action)
 
+        program_menu = self.menuBar().addMenu("&Program")
+        set_pc = QAction("Set &PC", self)
+        set_pc.triggered.connect(self.on_set_pc)
+        program_menu.addAction(set_pc)
+        reset_pc = QAction("&Reset PC", self)
+        reset_pc.triggered.connect(self.on_reset_pc)
+        program_menu.addAction(reset_pc)
+        goto_pc = QAction("&Goto PC", self)
+        goto_pc.triggered.connect(self.on_goto_pc)
+        program_menu.addAction(goto_pc)
+        program_menu.addSeparator()
+        step_action = QAction("S&tep", self)
+        step_action.setShortcut("F10")
+        step_action.triggered.connect(self.on_step)
+        program_menu.addAction(step_action)
+        stop_action = QAction("St&op", self)
+        stop_action.setShortcut("Escape")
+        stop_action.triggered.connect(self.on_stop)
+        program_menu.addAction(stop_action)
+
         view_menu = self.menuBar().addMenu("&View")
         focus_cli = QAction("Focus &CLI", self)
         focus_cli.setShortcut(QKeySequence("Ctrl+L"))
@@ -176,7 +244,115 @@ class MainWindow(QMainWindow):
         self.port_edit.setText(str(port))
 
     # ------------------------------------------------------------------
-    # Actions
+    # G-code / PC
+    # ------------------------------------------------------------------
+    @Slot()
+    def on_open_gcode(self):
+        start = gc.STATE_DATA.gcodeFileName or os.path.expanduser("~")
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open G-code",
+            start if os.path.isdir(os.path.dirname(start) or start) else os.path.expanduser("~"),
+            "G-code (*.ngc *.nc *.gcode);;All files (*.*)",
+        )
+        if not path:
+            return
+        self.open_gcode_path(path)
+
+    def open_gcode_path(self, path: str) -> bool:
+        try:
+            n = self.gcode.load_file(path)
+        except OSError as exc:
+            QMessageBox.critical(self, "Open failed", str(exc))
+            return False
+
+        gc.STATE_DATA.gcodeFileName = path
+        gc.STATE_DATA.gcodeFileLines = self.gcode.lines()
+        gc.STATE_DATA.fileIsOpen = True
+        gc.STATE_DATA.programCounter = 0
+        gc.STATE_DATA.breakPoints = set()
+
+        self.setWindowTitle(
+            f"{os.path.basename(path)} — {vinfo.__appname__} (PySide)"
+        )
+        self.append_log(f"Opened {path} ({n} lines)")
+        self.statusBar().showMessage(os.path.basename(path))
+        self._update_connection_ui()
+        return True
+
+    def set_pc(self, pc: int | None = None):
+        if pc is None:
+            pc = self.gcode.selected_line()
+        try:
+            pc = int(pc)
+        except (TypeError, ValueError):
+            pc = 0
+        if self.gcode.line_count() == 0:
+            pc = 0
+        else:
+            pc = max(0, min(pc, self.gcode.line_count() - 1))
+        gc.STATE_DATA.programCounter = pc
+        self.gcode.set_pc(pc, scroll=True)
+
+    @Slot()
+    def on_set_pc(self):
+        self.set_pc(self.gcode.selected_line())
+
+    @Slot()
+    def on_reset_pc(self):
+        self.set_pc(0)
+
+    @Slot()
+    def on_goto_pc(self):
+        self.gcode.goto_pc()
+
+    def _program_payload(self) -> dict:
+        """Build dict for EV_CMD_STEP / RUN (same keys as wx)."""
+        lines = self.gcode.lines()
+        gc.STATE_DATA.gcodeFileLines = lines
+        payload = {
+            "gcodePC": gc.STATE_DATA.programCounter,
+            "breakPoints": set(gc.STATE_DATA.breakPoints)
+            if gc.STATE_DATA.breakPoints
+            else set(),
+        }
+        if lines:
+            if gc.STATE_DATA.gcodeFileName:
+                payload["gcodeFileName"] = gc.STATE_DATA.gcodeFileName
+            # Always send lines for spike simplicity (no MD5 cache yet)
+            payload["gcodeLines"] = lines
+        return payload
+
+    @Slot()
+    def on_step(self):
+        if not self.bridge.is_backend_active():
+            self.append_log("Step: no machine backend.")
+            return
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if not machine_open:
+            self.append_log("Step: machine not open.")
+            return
+        if self.gcode.line_count() == 0:
+            self.append_log("Step: no G-code loaded.")
+            return
+        if gc.STATE_DATA.swState not in (
+            gc.STATE_IDLE,
+            gc.STATE_BREAK,
+            gc.STATE_PAUSE,
+        ):
+            self.append_log("Step: not idle/break/pause.")
+            return
+        self.bridge.send_command(gc.EV_CMD_STEP, self._program_payload())
+        self.gcode.goto_pc()
+
+    @Slot()
+    def on_stop(self):
+        if self.bridge.is_backend_active():
+            self.bridge.send_command(gc.EV_CMD_STOP)
+            self.append_log("Stop requested.")
+
+    # ------------------------------------------------------------------
+    # Connection actions
     # ------------------------------------------------------------------
     @Slot()
     def on_connect_remote(self):
@@ -222,12 +398,10 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def on_cli_submit(self, line: str):
-        """Forward a CLI line to the backend (same rules as wx console)."""
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
         if not machine_open or not self.bridge.is_backend_active():
             self.append_log("CLI: machine not open.")
             return
-        # Match wx: block free-form send while program is running
         if gc.STATE_DATA.swState == gc.STATE_RUN:
             self.append_log("CLI: blocked while program is running (stop first).")
             return
@@ -249,7 +423,6 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     @Slot(object)
     def on_backend_event(self, te):
-        """Handle SimpleEvent from backend workers (same IDs as wx path)."""
         if te is None:
             return
 
@@ -257,7 +430,6 @@ class MainWindow(QMainWindow):
         data = te.data
 
         if eid == gc.EV_DATA_STATUS:
-            # Same shape as wx OnThreadEvent: parse fields + show rx_data in console
             if isinstance(data, dict):
                 if "sr" in data:
                     sr = data["sr"]
@@ -266,16 +438,14 @@ class MainWindow(QMainWindow):
                             gc.STATE_DATA.machineStatusString = sr["stat"]
                         self.dro_panel.update_from_status(sr)
 
-                # top-level fields sometimes carry fw / status bits
                 self.dro_panel.update_from_status(data)
 
-                # Backend machine text (e.g. <Idle|MPos:…>) travels here, not EV_DATA_IN
                 if "rx_data" in data and data["rx_data"]:
                     self.append_log(data["rx_data"])
 
                 if "pc" in data:
                     try:
-                        gc.STATE_DATA.programCounter = int(data["pc"])
+                        self.set_pc(int(data["pc"]))
                     except (TypeError, ValueError):
                         pass
 
@@ -286,18 +456,22 @@ class MainWindow(QMainWindow):
                         pass
                     self._update_connection_ui()
 
+        elif eid == gc.EV_PC_UPDATE:
+            try:
+                self.set_pc(int(data))
+            except (TypeError, ValueError):
+                pass
+
         elif eid == gc.EV_DATA_IN:
             self.append_log(data)
 
         elif eid == gc.EV_DATA_OUT:
-            # Prefix like wx; trailing newline handled in append_log
             self.append_log(f"> {data}")
 
         elif eid == gc.EV_SER_PORT_OPEN:
             self.append_log("Machine serial/port open.")
             self._machine_open = True
             gc.STATE_DATA.serialPortIsOpen = True
-            # One-shot status after open (wx does the same); not a poll loop
             self.bridge.request_status()
             self._update_connection_ui()
 
@@ -313,7 +487,6 @@ class MainWindow(QMainWindow):
             self.append_log(str(msg).rstrip("\n"))
             self._remote_connecting = False
             self._remote_connected = True
-            # One-shot field sync after connect (config / info / sw state / status)
             self.bridge.request_initial_remote_sync()
             self._update_connection_ui()
 
@@ -349,10 +522,14 @@ class MainWindow(QMainWindow):
                 pass
             self._update_connection_ui()
 
+        elif eid == gc.EV_STEP_END:
+            self._update_connection_ui()
+
+        elif eid == gc.EV_RUN_END:
+            self._update_connection_ui()
+
         elif eid == gc.EV_ABORT:
             self.append_log(str(data) if data else "ABORT")
-            # UI state only here — leave client object until EV_EXIT so we do
-            # not start a second RemoteClient while the old thread is exiting.
             if te.sender is self.bridge.remote_client or self._remote_connecting:
                 self._remote_connecting = False
                 self._remote_connected = False
@@ -368,7 +545,10 @@ class MainWindow(QMainWindow):
         elif eid == gc.EV_EXIT:
             self.append_log("Backend thread exited.")
             was_remote = te.sender is self.bridge.remote_client
-            was_local = te.sender is self.bridge.machif_progexec and not self.bridge._use_remote
+            was_local = (
+                te.sender is self.bridge.machif_progexec
+                and not self.bridge._use_remote
+            )
             self.bridge.on_remote_exited(te.sender)
             self.bridge.on_local_exited(te.sender)
             self._remote_connecting = False
@@ -380,7 +560,7 @@ class MainWindow(QMainWindow):
             self._update_connection_ui()
 
         elif eid == gc.EV_GCODE_MD5:
-            pass  # ignore in spike
+            pass
 
         else:
             name = gc.EV_2STR_DICT.get(eid, str(eid))
@@ -389,7 +569,6 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def append_log(self, text):
-        """Delegate to console panel (trailing-newline normalize lives there)."""
         self.console.append_text(text)
 
     def _update_connection_ui(self):
@@ -398,6 +577,12 @@ class MainWindow(QMainWindow):
         backend = self.bridge.is_backend_active()
         host_info = self.bridge.remote_hostname()
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        has_gcode = self.gcode.line_count() > 0
+        idleish = gc.STATE_DATA.swState in (
+            gc.STATE_IDLE,
+            gc.STATE_BREAK,
+            gc.STATE_PAUSE,
+        )
 
         parts = []
         if remote:
@@ -416,10 +601,9 @@ class MainWindow(QMainWindow):
 
         parts.append(f"swState={gc.STATE_DATA.swState}")
         parts.append(f"stat={gc.STATE_DATA.machineStatusString}")
+        parts.append(f"PC={gc.STATE_DATA.programCounter}")
         self.connection_label.setText("Connection: " + " | ".join(parts))
 
-        # Keep Connect disabled while a RemoteClient object is alive (including
-        # failed-connect teardown) so we do not stack threads.
         client_alive = self.bridge.is_remote_connected()
         busy_remote = remote or connecting or client_alive
         self.btn_connect.setEnabled(not busy_remote)
@@ -432,18 +616,22 @@ class MainWindow(QMainWindow):
         self.host_edit.setEnabled(not busy_remote)
         self.port_edit.setEnabled(not busy_remote)
 
-        # CLI: open machine and not in RUN (matches wx console)
-        cli_ok = (
-            machine_open
-            and backend
-            and gc.STATE_DATA.swState != gc.STATE_RUN
-        )
+        cli_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.console.set_cli_enabled(cli_ok)
 
-        status = " | ".join(parts)
-        self.statusBar().showMessage(status)
+        self.btn_set_pc.setEnabled(has_gcode and idleish)
+        self.btn_reset_pc.setEnabled(has_gcode)
+        self.btn_goto_pc.setEnabled(has_gcode)
+        self.btn_step.setEnabled(machine_open and backend and has_gcode and idleish)
+        self.btn_stop.setEnabled(
+            machine_open
+            and backend
+            and gc.STATE_DATA.swState
+            not in (gc.STATE_IDLE, gc.STATE_ABORT)
+        )
+
+        self.statusBar().showMessage(" | ".join(parts))
 
     def closeEvent(self, event: QCloseEvent):
-        # Join backend threads before Qt destroys the bridge QObject
         self.bridge.shutdown(join_timeout=2.0)
         event.accept()
