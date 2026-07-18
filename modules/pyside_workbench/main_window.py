@@ -616,6 +616,30 @@ class MainWindow(QMainWindow):
             self.append_log("Hit breakpoint.")
             self._update_connection_ui()
 
+        elif eid == gc.EV_GCODE_MSG:
+            # Backend hits (MSG, …) during run/step, moves to STATE_BREAK,
+            # and does not send the line to the machine. UI prompts like wx.
+            msg = str(data).strip() if data is not None else ""
+            self.append_log(f"** MSG: {msg}")
+            # Backend does not always push EV_SW_STATE on MSG; UI may still
+            # think we are RUN — capture before we force BREAK for controls.
+            last_sw = gc.STATE_DATA.swState
+            gc.STATE_DATA.swState = gc.STATE_BREAK
+            self._update_connection_ui()
+
+            if last_sw == gc.STATE_RUN:
+                reply = QMessageBox.question(
+                    self,
+                    "G-Code Message",
+                    f"{msg}\n\nContinue program?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+                if reply == QMessageBox.StandardButton.Yes:
+                    self.on_run()
+            else:
+                QMessageBox.information(self, "G-Code Message", msg or "(empty MSG)")
+
         elif eid == gc.EV_BRK_PT:
             # Remote/backend breakpoint set
             try:
