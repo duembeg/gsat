@@ -129,6 +129,26 @@ class MainWindow(QMainWindow):
         self.btn_goto_pc.clicked.connect(self.on_goto_pc)
         machine_row.addWidget(self.btn_goto_pc)
 
+        self.btn_break = QPushButton("Break")
+        self.btn_break.setToolTip("Toggle breakpoint on selected line (F9)")
+        self.btn_break.clicked.connect(self.on_break_toggle)
+        machine_row.addWidget(self.btn_break)
+
+        self.btn_break_clear = QPushButton("Clear BP")
+        self.btn_break_clear.setToolTip("Remove all breakpoints")
+        self.btn_break_clear.clicked.connect(self.on_break_clear)
+        machine_row.addWidget(self.btn_break_clear)
+
+        self.btn_run = QPushButton("Run")
+        self.btn_run.setToolTip("Run program from PC (EV_CMD_RUN)")
+        self.btn_run.clicked.connect(self.on_run)
+        machine_row.addWidget(self.btn_run)
+
+        self.btn_pause = QPushButton("Pause")
+        self.btn_pause.setToolTip("Pause program (EV_CMD_PAUSE)")
+        self.btn_pause.clicked.connect(self.on_pause)
+        machine_row.addWidget(self.btn_pause)
+
         self.btn_step = QPushButton("Step")
         self.btn_step.setToolTip("Step one G-code line (EV_CMD_STEP)")
         self.btn_step.clicked.connect(self.on_step)
@@ -149,6 +169,7 @@ class MainWindow(QMainWindow):
 
         self.gcode = GcodePanel()
         self.gcode.set_pc_requested.connect(self.set_pc)
+        self.gcode.break_toggled.connect(self.on_break_toggled)
         body.addWidget(self.gcode)
 
         right = QWidget()
@@ -216,12 +237,26 @@ class MainWindow(QMainWindow):
         goto_pc.triggered.connect(self.on_goto_pc)
         program_menu.addAction(goto_pc)
         program_menu.addSeparator()
+        break_action = QAction("Toggle &Breakpoint", self)
+        break_action.setShortcut("F9")
+        break_action.triggered.connect(self.on_break_toggle)
+        program_menu.addAction(break_action)
+        break_clear = QAction("Remove &All Breakpoints", self)
+        break_clear.triggered.connect(self.on_break_clear)
+        program_menu.addAction(break_clear)
+        program_menu.addSeparator()
+        run_action = QAction("&Run", self)
+        run_action.setShortcut("F5")
+        run_action.triggered.connect(self.on_run)
+        program_menu.addAction(run_action)
+        pause_action = QAction("Pa&use", self)
+        pause_action.triggered.connect(self.on_pause)
+        program_menu.addAction(pause_action)
         step_action = QAction("S&tep", self)
         step_action.setShortcut("F10")
         step_action.triggered.connect(self.on_step)
         program_menu.addAction(step_action)
         stop_action = QAction("St&op", self)
-        stop_action.setShortcut("Escape")
         stop_action.triggered.connect(self.on_stop)
         program_menu.addAction(stop_action)
 
@@ -306,15 +341,42 @@ class MainWindow(QMainWindow):
     def on_goto_pc(self):
         self.gcode.goto_pc()
 
+    @Slot()
+    def on_break_toggle(self):
+        if self.gcode.line_count() == 0:
+            return
+        if gc.STATE_DATA.swState not in (
+            gc.STATE_IDLE,
+            gc.STATE_BREAK,
+            gc.STATE_PAUSE,
+        ):
+            self.append_log("Breakpoint: only when idle/break/pause.")
+            return
+        enabled = self.gcode.toggle_breakpoint(self.gcode.selected_line())
+        gc.STATE_DATA.breakPoints = self.gcode.get_breakpoints()
+        line = self.gcode.selected_line()
+        self.append_log(
+            f"Breakpoint {'set' if enabled else 'cleared'} at line {line + 1}"
+        )
+
+    @Slot(int, bool)
+    def on_break_toggled(self, line: int, enabled: bool):
+        gc.STATE_DATA.breakPoints = self.gcode.get_breakpoints()
+
+    @Slot()
+    def on_break_clear(self):
+        self.gcode.clear_breakpoints()
+        gc.STATE_DATA.breakPoints = set()
+        self.append_log("All breakpoints cleared.")
+
     def _program_payload(self) -> dict:
         """Build dict for EV_CMD_STEP / RUN (same keys as wx)."""
         lines = self.gcode.lines()
         gc.STATE_DATA.gcodeFileLines = lines
+        gc.STATE_DATA.breakPoints = self.gcode.get_breakpoints()
         payload = {
             "gcodePC": gc.STATE_DATA.programCounter,
-            "breakPoints": set(gc.STATE_DATA.breakPoints)
-            if gc.STATE_DATA.breakPoints
-            else set(),
+            "breakPoints": self.gcode.get_breakpoints(),
         }
         if lines:
             if gc.STATE_DATA.gcodeFileName:
@@ -323,24 +385,46 @@ class MainWindow(QMainWindow):
             payload["gcodeLines"] = lines
         return payload
 
+    def _can_run_or_step(self) -> bool:
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        return (
+            self.bridge.is_backend_active()
+            and machine_open
+            and self.gcode.line_count() > 0
+            and gc.STATE_DATA.swState
+            in (gc.STATE_IDLE, gc.STATE_BREAK, gc.STATE_PAUSE)
+        )
+
     @Slot()
-    def on_step(self):
+    def on_run(self):
+        if not self._can_run_or_step():
+            self.append_log("Run: need open machine, G-code, and idle/break/pause.")
+            return
+        self.bridge.send_command(gc.EV_CMD_RUN, self._program_payload())
+        self.gcode.goto_pc()
+        self.append_log("Run started.")
+
+    @Slot()
+    def on_pause(self):
         if not self.bridge.is_backend_active():
-            self.append_log("Step: no machine backend.")
             return
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
         if not machine_open:
-            self.append_log("Step: machine not open.")
             return
-        if self.gcode.line_count() == 0:
-            self.append_log("Step: no G-code loaded.")
-            return
-        if gc.STATE_DATA.swState not in (
+        if gc.STATE_DATA.swState in (
             gc.STATE_IDLE,
-            gc.STATE_BREAK,
             gc.STATE_PAUSE,
+            gc.STATE_ABORT,
         ):
-            self.append_log("Step: not idle/break/pause.")
+            self.append_log("Pause: nothing to pause.")
+            return
+        self.bridge.send_command(gc.EV_CMD_PAUSE)
+        self.append_log("Pause requested.")
+
+    @Slot()
+    def on_step(self):
+        if not self._can_run_or_step():
+            self.append_log("Step: need open machine, G-code, and idle/break/pause.")
             return
         self.bridge.send_command(gc.EV_CMD_STEP, self._program_payload())
         self.gcode.goto_pc()
@@ -528,6 +612,23 @@ class MainWindow(QMainWindow):
         elif eid == gc.EV_RUN_END:
             self._update_connection_ui()
 
+        elif eid == gc.EV_BRK_PT_STOP:
+            self.append_log("Hit breakpoint.")
+            self._update_connection_ui()
+
+        elif eid == gc.EV_BRK_PT:
+            # Remote/backend breakpoint set
+            try:
+                bps = set(data) if data is not None else set()
+            except TypeError:
+                bps = set()
+            self.gcode.set_breakpoints(bps)
+            gc.STATE_DATA.breakPoints = self.gcode.get_breakpoints()
+
+        elif eid == gc.EV_BRK_PT_CHG:
+            if self.bridge.is_backend_active():
+                self.bridge.send_command(gc.EV_CMD_GET_BRK_PT)
+
         elif eid == gc.EV_ABORT:
             self.append_log(str(data) if data else "ABORT")
             if te.sender is self.bridge.remote_client or self._remote_connecting:
@@ -620,9 +721,19 @@ class MainWindow(QMainWindow):
         self.console.set_cli_enabled(cli_ok)
 
         self.btn_set_pc.setEnabled(has_gcode and idleish)
-        self.btn_reset_pc.setEnabled(has_gcode)
+        self.btn_reset_pc.setEnabled(has_gcode and idleish)
         self.btn_goto_pc.setEnabled(has_gcode)
-        self.btn_step.setEnabled(machine_open and backend and has_gcode and idleish)
+        self.btn_break.setEnabled(has_gcode and idleish)
+        self.btn_break_clear.setEnabled(has_gcode and idleish)
+        can_run = machine_open and backend and has_gcode and idleish
+        self.btn_run.setEnabled(can_run)
+        self.btn_step.setEnabled(can_run)
+        self.btn_pause.setEnabled(
+            machine_open
+            and backend
+            and gc.STATE_DATA.swState
+            not in (gc.STATE_IDLE, gc.STATE_PAUSE, gc.STATE_ABORT)
+        )
         self.btn_stop.setEnabled(
             machine_open
             and backend
