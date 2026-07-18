@@ -1,0 +1,11 @@
+# Dependencies for the PySide workbench (gsat-pyside.py)
+# Classic wx UI still uses the README wxPython stack.
+#
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements-pyside.txt
+#   .venv/bin/python gsat-pyside.py
+
+PySide6>=6.6
+pyserial>=3.5
+colorama>=0.4.6
+python-socketio[client]>=5.10

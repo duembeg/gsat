@@ -229,6 +229,9 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
                 self.logger.info("Exit signal received")
         except socketio.exceptions.ConnectionError as e:
             self.logger.error(f"Failed to connect: {e}")
+            # Notify UI listeners (wx / PySide) so connect failures clear state
+            self.notify_event_listeners(
+                gc.EV_ABORT, f"Failed to connect: {e}\n")
         finally:
             if self.sio.connected:
                 await self.sio.disconnect()

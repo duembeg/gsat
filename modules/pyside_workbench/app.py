@@ -1,0 +1,23 @@
+"""----------------------------------------------------------------------------
+    app.py
+
+    QApplication bootstrap for the gsat PySide workbench.
+----------------------------------------------------------------------------"""
+from __future__ import annotations
+
+import sys
+
+from PySide6.QtWidgets import QApplication
+
+from modules.pyside_workbench.main_window import MainWindow
+
+
+def run_app(cmd_line_options) -> int:
+    app = QApplication(sys.argv)
+    app.setApplicationName("gsat-pyside")
+    app.setOrganizationName("gsat")
+
+    window = MainWindow(cmd_line_options)
+    window.show()
+
+    return app.exec()
