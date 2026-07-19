@@ -124,7 +124,7 @@ class ConsolePanel(QWidget):
 
     line_submitted = Signal(str)
 
-    def __init__(self, parent=None, max_history: int = 40):
+    def __init__(self, parent=None, max_history: int = 40, load_saved: bool = True):
         super().__init__(parent)
         self._max_history = max(1, int(max_history))
         # Chronological: index 0 = oldest, -1 = most recently sent
@@ -134,6 +134,14 @@ class ConsolePanel(QWidget):
         self._browse_depth = 0
         self._draft_before_browse = ""
         self._last_submitted = ""
+        try:
+            import modules.config as gc
+
+            self._save_history = bool(
+                gc.CONFIG_DATA.get("/console/cli/SaveCmdHistory", True)
+            )
+        except Exception:
+            self._save_history = True
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -182,6 +190,9 @@ class ConsolePanel(QWidget):
         sc_ctrl_up = QShortcut(QKeySequence("Ctrl+Up"), self)
         sc_ctrl_up.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         sc_ctrl_up.activated.connect(self.show_history_popup)
+
+        if load_saved:
+            self.load_history_from_config()
 
     # ------------------------------------------------------------------
     # Public API
@@ -241,6 +252,53 @@ class ConsolePanel(QWidget):
             self._history = self._history[-self._max_history :]
         self._last_submitted = line
         self.btn_history.setEnabled(self.cli.isEnabled() and bool(self._history))
+        # Persist like wx SaveCli (same config key)
+        self.save_history_to_config()
+
+    def load_history_from_config(self) -> None:
+        """Load CLI history from ~/.gsat.json (same keys as wx console)."""
+        try:
+            import modules.config as gc
+
+            if gc.CONFIG_DATA is None:
+                return
+            raw = gc.CONFIG_DATA.get("/console/cli/CmdHistory", "") or ""
+            if not raw:
+                return
+            # wx stores pipe-separated commands (oldest…newest)
+            for cmd in raw.split("|"):
+                cmd = cmd.strip()
+                if not cmd:
+                    continue
+                if cmd in self._history:
+                    self._history.remove(cmd)
+                self._history.append(cmd)
+            if len(self._history) > self._max_history:
+                self._history = self._history[-self._max_history :]
+            if self._history:
+                self._last_submitted = self._history[-1]
+            self.btn_history.setEnabled(self.cli.isEnabled() and bool(self._history))
+        except Exception:
+            pass
+
+    def save_history_to_config(self) -> None:
+        """Write CLI history to config (wx-compatible ``|`` join)."""
+        if not self._save_history:
+            return
+        try:
+            import modules.config as gc
+
+            if gc.CONFIG_DATA is None:
+                return
+            if not self._history:
+                gc.CONFIG_DATA.set("/console/cli/CmdHistory", "")
+            else:
+                gc.CONFIG_DATA.set(
+                    "/console/cli/CmdHistory", "|".join(self._history)
+                )
+            gc.CONFIG_DATA.save()
+        except Exception:
+            pass
 
     @Slot()
     def _history_older(self):

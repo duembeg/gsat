@@ -257,6 +257,20 @@ def test_offline() -> list[str]:
             _fail("popup should hide after choose")
         notes.append("cli history popup: ok")
 
+        # --- CLI history persists to same wx config key ---
+        w.console.save_history_to_config()
+        raw = gc.CONFIG_DATA.get("/console/cli/CmdHistory", "") or ""
+        if "cmd-b" not in raw:
+            _fail(f"CLI history not saved to config: {raw!r}")
+        notes.append("cli history config save: ok")
+
+        # --- dock widgets present ---
+        if not hasattr(w, "dock_gcode") or not w.dock_gcode:
+            _fail("dock_gcode missing")
+        if not hasattr(w, "dock_console"):
+            _fail("dock_console missing")
+        notes.append("dockable panels: ok")
+
         # --- jog essentials ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()

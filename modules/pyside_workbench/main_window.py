@@ -6,12 +6,14 @@
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
+import base64
 import logging
 import os
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import QByteArray, Qt, Slot
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QDockWidget,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -20,7 +22,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QSplitter,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -74,18 +75,46 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_menu()
         self._load_remote_defaults()
+        self._load_layout()
         self._update_connection_ui()
         self.set_pc(0)
 
     # ------------------------------------------------------------------
     # UI construction
     # ------------------------------------------------------------------
+    def _make_dock(self, title: str, widget: QWidget, object_name: str) -> QDockWidget:
+        dock = QDockWidget(title, self)
+        dock.setObjectName(object_name)
+        dock.setWidget(widget)
+        dock.setAllowedAreas(
+            Qt.DockWidgetArea.AllDockWidgetAreas
+        )
+        dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable
+        )
+        return dock
+
     def _build_ui(self):
-        central = QWidget(self)
-        self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
-        layout.setContentsMargins(8, 8, 8, 6)
-        layout.setSpacing(8)
+        # Dockable workbench (Qt equivalent of wx AUI perspectives)
+        self.setDockNestingEnabled(True)
+        self.setDockOptions(
+            QMainWindow.DockOption.AllowNestedDocks
+            | QMainWindow.DockOption.AllowTabbedDocks
+            | QMainWindow.DockOption.AnimatedDocks
+        )
+
+        # Top: tool strips as non-dock central chrome (always visible, height-limited)
+        from PySide6.QtWidgets import QSizePolicy
+
+        chrome = QWidget()
+        chrome.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum
+        )
+        chrome_layout = QVBoxLayout(chrome)
+        chrome_layout.setContentsMargins(8, 8, 8, 4)
+        chrome_layout.setSpacing(8)
 
         # --- Connection strip ---
         conn_frame, conn_row = _tool_strip("Remote")
@@ -127,7 +156,7 @@ class MainWindow(QMainWindow):
         self.status_badge.setObjectName("statusBadge")
         self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         conn_row.addWidget(self.status_badge)
-        layout.addWidget(conn_frame)
+        chrome_layout.addWidget(conn_frame)
 
         # --- Program strip ---
         prog_frame, prog_row = _tool_strip("Program")
@@ -171,52 +200,48 @@ class MainWindow(QMainWindow):
         self.btn_stop.clicked.connect(self.on_stop)
         prog_row.addWidget(self.btn_stop)
         prog_row.addStretch(1)
-        layout.addWidget(prog_frame)
+        chrome_layout.addWidget(prog_frame)
 
-        # --- Main workspace: G-code + console | DRO + jog ---
-        body = QSplitter(Qt.Orientation.Horizontal)
-        body.setChildrenCollapsible(False)
+        self.setCentralWidget(chrome)
 
-        left = QSplitter(Qt.Orientation.Vertical)
-        left.setChildrenCollapsible(False)
+        # --- Dockable panels (user-rearrangeable; saved like wx AUI) ---
         self.gcode = GcodePanel()
         self.gcode.set_pc_requested.connect(self.set_pc)
         self.gcode.break_toggled.connect(self.on_break_toggled)
-        left.addWidget(self.gcode)
+        self.dock_gcode = self._make_dock("G-code", self.gcode, "dockGcode")
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_gcode)
 
-        max_hist = 40
+        max_hist = 100
         try:
-            max_hist = int(gc.CONFIG_DATA.get("/console/cli/CmdMaxHistory", 40))
+            max_hist = int(gc.CONFIG_DATA.get("/console/cli/CmdMaxHistory", 100))
         except (TypeError, ValueError):
             pass
-        self.console = ConsolePanel(max_history=max_hist)
+        self.console = ConsolePanel(max_history=max_hist, load_saved=True)
         self.console.line_submitted.connect(self.on_cli_submit)
-        left.addWidget(self.console)
-        left.setStretchFactor(0, 3)
-        left.setStretchFactor(1, 2)
-        left.setSizes([480, 220])
-        body.addWidget(left)
+        self.dock_console = self._make_dock("Console", self.console, "dockConsole")
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
 
-        right = QWidget()
-        right.setMinimumWidth(280)
-        right.setMaximumWidth(420)
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(8)
         self.dro_panel = DroPanel()
-        right_layout.addWidget(self.dro_panel, 0)
+        self.dock_dro = self._make_dock("Machine Status", self.dro_panel, "dockDro")
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
+
         self.jog = JogPanel()
         self.jog.jog_relative.connect(self.on_jog_relative)
         self.jog.jog_stop.connect(self.on_jog_stop)
         self.jog.home_axes.connect(self.on_home_axes)
-        right_layout.addWidget(self.jog, 0)
-        right_layout.addStretch(1)
-        body.addWidget(right)
+        self.dock_jog = self._make_dock("Machine Jogging", self.jog, "dockJog")
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
+        self.splitDockWidget(
+            self.dock_dro, self.dock_jog, Qt.Orientation.Vertical
+        )
 
-        body.setStretchFactor(0, 1)
-        body.setStretchFactor(1, 0)
-        body.setSizes([900, 320])
-        layout.addWidget(body, 1)
+        # Default sizes (overridden by saved layout when present)
+        self.resizeDocks(
+            [self.dock_gcode], [700], Qt.Orientation.Horizontal
+        )
+        self.resizeDocks(
+            [self.dock_console], [200], Qt.Orientation.Vertical
+        )
 
         sb = QStatusBar(self)
         self.setStatusBar(sb)
@@ -225,6 +250,13 @@ class MainWindow(QMainWindow):
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
         sb.addWidget(self._status_detail, 1)
+
+        self._docks = {
+            "gcode": self.dock_gcode,
+            "console": self.dock_console,
+            "dro": self.dock_dro,
+            "jog": self.dock_jog,
+        }
 
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
@@ -294,6 +326,23 @@ class MainWindow(QMainWindow):
         focus_cli.setShortcut(QKeySequence("Ctrl+L"))
         focus_cli.triggered.connect(self.console.focus_cli)
         view_menu.addAction(focus_cli)
+        view_menu.addSeparator()
+        for key, dock in (
+            ("&G-code", "gcode"),
+            ("&Console", "console"),
+            ("Machine &Status", "dro"),
+            ("Machine &Jogging", "jog"),
+        ):
+            act = self._docks[dock].toggleViewAction()
+            act.setText(key)
+            view_menu.addAction(act)
+        view_menu.addSeparator()
+        save_layout = QAction("&Save layout", self)
+        save_layout.triggered.connect(self._save_layout)
+        view_menu.addAction(save_layout)
+        reset_layout = QAction("&Reset layout", self)
+        reset_layout.triggered.connect(self._reset_layout)
+        view_menu.addAction(reset_layout)
 
         help_menu = self.menuBar().addMenu("&Help")
         about_action = QAction("&About", self)
@@ -860,6 +909,60 @@ class MainWindow(QMainWindow):
             not in (gc.STATE_IDLE, gc.STATE_ABORT)
         )
 
+    # ------------------------------------------------------------------
+    # Layout persistence (Qt saveState ≈ wx AUI perspective)
+    # ------------------------------------------------------------------
+    _LAYOUT_KEY = "/pysideWorkbench/Layout/Default"
+
+    def _save_layout(self):
+        """Save dock arrangement + window geometry to config (like wx SaveLayoutData)."""
+        try:
+            state_b64 = base64.b64encode(bytes(self.saveState())).decode("ascii")
+            geo_b64 = base64.b64encode(bytes(self.saveGeometry())).decode("ascii")
+            gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/State", state_b64)
+            gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/Geometry", geo_b64)
+            gc.CONFIG_DATA.save()
+            self.append_log("Layout saved.")
+        except Exception as exc:
+            self.append_log(f"Layout save failed: {exc}")
+
+    def _load_layout(self):
+        """Restore docks/geometry if previously saved."""
+        try:
+            geo_b64 = gc.CONFIG_DATA.get(f"{self._LAYOUT_KEY}/Geometry", "") or ""
+            state_b64 = gc.CONFIG_DATA.get(f"{self._LAYOUT_KEY}/State", "") or ""
+            if geo_b64:
+                self.restoreGeometry(QByteArray(base64.b64decode(geo_b64)))
+            if state_b64:
+                self.restoreState(QByteArray(base64.b64decode(state_b64)))
+        except Exception as exc:
+            self.logger.warning("Layout load failed: %s", exc)
+
+    def _reset_layout(self):
+        """Clear saved layout and restore a sensible default dock arrangement."""
+        try:
+            gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/State", "")
+            gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/Geometry", "")
+            gc.CONFIG_DATA.save()
+        except Exception:
+            pass
+        # Re-dock to defaults
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_gcode)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
+        self.splitDockWidget(
+            self.dock_dro, self.dock_jog, Qt.Orientation.Vertical
+        )
+        for d in self._docks.values():
+            d.show()
+        self.append_log("Layout reset to defaults.")
+
     def closeEvent(self, event: QCloseEvent):
+        self._save_layout()
+        try:
+            self.console.save_history_to_config()
+        except Exception:
+            pass
         self.bridge.shutdown(join_timeout=2.0)
         event.accept()
