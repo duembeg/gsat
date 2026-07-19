@@ -36,15 +36,31 @@ from modules.pyside_workbench.gcode_highlighter import GcodeHighlighter
 
 
 class _LineNumberArea(QWidget):
+    """Gutter widget: line numbers + BP/PC strips (must handle its own clicks)."""
+
     def __init__(self, editor: "_GcodeEdit"):
         super().__init__(editor)
         self._editor = editor
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.setMouseTracking(True)
 
     def sizeHint(self) -> QSize:
         return QSize(self._editor.line_number_area_width(), 0)
 
     def paintEvent(self, event):
         self._editor.line_number_area_paint(event)
+
+    def mousePressEvent(self, event):
+        # Clicks land here (not on the QPlainTextEdit) — toggle BP only in BP strip
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self._editor.handle_gutter_click(event.position().toPoint()):
+                event.accept()
+                return
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        # Ignore double-click on gutter (wx toggles break on single margin click)
+        event.accept()
 
 
 class _GcodeEdit(QPlainTextEdit):
@@ -53,9 +69,9 @@ class _GcodeEdit(QPlainTextEdit):
     set_pc_requested = Signal(int)
     break_toggle_requested = Signal(int)
 
-    # Separate strips (like wx.stc margins 1=break, 2=PC) so they never overlap
-    MARGIN_BP = 16  # leftmost: red breakpoint circle (clickable)
-    MARGIN_PC = 16  # next: green PC arrow
+    # Match wx.stc margin order: line# | breakpoint | PC  (no drawn separators)
+    MARGIN_BP = 16
+    MARGIN_PC = 16
     # Minimum digit columns so 1000+ line files fit (grows with blockCount)
     MIN_LINE_DIGITS = 4
 
@@ -106,25 +122,26 @@ class _GcodeEdit(QPlainTextEdit):
         self._update_line_number_area_width(0)
         self._highlight_current_extras()
 
-    # --- line numbers + marker strips ---
-    def _markers_width(self) -> int:
-        return self.MARGIN_BP + self.MARGIN_PC
-
-    def line_number_area_width(self) -> int:
-        """BP strip | PC strip | line numbers (supports 1000+ lines).
-
-        AlignRight with a too-narrow box clips the *left* digits (10 → \"0\").
-        """
+    # --- line numbers + marker strips (wx order: line# | BP | PC) ---
+    def _line_number_column_width(self) -> int:
         n = max(1, self.blockCount())
         digits = max(self.MIN_LINE_DIGITS, len(str(n)))
         char_w = max(self.fontMetrics().horizontalAdvance("9"), 8)
-        # BP | PC | gap | digits | right pad
-        return self._markers_width() + 6 + char_w * digits + 10
+        return 6 + char_w * digits + 8
+
+    def _bp_strip_left(self) -> int:
+        return self._line_number_column_width()
+
+    def _pc_strip_left(self) -> int:
+        return self._line_number_column_width() + self.MARGIN_BP
+
+    def line_number_area_width(self) -> int:
+        """line# | BP | PC — same order as wx.stc margins 0/1/2."""
+        return self._line_number_column_width() + self.MARGIN_BP + self.MARGIN_PC
 
     def _update_line_number_area_width(self, _=None):
         w = self.line_number_area_width()
         self.setViewportMargins(w, 0, 0, 0)
-        # Keep margin widget geometry in sync when digit width jumps (9→10, 99→100)
         cr = self.contentsRect()
         self._line_number_area.setGeometry(
             QRect(cr.left(), cr.top(), w, cr.height())
@@ -150,19 +167,8 @@ class _GcodeEdit(QPlainTextEdit):
 
     def line_number_area_paint(self, event):
         painter = QPainter(self._line_number_area)
+        # Flat gutter like wx (no separator lines between strips)
         painter.fillRect(event.rect(), QColor("#F0F0F0"))
-
-        # Subtle vertical separators between BP | PC | line#
-        sep = QColor("#D0D0D0")
-        h = self._line_number_area.height()
-        painter.setPen(sep)
-        painter.drawLine(self.MARGIN_BP, 0, self.MARGIN_BP, h)
-        painter.drawLine(
-            self.MARGIN_BP + self.MARGIN_PC,
-            0,
-            self.MARGIN_BP + self.MARGIN_PC,
-            h,
-        )
 
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
@@ -171,25 +177,40 @@ class _GcodeEdit(QPlainTextEdit):
         )
         bottom = top + int(self.blockBoundingRect(block).height())
         row_h = self.fontMetrics().height()
+        ln_w = self._line_number_column_width()
+        bp_left = self._bp_strip_left()
+        pc_left = self._pc_strip_left()
 
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 cy = top + row_h // 2
 
-                # Strip 1: breakpoint (left)
+                # 1) Line number (left, right-aligned in its column)
+                number = str(block_number + 1)
+                painter.setPen(QColor("#606060"))
+                painter.drawText(
+                    2,
+                    top,
+                    ln_w - 4,
+                    row_h,
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                    number,
+                )
+
+                # 2) Breakpoint strip (middle) — clickable via handle_gutter_click
                 if block_number in self._breakpoints:
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.setBrush(QColor("#CC0000"))
                     r = 5
-                    cx = self.MARGIN_BP // 2
+                    cx = bp_left + self.MARGIN_BP // 2
                     painter.drawEllipse(cx - r, cy - r, 2 * r, 2 * r)
 
-                # Strip 2: PC arrow (middle) — always separate from BP
+                # 3) PC strip (right of BP, before code)
                 if block_number == self._pc:
                     painter.setPen(QColor("#008800"))
                     painter.setFont(self.font())
                     painter.drawText(
-                        self.MARGIN_BP,
+                        pc_left,
                         top,
                         self.MARGIN_PC,
                         row_h,
@@ -197,55 +218,43 @@ class _GcodeEdit(QPlainTextEdit):
                         "▶",
                     )
 
-                # Strip 3: line number (right-aligned)
-                number = str(block_number + 1)
-                painter.setPen(QColor("#606060"))
-                num_left = self._markers_width() + 4
-                num_width = self._line_number_area.width() - num_left - 6
-                painter.drawText(
-                    num_left,
-                    top,
-                    max(num_width, 1),
-                    row_h,
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                    number,
-                )
-
             block = block.next()
             top = bottom
             bottom = top + int(self.blockBoundingRect(block).height())
             block_number += 1
 
-    def mousePressEvent(self, event):
-        # Click only in BP strip → toggle breakpoint (not PC strip)
-        if event.button() == Qt.MouseButton.LeftButton:
-            x = event.position().x()
-            if x < self.MARGIN_BP:
-                y = int(event.position().y())
-                block = self.firstVisibleBlock()
-                top = int(
-                    self.blockBoundingGeometry(block)
-                    .translated(self.contentOffset())
-                    .top()
-                )
-                while block.isValid():
-                    bottom = top + int(self.blockBoundingRect(block).height())
-                    if top <= y < bottom:
-                        self.break_toggle_requested.emit(block.blockNumber())
-                        event.accept()
-                        return
-                    block = block.next()
-                    top = bottom
-        super().mousePressEvent(event)
+    def handle_gutter_click(self, pos) -> bool:
+        """Map a click in the gutter widget; toggle BP only if in BP strip.
+
+        Returns True if the click was consumed.
+        """
+        x = pos.x()
+        y = pos.y()
+        bp_left = self._bp_strip_left()
+        bp_right = bp_left + self.MARGIN_BP
+        if not (bp_left <= x < bp_right):
+            return False
+
+        block = self.firstVisibleBlock()
+        top = int(
+            self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
+        )
+        while block.isValid():
+            bottom = top + int(self.blockBoundingRect(block).height())
+            if top <= y < bottom:
+                self.break_toggle_requested.emit(block.blockNumber())
+                return True
+            block = block.next()
+            top = bottom
+        return False
 
     def mouseDoubleClickEvent(self, event):
-        # Double-click line body (past marker strips) → set PC
-        if event.position().x() >= self._markers_width():
-            cursor = self.cursorForPosition(event.position().toPoint())
-            self.set_pc_requested.emit(cursor.blockNumber())
-            event.accept()
-            return
-        super().mouseDoubleClickEvent(event)
+        # Double-click in text viewport → set PC
+        self.set_pc_requested.emit(self.textCursor().blockNumber())
+        # Prefer line under mouse
+        cursor = self.cursorForPosition(event.position().toPoint())
+        self.set_pc_requested.emit(cursor.blockNumber())
+        event.accept()
 
     def set_breakpoints(self, bps: set[int]):
         self._breakpoints = set(bps)
@@ -322,8 +331,8 @@ class GcodePanel(QWidget):
         self.list = self  # proxy selected_line helpers if needed
 
         hint = QLabel(
-            "Gutter: ● break | ▶ PC | line#  ·  Click left strip / F9: breakpoint  ·  "
-            "Double-click text: Set PC"
+            "Gutter (wx-style): line# | ● break (click strip) | ▶ PC  ·  "
+            "F9: toggle break  ·  Double-click text: Set PC"
         )
         hint.setStyleSheet("color: gray; font-size: 11px;")
         root.addWidget(hint)
