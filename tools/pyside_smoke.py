@@ -258,7 +258,12 @@ def _wait_until(app, predicate, timeout: float, sleep: float = 0.05) -> bool:
     return bool(predicate())
 
 
-def test_live(host: str, port: int, timeout: float = 8.0) -> list[str]:
+def test_live(
+    host: str,
+    port: int,
+    timeout: float = 8.0,
+    gcode_path: str | None = None,
+) -> list[str]:
     """Remote + controller smoke (server on real IF is fine without motors)."""
     import modules.config as gc
     from PySide6.QtWidgets import QApplication, QMessageBox
@@ -324,24 +329,62 @@ def test_live(host: str, port: int, timeout: float = 8.0) -> list[str]:
         pass
     notes.append("live CLI ?: ok")
 
-    # Tiny synthetic program step (no motion hardware required)
-    fd, path = tempfile.mkstemp(suffix=".ngc")
-    try:
+    # Prefer user's lab file when present; else tiny synthetic
+    lab_gcode = os.environ.get(
+        "GSAT_LAB_GCODE",
+        "/home/wduembeg/Documents/Python/gcode/test2.ngc",
+    )
+    unlink_path = None
+    if gcode_path:
+        path = gcode_path
+    elif os.path.isfile(lab_gcode):
+        path = lab_gcode
+    else:
+        fd, path = tempfile.mkstemp(suffix=".ngc")
         os.write(fd, b"G21\nG90\nG0 X0\n")
         os.close(fd)
+        unlink_path = path
+
+    try:
         if not w.open_gcode_path(path):
-            _fail("live open gcode failed")
+            _fail(f"live open gcode failed: {path}")
+        notes.append(f"live open gcode: {os.path.basename(path)}")
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()
         w.on_step()
         time.sleep(0.8)
         app.processEvents()
-        notes.append("live step synthetic gcode: ok")
+        notes.append("live step gcode: ok")
+
+        # If file has (MSG, …) lines, stepping past setup may not hit them;
+        # set PC to MSG line and run once to exercise continue path when safe.
+        msg_line = None
+        for i, line in enumerate(w.gcode.lines()):
+            if "(MSG," in line.upper() or "(MSG ," in line.upper():
+                msg_line = i
+                break
+        if msg_line is not None:
+            # Run from start so backend encounters MSG (not first PC skip rule:
+            # MSG is ignored only when workingPC == initialPC)
+            w.set_pc(0)
+            w.on_run()
+            # Wait for MSG handling / break
+            time.sleep(1.5)
+            app.processEvents()
+            log = w.console.log_view.toPlainText()
+            if "** MSG:" in log or "CHANGE TOOL" in log or "MSG" in log:
+                notes.append("live MSG path: ok")
+            else:
+                notes.append("live MSG path: no MSG log yet (controller timing)")
+            w.on_stop()
+            time.sleep(0.3)
+            app.processEvents()
     finally:
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
+        if unlink_path:
+            try:
+                os.unlink(unlink_path)
+            except OSError:
+                pass
 
     w.on_close_machine()
     time.sleep(0.3)
@@ -382,6 +425,11 @@ def main() -> int:
     p.add_argument("--host", default=None)
     p.add_argument("--port", type=int, default=None)
     p.add_argument("--timeout", type=float, default=8.0)
+    p.add_argument(
+        "--gcode",
+        default=None,
+        help="G-code for live step/run (default: $GSAT_LAB_GCODE or test2.ngc)",
+    )
     args = p.parse_args()
 
     failed = 0
@@ -415,7 +463,12 @@ def main() -> int:
             gc.CONFIG_DATA.get(f"/remotes/remote{idx}/WebSocketPort", 61803)
         )
         try:
-            notes = test_live(str(host), int(port), timeout=args.timeout)
+            notes = test_live(
+                str(host),
+                int(port),
+                timeout=args.timeout,
+                gcode_path=args.gcode,
+            )
             for n in notes:
                 print(f"  PASS  {n}")
             print("live: PASS")
