@@ -53,8 +53,9 @@ class _GcodeEdit(QPlainTextEdit):
     set_pc_requested = Signal(int)
     break_toggle_requested = Signal(int)
 
-    # Breakpoint / PC glyph strip (left of line numbers)
-    MARGIN_BP = 20
+    # Separate strips (like wx.stc margins 1=break, 2=PC) so they never overlap
+    MARGIN_BP = 16  # leftmost: red breakpoint circle (clickable)
+    MARGIN_PC = 16  # next: green PC arrow
     # Minimum digit columns so 1000+ line files fit (grows with blockCount)
     MIN_LINE_DIGITS = 4
 
@@ -105,18 +106,20 @@ class _GcodeEdit(QPlainTextEdit):
         self._update_line_number_area_width(0)
         self._highlight_current_extras()
 
-    # --- line numbers ---
-    def line_number_area_width(self) -> int:
-        """Width for BP/PC margin + full line numbers (supports 1000+ lines).
+    # --- line numbers + marker strips ---
+    def _markers_width(self) -> int:
+        return self.MARGIN_BP + self.MARGIN_PC
 
-        AlignRight with a too-narrow box clips the *left* digits (10 → \"0\"),
-        so size from digit count with comfortable padding.
+    def line_number_area_width(self) -> int:
+        """BP strip | PC strip | line numbers (supports 1000+ lines).
+
+        AlignRight with a too-narrow box clips the *left* digits (10 → \"0\").
         """
         n = max(1, self.blockCount())
         digits = max(self.MIN_LINE_DIGITS, len(str(n)))
         char_w = max(self.fontMetrics().horizontalAdvance("9"), 8)
-        # BP strip | gap | digits | right pad before text
-        return self.MARGIN_BP + 6 + char_w * digits + 10
+        # BP | PC | gap | digits | right pad
+        return self._markers_width() + 6 + char_w * digits + 10
 
     def _update_line_number_area_width(self, _=None):
         w = self.line_number_area_width()
@@ -149,50 +152,64 @@ class _GcodeEdit(QPlainTextEdit):
         painter = QPainter(self._line_number_area)
         painter.fillRect(event.rect(), QColor("#F0F0F0"))
 
+        # Subtle vertical separators between BP | PC | line#
+        sep = QColor("#D0D0D0")
+        h = self._line_number_area.height()
+        painter.setPen(sep)
+        painter.drawLine(self.MARGIN_BP, 0, self.MARGIN_BP, h)
+        painter.drawLine(
+            self.MARGIN_BP + self.MARGIN_PC,
+            0,
+            self.MARGIN_BP + self.MARGIN_PC,
+            h,
+        )
+
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
         top = int(
             self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
         )
         bottom = top + int(self.blockBoundingRect(block).height())
+        row_h = self.fontMetrics().height()
 
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
-                # Breakpoint glyph
+                cy = top + row_h // 2
+
+                # Strip 1: breakpoint (left)
                 if block_number in self._breakpoints:
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.setBrush(QColor("#CC0000"))
                     r = 5
                     cx = self.MARGIN_BP // 2
-                    cy = top + self.fontMetrics().height() // 2
                     painter.drawEllipse(cx - r, cy - r, 2 * r, 2 * r)
 
-                # Line number (right-aligned in the digit column only)
+                # Strip 2: PC arrow (middle) — always separate from BP
+                if block_number == self._pc:
+                    painter.setPen(QColor("#008800"))
+                    painter.setFont(self.font())
+                    painter.drawText(
+                        self.MARGIN_BP,
+                        top,
+                        self.MARGIN_PC,
+                        row_h,
+                        Qt.AlignmentFlag.AlignCenter,
+                        "▶",
+                    )
+
+                # Strip 3: line number (right-aligned)
                 number = str(block_number + 1)
                 painter.setPen(QColor("#606060"))
-                num_left = self.MARGIN_BP + 4
+                num_left = self._markers_width() + 4
                 num_width = self._line_number_area.width() - num_left - 6
                 painter.drawText(
                     num_left,
                     top,
                     max(num_width, 1),
-                    self.fontMetrics().height(),
+                    row_h,
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                     number,
                 )
-
-                # PC arrow
-                if block_number == self._pc:
-                    painter.setPen(QColor("#008800"))
-                    painter.setFont(self.font())
-                    painter.drawText(
-                        2,
-                        top,
-                        self.MARGIN_BP - 2,
-                        self.fontMetrics().height(),
-                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                        "▶",
-                    )
 
             block = block.next()
             top = bottom
@@ -200,10 +217,10 @@ class _GcodeEdit(QPlainTextEdit):
             block_number += 1
 
     def mousePressEvent(self, event):
-        # Click in BP margin → toggle breakpoint
+        # Click only in BP strip → toggle breakpoint (not PC strip)
         if event.button() == Qt.MouseButton.LeftButton:
-            if event.position().x() < self.MARGIN_BP:
-                # map y to block
+            x = event.position().x()
+            if x < self.MARGIN_BP:
                 y = int(event.position().y())
                 block = self.firstVisibleBlock()
                 top = int(
@@ -222,8 +239,8 @@ class _GcodeEdit(QPlainTextEdit):
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        # Double-click line body → set PC
-        if event.position().x() >= self.MARGIN_BP:
+        # Double-click line body (past marker strips) → set PC
+        if event.position().x() >= self._markers_width():
             cursor = self.cursorForPosition(event.position().toPoint())
             self.set_pc_requested.emit(cursor.blockNumber())
             event.accept()
@@ -305,8 +322,8 @@ class GcodePanel(QWidget):
         self.list = self  # proxy selected_line helpers if needed
 
         hint = QLabel(
-            "Double-click line: Set PC  ·  Click left margin / F9: breakpoint  ·  "
-            "Highlight = wx-style G/M/axis/comments"
+            "Gutter: ● break | ▶ PC | line#  ·  Click left strip / F9: breakpoint  ·  "
+            "Double-click text: Set PC"
         )
         hint.setStyleSheet("color: gray; font-size: 11px;")
         root.addWidget(hint)
