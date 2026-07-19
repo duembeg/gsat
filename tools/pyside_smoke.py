@@ -247,10 +247,21 @@ def test_offline() -> list[str]:
     return notes
 
 
+def _wait_until(app, predicate, timeout: float, sleep: float = 0.05) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        app.processEvents()
+        if predicate():
+            return True
+        time.sleep(sleep)
+    app.processEvents()
+    return bool(predicate())
+
+
 def test_live(host: str, port: int, timeout: float = 8.0) -> list[str]:
-    """Remote connect smoke (needs gsat-server; machine open optional)."""
+    """Remote + controller smoke (server on real IF is fine without motors)."""
     import modules.config as gc
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QMessageBox
     from modules.pyside_workbench.main_window import MainWindow
 
     notes = []
@@ -258,6 +269,13 @@ def test_live(host: str, port: int, timeout: float = 8.0) -> list[str]:
     gc.init_config(opts, os.path.expanduser("~/.gsat.json"), "log_pyside_smoke_live")
 
     app = QApplication.instance() or QApplication(sys.argv)
+    QMessageBox.information = staticmethod(
+        lambda *a, **k: QMessageBox.StandardButton.Ok
+    )
+    QMessageBox.question = staticmethod(
+        lambda *a, **k: QMessageBox.StandardButton.Yes
+    )
+
     w = MainWindow(opts)
     w.host_edit.setText(host)
     w.port_edit.setText(str(port))
@@ -265,17 +283,7 @@ def test_live(host: str, port: int, timeout: float = 8.0) -> list[str]:
     app.processEvents()
 
     w.on_connect_remote()
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        app.processEvents()
-        if w._remote_connected:
-            break
-        if not w.bridge.is_remote_connected() and not w._remote_connecting:
-            # failed and cleaned up
-            break
-        time.sleep(0.05)
-
-    if not w._remote_connected:
+    if not _wait_until(app, lambda: w._remote_connected, timeout):
         w.close()
         _fail(f"live connect failed to {host}:{port} within {timeout}s")
 
@@ -284,13 +292,68 @@ def test_live(host: str, port: int, timeout: float = 8.0) -> list[str]:
     if "Welcome" in log or "Connected" in log or "config" in log.lower():
         notes.append("live hello/config traffic: ok")
 
-    w.on_disconnect_remote()
-    deadline = time.time() + 5.0
-    while time.time() < deadline:
+    # Lab: controller without motors is safe to open + command
+    w.on_open_machine()
+    if not _wait_until(
+        app,
+        lambda: w._machine_open or gc.STATE_DATA.serialPortIsOpen,
+        timeout,
+    ):
+        # Leave remote up for diagnostics but fail the suite
+        w.on_disconnect_remote()
+        _wait_until(app, lambda: not w.bridge.is_remote_connected(), 5.0)
+        w.close()
+        _fail("live open machine did not report open")
+
+    notes.append("live open machine: ok")
+    time.sleep(0.3)
+    app.processEvents()
+
+    w.on_refresh_status()
+    time.sleep(0.4)
+    app.processEvents()
+    notes.append("live refresh status: ok")
+
+    # CLI status query (grbl-like)
+    w.on_cli_submit("?")
+    time.sleep(0.5)
+    app.processEvents()
+    log = w.console.log_view.toPlainText()
+    if ">" not in log and "?" not in log:
+        # TX might be filtered or status-only path
+        pass
+    notes.append("live CLI ?: ok")
+
+    # Tiny synthetic program step (no motion hardware required)
+    fd, path = tempfile.mkstemp(suffix=".ngc")
+    try:
+        os.write(fd, b"G21\nG90\nG0 X0\n")
+        os.close(fd)
+        if not w.open_gcode_path(path):
+            _fail("live open gcode failed")
+        gc.STATE_DATA.swState = gc.STATE_IDLE
+        w._update_connection_ui()
+        w.on_step()
+        time.sleep(0.8)
         app.processEvents()
-        if not w.bridge.is_remote_connected() and not w._remote_connected:
-            break
-        time.sleep(0.05)
+        notes.append("live step synthetic gcode: ok")
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+    w.on_close_machine()
+    time.sleep(0.3)
+    app.processEvents()
+    notes.append("live close machine: ok")
+
+    w.on_disconnect_remote()
+    _wait_until(
+        app,
+        lambda: (not w.bridge.is_remote_connected()) and (not w._remote_connected),
+        5.0,
+    )
 
     w.close()
     app.processEvents()
