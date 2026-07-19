@@ -959,7 +959,8 @@ class MainWindow(QMainWindow):
         self.append_log("Layout reset to defaults.")
 
     def closeEvent(self, event: QCloseEvent):
-        self._save_layout()
+        # Layout is saved only via View → Save layout (not on quit), so a
+        # messy rearrange is not persisted by accident.
         try:
             self.console.save_history_to_config()
         except Exception:
