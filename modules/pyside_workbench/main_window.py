@@ -32,6 +32,7 @@ from modules.pyside_workbench.client_bridge import ClientBridge
 from modules.pyside_workbench.console_panel import ConsolePanel
 from modules.pyside_workbench.dro_panel import DroPanel
 from modules.pyside_workbench.gcode_panel import GcodePanel
+from modules.pyside_workbench.jog_panel import JogPanel
 
 
 class MainWindow(QMainWindow):
@@ -177,6 +178,12 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         self.dro_panel = DroPanel()
         right_layout.addWidget(self.dro_panel, 0)
+
+        self.jog = JogPanel()
+        self.jog.jog_relative.connect(self.on_jog_relative)
+        self.jog.jog_stop.connect(self.on_jog_stop)
+        self.jog.home_axes.connect(self.on_home_axes)
+        right_layout.addWidget(self.jog, 0)
 
         max_hist = 40
         try:
@@ -434,6 +441,44 @@ class MainWindow(QMainWindow):
         if self.bridge.is_backend_active():
             self.bridge.send_command(gc.EV_CMD_STOP)
             self.append_log("Stop requested.")
+
+    @Slot(str, str, bool, object)
+    def on_jog_relative(self, axis: str, step_str: str, rapid: bool, feed):
+        if not self.bridge.is_backend_active():
+            self.append_log("Jog: no machine backend.")
+            return
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if not machine_open:
+            self.append_log("Jog: machine not open.")
+            return
+        if gc.STATE_DATA.swState == gc.STATE_RUN:
+            self.append_log("Jog: blocked while program is running.")
+            return
+        payload = {str(axis).lower(): step_str}
+        if rapid:
+            cmd = gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE
+        else:
+            cmd = gc.EV_CMD_JOG_MOVE_RELATIVE
+            if feed is not None:
+                payload["feed"] = feed
+        self.bridge.send_command(cmd, payload)
+
+    @Slot()
+    def on_jog_stop(self):
+        if self.bridge.is_backend_active():
+            self.bridge.send_command(gc.EV_CMD_JOG_STOP)
+
+    @Slot(dict)
+    def on_home_axes(self, axes: dict):
+        if not self.bridge.is_backend_active():
+            self.append_log("Home: no machine backend.")
+            return
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if not machine_open:
+            self.append_log("Home: machine not open.")
+            return
+        self.bridge.send_command(gc.EV_CMD_HOME, dict(axes))
+        self.append_log(f"Home requested: {','.join(sorted(axes.keys())).upper()}")
 
     # ------------------------------------------------------------------
     # Connection actions
@@ -743,6 +788,10 @@ class MainWindow(QMainWindow):
 
         cli_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.console.set_cli_enabled(cli_ok)
+
+        # Jog when machine open and not in a full RUN (align / idle / break OK)
+        jog_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
+        self.jog.set_enabled(jog_ok)
 
         self.btn_set_pc.setEnabled(has_gcode and idleish)
         self.btn_reset_pc.setEnabled(has_gcode and idleish)

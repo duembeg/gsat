@@ -236,6 +236,29 @@ def test_offline() -> list[str]:
             _fail(f"history up expected cmd-a got {w.console.cli.text()!r}")
         notes.append("cli history: ok")
 
+        # --- jog essentials ---
+        gc.STATE_DATA.swState = gc.STATE_IDLE
+        w._update_connection_ui()
+        n_before = len(fake.events)
+        w.on_jog_relative("x", "1.000", False, 500.0)
+        if len(fake.events) <= n_before:
+            _fail("jog did not send event")
+        eid, data, _ = fake.events[-1]
+        if eid != gc.EV_CMD_JOG_MOVE_RELATIVE:
+            _fail(f"jog expected EV_CMD_JOG_MOVE_RELATIVE got {eid}")
+        if data.get("x") != "1.000" or data.get("feed") != 500.0:
+            _fail(f"jog payload wrong: {data}")
+        w.on_jog_relative("y", "-0.100", True, None)
+        if fake.events[-1][0] != gc.EV_CMD_JOG_RAPID_MOVE_RELATIVE:
+            _fail("rapid jog wrong event")
+        w.on_jog_stop()
+        if fake.events[-1][0] != gc.EV_CMD_JOG_STOP:
+            _fail("jog stop missing")
+        w.on_home_axes({"x": 0, "y": 0})
+        if fake.events[-1][0] != gc.EV_CMD_HOME:
+            _fail("home missing")
+        notes.append("jog/home: ok")
+
     finally:
         try:
             os.unlink(path)
@@ -328,6 +351,15 @@ def test_live(
         # TX might be filtered or status-only path
         pass
     notes.append("live CLI ?: ok")
+
+    # Small jog (lab controller has no motors — safe)
+    w.on_jog_relative("x", "0.100", False, 500.0)
+    time.sleep(0.5)
+    app.processEvents()
+    w.on_jog_relative("x", "-0.100", False, 500.0)
+    time.sleep(0.5)
+    app.processEvents()
+    notes.append("live jog ±X 0.1: ok")
 
     # Prefer user's lab file when present; else tiny synthetic
     lab_gcode = os.environ.get(
