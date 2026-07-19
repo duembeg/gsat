@@ -239,6 +239,24 @@ def test_offline() -> list[str]:
             _fail(f"history up expected cmd-a got {w.console.cli.text()!r}")
         notes.append("cli history: ok")
 
+        # --- CLI history popup (insert, no auto-send) ---
+        w.console.show_history_popup()
+        app.processEvents()
+        if not w.console._popup.isVisible():
+            _fail("history popup not visible")
+        if w.console._popup.list.count() < 2:
+            _fail("history popup missing items")
+        # Newest first: last submitted was cmd-b
+        if w.console._popup.list.item(0).text() != "cmd-b":
+            _fail(f"popup newest should be cmd-b: {w.console._popup.list.item(0).text()}")
+        w.console._on_history_chosen("cmd-a")
+        app.processEvents()
+        if w.console.cli.text() != "cmd-a":
+            _fail("history insert failed")
+        if w.console._popup.isVisible():
+            _fail("popup should hide after choose")
+        notes.append("cli history popup: ok")
+
         # --- jog essentials ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()
