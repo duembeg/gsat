@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -28,11 +29,29 @@ from PySide6.QtWidgets import (
 import modules.config as gc
 import modules.version_info as vinfo
 
+from modules.pyside_workbench import theme
 from modules.pyside_workbench.client_bridge import ClientBridge
 from modules.pyside_workbench.console_panel import ConsolePanel
 from modules.pyside_workbench.dro_panel import DroPanel
 from modules.pyside_workbench.gcode_panel import GcodePanel
 from modules.pyside_workbench.jog_panel import JogPanel
+
+
+def _tool_strip(title: str) -> tuple[QFrame, QHBoxLayout]:
+    """Labeled horizontal action strip (shared chrome for future panels)."""
+    frame = QFrame()
+    frame.setObjectName("toolbarStrip")
+    outer = QHBoxLayout(frame)
+    outer.setContentsMargins(8, 6, 8, 6)
+    outer.setSpacing(6)
+    if title:
+        lbl = QLabel(title)
+        lbl.setObjectName("sectionLabel")
+        outer.addWidget(lbl)
+    row = QHBoxLayout()
+    row.setSpacing(4)
+    outer.addLayout(row, 1)
+    return frame, row
 
 
 class MainWindow(QMainWindow):
@@ -41,8 +60,8 @@ class MainWindow(QMainWindow):
         self.cmd_line_options = cmd_line_options
         self.logger = logging.getLogger(__name__)
 
-        self.setWindowTitle(f"{vinfo.__appname__} — PySide workbench (spike)")
-        self.resize(1100, 720)
+        self.setWindowTitle(f"{vinfo.__appname__} — PySide workbench")
+        self.resize(1280, 800)
 
         self.bridge = ClientBridge(self)
         self.bridge.backend_event.connect(self.on_backend_event)
@@ -65,125 +84,105 @@ class MainWindow(QMainWindow):
         central = QWidget(self)
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
+        layout.setContentsMargins(8, 8, 8, 6)
+        layout.setSpacing(8)
 
-        # Remote connection strip
-        remote_row = QHBoxLayout()
-        remote_row.addWidget(QLabel("Host:"))
+        # --- Connection strip ---
+        conn_frame, conn_row = _tool_strip("Remote")
+        conn_row.addWidget(QLabel("Host"))
         self.host_edit = QLineEdit()
-        self.host_edit.setMinimumWidth(160)
-        remote_row.addWidget(self.host_edit)
-
-        remote_row.addWidget(QLabel("Port:"))
+        self.host_edit.setMinimumWidth(140)
+        self.host_edit.setMaximumWidth(220)
+        conn_row.addWidget(self.host_edit)
+        conn_row.addWidget(QLabel("Port"))
         self.port_edit = QLineEdit()
-        self.port_edit.setMaximumWidth(80)
-        remote_row.addWidget(self.port_edit)
-
-        self.btn_connect = QPushButton("Connect remote")
+        self.port_edit.setMaximumWidth(72)
+        conn_row.addWidget(self.port_edit)
+        self.btn_connect = QPushButton("Connect")
+        self.btn_connect.setObjectName("btnPrimary")
         self.btn_connect.clicked.connect(self.on_connect_remote)
-        remote_row.addWidget(self.btn_connect)
-
+        conn_row.addWidget(self.btn_connect)
         self.btn_disconnect = QPushButton("Disconnect")
         self.btn_disconnect.clicked.connect(self.on_disconnect_remote)
-        remote_row.addWidget(self.btn_disconnect)
-
-        remote_row.addStretch(1)
-        layout.addLayout(remote_row)
-
-        # Machine + program actions
-        machine_row = QHBoxLayout()
-        self.btn_open_file = QPushButton("Open G-code…")
-        self.btn_open_file.clicked.connect(self.on_open_gcode)
-        machine_row.addWidget(self.btn_open_file)
-
+        conn_row.addWidget(self.btn_disconnect)
+        conn_row.addSpacing(12)
         self.btn_open = QPushButton("Open machine")
         self.btn_open.clicked.connect(self.on_open_machine)
-        machine_row.addWidget(self.btn_open)
-
+        conn_row.addWidget(self.btn_open)
         self.btn_close = QPushButton("Close machine")
         self.btn_close.clicked.connect(self.on_close_machine)
-        machine_row.addWidget(self.btn_close)
-
-        self.btn_refresh = QPushButton("Refresh status")
+        conn_row.addWidget(self.btn_close)
+        self.btn_refresh = QPushButton("Refresh")
         self.btn_refresh.setToolTip("Request one status update (no auto-poll)")
         self.btn_refresh.clicked.connect(self.on_refresh_status)
-        machine_row.addWidget(self.btn_refresh)
-
-        self.btn_local = QPushButton("Open local (serial)")
+        conn_row.addWidget(self.btn_refresh)
+        self.btn_local = QPushButton("Local serial")
         self.btn_local.setToolTip(
             "Start MachIfExecuteThread using machine settings from ~/.gsat.json"
         )
         self.btn_local.clicked.connect(self.on_open_local)
-        machine_row.addWidget(self.btn_local)
+        conn_row.addWidget(self.btn_local)
+        conn_row.addStretch(1)
+        self.status_badge = QLabel("offline")
+        self.status_badge.setObjectName("statusBadge")
+        self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        conn_row.addWidget(self.status_badge)
+        layout.addWidget(conn_frame)
 
-        machine_row.addSpacing(12)
-
+        # --- Program strip ---
+        prog_frame, prog_row = _tool_strip("Program")
+        self.btn_open_file = QPushButton("Open G-code…")
+        self.btn_open_file.clicked.connect(self.on_open_gcode)
+        prog_row.addWidget(self.btn_open_file)
+        prog_row.addSpacing(8)
         self.btn_set_pc = QPushButton("Set PC")
         self.btn_set_pc.setToolTip("Set program counter to selected G-code line")
         self.btn_set_pc.clicked.connect(self.on_set_pc)
-        machine_row.addWidget(self.btn_set_pc)
-
+        prog_row.addWidget(self.btn_set_pc)
         self.btn_reset_pc = QPushButton("Reset PC")
         self.btn_reset_pc.clicked.connect(self.on_reset_pc)
-        machine_row.addWidget(self.btn_reset_pc)
-
+        prog_row.addWidget(self.btn_reset_pc)
         self.btn_goto_pc = QPushButton("Goto PC")
         self.btn_goto_pc.clicked.connect(self.on_goto_pc)
-        machine_row.addWidget(self.btn_goto_pc)
-
+        prog_row.addWidget(self.btn_goto_pc)
         self.btn_break = QPushButton("Break")
         self.btn_break.setToolTip("Toggle breakpoint on selected line (F9)")
         self.btn_break.clicked.connect(self.on_break_toggle)
-        machine_row.addWidget(self.btn_break)
-
+        prog_row.addWidget(self.btn_break)
         self.btn_break_clear = QPushButton("Clear BP")
         self.btn_break_clear.setToolTip("Remove all breakpoints")
         self.btn_break_clear.clicked.connect(self.on_break_clear)
-        machine_row.addWidget(self.btn_break_clear)
-
+        prog_row.addWidget(self.btn_break_clear)
+        prog_row.addSpacing(10)
         self.btn_run = QPushButton("Run")
-        self.btn_run.setToolTip("Run program from PC (EV_CMD_RUN)")
+        self.btn_run.setObjectName("btnPrimary")
+        self.btn_run.setToolTip("Run program from PC (F5)")
         self.btn_run.clicked.connect(self.on_run)
-        machine_row.addWidget(self.btn_run)
-
+        prog_row.addWidget(self.btn_run)
         self.btn_pause = QPushButton("Pause")
-        self.btn_pause.setToolTip("Pause program (EV_CMD_PAUSE)")
         self.btn_pause.clicked.connect(self.on_pause)
-        machine_row.addWidget(self.btn_pause)
-
+        prog_row.addWidget(self.btn_pause)
         self.btn_step = QPushButton("Step")
-        self.btn_step.setToolTip("Step one G-code line (EV_CMD_STEP)")
+        self.btn_step.setToolTip("Step one G-code line (F10)")
         self.btn_step.clicked.connect(self.on_step)
-        machine_row.addWidget(self.btn_step)
-
+        prog_row.addWidget(self.btn_step)
         self.btn_stop = QPushButton("Stop")
+        self.btn_stop.setObjectName("btnDanger")
         self.btn_stop.clicked.connect(self.on_stop)
-        machine_row.addWidget(self.btn_stop)
+        prog_row.addWidget(self.btn_stop)
+        prog_row.addStretch(1)
+        layout.addWidget(prog_frame)
 
-        machine_row.addStretch(1)
-        layout.addLayout(machine_row)
-
-        self.connection_label = QLabel("Connection: idle")
-        layout.addWidget(self.connection_label)
-
-        # Main body: G-code | DRO / console
+        # --- Main workspace: G-code + console | DRO + jog ---
         body = QSplitter(Qt.Orientation.Horizontal)
+        body.setChildrenCollapsible(False)
 
+        left = QSplitter(Qt.Orientation.Vertical)
+        left.setChildrenCollapsible(False)
         self.gcode = GcodePanel()
         self.gcode.set_pc_requested.connect(self.set_pc)
         self.gcode.break_toggled.connect(self.on_break_toggled)
-        body.addWidget(self.gcode)
-
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        self.dro_panel = DroPanel()
-        right_layout.addWidget(self.dro_panel, 0)
-
-        self.jog = JogPanel()
-        self.jog.jog_relative.connect(self.on_jog_relative)
-        self.jog.jog_stop.connect(self.on_jog_stop)
-        self.jog.home_axes.connect(self.on_home_axes)
-        right_layout.addWidget(self.jog, 0)
+        left.addWidget(self.gcode)
 
         max_hist = 40
         try:
@@ -192,17 +191,40 @@ class MainWindow(QMainWindow):
             pass
         self.console = ConsolePanel(max_history=max_hist)
         self.console.line_submitted.connect(self.on_cli_submit)
-        right_layout.addWidget(self.console, 1)
+        left.addWidget(self.console)
+        left.setStretchFactor(0, 3)
+        left.setStretchFactor(1, 2)
+        left.setSizes([480, 220])
+        body.addWidget(left)
+
+        right = QWidget()
+        right.setMinimumWidth(280)
+        right.setMaximumWidth(420)
+        right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(8)
+        self.dro_panel = DroPanel()
+        right_layout.addWidget(self.dro_panel, 0)
+        self.jog = JogPanel()
+        self.jog.jog_relative.connect(self.on_jog_relative)
+        self.jog.jog_stop.connect(self.on_jog_stop)
+        self.jog.home_axes.connect(self.on_home_axes)
+        right_layout.addWidget(self.jog, 0)
+        right_layout.addStretch(1)
         body.addWidget(right)
 
-        body.setStretchFactor(0, 3)
-        body.setStretchFactor(1, 2)
+        body.setStretchFactor(0, 1)
+        body.setStretchFactor(1, 0)
+        body.setSizes([900, 320])
         layout.addWidget(body, 1)
 
-        self.setStatusBar(QStatusBar(self))
-        self.statusBar().showMessage(
-            "PySide workbench — open G-code, connect, step"
+        sb = QStatusBar(self)
+        self.setStatusBar(sb)
+        self._status_detail = QLabel("")
+        self._status_detail.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
         )
+        sb.addWidget(self._status_detail, 1)
 
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
@@ -770,9 +792,34 @@ class MainWindow(QMainWindow):
             parts.append("machine=closed")
 
         parts.append(f"swState={gc.STATE_DATA.swState}")
-        parts.append(f"stat={gc.STATE_DATA.machineStatusString}")
+        parts.append(f"stat={gc.STATE_DATA.machineStatusString or '—'}")
         parts.append(f"PC={gc.STATE_DATA.programCounter}")
-        self.connection_label.setText("Connection: " + " | ".join(parts))
+
+        # Badge: machine / software state first (must stay obvious)
+        if machine_open and gc.STATE_DATA.machineStatusString:
+            badge = str(gc.STATE_DATA.machineStatusString)
+            bkey = theme.state_color_key(
+                gc.STATE_DATA.machineStatusString, gc.STATE_DATA.swState
+            )
+        elif remote:
+            badge, bkey = "remote", "remote"
+        elif connecting:
+            badge, bkey = "connecting", "unknown"
+        else:
+            badge, bkey = "offline", "offline"
+        if gc.STATE_DATA.swState == gc.STATE_RUN:
+            badge, bkey = "RUN", "run"
+        elif gc.STATE_DATA.swState == gc.STATE_BREAK:
+            badge, bkey = "BREAK", "break"
+        elif gc.STATE_DATA.swState == gc.STATE_PAUSE:
+            badge, bkey = "PAUSE", "pause"
+        color = theme.STATE_COLORS.get(bkey, theme.STATE_COLORS["unknown"])
+        self.status_badge.setText(badge)
+        self.status_badge.setStyleSheet(
+            f"QLabel#statusBadge {{ background: {color}; color: white;"
+            f" border-radius: 10px; padding: 3px 10px; font-weight: 600; }}"
+        )
+        self._status_detail.setText("  ·  ".join(parts))
 
         client_alive = self.bridge.is_remote_connected()
         busy_remote = remote or connecting or client_alive
@@ -789,7 +836,6 @@ class MainWindow(QMainWindow):
         cli_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.console.set_cli_enabled(cli_ok)
 
-        # Jog when machine open and not in a full RUN (align / idle / break OK)
         jog_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.jog.set_enabled(jog_ok)
 
@@ -813,8 +859,6 @@ class MainWindow(QMainWindow):
             and gc.STATE_DATA.swState
             not in (gc.STATE_IDLE, gc.STATE_ABORT)
         )
-
-        self.statusBar().showMessage(" | ".join(parts))
 
     def closeEvent(self, event: QCloseEvent):
         self.bridge.shutdown(join_timeout=2.0)

@@ -140,6 +140,7 @@ class ConsolePanel(QWidget):
         root.setSpacing(4)
 
         self.log_view = QPlainTextEdit()
+        self.log_view.setObjectName("consoleView")
         self.log_view.setReadOnly(True)
         self.log_view.setPlaceholderText("Console — machine RX/TX and events …")
         self.log_view.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
@@ -150,6 +151,7 @@ class ConsolePanel(QWidget):
         cli_row.addWidget(QLabel("CLI:"))
 
         self.cli = _CliLineEdit()
+        self.cli.setObjectName("cliInput")
         self.cli.setPlaceholderText(
             "Send line to machine (Enter) — e.g. ?  G0 X0  $J=G91 X1 F500"
         )
