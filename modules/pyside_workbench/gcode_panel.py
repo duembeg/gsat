@@ -53,7 +53,10 @@ class _GcodeEdit(QPlainTextEdit):
     set_pc_requested = Signal(int)
     break_toggle_requested = Signal(int)
 
-    MARGIN_BP = 18
+    # Breakpoint / PC glyph strip (left of line numbers)
+    MARGIN_BP = 20
+    # Minimum digit columns so 1000+ line files fit (grows with blockCount)
+    MIN_LINE_DIGITS = 4
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -104,12 +107,26 @@ class _GcodeEdit(QPlainTextEdit):
 
     # --- line numbers ---
     def line_number_area_width(self) -> int:
-        digits = max(1, len(str(max(1, self.blockCount()))))
-        space = 8 + self.fontMetrics().horizontalAdvance("9") * digits
-        return self.MARGIN_BP + space
+        """Width for BP/PC margin + full line numbers (supports 1000+ lines).
 
-    def _update_line_number_area_width(self, _):
-        self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
+        AlignRight with a too-narrow box clips the *left* digits (10 → \"0\"),
+        so size from digit count with comfortable padding.
+        """
+        n = max(1, self.blockCount())
+        digits = max(self.MIN_LINE_DIGITS, len(str(n)))
+        char_w = max(self.fontMetrics().horizontalAdvance("9"), 8)
+        # BP strip | gap | digits | right pad before text
+        return self.MARGIN_BP + 6 + char_w * digits + 10
+
+    def _update_line_number_area_width(self, _=None):
+        w = self.line_number_area_width()
+        self.setViewportMargins(w, 0, 0, 0)
+        # Keep margin widget geometry in sync when digit width jumps (9→10, 99→100)
+        cr = self.contentsRect()
+        self._line_number_area.setGeometry(
+            QRect(cr.left(), cr.top(), w, cr.height())
+        )
+        self._line_number_area.update()
 
     def _update_line_number_area(self, rect, dy):
         if dy:
@@ -150,15 +167,17 @@ class _GcodeEdit(QPlainTextEdit):
                     cy = top + self.fontMetrics().height() // 2
                     painter.drawEllipse(cx - r, cy - r, 2 * r, 2 * r)
 
-                # Line number
+                # Line number (right-aligned in the digit column only)
                 number = str(block_number + 1)
                 painter.setPen(QColor("#606060"))
+                num_left = self.MARGIN_BP + 4
+                num_width = self._line_number_area.width() - num_left - 6
                 painter.drawText(
-                    self.MARGIN_BP,
+                    num_left,
                     top,
-                    self._line_number_area.width() - self.MARGIN_BP - 4,
+                    max(num_width, 1),
                     self.fontMetrics().height(),
-                    Qt.AlignmentFlag.AlignRight,
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                     number,
                 )
 
@@ -339,6 +358,8 @@ class GcodePanel(QWidget):
         self.editor.blockSignals(True)
         self.editor.setPlainText(text)
         self.editor.blockSignals(False)
+        # Recalc gutter after blockCount is known (1000+ line files)
+        self.editor._update_line_number_area_width()
         self.editor.set_breakpoints(set())
         base = path.rsplit("/", 1)[-1] if path else "(memory)"
         n = len(self._lines)
