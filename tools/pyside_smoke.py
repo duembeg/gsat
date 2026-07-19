@@ -111,18 +111,21 @@ def test_offline() -> list[str]:
         w.set_pc(3)
         if gc.STATE_DATA.programCounter != 3:
             _fail("set_pc failed")
-        if "▶" not in w.gcode.list.item(3).text():
-            _fail("PC marker missing")
+        if w.gcode.current_pc() != 3:
+            _fail("PC marker state missing")
+        # proxy row text still exposes ▶ for assertions
+        if "▶" not in w.gcode.item(3).text():
+            _fail("PC marker missing in row proxy")
 
         w.on_reset_pc()
         if gc.STATE_DATA.programCounter != 0:
             _fail("reset PC failed")
 
-        w.gcode.list.setCurrentRow(2)
+        w.gcode.setCurrentRow(2)
         w.on_break_toggle()
         if 2 not in w.gcode.get_breakpoints():
             _fail("breakpoint not set")
-        if "●" not in w.gcode.list.item(2).text():
+        if "●" not in w.gcode.item(2).text():
             _fail("breakpoint marker missing")
 
         payload = w._program_payload()
