@@ -178,6 +178,11 @@ class DroPanel(QWidget):
 
     def _apply_state_style(self, stat: str):
         """Color ST field while keeping DRO-sized mono look."""
+        if not stat:
+            # Match #droAxis chrome until we know machine state
+            self.run_status.setStyleSheet("")
+            self._last_stat = ""
+            return
         key = theme.state_color_key(stat)
         color = theme.STATE_COLORS.get(key, theme.STATE_COLORS["unknown"])
         # Keep dark DRO field background; tint text/border by state
