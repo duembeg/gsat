@@ -1,7 +1,11 @@
 """----------------------------------------------------------------------------
     dro_panel.py
 
-    DRO + machine status for the PySide workbench (polished shell).
+    DRO + machine status for the PySide workbench.
+
+    Matches wx Machine Status panel layout intent:
+    - DRO box: X/Y/Z/A/B/C + FR (feed) + ST (state) — same big mono fields
+    - Status box: device name, version, buffer, sent %, runtime (host/side data)
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
@@ -9,7 +13,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QVBoxLayout,
@@ -20,7 +23,7 @@ from modules.pyside_workbench import theme
 
 
 class DroPanel(QWidget):
-    """Displays position (DRO) and a few status fields from EV_DATA_STATUS."""
+    """Displays position (DRO), feed rate, run state, and device status fields."""
 
     AXIS_KEYS = (
         ("X", "posx"),
@@ -38,6 +41,7 @@ class DroPanel(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
+        # --- DRO: axes + FR + ST (physical machine display) ---
         dro_box = QGroupBox("DRO")
         dro_form = QFormLayout(dro_box)
         dro_form.setSpacing(6)
@@ -45,44 +49,41 @@ class DroPanel(QWidget):
 
         self._axis_edits: dict[str, QLineEdit] = {}
         for label, key in self.AXIS_KEYS:
-            edit = QLineEdit("0.000")
-            edit.setObjectName("droAxis")
-            edit.setReadOnly(True)
-            edit.setAlignment(Qt.AlignmentFlag.AlignRight)
-            edit.setFont(theme.mono_font(20, bold=True))
-            edit.setMinimumWidth(150)
+            edit = self._make_dro_field("0.000")
             axis_lbl = QLabel(label)
             axis_lbl.setStyleSheet("font-weight: 700; font-size: 14px;")
             dro_form.addRow(axis_lbl, edit)
             self._axis_edits[key] = edit
 
+        # Feed rate (vel) — same row style as axes (wx CreateDroBox)
+        fr_lbl = QLabel("FR")
+        fr_lbl.setStyleSheet("font-weight: 700; font-size: 14px;")
+        self.feed_rate = self._make_dro_field("0.00")
+        dro_form.addRow(fr_lbl, self.feed_rate)
+
+        # Machine state — same size/font as axes (wx ST in DRO box)
+        st_lbl = QLabel("ST")
+        st_lbl.setStyleSheet("font-weight: 700; font-size: 14px;")
+        self.run_status = self._make_dro_field("")
+        self.run_status.setObjectName("droState")
+        self.run_status.setAlignment(Qt.AlignmentFlag.AlignRight)
+        dro_form.addRow(st_lbl, self.run_status)
+
+        # --- Status: host / device side metadata (not DRO digits) ---
         status_box = QGroupBox("Status")
         status_form = QFormLayout(status_box)
         status_form.setSpacing(4)
 
-        self.run_status = QLineEdit("")
-        self.run_status.setObjectName("droState")
-        self.run_status.setReadOnly(True)
-        self.run_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.run_status.setFont(theme.mono_font(13, bold=True))
-        status_form.addRow("State:", self.run_status)
+        self.machif_status = QLabel("—")
+        status_form.addRow("Device:", self.machif_status)
 
-        self.feed_rate = QLineEdit("")
-        self.feed_rate.setReadOnly(True)
-        self.feed_rate.setFont(theme.mono_font(11))
-        self.feed_rate.setAlignment(Qt.AlignmentFlag.AlignRight)
-        status_form.addRow("Feed:", self.feed_rate)
+        self.version_status = QLabel("—")
+        self.version_status.setWordWrap(True)
+        status_form.addRow("Version:", self.version_status)
 
         self.buffer_status = QLabel("—")
         self.buffer_status.setFont(theme.mono_font(11))
         status_form.addRow("Buffer:", self.buffer_status)
-
-        self.machif_status = QLabel("—")
-        status_form.addRow("MachIf:", self.machif_status)
-
-        self.version_status = QLabel("—")
-        self.version_status.setWordWrap(True)
-        status_form.addRow("FW:", self.version_status)
 
         self.percent_status = QLabel("—")
         self.percent_status.setFont(theme.mono_font(11))
@@ -97,12 +98,21 @@ class DroPanel(QWidget):
 
         self._last_stat = ""
 
+    def _make_dro_field(self, initial: str) -> QLineEdit:
+        edit = QLineEdit(initial)
+        edit.setObjectName("droAxis")
+        edit.setReadOnly(True)
+        edit.setAlignment(Qt.AlignmentFlag.AlignRight)
+        edit.setFont(theme.mono_font(20, bold=True))
+        edit.setMinimumWidth(150)
+        return edit
+
     def clear(self):
         for edit in self._axis_edits.values():
             edit.setText("0.000")
+        self.feed_rate.setText("0.00")
         self.run_status.setText("")
         self._apply_state_style("")
-        self.feed_rate.setText("")
         self.buffer_status.setText("—")
         self.machif_status.setText("—")
         self.version_status.setText("—")
@@ -123,12 +133,6 @@ class DroPanel(QWidget):
                 if edit.text() != val:
                     edit.setText(val)
 
-        if "stat" in status_data and status_data["stat"] is not None:
-            text = str(status_data["stat"])
-            if self.run_status.text() != text:
-                self.run_status.setText(text)
-            self._apply_state_style(text)
-
         if "vel" in status_data:
             try:
                 fr = f"{float(status_data['vel']):.2f}"
@@ -136,6 +140,12 @@ class DroPanel(QWidget):
                 fr = str(status_data["vel"])
             if self.feed_rate.text() != fr:
                 self.feed_rate.setText(fr)
+
+        if "stat" in status_data and status_data["stat"] is not None:
+            text = str(status_data["stat"])
+            if self.run_status.text() != text:
+                self.run_status.setText(text)
+            self._apply_state_style(text)
 
         ib = status_data.get("ib")
         if ib is not None and isinstance(ib, (list, tuple)) and len(ib) >= 2:
@@ -165,15 +175,17 @@ class DroPanel(QWidget):
                 self.runtime_status.setText(str(rtime))
 
     def _apply_state_style(self, stat: str):
+        """Color ST field while keeping DRO-sized mono look."""
         key = theme.state_color_key(stat)
         color = theme.STATE_COLORS.get(key, theme.STATE_COLORS["unknown"])
-        # Light tint background + bold colored text
+        # Keep dark DRO field background; tint text/border by state
         self.run_status.setStyleSheet(
             f"QLineEdit#droState {{"
+            f" font-family: monospace; font-size: 20px; font-weight: 700;"
             f" color: {color};"
-            f" background: {color}18;"
-            f" border: 1px solid {color}55;"
-            f" font-weight: 700;"
+            f" background: #0B1220;"
+            f" border: 1px solid {color};"
+            f" border-radius: 4px; padding: 4px 8px; min-height: 28px;"
             f"}}"
         )
         self._last_stat = stat
