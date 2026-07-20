@@ -97,6 +97,8 @@ class DroPanel(QWidget):
         root.addWidget(status_box)
 
         self._last_stat = ""
+        # ST shares DRO chrome from the start (not only after first status push)
+        self._apply_state_style("")
 
     def _make_dro_field(self, initial: str) -> QLineEdit:
         edit = QLineEdit(initial)

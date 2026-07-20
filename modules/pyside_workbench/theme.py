@@ -238,7 +238,7 @@ QLineEdit#cliInput {{
     font-family: monospace;
     font-size: 12px;
 }}
-QLineEdit#droAxis {{
+QLineEdit#droAxis, QLineEdit#droState {{
     font-family: monospace;
     font-size: 20px;
     font-weight: 700;
@@ -248,12 +248,5 @@ QLineEdit#droAxis {{
     border-radius: 4px;
     padding: 4px 8px;
     min-height: 28px;
-}}
-QLineEdit#droState {{
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: 700;
-    border-radius: 4px;
-    padding: 4px 8px;
 }}
 """
