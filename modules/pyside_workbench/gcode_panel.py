@@ -400,6 +400,23 @@ class GcodePanel(QWidget):
         self.load_lines(path, lines)
         return len(lines)
 
+    def document_text(self) -> str:
+        return self.editor.toPlainText()
+
+    def save_file(self, path: str) -> int:
+        """Write editor contents to path; resync internal lines. Returns line count."""
+        text = self.editor.toPlainText()
+        # Preserve trailing newline if content is non-empty
+        if text and not text.endswith("\n"):
+            text = text + "\n"
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+        self._path = path
+        self._lines = text.splitlines(True)
+        base = path.rsplit("/", 1)[-1]
+        self.title_label.setText(f"G-code: {base}  ({len(self._lines)} lines)")
+        return len(self._lines)
+
     @Slot(int)
     def set_pc(self, pc: int, scroll: bool = True):
         n = len(self._lines)

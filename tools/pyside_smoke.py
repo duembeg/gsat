@@ -273,6 +273,18 @@ def test_offline() -> list[str]:
             _fail("run action missing")
         notes.append("toolbars + docks: ok")
 
+        # --- file recent history config keys ---
+        w._add_to_file_history(path)
+        hist = w._load_file_history()
+        if not hist or os.path.abspath(path) not in [
+            os.path.abspath(h) for h in hist
+        ]:
+            _fail("file history not updated")
+        f1 = gc.CONFIG_DATA.get("/mainApp/FileHistory/File1", "")
+        if not f1:
+            _fail("File1 not written to config")
+        notes.append("file recent history: ok")
+
         # --- jog essentials ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()

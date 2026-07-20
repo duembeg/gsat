@@ -65,14 +65,27 @@ class MainWindow(QMainWindow):
     # Actions (shared by menus + toolbars — same pattern as wx)
     # ------------------------------------------------------------------
     def _create_actions(self):
-        self.act_open_gcode = QAction("Open G-code…", self)
+        self.act_open_gcode = QAction("&Open…", self)
         self.act_open_gcode.setShortcut(QKeySequence.StandardKey.Open)
         self.act_open_gcode.setToolTip("Open G-code file")
         self.act_open_gcode.triggered.connect(self.on_open_gcode)
 
-        self.act_quit = QAction("&Quit", self)
+        self.act_save = QAction("&Save", self)
+        self.act_save.setShortcut(QKeySequence.StandardKey.Save)
+        self.act_save.setToolTip("Save G-code file")
+        self.act_save.triggered.connect(self.on_save_gcode)
+
+        self.act_save_as = QAction("Save &As…", self)
+        self.act_save_as.setShortcut(QKeySequence.StandardKey.SaveAs)
+        self.act_save_as.triggered.connect(self.on_save_gcode_as)
+
+        self.act_quit = QAction("E&xit", self)
         self.act_quit.setShortcut("Ctrl+Q")
         self.act_quit.triggered.connect(self.close)
+
+        # File history (filled by _rebuild_recent_menu)
+        self._file_history: list[str] = []
+        self._recent_menu = None
 
         # Remote
         self.act_remote_connect = QAction("Connect remote", self)
@@ -198,6 +211,8 @@ class MainWindow(QMainWindow):
         self.tb_main.setObjectName("toolbarMain")
         self.tb_main.setMovable(True)
         self.tb_main.addAction(self.act_open_gcode)
+        self.tb_main.addAction(self.act_save)
+        self.tb_main.addAction(self.act_save_as)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_main)
 
         # Program (run / PC / break)
@@ -257,11 +272,18 @@ class MainWindow(QMainWindow):
         }
 
     def _build_menu(self):
+        # File (wx: Open, Recent, Save, Save As, Exit)
         file_menu = self.menuBar().addMenu("&File")
         file_menu.addAction(self.act_open_gcode)
+        self._recent_menu = file_menu.addMenu("Open &Recent")
+        self._rebuild_recent_menu()
+        file_menu.addSeparator()
+        file_menu.addAction(self.act_save)
+        file_menu.addAction(self.act_save_as)
         file_menu.addSeparator()
         file_menu.addAction(self.act_quit)
 
+        # Machine
         machine_menu = self.menuBar().addMenu("&Machine")
         machine_menu.addAction(self.act_machine_open)
         machine_menu.addAction(self.act_machine_close)
@@ -269,23 +291,26 @@ class MainWindow(QMainWindow):
         machine_menu.addSeparator()
         machine_menu.addAction(self.act_local)
 
-        remote_menu = self.menuBar().addMenu("&Remote")
+        # Remote
+        remote_menu = self.menuBar().addMenu("R&emote")
         remote_menu.addAction(self.act_remote_connect)
         remote_menu.addAction(self.act_remote_disconnect)
 
-        program_menu = self.menuBar().addMenu("&Program")
-        program_menu.addAction(self.act_run)
-        program_menu.addAction(self.act_pause)
-        program_menu.addAction(self.act_step)
-        program_menu.addAction(self.act_stop)
-        program_menu.addSeparator()
-        program_menu.addAction(self.act_break)
-        program_menu.addAction(self.act_break_clear)
-        program_menu.addSeparator()
-        program_menu.addAction(self.act_set_pc)
-        program_menu.addAction(self.act_reset_pc)
-        program_menu.addAction(self.act_goto_pc)
+        # Run (wx name) — program controls
+        run_menu = self.menuBar().addMenu("&Run")
+        run_menu.addAction(self.act_run)
+        run_menu.addAction(self.act_pause)
+        run_menu.addAction(self.act_step)
+        run_menu.addAction(self.act_stop)
+        run_menu.addSeparator()
+        run_menu.addAction(self.act_break)
+        run_menu.addAction(self.act_break_clear)
+        run_menu.addSeparator()
+        run_menu.addAction(self.act_set_pc)
+        run_menu.addAction(self.act_reset_pc)
+        run_menu.addAction(self.act_goto_pc)
 
+        # View
         view_menu = self.menuBar().addMenu("&View")
         focus_cli = QAction("Focus &CLI", self)
         focus_cli.setShortcut(QKeySequence("Ctrl+L"))
@@ -311,10 +336,13 @@ class MainWindow(QMainWindow):
             act.setText(key)
             view_menu.addAction(act)
         view_menu.addSeparator()
-        save_layout = QAction("&Save layout", self)
+        load_layout = QAction("&Load layout", self)
+        load_layout.triggered.connect(self._load_layout)
+        view_menu.addAction(load_layout)
+        save_layout = QAction("S&ave layout", self)
         save_layout.triggered.connect(self._save_layout)
         view_menu.addAction(save_layout)
-        reset_layout = QAction("&Reset layout", self)
+        reset_layout = QAction("R&eset layout", self)
         reset_layout.triggered.connect(self._reset_layout)
         view_menu.addAction(reset_layout)
 
@@ -331,16 +359,114 @@ class MainWindow(QMainWindow):
         self.port_edit.setText(str(port))
 
     # ------------------------------------------------------------------
+    # File history (same config keys as wx FileHistory)
+    # ------------------------------------------------------------------
+    def _max_file_history(self) -> int:
+        try:
+            return int(
+                gc.CONFIG_DATA.get("/mainApp/FileHistory/FilesMaxHistory", 10) or 10
+            )
+        except (TypeError, ValueError):
+            return 10
+
+    def _load_file_history(self) -> list[str]:
+        """Load recent files from config (File1 = most recent, like wx)."""
+        out: list[str] = []
+        nmax = self._max_file_history()
+        for i in range(1, nmax + 1):
+            fn = gc.CONFIG_DATA.get(f"/mainApp/FileHistory/File{i}")
+            if fn and isinstance(fn, str) and fn.strip():
+                path = fn.strip()
+                if path not in out:
+                    out.append(path)
+        self._file_history = out
+        return out
+
+    def _save_file_history(self) -> None:
+        nmax = self._max_file_history()
+        # Clear then write (File1 newest)
+        for i in range(1, nmax + 1):
+            path = self._file_history[i - 1] if i - 1 < len(self._file_history) else ""
+            gc.CONFIG_DATA.set(f"/mainApp/FileHistory/File{i}", path)
+        try:
+            gc.CONFIG_DATA.save()
+        except Exception:
+            pass
+
+    def _add_to_file_history(self, path: str) -> None:
+        path = os.path.abspath(path)
+        if path in self._file_history:
+            self._file_history.remove(path)
+        self._file_history.insert(0, path)
+        nmax = self._max_file_history()
+        self._file_history = self._file_history[:nmax]
+        self._save_file_history()
+        self._rebuild_recent_menu()
+
+    def _rebuild_recent_menu(self) -> None:
+        if self._recent_menu is None:
+            return
+        self._recent_menu.clear()
+        self._load_file_history()
+        if not self._file_history:
+            empty = QAction("(no recent files)", self)
+            empty.setEnabled(False)
+            self._recent_menu.addAction(empty)
+            return
+        for i, path in enumerate(self._file_history):
+            # wx style: &0 path, &1 path, …
+            label = f"&{i}  {path}"
+            act = QAction(label, self)
+            act.setData(path)
+            act.triggered.connect(self._on_recent_file)
+            self._recent_menu.addAction(act)
+        self._recent_menu.addSeparator()
+        clear_act = QAction("Clear recent files", self)
+        clear_act.triggered.connect(self._clear_recent_files)
+        self._recent_menu.addAction(clear_act)
+
+    @Slot()
+    def _on_recent_file(self):
+        act = self.sender()
+        if act is None:
+            return
+        path = act.data()
+        if not path:
+            return
+        if not os.path.isfile(path):
+            QMessageBox.warning(
+                self,
+                "File not found",
+                f"The file doesn't exist.\n\nFile: {path}\n\n"
+                "It will be removed from recent files.",
+            )
+            if path in self._file_history:
+                self._file_history.remove(path)
+                self._save_file_history()
+                self._rebuild_recent_menu()
+            return
+        self.open_gcode_path(path)
+
+    @Slot()
+    def _clear_recent_files(self):
+        self._file_history = []
+        self._save_file_history()
+        self._rebuild_recent_menu()
+
+    # ------------------------------------------------------------------
     # G-code / PC
     # ------------------------------------------------------------------
     @Slot()
     def on_open_gcode(self):
         start = gc.STATE_DATA.gcodeFileName or os.path.expanduser("~")
+        start_dir = start
+        if start and not os.path.isdir(start):
+            start_dir = os.path.dirname(start) or os.path.expanduser("~")
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Open G-code",
-            start if os.path.isdir(os.path.dirname(start) or start) else os.path.expanduser("~"),
-            "G-code (*.ngc *.nc *.gcode);;All files (*.*)",
+            "Choose a file",
+            start_dir,
+            "G-code (*.ngc *.nc *.gcode);;ngc (*.ngc);;nc (*.nc);;gcode (*.gcode);;All files (*.*)",
         )
         if not path:
             return
@@ -353,16 +479,68 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Open failed", str(exc))
             return False
 
+        path = os.path.abspath(path)
         gc.STATE_DATA.gcodeFileName = path
         gc.STATE_DATA.gcodeFileLines = self.gcode.lines()
         gc.STATE_DATA.fileIsOpen = True
         gc.STATE_DATA.programCounter = 0
         gc.STATE_DATA.breakPoints = set()
 
+        self._add_to_file_history(path)
+
         self.setWindowTitle(
             f"{os.path.basename(path)} — {vinfo.__appname__} (PySide)"
         )
         self.append_log(f"Opened {path} ({n} lines)")
+        self.statusBar().showMessage(os.path.basename(path))
+        self._update_connection_ui()
+        return True
+
+    @Slot()
+    def on_save_gcode(self):
+        if not gc.STATE_DATA.fileIsOpen or not gc.STATE_DATA.gcodeFileName:
+            self.on_save_gcode_as()
+            return
+        self._write_gcode_file(gc.STATE_DATA.gcodeFileName)
+
+    @Slot()
+    def on_save_gcode_as(self):
+        start = gc.STATE_DATA.gcodeFileName or os.path.expanduser("~")
+        start_dir = os.path.dirname(start) if start else os.path.expanduser("~")
+        start_file = os.path.basename(start) if start else "untitled.ngc"
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Create a file",
+            os.path.join(start_dir, start_file),
+            "G-code (*.ngc *.nc *.gcode);;All files (*.*)",
+        )
+        if not path:
+            return
+        if self._write_gcode_file(path):
+            self._add_to_file_history(path)
+
+    def _write_gcode_file(self, path: str) -> bool:
+        try:
+            # Optional backup like wx
+            if (
+                gc.CONFIG_DATA.get("/mainApp/BackupFile", False)
+                and os.path.isfile(path)
+            ):
+                import shutil
+
+                shutil.copyfile(path, path + "~")
+            n = self.gcode.save_file(path)
+        except OSError as exc:
+            QMessageBox.critical(self, "Save failed", str(exc))
+            return False
+        path = os.path.abspath(path)
+        gc.STATE_DATA.gcodeFileName = path
+        gc.STATE_DATA.gcodeFileLines = self.gcode.lines()
+        gc.STATE_DATA.fileIsOpen = True
+        self.setWindowTitle(
+            f"{os.path.basename(path)} — {vinfo.__appname__} (PySide)"
+        )
+        self.append_log(f"Saved {path} ({n} lines)")
         self.statusBar().showMessage(os.path.basename(path))
         self._update_connection_ui()
         return True
@@ -861,6 +1039,17 @@ class MainWindow(QMainWindow):
 
         jog_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.jog.set_enabled(jog_ok)
+
+        # Block open/save while streaming (like wx)
+        busy_program = machine_open and gc.STATE_DATA.swState in (
+            gc.STATE_RUN,
+            gc.STATE_STEP,
+        )
+        self.act_open_gcode.setEnabled(not busy_program)
+        self.act_save.setEnabled(has_gcode and not busy_program)
+        self.act_save_as.setEnabled(has_gcode and not busy_program)
+        if self._recent_menu is not None:
+            self._recent_menu.setEnabled(not busy_program)
 
         self.act_set_pc.setEnabled(has_gcode and idleish)
         self.act_reset_pc.setEnabled(has_gcode and idleish)
