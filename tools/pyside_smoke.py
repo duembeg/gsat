@@ -264,12 +264,14 @@ def test_offline() -> list[str]:
             _fail(f"CLI history not saved to config: {raw!r}")
         notes.append("cli history config save: ok")
 
-        # --- dock widgets present ---
-        if not hasattr(w, "dock_gcode") or not w.dock_gcode:
-            _fail("dock_gcode missing")
-        if not hasattr(w, "dock_console"):
+        # --- docks for content panels; toolbars for actions ---
+        if not hasattr(w, "dock_console") or w.dock_console is None:
             _fail("dock_console missing")
-        notes.append("dockable panels: ok")
+        if not hasattr(w, "tb_program") or w.tb_program is None:
+            _fail("program toolbar missing")
+        if not hasattr(w, "act_run") or w.act_run is None:
+            _fail("run action missing")
+        notes.append("toolbars + docks: ok")
 
         # --- jog essentials ---
         gc.STATE_DATA.swState = gc.STATE_IDLE

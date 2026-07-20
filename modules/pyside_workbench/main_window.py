@@ -15,15 +15,12 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QDockWidget,
     QFileDialog,
-    QFrame,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
-    QPushButton,
     QStatusBar,
-    QVBoxLayout,
+    QToolBar,
     QWidget,
 )
 
@@ -36,23 +33,6 @@ from modules.pyside_workbench.console_panel import ConsolePanel
 from modules.pyside_workbench.dro_panel import DroPanel
 from modules.pyside_workbench.gcode_panel import GcodePanel
 from modules.pyside_workbench.jog_panel import JogPanel
-
-
-def _tool_strip(title: str) -> tuple[QFrame, QHBoxLayout]:
-    """Labeled horizontal action strip (shared chrome for future panels)."""
-    frame = QFrame()
-    frame.setObjectName("toolbarStrip")
-    outer = QHBoxLayout(frame)
-    outer.setContentsMargins(8, 6, 8, 6)
-    outer.setSpacing(6)
-    if title:
-        lbl = QLabel(title)
-        lbl.setObjectName("sectionLabel")
-        outer.addWidget(lbl)
-    row = QHBoxLayout()
-    row.setSpacing(4)
-    outer.addLayout(row, 1)
-    return frame, row
 
 
 class MainWindow(QMainWindow):
@@ -72,12 +52,73 @@ class MainWindow(QMainWindow):
         self._remote_connected = False
         self._remote_connecting = False
 
+        self._create_actions()
         self._build_ui()
+        self._build_toolbars()
         self._build_menu()
         self._load_remote_defaults()
         self._load_layout()
         self._update_connection_ui()
         self.set_pc(0)
+
+    # ------------------------------------------------------------------
+    # Actions (shared by menus + toolbars — same pattern as wx)
+    # ------------------------------------------------------------------
+    def _create_actions(self):
+        self.act_open_gcode = QAction("Open G-code…", self)
+        self.act_open_gcode.setShortcut(QKeySequence.StandardKey.Open)
+        self.act_open_gcode.setToolTip("Open G-code file")
+        self.act_open_gcode.triggered.connect(self.on_open_gcode)
+
+        self.act_quit = QAction("&Quit", self)
+        self.act_quit.setShortcut("Ctrl+Q")
+        self.act_quit.triggered.connect(self.close)
+
+        # Remote
+        self.act_remote_connect = QAction("Connect remote", self)
+        self.act_remote_connect.setToolTip("Connect to gsat-server (WebSocket)")
+        self.act_remote_connect.triggered.connect(self.on_connect_remote)
+        self.act_remote_disconnect = QAction("Disconnect", self)
+        self.act_remote_disconnect.triggered.connect(self.on_disconnect_remote)
+
+        # Machine
+        self.act_machine_open = QAction("Open machine", self)
+        self.act_machine_open.setToolTip("Open serial/machine on server or local")
+        self.act_machine_open.triggered.connect(self.on_open_machine)
+        self.act_machine_close = QAction("Close machine", self)
+        self.act_machine_close.triggered.connect(self.on_close_machine)
+        self.act_machine_refresh = QAction("Refresh", self)
+        self.act_machine_refresh.setShortcut("Ctrl+R")
+        self.act_machine_refresh.setToolTip("Request one status update")
+        self.act_machine_refresh.triggered.connect(self.on_refresh_status)
+        self.act_local = QAction("Local serial", self)
+        self.act_local.setToolTip("Start local MachIfExecuteThread")
+        self.act_local.triggered.connect(self.on_open_local)
+
+        # Program
+        self.act_run = QAction("Run", self)
+        self.act_run.setShortcut("F5")
+        self.act_run.setToolTip("Run from PC")
+        self.act_run.triggered.connect(self.on_run)
+        self.act_pause = QAction("Pause", self)
+        self.act_pause.triggered.connect(self.on_pause)
+        self.act_step = QAction("Step", self)
+        self.act_step.setShortcut("F10")
+        self.act_step.triggered.connect(self.on_step)
+        self.act_stop = QAction("Stop", self)
+        self.act_stop.triggered.connect(self.on_stop)
+        self.act_break = QAction("Break", self)
+        self.act_break.setShortcut("F9")
+        self.act_break.setToolTip("Toggle breakpoint on selected line")
+        self.act_break.triggered.connect(self.on_break_toggle)
+        self.act_break_clear = QAction("Clear BP", self)
+        self.act_break_clear.triggered.connect(self.on_break_clear)
+        self.act_set_pc = QAction("Set PC", self)
+        self.act_set_pc.triggered.connect(self.on_set_pc)
+        self.act_reset_pc = QAction("Reset PC", self)
+        self.act_reset_pc.triggered.connect(self.on_reset_pc)
+        self.act_goto_pc = QAction("Goto PC", self)
+        self.act_goto_pc.triggered.connect(self.on_goto_pc)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -86,9 +127,7 @@ class MainWindow(QMainWindow):
         dock = QDockWidget(title, self)
         dock.setObjectName(object_name)
         dock.setWidget(widget)
-        dock.setAllowedAreas(
-            Qt.DockWidgetArea.AllDockWidgetAreas
-        )
+        dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         dock.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable
             | QDockWidget.DockWidgetFeature.DockWidgetFloatable
@@ -97,7 +136,7 @@ class MainWindow(QMainWindow):
         return dock
 
     def _build_ui(self):
-        # Dockable workbench (Qt equivalent of wx AUI perspectives)
+        # Content panels = docks; actions = toolbars (wx AUI model)
         self.setDockNestingEnabled(True)
         self.setDockOptions(
             QMainWindow.DockOption.AllowNestedDocks
@@ -105,111 +144,11 @@ class MainWindow(QMainWindow):
             | QMainWindow.DockOption.AnimatedDocks
         )
 
-        # Top: tool strips as non-dock central chrome (always visible, height-limited)
-        from PySide6.QtWidgets import QSizePolicy
-
-        chrome = QWidget()
-        chrome.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum
-        )
-        chrome_layout = QVBoxLayout(chrome)
-        chrome_layout.setContentsMargins(8, 8, 8, 4)
-        chrome_layout.setSpacing(8)
-
-        # --- Connection strip ---
-        conn_frame, conn_row = _tool_strip("Remote")
-        conn_row.addWidget(QLabel("Host"))
-        self.host_edit = QLineEdit()
-        self.host_edit.setMinimumWidth(140)
-        self.host_edit.setMaximumWidth(220)
-        conn_row.addWidget(self.host_edit)
-        conn_row.addWidget(QLabel("Port"))
-        self.port_edit = QLineEdit()
-        self.port_edit.setMaximumWidth(72)
-        conn_row.addWidget(self.port_edit)
-        self.btn_connect = QPushButton("Connect")
-        self.btn_connect.setObjectName("btnPrimary")
-        self.btn_connect.clicked.connect(self.on_connect_remote)
-        conn_row.addWidget(self.btn_connect)
-        self.btn_disconnect = QPushButton("Disconnect")
-        self.btn_disconnect.clicked.connect(self.on_disconnect_remote)
-        conn_row.addWidget(self.btn_disconnect)
-        conn_row.addSpacing(12)
-        self.btn_open = QPushButton("Open machine")
-        self.btn_open.clicked.connect(self.on_open_machine)
-        conn_row.addWidget(self.btn_open)
-        self.btn_close = QPushButton("Close machine")
-        self.btn_close.clicked.connect(self.on_close_machine)
-        conn_row.addWidget(self.btn_close)
-        self.btn_refresh = QPushButton("Refresh")
-        self.btn_refresh.setToolTip("Request one status update (no auto-poll)")
-        self.btn_refresh.clicked.connect(self.on_refresh_status)
-        conn_row.addWidget(self.btn_refresh)
-        self.btn_local = QPushButton("Local serial")
-        self.btn_local.setToolTip(
-            "Start MachIfExecuteThread using machine settings from ~/.gsat.json"
-        )
-        self.btn_local.clicked.connect(self.on_open_local)
-        conn_row.addWidget(self.btn_local)
-        conn_row.addStretch(1)
-        self.status_badge = QLabel("offline")
-        self.status_badge.setObjectName("statusBadge")
-        self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        conn_row.addWidget(self.status_badge)
-        chrome_layout.addWidget(conn_frame)
-
-        # --- Program strip ---
-        prog_frame, prog_row = _tool_strip("Program")
-        self.btn_open_file = QPushButton("Open G-code…")
-        self.btn_open_file.clicked.connect(self.on_open_gcode)
-        prog_row.addWidget(self.btn_open_file)
-        prog_row.addSpacing(8)
-        self.btn_set_pc = QPushButton("Set PC")
-        self.btn_set_pc.setToolTip("Set program counter to selected G-code line")
-        self.btn_set_pc.clicked.connect(self.on_set_pc)
-        prog_row.addWidget(self.btn_set_pc)
-        self.btn_reset_pc = QPushButton("Reset PC")
-        self.btn_reset_pc.clicked.connect(self.on_reset_pc)
-        prog_row.addWidget(self.btn_reset_pc)
-        self.btn_goto_pc = QPushButton("Goto PC")
-        self.btn_goto_pc.clicked.connect(self.on_goto_pc)
-        prog_row.addWidget(self.btn_goto_pc)
-        self.btn_break = QPushButton("Break")
-        self.btn_break.setToolTip("Toggle breakpoint on selected line (F9)")
-        self.btn_break.clicked.connect(self.on_break_toggle)
-        prog_row.addWidget(self.btn_break)
-        self.btn_break_clear = QPushButton("Clear BP")
-        self.btn_break_clear.setToolTip("Remove all breakpoints")
-        self.btn_break_clear.clicked.connect(self.on_break_clear)
-        prog_row.addWidget(self.btn_break_clear)
-        prog_row.addSpacing(10)
-        self.btn_run = QPushButton("Run")
-        self.btn_run.setObjectName("btnPrimary")
-        self.btn_run.setToolTip("Run program from PC (F5)")
-        self.btn_run.clicked.connect(self.on_run)
-        prog_row.addWidget(self.btn_run)
-        self.btn_pause = QPushButton("Pause")
-        self.btn_pause.clicked.connect(self.on_pause)
-        prog_row.addWidget(self.btn_pause)
-        self.btn_step = QPushButton("Step")
-        self.btn_step.setToolTip("Step one G-code line (F10)")
-        self.btn_step.clicked.connect(self.on_step)
-        prog_row.addWidget(self.btn_step)
-        self.btn_stop = QPushButton("Stop")
-        self.btn_stop.setObjectName("btnDanger")
-        self.btn_stop.clicked.connect(self.on_stop)
-        prog_row.addWidget(self.btn_stop)
-        prog_row.addStretch(1)
-        chrome_layout.addWidget(prog_frame)
-
-        self.setCentralWidget(chrome)
-
-        # --- Dockable panels (user-rearrangeable; saved like wx AUI) ---
+        # G-code is the center workspace (like wx CenterPane)
         self.gcode = GcodePanel()
         self.gcode.set_pc_requested.connect(self.set_pc)
         self.gcode.break_toggled.connect(self.on_break_toggled)
-        self.dock_gcode = self._make_dock("G-code", self.gcode, "dockGcode")
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_gcode)
+        self.setCentralWidget(self.gcode)
 
         max_hist = 100
         try:
@@ -231,17 +170,9 @@ class MainWindow(QMainWindow):
         self.jog.home_axes.connect(self.on_home_axes)
         self.dock_jog = self._make_dock("Machine Jogging", self.jog, "dockJog")
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
-        self.splitDockWidget(
-            self.dock_dro, self.dock_jog, Qt.Orientation.Vertical
-        )
+        self.splitDockWidget(self.dock_dro, self.dock_jog, Qt.Orientation.Vertical)
 
-        # Default sizes (overridden by saved layout when present)
-        self.resizeDocks(
-            [self.dock_gcode], [700], Qt.Orientation.Horizontal
-        )
-        self.resizeDocks(
-            [self.dock_console], [200], Qt.Orientation.Vertical
-        )
+        self.resizeDocks([self.dock_console], [200], Qt.Orientation.Vertical)
 
         sb = QStatusBar(self)
         self.setStatusBar(sb)
@@ -250,76 +181,110 @@ class MainWindow(QMainWindow):
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
         sb.addWidget(self._status_detail, 1)
+        self.status_badge = QLabel("offline")
+        self.status_badge.setObjectName("statusBadge")
+        sb.addPermanentWidget(self.status_badge)
 
         self._docks = {
-            "gcode": self.dock_gcode,
             "console": self.dock_console,
             "dro": self.dock_dro,
             "jog": self.dock_jog,
         }
 
+    def _build_toolbars(self):
+        """QToolBars for actions — not docks (matches wx MAIN/PROGRAM/MACHINE/REMOTE)."""
+        # Main
+        self.tb_main = QToolBar("Main")
+        self.tb_main.setObjectName("toolbarMain")
+        self.tb_main.setMovable(True)
+        self.tb_main.addAction(self.act_open_gcode)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_main)
+
+        # Program (run / PC / break)
+        self.tb_program = QToolBar("Program")
+        self.tb_program.setObjectName("toolbarProgram")
+        self.tb_program.setMovable(True)
+        for act in (
+            self.act_run,
+            self.act_pause,
+            self.act_step,
+            self.act_stop,
+        ):
+            self.tb_program.addAction(act)
+        self.tb_program.addSeparator()
+        self.tb_program.addAction(self.act_break)
+        self.tb_program.addAction(self.act_break_clear)
+        self.tb_program.addSeparator()
+        self.tb_program.addAction(self.act_set_pc)
+        self.tb_program.addAction(self.act_reset_pc)
+        self.tb_program.addAction(self.act_goto_pc)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_program)
+
+        # Machine
+        self.tb_machine = QToolBar("Machine")
+        self.tb_machine.setObjectName("toolbarMachine")
+        self.tb_machine.setMovable(True)
+        self.tb_machine.addAction(self.act_machine_open)
+        self.tb_machine.addAction(self.act_machine_close)
+        self.tb_machine.addAction(self.act_machine_refresh)
+        self.tb_machine.addSeparator()
+        self.tb_machine.addAction(self.act_local)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_machine)
+
+        # Remote (host/port widgets + connect — lab-friendly)
+        self.tb_remote = QToolBar("Remote")
+        self.tb_remote.setObjectName("toolbarRemote")
+        self.tb_remote.setMovable(True)
+        self.tb_remote.addWidget(QLabel(" Host "))
+        self.host_edit = QLineEdit()
+        self.host_edit.setMinimumWidth(120)
+        self.host_edit.setMaximumWidth(180)
+        self.host_edit.setClearButtonEnabled(True)
+        self.tb_remote.addWidget(self.host_edit)
+        self.tb_remote.addWidget(QLabel(" Port "))
+        self.port_edit = QLineEdit()
+        self.port_edit.setMaximumWidth(64)
+        self.tb_remote.addWidget(self.port_edit)
+        self.tb_remote.addAction(self.act_remote_connect)
+        self.tb_remote.addAction(self.act_remote_disconnect)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_remote)
+
+        self._toolbars = {
+            "main": self.tb_main,
+            "program": self.tb_program,
+            "machine": self.tb_machine,
+            "remote": self.tb_remote,
+        }
+
     def _build_menu(self):
         file_menu = self.menuBar().addMenu("&File")
-        open_gcode = QAction("&Open G-code…", self)
-        open_gcode.setShortcut(QKeySequence.StandardKey.Open)
-        open_gcode.triggered.connect(self.on_open_gcode)
-        file_menu.addAction(open_gcode)
+        file_menu.addAction(self.act_open_gcode)
         file_menu.addSeparator()
-        quit_action = QAction("&Quit", self)
-        quit_action.setShortcut("Ctrl+Q")
-        quit_action.triggered.connect(self.close)
-        file_menu.addAction(quit_action)
+        file_menu.addAction(self.act_quit)
 
         machine_menu = self.menuBar().addMenu("&Machine")
-        connect_action = QAction("Connect &remote", self)
-        connect_action.triggered.connect(self.on_connect_remote)
-        machine_menu.addAction(connect_action)
+        machine_menu.addAction(self.act_machine_open)
+        machine_menu.addAction(self.act_machine_close)
+        machine_menu.addAction(self.act_machine_refresh)
+        machine_menu.addSeparator()
+        machine_menu.addAction(self.act_local)
 
-        open_action = QAction("&Open machine", self)
-        open_action.triggered.connect(self.on_open_machine)
-        machine_menu.addAction(open_action)
-
-        close_action = QAction("&Close machine", self)
-        close_action.triggered.connect(self.on_close_machine)
-        machine_menu.addAction(close_action)
-
-        refresh_action = QAction("&Refresh status", self)
-        refresh_action.triggered.connect(self.on_refresh_status)
-        machine_menu.addAction(refresh_action)
+        remote_menu = self.menuBar().addMenu("&Remote")
+        remote_menu.addAction(self.act_remote_connect)
+        remote_menu.addAction(self.act_remote_disconnect)
 
         program_menu = self.menuBar().addMenu("&Program")
-        set_pc = QAction("Set &PC", self)
-        set_pc.triggered.connect(self.on_set_pc)
-        program_menu.addAction(set_pc)
-        reset_pc = QAction("&Reset PC", self)
-        reset_pc.triggered.connect(self.on_reset_pc)
-        program_menu.addAction(reset_pc)
-        goto_pc = QAction("&Goto PC", self)
-        goto_pc.triggered.connect(self.on_goto_pc)
-        program_menu.addAction(goto_pc)
+        program_menu.addAction(self.act_run)
+        program_menu.addAction(self.act_pause)
+        program_menu.addAction(self.act_step)
+        program_menu.addAction(self.act_stop)
         program_menu.addSeparator()
-        break_action = QAction("Toggle &Breakpoint", self)
-        break_action.setShortcut("F9")
-        break_action.triggered.connect(self.on_break_toggle)
-        program_menu.addAction(break_action)
-        break_clear = QAction("Remove &All Breakpoints", self)
-        break_clear.triggered.connect(self.on_break_clear)
-        program_menu.addAction(break_clear)
+        program_menu.addAction(self.act_break)
+        program_menu.addAction(self.act_break_clear)
         program_menu.addSeparator()
-        run_action = QAction("&Run", self)
-        run_action.setShortcut("F5")
-        run_action.triggered.connect(self.on_run)
-        program_menu.addAction(run_action)
-        pause_action = QAction("Pa&use", self)
-        pause_action.triggered.connect(self.on_pause)
-        program_menu.addAction(pause_action)
-        step_action = QAction("S&tep", self)
-        step_action.setShortcut("F10")
-        step_action.triggered.connect(self.on_step)
-        program_menu.addAction(step_action)
-        stop_action = QAction("St&op", self)
-        stop_action.triggered.connect(self.on_stop)
-        program_menu.addAction(stop_action)
+        program_menu.addAction(self.act_set_pc)
+        program_menu.addAction(self.act_reset_pc)
+        program_menu.addAction(self.act_goto_pc)
 
         view_menu = self.menuBar().addMenu("&View")
         focus_cli = QAction("Focus &CLI", self)
@@ -327,8 +292,17 @@ class MainWindow(QMainWindow):
         focus_cli.triggered.connect(self.console.focus_cli)
         view_menu.addAction(focus_cli)
         view_menu.addSeparator()
+        for label, key in (
+            ("&Main Tool Bar", "main"),
+            ("&Program Tool Bar", "program"),
+            ("M&achine Tool Bar", "machine"),
+            ("&Remote Tool Bar", "remote"),
+        ):
+            act = self._toolbars[key].toggleViewAction()
+            act.setText(label)
+            view_menu.addAction(act)
+        view_menu.addSeparator()
         for key, dock in (
-            ("&G-code", "gcode"),
             ("&Console", "console"),
             ("Machine &Status", "dro"),
             ("Machine &Jogging", "jog"),
@@ -872,12 +846,12 @@ class MainWindow(QMainWindow):
 
         client_alive = self.bridge.is_remote_connected()
         busy_remote = remote or connecting or client_alive
-        self.btn_connect.setEnabled(not busy_remote)
-        self.btn_disconnect.setEnabled(client_alive or connecting)
-        self.btn_local.setEnabled(not busy_remote and not backend)
-        self.btn_open.setEnabled(remote or (not busy_remote and not backend))
-        self.btn_close.setEnabled(backend and not connecting)
-        self.btn_refresh.setEnabled(backend and not connecting)
+        self.act_remote_connect.setEnabled(not busy_remote)
+        self.act_remote_disconnect.setEnabled(client_alive or connecting)
+        self.act_local.setEnabled(not busy_remote and not backend)
+        self.act_machine_open.setEnabled(remote or (not busy_remote and not backend))
+        self.act_machine_close.setEnabled(backend and not connecting)
+        self.act_machine_refresh.setEnabled(backend and not connecting)
 
         self.host_edit.setEnabled(not busy_remote)
         self.port_edit.setEnabled(not busy_remote)
@@ -888,21 +862,21 @@ class MainWindow(QMainWindow):
         jog_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.jog.set_enabled(jog_ok)
 
-        self.btn_set_pc.setEnabled(has_gcode and idleish)
-        self.btn_reset_pc.setEnabled(has_gcode and idleish)
-        self.btn_goto_pc.setEnabled(has_gcode)
-        self.btn_break.setEnabled(has_gcode and idleish)
-        self.btn_break_clear.setEnabled(has_gcode and idleish)
+        self.act_set_pc.setEnabled(has_gcode and idleish)
+        self.act_reset_pc.setEnabled(has_gcode and idleish)
+        self.act_goto_pc.setEnabled(has_gcode)
+        self.act_break.setEnabled(has_gcode and idleish)
+        self.act_break_clear.setEnabled(has_gcode and idleish)
         can_run = machine_open and backend and has_gcode and idleish
-        self.btn_run.setEnabled(can_run)
-        self.btn_step.setEnabled(can_run)
-        self.btn_pause.setEnabled(
+        self.act_run.setEnabled(can_run)
+        self.act_step.setEnabled(can_run)
+        self.act_pause.setEnabled(
             machine_open
             and backend
             and gc.STATE_DATA.swState
             not in (gc.STATE_IDLE, gc.STATE_PAUSE, gc.STATE_ABORT)
         )
-        self.btn_stop.setEnabled(
+        self.act_stop.setEnabled(
             machine_open
             and backend
             and gc.STATE_DATA.swState
@@ -946,16 +920,16 @@ class MainWindow(QMainWindow):
             gc.CONFIG_DATA.save()
         except Exception:
             pass
-        # Re-dock to defaults
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_gcode)
+        # Re-dock content panels; re-show toolbars
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
-        self.splitDockWidget(
-            self.dock_dro, self.dock_jog, Qt.Orientation.Vertical
-        )
+        self.splitDockWidget(self.dock_dro, self.dock_jog, Qt.Orientation.Vertical)
         for d in self._docks.values():
             d.show()
+        for tb in self._toolbars.values():
+            tb.show()
+            self.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)
         self.append_log("Layout reset to defaults.")
 
     def closeEvent(self, event: QCloseEvent):
