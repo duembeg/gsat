@@ -8,7 +8,9 @@
 PySide6>=6.6
 pyserial>=3.5
 colorama>=0.4.6
-python-socketio[client]>=5.10
+# AsyncClient (modules/remote_ws_client.py) needs the asyncio-client extra
+# (pulls aiohttp). The plain [client] extra is only for the sync Client.
+python-socketio[asyncio-client]>=5.10
 
 # G-code highlighting uses pure PySide6 QSyntaxHighlighter (same rules as
 # wx.stc container lexer). PyPI "QScintilla" / "PyQt6-QScintilla" are PyQt-only

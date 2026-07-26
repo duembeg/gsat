@@ -104,6 +104,24 @@ class MainWindow(QMainWindow):
         self.act_machine_refresh.setShortcut("Ctrl+R")
         self.act_machine_refresh.setToolTip("Request one status update")
         self.act_machine_refresh.triggered.connect(self.on_refresh_status)
+        self.act_cycle_start = QAction("Cycle Start", self)
+        self.act_cycle_start.setToolTip("Machine cycle start / resume after feed hold")
+        self.act_cycle_start.triggered.connect(self.on_cycle_start)
+        self.act_feed_hold = QAction("Feed Hold", self)
+        self.act_feed_hold.setToolTip("Machine feed hold")
+        self.act_feed_hold.triggered.connect(self.on_feed_hold)
+        self.act_queue_flush = QAction("Queue Flush", self)
+        self.act_queue_flush.setToolTip("Flush planner / serial queue")
+        self.act_queue_flush.triggered.connect(self.on_queue_flush)
+        self.act_machine_reset = QAction("Reset", self)
+        self.act_machine_reset.setToolTip("Soft-reset the controller")
+        self.act_machine_reset.triggered.connect(self.on_machine_reset)
+        self.act_clear_alarm = QAction("Clear Alarm", self)
+        self.act_clear_alarm.setToolTip("Clear controller alarm lock")
+        self.act_clear_alarm.triggered.connect(self.on_clear_alarm)
+        self.act_abort = QAction("Abort", self)
+        self.act_abort.setToolTip("Feed hold + stop program (emergency-ish stop)")
+        self.act_abort.triggered.connect(self.on_abort)
         self.act_local = QAction("Local serial", self)
         self.act_local.setToolTip("Start local MachIfExecuteThread")
         self.act_local.triggered.connect(self.on_open_local)
@@ -235,13 +253,23 @@ class MainWindow(QMainWindow):
         self.tb_program.addAction(self.act_goto_pc)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_program)
 
-        # Machine
+        # Machine (wx: open/refresh + cycle/hold/flush/reset/clear/abort)
         self.tb_machine = QToolBar("Machine")
         self.tb_machine.setObjectName("toolbarMachine")
         self.tb_machine.setMovable(True)
         self.tb_machine.addAction(self.act_machine_open)
         self.tb_machine.addAction(self.act_machine_close)
         self.tb_machine.addAction(self.act_machine_refresh)
+        self.tb_machine.addSeparator()
+        for act in (
+            self.act_cycle_start,
+            self.act_feed_hold,
+            self.act_queue_flush,
+            self.act_machine_reset,
+            self.act_clear_alarm,
+            self.act_abort,
+        ):
+            self.tb_machine.addAction(act)
         self.tb_machine.addSeparator()
         self.tb_machine.addAction(self.act_local)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_machine)
@@ -288,6 +316,14 @@ class MainWindow(QMainWindow):
         machine_menu.addAction(self.act_machine_open)
         machine_menu.addAction(self.act_machine_close)
         machine_menu.addAction(self.act_machine_refresh)
+        machine_menu.addSeparator()
+        machine_menu.addAction(self.act_cycle_start)
+        machine_menu.addAction(self.act_feed_hold)
+        machine_menu.addAction(self.act_queue_flush)
+        machine_menu.addAction(self.act_machine_reset)
+        machine_menu.addAction(self.act_clear_alarm)
+        machine_menu.addSeparator()
+        machine_menu.addAction(self.act_abort)
         machine_menu.addSeparator()
         machine_menu.addAction(self.act_local)
 
@@ -748,6 +784,52 @@ class MainWindow(QMainWindow):
     def on_refresh_status(self):
         self.bridge.request_status()
 
+    def _machine_cmd_ready(self) -> bool:
+        """True when backend is up and machine serial/session is open (wx rule)."""
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        return bool(machine_open and self.bridge.is_backend_active())
+
+    def _send_machine_cmd(self, event_id, label: str) -> bool:
+        if not self._machine_cmd_ready():
+            self.append_log(f"{label}: machine not open.")
+            return False
+        self.bridge.send_command(event_id)
+        self.append_log(f"{label} requested.")
+        return True
+
+    @Slot()
+    def on_cycle_start(self):
+        self._send_machine_cmd(gc.EV_CMD_CYCLE_START, "Cycle Start")
+
+    @Slot()
+    def on_feed_hold(self):
+        self._send_machine_cmd(gc.EV_CMD_FEED_HOLD, "Feed Hold")
+
+    @Slot()
+    def on_queue_flush(self):
+        self._send_machine_cmd(gc.EV_CMD_QUEUE_FLUSH, "Queue Flush")
+
+    @Slot()
+    def on_machine_reset(self):
+        self._send_machine_cmd(gc.EV_CMD_RESET, "Reset")
+
+    @Slot()
+    def on_clear_alarm(self):
+        self._send_machine_cmd(gc.EV_CMD_CLEAR_ALARM, "Clear Alarm")
+
+    @Slot()
+    def on_abort(self):
+        """wx Abort: feed hold on the controller, then stop program execution."""
+        if not self._machine_cmd_ready():
+            self.append_log("Abort: machine not open.")
+            return
+        self.bridge.send_command(gc.EV_CMD_FEED_HOLD)
+        self.bridge.send_command(gc.EV_CMD_STOP)
+        self.append_log(
+            "Abort: feed-hold + stop sent "
+            "(use Cycle Start to resume motion on the controller)."
+        )
+
     @Slot(str)
     def on_cli_submit(self, line: str):
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
@@ -1030,6 +1112,15 @@ class MainWindow(QMainWindow):
         self.act_machine_open.setEnabled(remote or (not busy_remote and not backend))
         self.act_machine_close.setEnabled(backend and not connecting)
         self.act_machine_refresh.setEnabled(backend and not connecting)
+
+        # Controller-side machine ops (wx: enabled when serial/session open)
+        machine_cmd_ok = machine_open and backend and not connecting
+        self.act_cycle_start.setEnabled(machine_cmd_ok)
+        self.act_feed_hold.setEnabled(machine_cmd_ok)
+        self.act_queue_flush.setEnabled(machine_cmd_ok)
+        self.act_machine_reset.setEnabled(machine_cmd_ok)
+        self.act_clear_alarm.setEnabled(machine_cmd_ok)
+        self.act_abort.setEnabled(machine_cmd_ok)
 
         self.host_edit.setEnabled(not busy_remote)
         self.port_edit.setEnabled(not busy_remote)

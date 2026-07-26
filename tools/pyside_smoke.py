@@ -308,6 +308,44 @@ def test_offline() -> list[str]:
             _fail("home missing")
         notes.append("jog/home: ok")
 
+        # --- machine toolbar extras (wx Machine menu/toolbar) ---
+        gc.STATE_DATA.swState = gc.STATE_IDLE
+        w._update_connection_ui()
+        if not w.act_cycle_start.isEnabled():
+            _fail("cycle start should be enabled when machine open")
+        for method, eid, label in (
+            (w.on_cycle_start, gc.EV_CMD_CYCLE_START, "cycle start"),
+            (w.on_feed_hold, gc.EV_CMD_FEED_HOLD, "feed hold"),
+            (w.on_queue_flush, gc.EV_CMD_QUEUE_FLUSH, "queue flush"),
+            (w.on_machine_reset, gc.EV_CMD_RESET, "reset"),
+            (w.on_clear_alarm, gc.EV_CMD_CLEAR_ALARM, "clear alarm"),
+        ):
+            n_before = len(fake.events)
+            method()
+            if len(fake.events) <= n_before or fake.events[-1][0] != eid:
+                _fail(f"{label} did not send {eid}: {fake.events[n_before:]}")
+        # Abort = feed hold + stop (wx OnAbort)
+        n_before = len(fake.events)
+        w.on_abort()
+        abort_ids = [e[0] for e in fake.events[n_before:]]
+        if abort_ids != [gc.EV_CMD_FEED_HOLD, gc.EV_CMD_STOP]:
+            _fail(f"abort expected [FEED_HOLD, STOP], got {abort_ids}")
+        # Disabled when machine closed
+        w._machine_open = False
+        gc.STATE_DATA.serialPortIsOpen = False
+        w._update_connection_ui()
+        if w.act_feed_hold.isEnabled():
+            _fail("feed hold should be disabled when machine closed")
+        n_before = len(fake.events)
+        w.on_feed_hold()
+        if len(fake.events) != n_before:
+            _fail("feed hold should not send when machine closed")
+        # Restore open for remaining teardown
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        w._update_connection_ui()
+        notes.append("machine extras (cycle/hold/flush/reset/alarm/abort): ok")
+
     finally:
         try:
             os.unlink(path)
