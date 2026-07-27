@@ -6,20 +6,66 @@
     Matches wx Machine Status panel layout intent:
     - DRO box: X/Y/Z/A/B/C + FR (feed) + ST (state) — same big mono fields
     - Status box: device name, version, buffer, sent %, runtime (host/side data)
+
+    Interactive (when armed, machine open) — same as wx OnDroLeftUp:
+    - Click axis value → Move-to numeric dialog → MOVE / RAPID_MOVE
+    - Click axis letter → menu Home / Zero / Set to value → HOME / SET_AXIS
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QCursor, QMouseEvent
 from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QLabel,
     QLineEdit,
+    QMenu,
     QVBoxLayout,
     QWidget,
 )
 
 from modules.pyside_workbench import theme
+from modules.pyside_workbench.numeric_entry_dialog import NumericEntryDialog
+
+
+class _ClickableLabel(QLabel):
+    """Axis letter; left-click opens the axis menu (wx StaticText)."""
+
+    clicked = Signal(str)  # axis letter e.g. "X"
+
+    def __init__(self, axis: str, parent=None):
+        super().__init__(axis, parent)
+        self._axis = axis
+        self.setStyleSheet("font-weight: 700; font-size: 14px;")
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self._axis)
+        super().mouseReleaseEvent(event)
+
+
+class _ClickableDroField(QLineEdit):
+    """Read-only DRO digits; left-click opens Move-to dialog (wx TextCtrl)."""
+
+    clicked = Signal(str)  # axis letter
+
+    def __init__(self, axis: str, initial: str, parent=None):
+        super().__init__(initial, parent)
+        self._axis = axis
+        self.setObjectName("droAxis")
+        self.setReadOnly(True)
+        self.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.setFont(theme.mono_font(20, bold=True))
+        self.setMinimumWidth(150)
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
+            self.clicked.emit(self._axis)
+        super().mouseReleaseEvent(event)
 
 
 class DroPanel(QWidget):
@@ -33,6 +79,12 @@ class DroPanel(QWidget):
         ("B", "posb"),
         ("C", "posc"),
     )
+
+    # Emitted for MainWindow → bridge (absolute move / set / home)
+    move_to_requested = Signal(str, float)  # axis lower, position
+    home_axis_requested = Signal(str)  # axis lower
+    zero_axis_requested = Signal(str)  # axis lower → SET_AXIS 0
+    set_axis_requested = Signal(str, float)  # axis lower, work coord
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -48,20 +100,26 @@ class DroPanel(QWidget):
         dro_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._axis_edits: dict[str, QLineEdit] = {}
+        self._axis_labels: dict[str, QLabel] = {}
+        self._interactive = False
+
         for label, key in self.AXIS_KEYS:
-            edit = self._make_dro_field("0.000")
-            axis_lbl = QLabel(label)
-            axis_lbl.setStyleSheet("font-weight: 700; font-size: 14px;")
+            axis = label  # "X"
+            edit = _ClickableDroField(axis, "0.000")
+            edit.clicked.connect(self._on_value_clicked)
+            axis_lbl = _ClickableLabel(axis)
+            axis_lbl.clicked.connect(self._on_letter_clicked)
             dro_form.addRow(axis_lbl, edit)
             self._axis_edits[key] = edit
+            self._axis_labels[key] = axis_lbl
 
-        # Feed rate (vel) — same row style as axes (wx CreateDroBox)
+        # Feed rate (vel) — display only
         fr_lbl = QLabel("FR")
         fr_lbl.setStyleSheet("font-weight: 700; font-size: 14px;")
         self.feed_rate = self._make_dro_field("0.00")
         dro_form.addRow(fr_lbl, self.feed_rate)
 
-        # Machine state — same size/font as axes (wx ST in DRO box)
+        # Machine state — display only
         st_lbl = QLabel("ST")
         st_lbl.setStyleSheet("font-weight: 700; font-size: 14px;")
         self.run_status = self._make_dro_field("")
@@ -97,8 +155,8 @@ class DroPanel(QWidget):
         root.addWidget(status_box)
 
         self._last_stat = ""
-        # ST shares DRO chrome from the start (not only after first status push)
         self._apply_state_style("")
+        self.set_interactive(False)
 
     def _make_dro_field(self, initial: str) -> QLineEdit:
         edit = QLineEdit(initial)
@@ -107,7 +165,22 @@ class DroPanel(QWidget):
         edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         edit.setFont(theme.mono_font(20, bold=True))
         edit.setMinimumWidth(150)
+        edit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         return edit
+
+    def set_interactive(self, enabled: bool) -> None:
+        """Arm axis letter/value clicks (wx: only when serial open)."""
+        self._interactive = bool(enabled)
+        cursor = (
+            QCursor(Qt.CursorShape.PointingHandCursor)
+            if enabled
+            else QCursor(Qt.CursorShape.ArrowCursor)
+        )
+        for edit in self._axis_edits.values():
+            edit.setEnabled(True)  # always show values; clicks gated in handlers
+            edit.setCursor(cursor)
+        for lbl in self._axis_labels.values():
+            lbl.setCursor(cursor)
 
     def clear(self):
         for edit in self._axis_edits.values():
@@ -179,13 +252,11 @@ class DroPanel(QWidget):
     def _apply_state_style(self, stat: str):
         """Color ST field while keeping DRO-sized mono look."""
         if not stat:
-            # Match #droAxis chrome until we know machine state
             self.run_status.setStyleSheet("")
             self._last_stat = ""
             return
         key = theme.state_color_key(stat)
         color = theme.STATE_COLORS.get(key, theme.STATE_COLORS["unknown"])
-        # Keep dark DRO field background; tint text/border by state
         self.run_status.setStyleSheet(
             f"QLineEdit#droState {{"
             f" font-family: monospace; font-size: 20px; font-weight: 700;"
@@ -196,3 +267,50 @@ class DroPanel(QWidget):
             f"}}"
         )
         self._last_stat = stat
+
+    # ------------------------------------------------------------------
+    # Interactions (wx OnDroLeftUp)
+    # ------------------------------------------------------------------
+    def _on_value_clicked(self, axis: str) -> None:
+        if not self._interactive:
+            return
+        key = f"pos{axis.lower()}"
+        initial = ""
+        edit = self._axis_edits.get(key)
+        if edit is not None:
+            initial = edit.text()
+        dlg = NumericEntryDialog(
+            self,
+            title="Move to",
+            caption=f"Enter new position for {axis} axis",
+        )
+        if initial:
+            dlg.set_initial(initial)
+        if dlg.exec() != NumericEntryDialog.DialogCode.Accepted:
+            return
+        self.move_to_requested.emit(axis.lower(), float(dlg.value()))
+
+    def _on_letter_clicked(self, axis: str) -> None:
+        if not self._interactive:
+            return
+        menu = QMenu(self)
+        act_home = menu.addAction("Home Axis")
+        act_zero = menu.addAction("Zero Axis")
+        act_set = menu.addAction("Set to value")
+        chosen = menu.exec(QCursor.pos())
+        if chosen is None:
+            return
+        ax = axis.lower()
+        if chosen is act_home:
+            self.home_axis_requested.emit(ax)
+        elif chosen is act_zero:
+            self.zero_axis_requested.emit(ax)
+        elif chosen is act_set:
+            dlg = NumericEntryDialog(
+                self,
+                title="Set To Value",
+                caption=f"Enter new value for {axis} axis",
+            )
+            if dlg.exec() != NumericEntryDialog.DialogCode.Accepted:
+                return
+            self.set_axis_requested.emit(ax, float(dlg.value()))

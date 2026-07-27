@@ -18,9 +18,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QStatusBar,
     QToolBar,
+    QToolButton,
     QWidget,
 )
 
@@ -32,6 +34,7 @@ from modules.pyside_workbench.client_bridge import ClientBridge
 from modules.pyside_workbench.console_panel import ConsolePanel
 from modules.pyside_workbench.dro_panel import DroPanel
 from modules.pyside_workbench.gcode_panel import GcodePanel
+from modules.pyside_workbench import icons as wb_icons
 from modules.pyside_workbench.jog_panel import JogPanel
 
 
@@ -83,23 +86,25 @@ class MainWindow(QMainWindow):
         self.act_quit.setShortcut("Ctrl+Q")
         self.act_quit.triggered.connect(self.close)
 
-        # File history (filled by _rebuild_recent_menu)
+        # File history (File menu + Open toolbar split-button dropdown)
         self._file_history: list[str] = []
-        self._recent_menu = None
+        self._recent_menu = None  # File → Open Recent
+        self._open_dropdown_menu = QMenu(self)  # toolbar Open ▾ (wx SetToolDropDown)
+        self.btn_open = None  # set in _build_toolbars
 
-        # Remote
-        self.act_remote_connect = QAction("Connect remote", self)
-        self.act_remote_connect.setToolTip("Connect to gsat-server (WebSocket)")
-        self.act_remote_connect.triggered.connect(self.on_connect_remote)
-        self.act_remote_disconnect = QAction("Disconnect", self)
-        self.act_remote_disconnect.triggered.connect(self.on_disconnect_remote)
+        # Remote — one toggle (remote.png, not machine plugs); tooltip flips with state
+        self.act_remote = QAction("Connect remote", self)
+        self.act_remote.setCheckable(True)
+        self.act_remote.setToolTip("Connect remote — WebSocket to gsat-server")
+        self.act_remote.triggered.connect(self.on_remote_toggle)
 
-        # Machine
-        self.act_machine_open = QAction("Open machine", self)
-        self.act_machine_open.setToolTip("Open serial/machine on server or local")
-        self.act_machine_open.triggered.connect(self.on_open_machine)
-        self.act_machine_close = QAction("Close machine", self)
-        self.act_machine_close.triggered.connect(self.on_close_machine)
+        # Machine — one Connect toggle (wx); icon + tooltip flip with open state
+        self.act_machine_connect = QAction("&Connect", self)
+        self.act_machine_connect.setCheckable(True)
+        self.act_machine_connect.setToolTip(
+            "Machine Connect — open serial/machine session"
+        )
+        self.act_machine_connect.triggered.connect(self.on_machine_connect)
         self.act_machine_refresh = QAction("Refresh", self)
         self.act_machine_refresh.setShortcut("Ctrl+R")
         self.act_machine_refresh.setToolTip("Request one status update")
@@ -142,7 +147,8 @@ class MainWindow(QMainWindow):
         self.act_break.setShortcut("F9")
         self.act_break.setToolTip("Toggle breakpoint on selected line")
         self.act_break.triggered.connect(self.on_break_toggle)
-        self.act_break_clear = QAction("Clear BP", self)
+        self.act_break_clear = QAction("Clear all breakpoints", self)
+        self.act_break_clear.setToolTip("Clear all breakpoints")
         self.act_break_clear.triggered.connect(self.on_break_clear)
         self.act_set_pc = QAction("Set PC", self)
         self.act_set_pc.triggered.connect(self.on_set_pc)
@@ -150,6 +156,35 @@ class MainWindow(QMainWindow):
         self.act_reset_pc.triggered.connect(self.on_reset_pc)
         self.act_goto_pc = QAction("Goto PC", self)
         self.act_goto_pc.triggered.connect(self.on_goto_pc)
+
+        self._apply_action_icons()
+
+    def _apply_action_icons(self):
+        """Attach existing gsat PNGs (same set as wx toolbars)."""
+        for act, name in (
+            (self.act_open_gcode, "open"),
+            (self.act_save, "save"),
+            (self.act_save_as, "save"),
+            (self.act_run, "run"),
+            (self.act_pause, "pause"),
+            (self.act_step, "step"),
+            (self.act_stop, "stop"),
+            (self.act_break, "break"),
+            (self.act_break_clear, "break_clear"),
+            (self.act_set_pc, "set_pc"),
+            (self.act_reset_pc, "reset_pc"),
+            (self.act_goto_pc, "goto_pc"),
+            (self.act_machine_refresh, "refresh"),
+            (self.act_cycle_start, "cycle_start"),
+            (self.act_feed_hold, "feed_hold"),
+            (self.act_queue_flush, "queue_flush"),
+            (self.act_machine_reset, "machine_reset"),
+            (self.act_clear_alarm, "clear_alarm"),
+            (self.act_abort, "abort"),
+            (self.act_local, "local"),
+            (self.act_remote, "remote"),
+        ):
+            wb_icons.apply_action_icon(act, name)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -166,16 +201,52 @@ class MainWindow(QMainWindow):
         )
         return dock
 
+    def _apply_default_dock_arrangement(self) -> None:
+        """Default like wx: G-code center, Console under center only, DRO|Jog right column.
+
+        Qt dock *corners* control whether the bottom dock is a full-width row
+        or only under the center (column-style with the right stack). User can
+        still drag docks to other areas (full-width bottom, left, float, etc.).
+        """
+        # Right column owns top/bottom-right → full-height right stack;
+        # bottom dock stays under central (G-code) only — wx column look.
+        self.setCorner(
+            Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        self.setCorner(
+            Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        self.setCorner(
+            Qt.Corner.TopLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea
+        )
+        self.setCorner(
+            Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.BottomDockWidgetArea
+        )
+
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
+        self.splitDockWidget(self.dock_dro, self.dock_jog, Qt.Orientation.Vertical)
+
+        self.dock_console.show()
+        self.dock_dro.show()
+        self.dock_jog.show()
+        self.resizeDocks([self.dock_console], [220], Qt.Orientation.Vertical)
+        self.resizeDocks(
+            [self.dock_dro, self.dock_jog], [400, 280], Qt.Orientation.Vertical
+        )
+
     def _build_ui(self):
-        # Content panels = docks; actions = toolbars (wx AUI model)
+        """Dockable panels (wx AUI-like): toolbars for actions, docks for content."""
         self.setDockNestingEnabled(True)
         self.setDockOptions(
             QMainWindow.DockOption.AllowNestedDocks
             | QMainWindow.DockOption.AllowTabbedDocks
             | QMainWindow.DockOption.AnimatedDocks
+            | QMainWindow.DockOption.GroupedDragging
         )
 
-        # G-code is the center workspace (like wx CenterPane)
+        # G-code is the center workspace (like wx CenterPane — not a dock)
         self.gcode = GcodePanel()
         self.gcode.set_pc_requested.connect(self.set_pc)
         self.gcode.break_toggled.connect(self.on_break_toggled)
@@ -189,21 +260,21 @@ class MainWindow(QMainWindow):
         self.console = ConsolePanel(max_history=max_hist, load_saved=True)
         self.console.line_submitted.connect(self.on_cli_submit)
         self.dock_console = self._make_dock("Console", self.console, "dockConsole")
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
 
         self.dro_panel = DroPanel()
+        self.dro_panel.move_to_requested.connect(self.on_dro_move_to)
+        self.dro_panel.home_axis_requested.connect(self.on_dro_home_axis)
+        self.dro_panel.zero_axis_requested.connect(self.on_dro_zero_axis)
+        self.dro_panel.set_axis_requested.connect(self.on_dro_set_axis)
         self.dock_dro = self._make_dock("Machine Status", self.dro_panel, "dockDro")
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
 
         self.jog = JogPanel()
         self.jog.jog_relative.connect(self.on_jog_relative)
         self.jog.jog_stop.connect(self.on_jog_stop)
         self.jog.home_axes.connect(self.on_home_axes)
         self.dock_jog = self._make_dock("Machine Jogging", self.jog, "dockJog")
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
-        self.splitDockWidget(self.dock_dro, self.dock_jog, Qt.Orientation.Vertical)
 
-        self.resizeDocks([self.dock_console], [200], Qt.Orientation.Vertical)
+        self._apply_default_dock_arrangement()
 
         sb = QStatusBar(self)
         self.setStatusBar(sb)
@@ -222,21 +293,40 @@ class MainWindow(QMainWindow):
             "jog": self.dock_jog,
         }
 
+    def _style_action_toolbar(self, tb: QToolBar) -> None:
+        """Icon-first toolbars like classic wx (tooltips keep the labels)."""
+        tb.setIconSize(wb_icons.TOOLBAR_ICON_SIZE)
+        tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        tb.setMovable(True)
+
     def _build_toolbars(self):
         """QToolBars for actions — not docks (matches wx MAIN/PROGRAM/MACHINE/REMOTE)."""
-        # Main
+        # Main — wx app toolbar: icon + text; Open is split (▾ = recent)
         self.tb_main = QToolBar("Main")
         self.tb_main.setObjectName("toolbarMain")
+        self.tb_main.setIconSize(wb_icons.TOOLBAR_ICON_SIZE)
+        self.tb_main.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.tb_main.setMovable(True)
-        self.tb_main.addAction(self.act_open_gcode)
+        self.btn_open = QToolButton(self)
+        self.btn_open.setObjectName("btnOpenGcode")
+        self.btn_open.setDefaultAction(self.act_open_gcode)
+        self.btn_open.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self.btn_open.setMenu(self._open_dropdown_menu)
+        self.btn_open.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_open.setIconSize(wb_icons.TOOLBAR_ICON_SIZE)
+        self.btn_open.setToolTip(
+            "Open G-code file — arrow shows recent files (same as classic wx)"
+        )
+        self.tb_main.addWidget(self.btn_open)
         self.tb_main.addAction(self.act_save)
         self.tb_main.addAction(self.act_save_as)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_main)
+        self._rebuild_recent_menu()
 
         # Program (run / PC / break)
         self.tb_program = QToolBar("Program")
         self.tb_program.setObjectName("toolbarProgram")
-        self.tb_program.setMovable(True)
+        self._style_action_toolbar(self.tb_program)
         for act in (
             self.act_run,
             self.act_pause,
@@ -253,12 +343,11 @@ class MainWindow(QMainWindow):
         self.tb_program.addAction(self.act_goto_pc)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_program)
 
-        # Machine (wx: open/refresh + cycle/hold/flush/reset/clear/abort)
+        # Machine (wx: Connect toggle + refresh + cycle/hold/flush/reset/clear/abort)
         self.tb_machine = QToolBar("Machine")
         self.tb_machine.setObjectName("toolbarMachine")
-        self.tb_machine.setMovable(True)
-        self.tb_machine.addAction(self.act_machine_open)
-        self.tb_machine.addAction(self.act_machine_close)
+        self._style_action_toolbar(self.tb_machine)
+        self.tb_machine.addAction(self.act_machine_connect)
         self.tb_machine.addAction(self.act_machine_refresh)
         self.tb_machine.addSeparator()
         for act in (
@@ -277,19 +366,21 @@ class MainWindow(QMainWindow):
         # Remote (host/port widgets + connect — lab-friendly)
         self.tb_remote = QToolBar("Remote")
         self.tb_remote.setObjectName("toolbarRemote")
+        # Keep host/port labels readable; action buttons still use icons.
+        self.tb_remote.setIconSize(wb_icons.TOOLBAR_ICON_SIZE)
+        self.tb_remote.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.tb_remote.setMovable(True)
         self.tb_remote.addWidget(QLabel(" Host "))
         self.host_edit = QLineEdit()
         self.host_edit.setMinimumWidth(120)
         self.host_edit.setMaximumWidth(180)
-        self.host_edit.setClearButtonEnabled(True)
+        # No clear-button "x" — looks misaligned on the toolbar; select-all + type is fine
         self.tb_remote.addWidget(self.host_edit)
         self.tb_remote.addWidget(QLabel(" Port "))
         self.port_edit = QLineEdit()
         self.port_edit.setMaximumWidth(64)
         self.tb_remote.addWidget(self.port_edit)
-        self.tb_remote.addAction(self.act_remote_connect)
-        self.tb_remote.addAction(self.act_remote_disconnect)
+        self.tb_remote.addAction(self.act_remote)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_remote)
 
         self._toolbars = {
@@ -298,6 +389,12 @@ class MainWindow(QMainWindow):
             "machine": self.tb_machine,
             "remote": self.tb_remote,
         }
+        # Tooltips already set; ensure icon-only buttons still show status tips
+        for tb in self._toolbars.values():
+            for btn in tb.findChildren(QToolButton):
+                act = btn.defaultAction()
+                if act is not None and act.toolTip():
+                    btn.setToolTip(act.toolTip())
 
     def _build_menu(self):
         # File (wx: Open, Recent, Save, Save As, Exit)
@@ -313,8 +410,7 @@ class MainWindow(QMainWindow):
 
         # Machine
         machine_menu = self.menuBar().addMenu("&Machine")
-        machine_menu.addAction(self.act_machine_open)
-        machine_menu.addAction(self.act_machine_close)
+        machine_menu.addAction(self.act_machine_connect)
         machine_menu.addAction(self.act_machine_refresh)
         machine_menu.addSeparator()
         machine_menu.addAction(self.act_cycle_start)
@@ -329,8 +425,7 @@ class MainWindow(QMainWindow):
 
         # Remote
         remote_menu = self.menuBar().addMenu("R&emote")
-        remote_menu.addAction(self.act_remote_connect)
-        remote_menu.addAction(self.act_remote_disconnect)
+        remote_menu.addAction(self.act_remote)
 
         # Run (wx name) — program controls
         run_menu = self.menuBar().addMenu("&Run")
@@ -439,27 +534,34 @@ class MainWindow(QMainWindow):
         self._save_file_history()
         self._rebuild_recent_menu()
 
-    def _rebuild_recent_menu(self) -> None:
-        if self._recent_menu is None:
-            return
-        self._recent_menu.clear()
-        self._load_file_history()
+    def _populate_recent_entries(self, menu: QMenu, *, include_clear: bool) -> None:
+        """Fill a menu with numbered recent paths (wx FileHistory / dropdown style)."""
+        menu.clear()
         if not self._file_history:
             empty = QAction("(no recent files)", self)
             empty.setEnabled(False)
-            self._recent_menu.addAction(empty)
+            menu.addAction(empty)
             return
         for i, path in enumerate(self._file_history):
-            # wx style: &0 path, &1 path, …
+            # wx: "&0 path", "&1 path", …
             label = f"&{i}  {path}"
             act = QAction(label, self)
             act.setData(path)
             act.triggered.connect(self._on_recent_file)
-            self._recent_menu.addAction(act)
-        self._recent_menu.addSeparator()
-        clear_act = QAction("Clear recent files", self)
-        clear_act.triggered.connect(self._clear_recent_files)
-        self._recent_menu.addAction(clear_act)
+            menu.addAction(act)
+        if include_clear:
+            menu.addSeparator()
+            clear_act = QAction("Clear recent files", self)
+            clear_act.triggered.connect(self._clear_recent_files)
+            menu.addAction(clear_act)
+
+    def _rebuild_recent_menu(self) -> None:
+        """Refresh File → Open Recent and toolbar Open ▾ from config history."""
+        self._load_file_history()
+        if self._recent_menu is not None:
+            self._populate_recent_entries(self._recent_menu, include_clear=True)
+        # Toolbar dropdown mirrors wx AUI open dropdown (paths only, no Clear)
+        self._populate_recent_entries(self._open_dropdown_menu, include_clear=False)
 
     @Slot()
     def _on_recent_file(self):
@@ -739,6 +841,67 @@ class MainWindow(QMainWindow):
         self.bridge.send_command(gc.EV_CMD_HOME, dict(axes))
         self.append_log(f"Home requested: {','.join(sorted(axes.keys())).upper()}")
 
+    def _dro_cmd_ready(self) -> bool:
+        """wx DRO clicks: machine open, backend up, not streaming program."""
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if not machine_open or not self.bridge.is_backend_active():
+            return False
+        if gc.STATE_DATA.swState == gc.STATE_RUN:
+            return False
+        return True
+
+    @Slot(str, float)
+    def on_dro_move_to(self, axis: str, value: float):
+        """Absolute move to DRO-entered position (wx number-field click)."""
+        if not self._dro_cmd_ready():
+            self.append_log("DRO move: machine not ready.")
+            return
+        ax = str(axis).lower()
+        payload: dict = {ax: value}
+        rapid = bool(getattr(gc.STATE_DATA, "joggingRapid", False))
+        if rapid:
+            self.bridge.send_command(gc.EV_CMD_RAPID_MOVE, payload)
+            self.append_log(f"DRO rapid move {ax.upper()}={value}")
+        else:
+            feed = getattr(gc.STATE_DATA, "joggingFeedRate", None)
+            if feed is None:
+                try:
+                    feed = float(gc.CONFIG_DATA.get("/jogging/JogFeedRate", 1000) or 1000)
+                except (TypeError, ValueError):
+                    feed = 1000.0
+            payload["feed"] = feed
+            self.bridge.send_command(gc.EV_CMD_MOVE, payload)
+            self.append_log(f"DRO move {ax.upper()}={value} F{feed}")
+
+    @Slot(str)
+    def on_dro_home_axis(self, axis: str):
+        if not self._dro_cmd_ready():
+            self.append_log("DRO home: machine not ready.")
+            return
+        ax = str(axis).lower()
+        self.bridge.send_command(gc.EV_CMD_HOME, {ax: 0})
+        self.append_log(f"DRO home {ax.upper()}")
+
+    @Slot(str)
+    def on_dro_zero_axis(self, axis: str):
+        """Work-zero current position on axis (SET_AXIS 0), not a move."""
+        if not self._dro_cmd_ready():
+            self.append_log("DRO zero: machine not ready.")
+            return
+        ax = str(axis).lower()
+        self.bridge.send_command(gc.EV_CMD_SET_AXIS, {ax: 0})
+        self.append_log(f"DRO zero {ax.upper()} (set work to 0)")
+
+    @Slot(str, float)
+    def on_dro_set_axis(self, axis: str, value: float):
+        """Set work coordinate without moving (wx Set to value)."""
+        if not self._dro_cmd_ready():
+            self.append_log("DRO set axis: machine not ready.")
+            return
+        ax = str(axis).lower()
+        self.bridge.send_command(gc.EV_CMD_SET_AXIS, {ax: value})
+        self.append_log(f"DRO set {ax.upper()}={value} (work coord)")
+
     # ------------------------------------------------------------------
     # Connection actions
     # ------------------------------------------------------------------
@@ -762,12 +925,72 @@ class MainWindow(QMainWindow):
         self._update_connection_ui()
 
     @Slot()
+    def on_remote_toggle(self):
+        """One control: connect when offline, disconnect when up or connecting."""
+        client_alive = self.bridge.is_remote_connected()
+        if self._remote_connected or self._remote_connecting or client_alive:
+            self.on_disconnect_remote()
+        else:
+            self.on_connect_remote()
+        self._update_connection_ui()
+
+    def _sync_remote_affordance(self, *, remote: bool, connecting: bool) -> None:
+        """remote.png always (not machine plugs); tooltip/check flip with state."""
+        wb_icons.apply_action_icon(self.act_remote, "remote")
+        if connecting:
+            self.act_remote.setToolTip(
+                "Disconnect remote — cancel connection attempt"
+            )
+            self.act_remote.setChecked(True)
+            self.act_remote.setText("Disconnect remote")
+        elif remote:
+            self.act_remote.setToolTip(
+                "Disconnect remote — leave gsat-server WebSocket"
+            )
+            self.act_remote.setChecked(True)
+            self.act_remote.setText("Disconnect remote")
+        else:
+            self.act_remote.setToolTip(
+                "Connect remote — WebSocket to gsat-server"
+            )
+            self.act_remote.setChecked(False)
+            self.act_remote.setText("Connect remote")
+
+    @Slot()
     def on_open_machine(self):
+        """Open machine session (remote EV_CMD_OPEN or local thread)."""
         self.bridge.open_machine()
 
     @Slot()
     def on_close_machine(self):
+        """Close machine session (remote EV_CMD_CLOSE or local exit)."""
         self.bridge.close_machine()
+
+    @Slot()
+    def on_machine_connect(self):
+        """wx Machine Connect: toggle open/close; UI state comes from backend events."""
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if machine_open:
+            self.on_close_machine()
+        else:
+            self.on_open_machine()
+        # Icon/check/tooltip refresh on EV_SER_PORT_*; don't force from click alone.
+        self._update_connection_ui()
+
+    def _sync_machine_connect_affordance(self, machine_open: bool) -> None:
+        """Flip Connect icon + tooltip so they match the live session state."""
+        if machine_open:
+            wb_icons.apply_action_icon(self.act_machine_connect, "machine_open")
+            self.act_machine_connect.setToolTip(
+                "Machine Disconnect — close serial/machine session"
+            )
+            self.act_machine_connect.setChecked(True)
+        else:
+            wb_icons.apply_action_icon(self.act_machine_connect, "machine_close")
+            self.act_machine_connect.setToolTip(
+                "Machine Connect — open serial/machine session"
+            )
+            self.act_machine_connect.setChecked(False)
 
     @Slot()
     def on_open_local(self):
@@ -1106,11 +1329,17 @@ class MainWindow(QMainWindow):
 
         client_alive = self.bridge.is_remote_connected()
         busy_remote = remote or connecting or client_alive
-        self.act_remote_connect.setEnabled(not busy_remote)
-        self.act_remote_disconnect.setEnabled(client_alive or connecting)
+        # Always interactive: offline → connect; up/connecting → disconnect
+        self.act_remote.setEnabled(True)
+        self._sync_remote_affordance(remote=remote, connecting=connecting)
         self.act_local.setEnabled(not busy_remote and not backend)
-        self.act_machine_open.setEnabled(remote or (not busy_remote and not backend))
-        self.act_machine_close.setEnabled(backend and not connecting)
+        # Connect toggle: open when closed (remote or free local); close when open
+        can_open = remote or (not busy_remote and not backend)
+        can_close = backend and not connecting
+        self.act_machine_connect.setEnabled(
+            not connecting and (can_open or can_close)
+        )
+        self._sync_machine_connect_affordance(machine_open)
         self.act_machine_refresh.setEnabled(backend and not connecting)
 
         # Controller-side machine ops (wx: enabled when serial/session open)
@@ -1130,6 +1359,8 @@ class MainWindow(QMainWindow):
 
         jog_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.jog.set_enabled(jog_ok)
+        # DRO letter/value clicks (wx OnDroLeftUp when serial open)
+        self.dro_panel.set_interactive(jog_ok)
 
         # Block open/save while streaming (like wx)
         busy_program = machine_open and gc.STATE_DATA.swState in (
@@ -1141,6 +1372,9 @@ class MainWindow(QMainWindow):
         self.act_save_as.setEnabled(has_gcode and not busy_program)
         if self._recent_menu is not None:
             self._recent_menu.setEnabled(not busy_program)
+        if self.btn_open is not None:
+            self.btn_open.setEnabled(not busy_program)
+        self._open_dropdown_menu.setEnabled(not busy_program)
 
         self.act_set_pc.setEnabled(has_gcode and idleish)
         self.act_reset_pc.setEnabled(has_gcode and idleish)
@@ -1164,17 +1398,20 @@ class MainWindow(QMainWindow):
         )
 
     # ------------------------------------------------------------------
-    # Layout persistence (Qt saveState ≈ wx AUI perspective)
+    # Layout persistence (Qt dock saveState ≈ wx AUI perspective)
     # ------------------------------------------------------------------
     _LAYOUT_KEY = "/pysideWorkbench/Layout/Default"
 
     def _save_layout(self):
-        """Save dock arrangement + window geometry to config (like wx SaveLayoutData)."""
+        """Save dock arrangement + window geometry (menu only, not on quit)."""
         try:
             state_b64 = base64.b64encode(bytes(self.saveState())).decode("ascii")
             geo_b64 = base64.b64encode(bytes(self.saveGeometry())).decode("ascii")
             gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/State", state_b64)
             gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/Geometry", geo_b64)
+            # Clear one-shot splitter keys from the brief splitter experiment
+            for sub in ("SplitMain", "SplitLeft", "SplitRight"):
+                gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/{sub}", "")
             gc.CONFIG_DATA.save()
             self.append_log("Layout saved.")
         except Exception as exc:
@@ -1193,24 +1430,27 @@ class MainWindow(QMainWindow):
             self.logger.warning("Layout load failed: %s", exc)
 
     def _reset_layout(self):
-        """Clear saved layout and restore a sensible default dock arrangement."""
+        """Clear saved layout and restore default dock arrangement (wx-like)."""
         try:
-            gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/State", "")
-            gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/Geometry", "")
+            for sub in (
+                "State",
+                "Geometry",
+                "SplitMain",
+                "SplitLeft",
+                "SplitRight",
+            ):
+                gc.CONFIG_DATA.set(f"{self._LAYOUT_KEY}/{sub}", "")
             gc.CONFIG_DATA.save()
         except Exception:
             pass
-        # Re-dock content panels; re-show toolbars
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
-        self.splitDockWidget(self.dock_dro, self.dock_jog, Qt.Orientation.Vertical)
-        for d in self._docks.values():
-            d.show()
+        self._apply_default_dock_arrangement()
         for tb in self._toolbars.values():
             tb.show()
             self.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)
-        self.append_log("Layout reset to defaults.")
+        self.append_log(
+            "Layout reset: G-code center, Console under it, Status|Jog right "
+            "(drag docks to full-width bottom or other areas as needed)."
+        )
 
     def closeEvent(self, event: QCloseEvent):
         # Layout is saved only via View → Save layout (not on quit), so a

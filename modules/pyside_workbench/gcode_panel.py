@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
+    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -83,6 +84,12 @@ class _GcodeEdit(QPlainTextEdit):
         self.setFont(mono)
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
+        # Prefer Expanding so the center can fill, but with a small sizeHint so the
+        # bottom Console dock is free to take most of the window height.
+        sp = self.sizePolicy()
+        sp.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
+        sp.setVerticalPolicy(QSizePolicy.Policy.Expanding)
+        self.setSizePolicy(sp)
 
         self._line_number_area = _LineNumberArea(self)
         self._breakpoints: set[int] = set()
@@ -157,6 +164,14 @@ class _GcodeEdit(QPlainTextEdit):
             )
         if rect.contains(self.viewport().rect()):
             self._update_line_number_area_width(0)
+
+    def minimumSizeHint(self) -> QSize:
+        # Qt default is ~70×70; allow shrinking further for a large console dock
+        return QSize(80, 40)
+
+    def sizeHint(self) -> QSize:
+        # Prefer short center pane so bottom Console can claim most of the height
+        return QSize(256, 100)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -310,6 +325,12 @@ class GcodePanel(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(4)
 
+        # Allow the center pane to collapse vertically (console dock expand)
+        sp = self.sizePolicy()
+        sp.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
+        sp.setVerticalPolicy(QSizePolicy.Policy.Expanding)
+        self.setSizePolicy(sp)
+
         header = QHBoxLayout()
         self.title_label = QLabel("G-code: (none)")
         self.title_label.setTextInteractionFlags(
@@ -330,16 +351,25 @@ class GcodePanel(QWidget):
         # Keep attribute name used by older smoke tests / callers
         self.list = self  # proxy selected_line helpers if needed
 
+        # Word-wrap so this footer does not force a ~500px min width on the panel
         hint = QLabel(
             "Gutter (wx-style): line# | ● break (click strip) | ▶ PC  ·  "
             "F9: toggle break  ·  Double-click text: Set PC"
         )
+        hint.setWordWrap(True)
         hint.setStyleSheet("color: gray; font-size: 11px;")
         root.addWidget(hint)
 
         sc = QShortcut(QKeySequence("F9"), self.editor)
         sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         sc.activated.connect(self.toggle_break_selected)
+
+    def minimumSizeHint(self) -> QSize:
+        # header + short editor + wrapped hint — keep low so console can dominate
+        return QSize(120, 72)
+
+    def sizeHint(self) -> QSize:
+        return QSize(256, 140)
 
     # ------------------------------------------------------------------
     # Public API (stable for main_window / smoke)

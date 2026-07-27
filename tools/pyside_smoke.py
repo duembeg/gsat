@@ -264,14 +264,45 @@ def test_offline() -> list[str]:
             _fail(f"CLI history not saved to config: {raw!r}")
         notes.append("cli history config save: ok")
 
-        # --- docks for content panels; toolbars for actions ---
-        if not hasattr(w, "dock_console") or w.dock_console is None:
-            _fail("dock_console missing")
+        # --- toolbars + dockable content (wx AUI-like) ---
         if not hasattr(w, "tb_program") or w.tb_program is None:
             _fail("program toolbar missing")
         if not hasattr(w, "act_run") or w.act_run is None:
             _fail("run action missing")
+        if not hasattr(w, "dock_console") or w.dock_console is None:
+            _fail("dock_console missing")
+        if not hasattr(w, "dock_dro") or not hasattr(w, "dock_jog"):
+            _fail("status/jog docks missing")
+        if w.centralWidget() is not w.gcode:
+            _fail("gcode should be central widget")
+        # Factory default (ignore any saved user layout)
+        from PySide6.QtCore import Qt as _Qt
+
+        w._apply_default_dock_arrangement()
+        app.processEvents()
+        if w.dockWidgetArea(w.dock_console) != _Qt.DockWidgetArea.BottomDockWidgetArea:
+            _fail("default: console should be bottom dock")
+        if w.dockWidgetArea(w.dock_dro) != _Qt.DockWidgetArea.RightDockWidgetArea:
+            _fail("default: dro should be right dock")
+        if w.dockWidgetArea(w.dock_jog) != _Qt.DockWidgetArea.RightDockWidgetArea:
+            _fail("default: jog should be right dock")
         notes.append("toolbars + docks: ok")
+
+        # --- existing gsat PNG icons on key actions (not theme packs) ---
+        from modules.pyside_workbench import icons as wb_icons
+
+        if not wb_icons.has_icon("run") or not wb_icons.has_icon("cycle_start"):
+            _fail("expected color PNGs missing under images/icons/color/")
+        for act, name in (
+            (w.act_run, "run"),
+            (w.act_cycle_start, "cycle_start"),
+            (w.act_feed_hold, "feed_hold"),
+            (w.act_open_gcode, "open"),
+            (w.act_remote, "remote"),
+        ):
+            if act.icon().isNull():
+                _fail(f"action icon missing for {name}")
+        notes.append("toolbar icons (existing PNGs): ok")
 
         # --- file recent history config keys ---
         w._add_to_file_history(path)
@@ -284,6 +315,44 @@ def test_offline() -> list[str]:
         if not f1:
             _fail("File1 not written to config")
         notes.append("file recent history: ok")
+
+        # --- Open split button: click = dialog action, ▾ = recent (wx dropdown) ---
+        if w.btn_open is None:
+            _fail("btn_open missing")
+        if w.btn_open.defaultAction() is not w.act_open_gcode:
+            _fail("open toolbutton default action not open gcode")
+        from PySide6.QtWidgets import QToolButton
+
+        if (
+            w.btn_open.popupMode()
+            != QToolButton.ToolButtonPopupMode.MenuButtonPopup
+        ):
+            _fail("open toolbutton should be MenuButtonPopup (split)")
+        if w.btn_open.menu() is not w._open_dropdown_menu:
+            _fail("open dropdown menu not attached")
+        # Main toolbar shows icon + text like wx; others stay icon-only
+        from PySide6.QtCore import Qt
+
+        if (
+            w.tb_main.toolButtonStyle()
+            != Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        ):
+            _fail("main toolbar should show text beside icons")
+        if (
+            w.btn_open.toolButtonStyle()
+            != Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        ):
+            _fail("open split button should show text beside icon")
+        if (
+            w.tb_program.toolButtonStyle()
+            != Qt.ToolButtonStyle.ToolButtonIconOnly
+        ):
+            _fail("program toolbar should stay icon-only")
+        # After history add, dropdown should list the path (wx "&0 path")
+        labels = [a.text() for a in w._open_dropdown_menu.actions()]
+        if not any(os.path.basename(path) in t for t in labels):
+            _fail(f"open dropdown missing recent file: {labels}")
+        notes.append("open split-button + recent dropdown: ok")
 
         # --- jog essentials ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
@@ -345,6 +414,166 @@ def test_offline() -> list[str]:
         gc.STATE_DATA.serialPortIsOpen = True
         w._update_connection_ui()
         notes.append("machine extras (cycle/hold/flush/reset/alarm/abort): ok")
+
+        # --- machine Connect toggle (wx one-button, icon+tooltip flip) ---
+        w._machine_open = False
+        gc.STATE_DATA.serialPortIsOpen = False
+        w._update_connection_ui()
+        tip_closed = (w.act_machine_connect.toolTip() or "").lower()
+        if "connect" not in tip_closed or "disconnect" in tip_closed:
+            _fail(f"closed tip should invite connect: {w.act_machine_connect.toolTip()!r}")
+        if w.act_machine_connect.isChecked():
+            _fail("connect action should be unchecked when machine closed")
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        w._update_connection_ui()
+        tip_open = (w.act_machine_connect.toolTip() or "").lower()
+        if "disconnect" not in tip_open:
+            _fail(f"open tip should invite disconnect: {w.act_machine_connect.toolTip()!r}")
+        if not w.act_machine_connect.isChecked():
+            _fail("connect action should be checked when machine open")
+        # toggle dispatches close when open
+        class _BridgeSpy:
+            def __init__(self):
+                self.closed = False
+                self.opened = False
+
+            def open_machine(self):
+                self.opened = True
+
+            def close_machine(self):
+                self.closed = True
+
+            def is_backend_active(self):
+                return True
+
+            def is_remote_connected(self):
+                return False
+
+            def remote_hostname(self):
+                return ""
+
+            def send_command(self, *a, **k):
+                pass
+
+        spy = _BridgeSpy()
+        old_bridge = w.bridge
+        w.bridge = spy
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        w.on_machine_connect()
+        if not spy.closed or spy.opened:
+            w.bridge = old_bridge
+            _fail("connect toggle when open should close only")
+        w._machine_open = False
+        gc.STATE_DATA.serialPortIsOpen = False
+        w.on_machine_connect()
+        if not spy.opened:
+            w.bridge = old_bridge
+            _fail("connect toggle when closed should open")
+        w.bridge = old_bridge
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        w._update_connection_ui()
+        notes.append("machine connect toggle: ok")
+
+        # --- remote toggle (remote.png, not plugs; tooltip flips) ---
+        # UI treats remote up as (_remote_connected AND bridge.is_remote_connected())
+        class _RemoteFlag:
+            def __init__(self):
+                self.up = False
+
+            def is_remote_connected(self):
+                return self.up
+
+            def is_backend_active(self):
+                return False
+
+            def remote_hostname(self):
+                return "testhost" if self.up else ""
+
+            def send_command(self, *a, **k):
+                pass
+
+        old_bridge = w.bridge
+        rflag = _RemoteFlag()
+        w.bridge = rflag
+        w._remote_connected = False
+        w._remote_connecting = False
+        w._update_connection_ui()
+        tip_off = (w.act_remote.toolTip() or "").lower()
+        if not tip_off.startswith("connect"):
+            _fail(f"offline remote tip should start with connect: {w.act_remote.toolTip()!r}")
+        if w.act_remote.isChecked():
+            _fail("remote action unchecked when offline")
+        if w.act_remote.icon().isNull():
+            _fail("remote toggle should use remote.png")
+        rflag.up = True
+        w._remote_connected = True
+        w._update_connection_ui()
+        tip_on = (w.act_remote.toolTip() or "").lower()
+        if not tip_on.startswith("disconnect"):
+            _fail(f"online remote tip should start with disconnect: {w.act_remote.toolTip()!r}")
+        if not w.act_remote.isChecked():
+            _fail("remote action checked when connected")
+        rflag.up = False
+        w._remote_connected = False
+        w._remote_connecting = True
+        w._update_connection_ui()
+        tip_c = (w.act_remote.toolTip() or "").lower()
+        if "disconnect" not in tip_c:
+            _fail(f"connecting tip should offer disconnect/cancel: {w.act_remote.toolTip()!r}")
+        w.bridge = old_bridge
+        w._remote_connected = False
+        w._remote_connecting = False
+        w._update_connection_ui()
+        notes.append("remote connect toggle: ok")
+
+        # --- DRO click actions (wx move / home / zero / set) ---
+        gc.STATE_DATA.swState = gc.STATE_IDLE
+        gc.STATE_DATA.joggingRapid = False
+        gc.STATE_DATA.joggingFeedRate = 500.0
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        w.bridge.machif_progexec = fake
+        w.bridge._use_remote = False
+        w._update_connection_ui()
+        if not w.dro_panel._interactive:
+            _fail("DRO should be interactive when machine open")
+        n_before = len(fake.events)
+        w.on_dro_move_to("x", 12.5)
+        if len(fake.events) <= n_before:
+            _fail("DRO move sent nothing")
+        eid, data, _ = fake.events[-1]
+        if eid != gc.EV_CMD_MOVE:
+            _fail(f"DRO move expected EV_CMD_MOVE got {eid}")
+        if data.get("x") != 12.5 or data.get("feed") != 500.0:
+            _fail(f"DRO move payload wrong: {data}")
+        gc.STATE_DATA.joggingRapid = True
+        w.on_dro_move_to("y", -1.0)
+        if fake.events[-1][0] != gc.EV_CMD_RAPID_MOVE:
+            _fail("DRO rapid move wrong event")
+        w.on_dro_home_axis("z")
+        if fake.events[-1][0] != gc.EV_CMD_HOME or "z" not in fake.events[-1][1]:
+            _fail(f"DRO home wrong: {fake.events[-1]}")
+        w.on_dro_zero_axis("x")
+        if fake.events[-1][0] != gc.EV_CMD_SET_AXIS or fake.events[-1][1].get("x") != 0:
+            _fail(f"DRO zero wrong: {fake.events[-1]}")
+        w.on_dro_set_axis("x", 3.25)
+        if (
+            fake.events[-1][0] != gc.EV_CMD_SET_AXIS
+            or fake.events[-1][1].get("x") != 3.25
+        ):
+            _fail(f"DRO set axis wrong: {fake.events[-1]}")
+        # blocked when closed
+        w._machine_open = False
+        gc.STATE_DATA.serialPortIsOpen = False
+        w._update_connection_ui()
+        n_before = len(fake.events)
+        w.on_dro_move_to("x", 1.0)
+        if len(fake.events) != n_before:
+            _fail("DRO move should not send when machine closed")
+        notes.append("DRO move/home/zero/set: ok")
 
     finally:
         try:
