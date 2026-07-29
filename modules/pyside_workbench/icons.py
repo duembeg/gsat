@@ -47,9 +47,11 @@ ICON_FILES: dict[str, str] = {
     "clear_alarm": "tick-circle-gear.png",
     "abort": "cross-circle.png",
     "local": "plug.png",
+    "settings": "gear.png",
     # Remote
     "remote": "remote.png",
     "remote_disconnect": "plug-disconnect.png",
+    "remote_settings": "remote_settings.png",
 }
 
 _cache: dict[str, QIcon] = {}

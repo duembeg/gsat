@@ -346,6 +346,9 @@ class GcodePanel(QWidget):
         self.editor = _GcodeEdit()
         self.editor.set_pc_requested.connect(self.set_pc_requested.emit)
         self.editor.break_toggle_requested.connect(self.toggle_breakpoint)
+        # wx AutoScroll: user caret move stops follow for modes On Kill Focus / On Goto PC
+        self.editor.cursorPositionChanged.connect(self._on_editor_caret_changed)
+        self.editor.installEventFilter(self)
         root.addWidget(self.editor, 1)
 
         # Keep attribute name used by older smoke tests / callers
@@ -363,6 +366,12 @@ class GcodePanel(QWidget):
         sc = QShortcut(QKeySequence("F9"), self.editor)
         sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         sc.activated.connect(self.toggle_break_selected)
+
+        # /code/AutoScroll: 0 Never, 1 Always, 2 On Kill Focus, 3 On Goto PC
+        self._auto_scroll_mode = 3
+        self._follow_pc = True
+        self._ignore_caret_for_follow = False
+        self.reload_auto_scroll_setting()
 
     def minimumSizeHint(self) -> QSize:
         # header + short editor + wrapped hint — keep low so console can dominate
@@ -447,8 +456,64 @@ class GcodePanel(QWidget):
         self.title_label.setText(f"G-code: {base}  ({len(self._lines)} lines)")
         return len(self._lines)
 
+    def reload_auto_scroll_setting(self) -> None:
+        """Load /code/AutoScroll from config (call after Settings OK)."""
+        mode = 3
+        if gc.CONFIG_DATA is not None:
+            try:
+                raw = gc.CONFIG_DATA.get("/code/AutoScroll", 3)
+                # careful: 0 is valid (Never) — do not use `or 3`
+                mode = 3 if raw is None else int(raw)
+            except (TypeError, ValueError):
+                mode = 3
+        self._auto_scroll_mode = max(0, min(3, mode))
+        # wx InitConfig: modes 1–3 start with follow enabled
+        self._follow_pc = self._auto_scroll_mode in (1, 2, 3)
+
+    def _should_scroll_on_pc_update(self) -> bool:
+        """Whether PC marker moves should keep the PC line in view (wx UpdatePC)."""
+        if self._auto_scroll_mode == 0:
+            return False
+        if self._auto_scroll_mode == 1:
+            return True
+        # 2 On Kill Focus / 3 On Goto PC: follow until user moves caret
+        return bool(self._follow_pc)
+
+    def _scroll_to_pc(self) -> None:
+        """Bring PC line into view without treating it as a user caret move."""
+        self._ignore_caret_for_follow = True
+        try:
+            block = self.editor.document().findBlockByNumber(self._pc)
+            cursor = QTextCursor(block)
+            self.editor.setTextCursor(cursor)
+            self.editor.centerCursor()
+        finally:
+            self._ignore_caret_for_follow = False
+
+    def _on_editor_caret_changed(self) -> None:
+        # wx CaretChange: for modes >= 2, user navigation cancels auto-follow
+        if self._ignore_caret_for_follow:
+            return
+        if self._auto_scroll_mode >= 2:
+            self._follow_pc = False
+
+    def eventFilter(self, obj, event):
+        # wx OnKill Focus: mode 2 re-enables follow when leaving the editor
+        from PySide6.QtCore import QEvent
+
+        if obj is self.editor and event.type() == QEvent.Type.FocusOut:
+            if self._auto_scroll_mode == 2:
+                self._follow_pc = True
+        return super().eventFilter(obj, event)
+
     @Slot(int)
-    def set_pc(self, pc: int, scroll: bool = True):
+    def set_pc(self, pc: int, scroll: bool | None = None):
+        """Update PC marker.
+
+        ``scroll``:
+          * ``None`` — use AutoScroll policy (default for backend PC updates)
+          * ``True`` / ``False`` — force
+        """
         n = len(self._lines)
         if n == 0:
             self._pc = 0
@@ -460,13 +525,15 @@ class GcodePanel(QWidget):
         self._pc = pc
         self.pc_label.setText(f"PC: {pc}  (line {pc + 1})")
         self.editor.set_pc_line(pc)
-        if scroll:
-            block = self.editor.document().findBlockByNumber(pc)
-            cursor = QTextCursor(block)
-            self.editor.setTextCursor(cursor)
-            self.editor.centerCursor()
+        do_scroll = self._should_scroll_on_pc_update() if scroll is None else bool(scroll)
+        if do_scroll:
+            self._scroll_to_pc()
 
     def goto_pc(self):
+        """wx GoToPC: always jump to PC; mode 3 re-enables follow-the-PC."""
+        if self._auto_scroll_mode == 3:
+            self._follow_pc = True
+        # Explicit user Goto PC always scrolls (wx always GotoLine)
         self.set_pc(self._pc, scroll=True)
 
     def toggle_breakpoint(self, line: int) -> bool:

@@ -13,6 +13,7 @@ import os
 from PySide6.QtCore import QByteArray, Qt, Slot
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QDialog,
     QDockWidget,
     QFileDialog,
     QLabel,
@@ -36,6 +37,7 @@ from modules.pyside_workbench.dro_panel import DroPanel
 from modules.pyside_workbench.gcode_panel import GcodePanel
 from modules.pyside_workbench import icons as wb_icons
 from modules.pyside_workbench.jog_panel import JogPanel
+from modules.pyside_workbench.settings_dialog import SettingsDialog
 
 
 class MainWindow(QMainWindow):
@@ -82,9 +84,23 @@ class MainWindow(QMainWindow):
         self.act_save_as.setShortcut(QKeySequence.StandardKey.SaveAs)
         self.act_save_as.triggered.connect(self.on_save_gcode_as)
 
+        self.act_settings = QAction("&Settings…", self)
+        self.act_settings.setShortcut(QKeySequence.StandardKey.Preferences)
+        self.act_settings.setToolTip("Application and machine settings")
+        self.act_settings.triggered.connect(self.on_settings)
+
+        self.act_remote_settings = QAction("Remote settings…", self)
+        self.act_remote_settings.setToolTip(
+            "Edit machine/remote config from the connected server (wx Remote Settings)"
+        )
+        self.act_remote_settings.triggered.connect(self.on_remote_settings)
+
         self.act_quit = QAction("E&xit", self)
         self.act_quit.setShortcut("Ctrl+Q")
         self.act_quit.triggered.connect(self.close)
+
+        # Last remote config payload (EV_RMT_CONFIG_DATA), if any
+        self._remote_config_data = None
 
         # File history (File menu + Open toolbar split-button dropdown)
         self._file_history: list[str] = []
@@ -183,6 +199,8 @@ class MainWindow(QMainWindow):
             (self.act_abort, "abort"),
             (self.act_local, "local"),
             (self.act_remote, "remote"),
+            (self.act_settings, "settings"),
+            (self.act_remote_settings, "remote_settings"),
         ):
             wb_icons.apply_action_icon(act, name)
 
@@ -320,6 +338,8 @@ class MainWindow(QMainWindow):
         self.tb_main.addWidget(self.btn_open)
         self.tb_main.addAction(self.act_save)
         self.tb_main.addAction(self.act_save_as)
+        self.tb_main.addSeparator()
+        self.tb_main.addAction(self.act_settings)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_main)
         self._rebuild_recent_menu()
 
@@ -381,6 +401,7 @@ class MainWindow(QMainWindow):
         self.port_edit.setMaximumWidth(64)
         self.tb_remote.addWidget(self.port_edit)
         self.tb_remote.addAction(self.act_remote)
+        self.tb_remote.addAction(self.act_remote_settings)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_remote)
 
         self._toolbars = {
@@ -406,6 +427,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.act_save)
         file_menu.addAction(self.act_save_as)
         file_menu.addSeparator()
+        file_menu.addAction(self.act_settings)
+        file_menu.addSeparator()
         file_menu.addAction(self.act_quit)
 
         # Machine
@@ -426,6 +449,7 @@ class MainWindow(QMainWindow):
         # Remote
         remote_menu = self.menuBar().addMenu("R&emote")
         remote_menu.addAction(self.act_remote)
+        remote_menu.addAction(self.act_remote_settings)
 
         # Run (wx name) — program controls
         run_menu = self.menuBar().addMenu("&Run")
@@ -695,7 +719,8 @@ class MainWindow(QMainWindow):
         else:
             pc = max(0, min(pc, self.gcode.line_count() - 1))
         gc.STATE_DATA.programCounter = pc
-        self.gcode.set_pc(pc, scroll=True)
+        # scroll=None → honor /code/AutoScroll (Always / On Goto PC / …)
+        self.gcode.set_pc(pc, scroll=None)
 
     @Slot()
     def on_set_pc(self):
@@ -1075,6 +1100,108 @@ class MainWindow(QMainWindow):
             "Classic wx UI remains the production desktop until cutover.",
         )
 
+    @Slot()
+    def on_settings(self):
+        """Local settings (wx OnSettings) — full notebook, local CONFIG_DATA."""
+        if gc.CONFIG_DATA is None:
+            QMessageBox.warning(self, "Settings", "Config is not loaded.")
+            return
+        old_port = gc.CONFIG_DATA.get("/machine/Port")
+        old_baud = gc.CONFIG_DATA.get("/machine/Baud")
+        dlg = SettingsDialog(self, config_data=gc.CONFIG_DATA)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            gc.CONFIG_DATA.save()
+        except Exception as exc:
+            self.append_log(f"Settings save failed: {exc}")
+            QMessageBox.warning(self, "Settings", f"Save failed:\n{exc}")
+            return
+        self._apply_settings_to_ui()
+        # Notify local backend of config change (wx)
+        if (
+            self.bridge.is_backend_active()
+            and not self.bridge.is_remote_connected()
+        ):
+            self.bridge.send_command(gc.EV_CMD_UPDATE_CONFIG)
+        # Re-open machine if port/baud changed while open (wx)
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if machine_open and (
+            old_port != gc.CONFIG_DATA.get("/machine/Port")
+            or old_baud != gc.CONFIG_DATA.get("/machine/Baud")
+        ):
+            self.append_log("Port/baud changed — closing machine session.")
+            self.on_close_machine()
+        self.append_log("Settings saved.")
+        self._update_connection_ui()
+
+    @Slot()
+    def on_remote_settings(self):
+        """Server machine/remote config (wx OnRemoteSettings)."""
+        if not self.bridge.is_remote_connected():
+            QMessageBox.information(
+                self,
+                "Remote settings",
+                "Connect to a remote server first.",
+            )
+            return
+        if self._remote_config_data is None:
+            self.bridge.send_command(gc.EV_CMD_GET_CONFIG)
+            QMessageBox.information(
+                self,
+                "Remote settings",
+                "Requested server config.\n"
+                "Open Remote settings again after the console shows "
+                "“Received remote config data.”",
+            )
+            return
+        dlg = SettingsDialog(
+            self,
+            config_data=gc.CONFIG_DATA,
+            config_remote_data=self._remote_config_data,
+            title="Remote Settings",
+        )
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.bridge.send_command(gc.EV_CMD_UPDATE_CONFIG, self._remote_config_data)
+        self.append_log("Remote settings sent to server.")
+
+    def _apply_settings_to_ui(self) -> None:
+        """Push a subset of settings into live widgets after local save."""
+        # Remote toolbar host/port from profile
+        try:
+            idx = int(gc.CONFIG_DATA.get("/remotes/Index", 0) or 0)
+            host = gc.CONFIG_DATA.get(f"/remotes/remote{idx}/Host", "") or ""
+            port = gc.CONFIG_DATA.get(f"/remotes/remote{idx}/WebSocketPort", 61803)
+            if not self.bridge.is_remote_connected() and not self._remote_connecting:
+                self.host_edit.setText(str(host))
+                self.port_edit.setText(str(port))
+        except Exception:
+            pass
+        # Jog defaults
+        try:
+            feed = float(gc.CONFIG_DATA.get("/jogging/JogFeedRate", 1000) or 1000)
+            self.jog.feed_spin.setValue(feed)
+            rapid = bool(gc.CONFIG_DATA.get("/jogging/JogRapid", False))
+            self.jog.rapid_check.setChecked(rapid)
+            gc.STATE_DATA.joggingFeedRate = feed
+            gc.STATE_DATA.joggingRapid = rapid
+        except Exception:
+            pass
+        # G-code colors (highlighter re-reads config on next open; refresh style now)
+        try:
+            bg = gc.CONFIG_DATA.get("/code/WindowBackground", "#FFFFFF") or "#FFFFFF"
+            fg = gc.CONFIG_DATA.get("/code/WindowForeground", "#000000") or "#000000"
+            self.gcode.editor.setStyleSheet(
+                f"QPlainTextEdit {{ background: {bg}; color: {fg}; }}"
+            )
+        except Exception:
+            pass
+        try:
+            self.gcode.reload_auto_scroll_setting()
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------
     # Backend events (GUI thread)
     # ------------------------------------------------------------------
@@ -1167,6 +1294,9 @@ class MainWindow(QMainWindow):
 
         elif eid == gc.EV_RMT_CONFIG_DATA:
             self.append_log("Received remote config data.")
+            # Keep for Remote Settings dialog (wx configRemoteData)
+            self._remote_config_data = data
+            self._update_connection_ui()
 
         elif eid == gc.EV_DEVICE_DETECTED:
             self.append_log("Device detected.")
@@ -1332,6 +1462,7 @@ class MainWindow(QMainWindow):
         # Always interactive: offline → connect; up/connecting → disconnect
         self.act_remote.setEnabled(True)
         self._sync_remote_affordance(remote=remote, connecting=connecting)
+        self.act_remote_settings.setEnabled(remote or client_alive)
         self.act_local.setEnabled(not busy_remote and not backend)
         # Connect toggle: open when closed (remote or free local); close when open
         can_open = remote or (not busy_remote and not backend)

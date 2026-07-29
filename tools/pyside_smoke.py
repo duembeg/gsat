@@ -575,6 +575,59 @@ def test_offline() -> list[str]:
             _fail("DRO move should not send when machine closed")
         notes.append("DRO move/home/zero/set: ok")
 
+        # --- settings dialog (local pages, same keys as wx) ---
+        from modules.pyside_workbench.settings_dialog import SettingsDialog
+        from PySide6.QtWidgets import QDialog
+
+        dlg = SettingsDialog(w, config_data=gc.CONFIG_DATA)
+        if dlg.tabs.count() < 5:
+            _fail(f"expected full local settings tabs, got {dlg.tabs.count()}")
+        # Apply without modal: mutate a known key and write back
+        gen = dlg.pages[0]
+        old_hist = int(gc.CONFIG_DATA.get("/mainApp/FileHistory/FilesMaxHistory", 10) or 10)
+        gen.sp_history.setValue(min(99, old_hist + 1))
+        gen.apply()
+        new_hist = int(gc.CONFIG_DATA.get("/mainApp/FileHistory/FilesMaxHistory", 0) or 0)
+        if new_hist != min(99, old_hist + 1):
+            _fail(f"settings general apply failed: {new_hist}")
+        # restore
+        gen.sp_history.setValue(old_hist)
+        gen.apply()
+        # remote-mode notebook has 2 pages
+        rdlg = SettingsDialog(
+            w, config_data=gc.CONFIG_DATA, config_remote_data=gc.CONFIG_DATA, title="Remote Settings"
+        )
+        if rdlg.tabs.count() != 2:
+            _fail(f"remote settings should be Machine+Remote, got {rdlg.tabs.count()}")
+        if not hasattr(w, "act_settings") or w.act_settings is None:
+            _fail("settings action missing")
+        notes.append("settings dialog (local+remote modes): ok")
+
+        # --- G-code AutoScroll includes On Goto PC (wx index 3) ---
+        from modules.pyside_workbench.settings_dialog import OutputStylePage
+
+        code_page = OutputStylePage(gc.CONFIG_DATA, "code", syntax=True)
+        labels = [code_page.auto_scroll.itemText(i) for i in range(code_page.auto_scroll.count())]
+        if "On Goto PC" not in labels:
+            _fail(f"G-code AutoScroll missing On Goto PC: {labels}")
+        # Never: PC update does not scroll-follow
+        gc.CONFIG_DATA.set("/code/AutoScroll", 0)
+        w.gcode.reload_auto_scroll_setting()
+        if w.gcode._should_scroll_on_pc_update():
+            _fail("Never mode should not follow PC")
+        # On Goto PC: follow after goto_pc
+        gc.CONFIG_DATA.set("/code/AutoScroll", 3)
+        w.gcode.reload_auto_scroll_setting()
+        w.gcode._follow_pc = False
+        if w.gcode._should_scroll_on_pc_update():
+            _fail("On Goto PC with follow off should not auto-scroll")
+        w.gcode.goto_pc()
+        if not w.gcode._follow_pc:
+            _fail("goto_pc should re-enable follow in On Goto PC mode")
+        if not w.gcode._should_scroll_on_pc_update():
+            _fail("after goto_pc, PC updates should follow")
+        notes.append("gcode AutoScroll On Goto PC: ok")
+
     finally:
         try:
             os.unlink(path)
