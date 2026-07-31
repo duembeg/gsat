@@ -354,9 +354,19 @@ def test_offline() -> list[str]:
             _fail(f"open dropdown missing recent file: {labels}")
         notes.append("open split-button + recent dropdown: ok")
 
-        # --- jog essentials ---
+        # --- jog panel (wx pad: relative, home, zero, abs, probe, scripts) ---
+        from modules.pyside_workbench import icons as _jog_icons
+
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()
+        # Icon assets for pad
+        for jname in ("pos_x", "home_xyz", "zero_xy", "spindle_cw", "probe_z"):
+            if _jog_icons.get_jog_icon(jname).isNull():
+                _fail(f"jog icon missing: {jname}")
+        if not hasattr(w.jog, "btn_home_xyz") or not hasattr(w.jog, "spindle_spin"):
+            _fail("jog pad widgets missing")
+        if not hasattr(w.jog, "btn_spindle_cw"):
+            _fail("jog spindle buttons missing")
         n_before = len(fake.events)
         w.on_jog_relative("x", "1.000", False, 500.0)
         if len(fake.events) <= n_before:
@@ -375,7 +385,32 @@ def test_offline() -> list[str]:
         w.on_home_axes({"x": 0, "y": 0})
         if fake.events[-1][0] != gc.EV_CMD_HOME:
             _fail("home missing")
-        notes.append("jog/home: ok")
+        w.on_jog_zero_axes({"x": 0, "y": 0, "z": 0})
+        if fake.events[-1][0] != gc.EV_CMD_SET_AXIS:
+            _fail("jog zero missing SET_AXIS")
+        w.on_jog_absolute({"x": 0, "y": 0}, True, None)
+        if fake.events[-1][0] != gc.EV_CMD_JOG_RAPID_MOVE:
+            _fail("jog abs rapid missing")
+        w.on_jog_absolute({"x": 0, "y": 0}, False, 400.0)
+        if fake.events[-1][0] != gc.EV_CMD_JOG_MOVE:
+            _fail("jog abs feed missing")
+        if fake.events[-1][1].get("feed") != 400.0:
+            _fail("jog abs feed payload wrong")
+        w.on_jog_probe({"z": -1})
+        if fake.events[-1][0] != gc.EV_CMD_PROBE_HELPER:
+            _fail("probe helper missing")
+        n_before = len(fake.events)
+        w.on_jog_gcode_script(f"{gc.DEVICE_CMD_SPINDLE_CW_ON} S1000")
+        # send_line uses EV_CMD_SEND
+        if len(fake.events) <= n_before:
+            _fail("spindle gcode script did not send")
+        if fake.events[-1][0] != gc.EV_CMD_SEND:
+            _fail(f"spindle expected EV_CMD_SEND got {fake.events[-1][0]}")
+        # Custom buttons present from config
+        if not w.jog._custom_buttons:
+            _fail("expected custom buttons from config")
+        w.jog.update_settings()
+        notes.append("jog/home/zero/probe/spindle/custom: ok")
 
         # --- machine toolbar extras (wx Machine menu/toolbar) ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
@@ -627,6 +662,121 @@ def test_offline() -> list[str]:
         if not w.gcode._should_scroll_on_pc_update():
             _fail("after goto_pc, PC updates should follow")
         notes.append("gcode AutoScroll On Goto PC: ok")
+
+        # --- fonts/colors apply from config (init + update_settings) ---
+        # Save/restore so smoke does not pollute ~/.gsat.json
+        _saved = {}
+        for k in (
+            "/code/WindowBackground",
+            "/code/WindowForeground",
+            "/code/GCodeHighlight",
+            "/code/FontSize",
+            "/console/WindowBackground",
+            "/console/WindowForeground",
+            "/console/FontSize",
+        ):
+            _saved[k] = gc.CONFIG_DATA.get(k)
+        try:
+            gc.CONFIG_DATA.set("/code/WindowBackground", "#112233")
+            gc.CONFIG_DATA.set("/code/WindowForeground", "#AABBCC")
+            gc.CONFIG_DATA.set("/code/GCodeHighlight", "#FF00AA")
+            gc.CONFIG_DATA.set("/code/FontSize", 12)
+            w.gcode.update_settings()
+            ss = w.gcode.editor.styleSheet()
+            if "#112233" not in ss or "#AABBCC" not in ss:
+                _fail(f"gcode styles not applied: {ss!r}")
+            if w.gcode.editor.font().pointSize() != 12:
+                _fail(
+                    f"gcode font size not applied: {w.gcode.editor.font().pointSize()}"
+                )
+            cname = w.gcode.editor._highlighter.fmt_gcode.foreground().color().name()
+            if cname.lower() != "#ff00aa":
+                _fail(f"gcode highlight color not applied: {cname}")
+            gc.CONFIG_DATA.set("/console/WindowBackground", "#010203")
+            gc.CONFIG_DATA.set("/console/WindowForeground", "#f0f0f0")
+            gc.CONFIG_DATA.set("/console/FontSize", 11)
+            w.console.update_settings()
+            css = w.console.log_view.styleSheet()
+            if "#010203" not in css or "#f0f0f0" not in css:
+                _fail(f"console styles not applied: {css!r}")
+            if w.console.log_view.font().pointSize() != 11:
+                _fail("console font size not applied")
+        finally:
+            for k, v in _saved.items():
+                if v is None:
+                    continue
+                gc.CONFIG_DATA.set(k, v)
+            try:
+                gc.CONFIG_DATA.save()
+            except Exception:
+                pass
+            w.gcode.update_settings()
+            w.console.update_settings()
+        notes.append("gcode/console UpdateSettings fonts+colors: ok")
+
+        # --- remote Get G-code (explicit pull, not auto) ---
+        class _RemoteSpy:
+            def __init__(self):
+                self.events = []
+
+            def add_event(self, event_id, data=None, sender=None):
+                self.events.append((event_id, data, sender))
+
+        spy = _RemoteSpy()
+        old_rc = w.bridge.remote_client
+        old_mx = w.bridge.machif_progexec
+        old_ur = w.bridge._use_remote
+        w.bridge.remote_client = spy
+        w.bridge.machif_progexec = spy
+        w.bridge._use_remote = True
+        w._remote_connected = True
+        w._update_connection_ui()
+        if not w.act_remote_get_gcode.isEnabled():
+            w.bridge.remote_client = old_rc
+            w.bridge.machif_progexec = old_mx
+            w.bridge._use_remote = old_ur
+            _fail("get gcode should enable when remote connected")
+        w.on_remote_get_gcode()
+        if not spy.events or spy.events[-1][0] != gc.EV_CMD_GET_GCODE:
+            w.bridge.remote_client = old_rc
+            w.bridge.machif_progexec = old_mx
+            w.bridge._use_remote = old_ur
+            _fail(f"get gcode did not send EV_CMD_GET_GCODE: {spy.events}")
+        # Simulate server reply with program buffer
+        w._on_ev_gcode(
+            {
+                "gcodeFileName": "/remote/test.ngc",
+                "gcodeLines": ["G21\n", "G0 X1\n", "M2\n"],
+                "gcodePC": 1,
+                "breakPoints": {0},
+            }
+        )
+        if w.gcode.line_count() != 3:
+            _fail(f"EV_GCODE load failed: {w.gcode.line_count()} lines")
+        if gc.STATE_DATA.programCounter != 1:
+            _fail(f"EV_GCODE PC not applied: {gc.STATE_DATA.programCounter}")
+        if 0 not in w.gcode.get_breakpoints():
+            _fail("EV_GCODE breakpoints not applied")
+        w.bridge.remote_client = old_rc
+        w.bridge.machif_progexec = old_mx
+        w.bridge._use_remote = old_ur
+        w._remote_connected = False
+        w._update_connection_ui()
+        notes.append("remote get gcode: ok")
+
+        # --- DRO Enable* from machine settings (hide B/C when disabled) ---
+        for ax, on in (("X", True), ("Y", True), ("Z", True), ("A", True), ("B", False), ("C", False)):
+            gc.CONFIG_DATA.set(f"/machine/DRO/Enable{ax}", on)
+        w.dro_panel.update_settings()
+        if not w.dro_panel._axis_edits["posa"].isVisible():
+            _fail("EnableA true but A hidden")
+        if w.dro_panel._axis_edits["posb"].isVisible():
+            _fail("EnableB false but B still visible")
+        if w.dro_panel._axis_edits["posc"].isVisible():
+            _fail("EnableC false but C still visible")
+        if not w.dro_panel._axis_edits["posx"].isVisible():
+            _fail("X should remain visible")
+        notes.append("DRO Enable axes visibility: ok")
 
     finally:
         try:

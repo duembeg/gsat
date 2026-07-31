@@ -26,17 +26,6 @@ class GcodeHighlighter(QSyntaxHighlighter):
     # Defaults similar to typical gsat config highlight colors
     def __init__(self, document, config_get=None):
         super().__init__(document)
-        get = config_get or (lambda _k, d=None: d)
-
-        self.fmt_default = _fmt(get("/code/WindowForeground", "#000000") or "#000000")
-        self.fmt_gcode = _fmt(get("/code/GCodeHighlight", "#0000AA") or "#0000AA", bold=True)
-        self.fmt_mcode = _fmt(get("/code/MCodeHighlight", "#AA00AA") or "#AA00AA", bold=True)
-        self.fmt_axis = _fmt(get("/code/AxisHighlight", "#008800") or "#008800", bold=True)
-        self.fmt_param = _fmt(get("/code/ParametersHighlight", "#888800") or "#888800")
-        self.fmt_param2 = _fmt(get("/code/Parameters2Highlight", "#AA5500") or "#AA5500")
-        self.fmt_nline = _fmt(get("/code/GCodeLineNumberHighlight", "#666666") or "#666666")
-        self.fmt_comment = _fmt(get("/code/CommentsHighlight", "#808080") or "#808080")
-
         # Same patterns as wnd_gcode.py
         self.re_gcode = re.compile(r"[G]\d+\.?\d*", re.IGNORECASE)
         self.re_mcode = re.compile(r"[M]\d+\.?\d*", re.IGNORECASE)
@@ -52,6 +41,20 @@ class GcodeHighlighter(QSyntaxHighlighter):
             re.compile(r"\(.*?\)"),
             re.compile(r";.*"),
         ]
+        self.apply_config(config_get)
+
+    def apply_config(self, config_get=None) -> None:
+        """Reload highlight colors from config (init + after Settings)."""
+        get = config_get or (lambda _k, d=None: d)
+        self.fmt_default = _fmt(get("/code/WindowForeground", "#000000") or "#000000")
+        self.fmt_gcode = _fmt(get("/code/GCodeHighlight", "#0000AA") or "#0000AA", bold=True)
+        self.fmt_mcode = _fmt(get("/code/MCodeHighlight", "#AA00AA") or "#AA00AA", bold=True)
+        self.fmt_axis = _fmt(get("/code/AxisHighlight", "#008800") or "#008800", bold=True)
+        self.fmt_param = _fmt(get("/code/ParametersHighlight", "#888800") or "#888800")
+        self.fmt_param2 = _fmt(get("/code/Parameters2Highlight", "#AA5500") or "#AA5500")
+        self.fmt_nline = _fmt(get("/code/GCodeLineNumberHighlight", "#666666") or "#666666")
+        self.fmt_comment = _fmt(get("/code/CommentsHighlight", "#808080") or "#808080")
+        self.rehighlight()
 
     def highlightBlock(self, text: str) -> None:
         # Default is inherited; apply token formats

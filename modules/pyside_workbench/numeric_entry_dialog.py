@@ -39,6 +39,8 @@ class NumericEntryDialog(QDialog):
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         self._ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self._ok.setObjectName("btnPrimary")
+        self._ok.setDefault(True)
         self._ok.setEnabled(False)
         buttons.accepted.connect(self._try_accept)
         buttons.rejected.connect(self.reject)

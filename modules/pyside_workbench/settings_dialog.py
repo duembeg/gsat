@@ -690,6 +690,10 @@ class SettingsDialog(QDialog):
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
+        ok_btn = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        if ok_btn is not None:
+            ok_btn.setObjectName("btnPrimary")
+            ok_btn.setDefault(True)
         buttons.accepted.connect(self._on_ok)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)

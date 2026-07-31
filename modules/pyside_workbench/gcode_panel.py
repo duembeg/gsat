@@ -17,6 +17,7 @@ from PySide6.QtGui import (
     QFont,
     QKeySequence,
     QPainter,
+    QPalette,
     QTextCursor,
     QTextFormat,
     QShortcut,
@@ -78,12 +79,7 @@ class _GcodeEdit(QPlainTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        mono = QFont("Monospace")
-        mono.setStyleHint(QFont.StyleHint.TypeWriter)
-        mono.setPointSize(10)
-        self.setFont(mono)
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
         # Prefer Expanding so the center can fill, but with a small sizeHint so the
         # bottom Console dock is free to take most of the window height.
         sp = self.sizePolicy()
@@ -94,21 +90,12 @@ class _GcodeEdit(QPlainTextEdit):
         self._line_number_area = _LineNumberArea(self)
         self._breakpoints: set[int] = set()
         self._pc = 0
-
-        # Config colors (before signals that may paint)
-        bg = (
-            gc.CONFIG_DATA.get("/code/WindowBackground", "#FFFFFF")
-            if gc.CONFIG_DATA
-            else "#FFFFFF"
-        )
-        fg = (
-            gc.CONFIG_DATA.get("/code/WindowForeground", "#000000")
-            if gc.CONFIG_DATA
-            else "#000000"
-        )
-        self.setStyleSheet(
-            f"QPlainTextEdit {{ background: {bg}; color: {fg}; }}"
-        )
+        self._gutter_bg = QColor("#F0F0F0")
+        self._gutter_fg = QColor("#606060")
+        self._pc_color = QColor("#FFF0A0")
+        self._bp_color = QColor("#FFCCCC")
+        self._show_line_numbers = True
+        self._show_caret_line = True
 
         get = (
             (lambda k, d=None: gc.CONFIG_DATA.get(k, d))
@@ -117,17 +104,76 @@ class _GcodeEdit(QPlainTextEdit):
         )
         self._highlighter = GcodeHighlighter(self.document(), config_get=get)
 
-        self._pc_color = QColor(
-            get("/code/CaretLineBackground", "#FFF0A0") or "#FFF0A0"
-        )
-        self._bp_color = QColor("#FFCCCC")
-
         self.blockCountChanged.connect(self._update_line_number_area_width)
         self.updateRequest.connect(self._update_line_number_area)
         self.cursorPositionChanged.connect(self._highlight_current_extras)
 
+        self.apply_settings()
         self._update_line_number_area_width(0)
         self._highlight_current_extras()
+
+    def apply_settings(self) -> None:
+        """Apply /code/* font, colors, gutter, syntax (init + Settings OK)."""
+        get = (
+            (lambda k, d=None: gc.CONFIG_DATA.get(k, d))
+            if gc.CONFIG_DATA
+            else (lambda k, d=None: d)
+        )
+
+        face = str(get("/code/FontFace", "Monospace") or "Monospace")
+        if face == "System":
+            face = "Monospace"
+        try:
+            size = int(get("/code/FontSize", 10) or 10)
+        except (TypeError, ValueError):
+            size = 10
+        if size <= 0:
+            size = 10
+        style = str(get("/code/FontStyle", "normal") or "normal").lower()
+        font = QFont(face)
+        font.setStyleHint(QFont.StyleHint.TypeWriter)
+        font.setPointSize(size)
+        font.setBold("bold" in style)
+        font.setItalic("italic" in style)
+        self.setFont(font)
+        self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
+
+        bg = str(get("/code/WindowBackground", "#FFFFFF") or "#FFFFFF")
+        fg = str(get("/code/WindowForeground", "#000000") or "#000000")
+        # Palette + stylesheet: QSS alone can lose to app Fusion palette
+        self.setObjectName("gcodeEdit")
+        pal = self.palette()
+        pal.setColor(self.backgroundRole(), QColor(bg))
+        pal.setColor(self.foregroundRole(), QColor(fg))
+        pal.setColor(QPalette.ColorRole.Base, QColor(bg))
+        pal.setColor(QPalette.ColorRole.Text, QColor(fg))
+        self.setPalette(pal)
+        self.setAutoFillBackground(True)
+        self.setStyleSheet(
+            f"QPlainTextEdit#gcodeEdit {{"
+            f" background-color: {bg}; color: {fg};"
+            f" border: 1px solid #D0D5DD; border-radius: 4px; padding: 2px;"
+            f"}}"
+        )
+        self.setReadOnly(bool(get("/code/ReadOnly", False)))
+
+        self._gutter_bg = QColor(
+            str(get("/code/LineNumberBackground", "#F0F0F0") or "#F0F0F0")
+        )
+        self._gutter_fg = QColor(
+            str(get("/code/LineNumberForeground", "#606060") or "#606060")
+        )
+        self._pc_color = QColor(
+            str(get("/code/CaretLineBackground", "#FFF0A0") or "#FFF0A0")
+        )
+        self._show_line_numbers = bool(get("/code/LineNumber", True))
+        self._show_caret_line = bool(get("/code/CaretLine", True))
+
+        if self._highlighter is not None:
+            self._highlighter.apply_config(get)
+        self._line_number_area.update()
+        self._highlight_current_extras()
+        self._update_line_number_area_width(0)
 
     # --- line numbers + marker strips (wx order: line# | BP | PC) ---
     def _line_number_column_width(self) -> int:
@@ -183,7 +229,14 @@ class _GcodeEdit(QPlainTextEdit):
     def line_number_area_paint(self, event):
         painter = QPainter(self._line_number_area)
         # Flat gutter like wx (no separator lines between strips)
-        painter.fillRect(event.rect(), QColor("#F0F0F0"))
+        painter.fillRect(event.rect(), self._gutter_bg)
+
+        # wx STC_STYLE_LINENUMBER uses bold; keep gutter digits consistent every row
+        # (do not setFont only when drawing ▶ — that left PC-row digits looking thinner)
+        font_ln = QFont(self.font())
+        font_ln.setBold(True)
+        font_pc = QFont(self.font())
+        font_pc.setBold(True)
 
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
@@ -199,18 +252,21 @@ class _GcodeEdit(QPlainTextEdit):
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 cy = top + row_h // 2
+                is_pc = block_number == self._pc
 
                 # 1) Line number (left, right-aligned in its column)
-                number = str(block_number + 1)
-                painter.setPen(QColor("#606060"))
-                painter.drawText(
-                    2,
-                    top,
-                    ln_w - 4,
-                    row_h,
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                    number,
-                )
+                if self._show_line_numbers:
+                    number = str(block_number + 1)
+                    painter.setFont(font_ln)
+                    painter.setPen(self._gutter_fg)
+                    painter.drawText(
+                        2,
+                        top,
+                        ln_w - 4,
+                        row_h,
+                        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                        number,
+                    )
 
                 # 2) Breakpoint strip (middle) — clickable via handle_gutter_click
                 if block_number in self._breakpoints:
@@ -221,9 +277,9 @@ class _GcodeEdit(QPlainTextEdit):
                     painter.drawEllipse(cx - r, cy - r, 2 * r, 2 * r)
 
                 # 3) PC strip (right of BP, before code)
-                if block_number == self._pc:
+                if is_pc:
                     painter.setPen(QColor("#008800"))
-                    painter.setFont(self.font())
+                    painter.setFont(font_pc)
                     painter.drawText(
                         pc_left,
                         top,
@@ -283,6 +339,19 @@ class _GcodeEdit(QPlainTextEdit):
 
     def _highlight_current_extras(self):
         extras = []
+
+        # Caret line (wx CaretLine) — under PC/BP
+        if self._show_caret_line:
+            cur_line = self.textCursor().blockNumber()
+            if 0 <= cur_line < self.blockCount() and cur_line != self._pc:
+                sel = QTextEdit.ExtraSelection()
+                # Slightly weaker than PC highlight
+                caret_bg = QColor(self._pc_color)
+                caret_bg.setAlpha(80)
+                sel.format.setBackground(caret_bg)
+                sel.format.setProperty(QTextFormat.Property.FullWidthSelection, True)
+                sel.cursor = self.textCursor()
+                extras.append(sel)
 
         # PC line
         if 0 <= self._pc < self.blockCount():
@@ -469,6 +538,11 @@ class GcodePanel(QWidget):
         self._auto_scroll_mode = max(0, min(3, mode))
         # wx InitConfig: modes 1–3 start with follow enabled
         self._follow_pc = self._auto_scroll_mode in (1, 2, 3)
+
+    def update_settings(self) -> None:
+        """wx Gcode.UpdateSettings: re-read /code/* and restyle editor."""
+        self.reload_auto_scroll_setting()
+        self.editor.apply_settings()
 
     def _should_scroll_on_pc_update(self) -> bool:
         """Whether PC marker moves should keep the PC line in view (wx UpdatePC)."""

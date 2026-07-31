@@ -9,7 +9,15 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, Qt, Signal, Slot
-from PySide6.QtGui import QKeyEvent, QKeySequence, QShortcut
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QKeyEvent,
+    QKeySequence,
+    QPalette,
+    QShortcut,
+    QTextCursor,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -24,6 +32,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+import modules.config as gc
 
 
 class _CliLineEdit(QLineEdit):
@@ -134,9 +144,9 @@ class ConsolePanel(QWidget):
         self._browse_depth = 0
         self._draft_before_browse = ""
         self._last_submitted = ""
+        self._auto_scroll_mode = 1  # /console/AutoScroll: 0 Never, 1 Always, 2 On Kill Focus
+        self._auto_scroll = True
         try:
-            import modules.config as gc
-
             self._save_history = bool(
                 gc.CONFIG_DATA.get("/console/cli/SaveCmdHistory", True)
             )
@@ -152,6 +162,8 @@ class ConsolePanel(QWidget):
         self.log_view.setReadOnly(True)
         self.log_view.setPlaceholderText("Console — machine RX/TX and events …")
         self.log_view.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.log_view.cursorPositionChanged.connect(self._on_log_caret_changed)
+        self.log_view.installEventFilter(self)
         root.addWidget(self.log_view, 1)
 
         cli_row = QHBoxLayout()
@@ -193,10 +205,88 @@ class ConsolePanel(QWidget):
 
         if load_saved:
             self.load_history_from_config()
+        self.apply_settings()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def apply_settings(self) -> None:
+        """Apply /console/* font, colors, auto-scroll (init + Settings OK)."""
+        get = (
+            (lambda k, d=None: gc.CONFIG_DATA.get(k, d))
+            if gc.CONFIG_DATA
+            else (lambda k, d=None: d)
+        )
+
+        face = str(get("/console/FontFace", "Monospace") or "Monospace")
+        if face == "System":
+            face = "Monospace"
+        try:
+            size = int(get("/console/FontSize", 10) or 10)
+        except (TypeError, ValueError):
+            size = 10
+        if size <= 0:
+            size = 10
+        style = str(get("/console/FontStyle", "normal") or "normal").lower()
+        font = QFont(face)
+        font.setStyleHint(QFont.StyleHint.TypeWriter)
+        font.setPointSize(size)
+        font.setBold("bold" in style)
+        font.setItalic("italic" in style)
+        self.log_view.setFont(font)
+
+        # Defaults match typical light wx console if unset; JSON always wins when set
+        bg = str(get("/console/WindowBackground", "#FFFFFF") or "#FFFFFF")
+        fg = str(get("/console/WindowForeground", "#000000") or "#000000")
+        pal = self.log_view.palette()
+        pal.setColor(self.log_view.backgroundRole(), QColor(bg))
+        pal.setColor(self.log_view.foregroundRole(), QColor(fg))
+        pal.setColor(QPalette.ColorRole.Base, QColor(bg))
+        pal.setColor(QPalette.ColorRole.Text, QColor(fg))
+        self.log_view.setPalette(pal)
+        self.log_view.setAutoFillBackground(True)
+        self.log_view.setStyleSheet(
+            f"QPlainTextEdit#consoleView {{"
+            f" background-color: {bg}; color: {fg};"
+            f" border: 1px solid #D0D5DD; border-radius: 4px; padding: 4px;"
+            f"}}"
+        )
+        # Console log is always display-only for machine traffic
+        self.log_view.setReadOnly(True)
+
+        try:
+            mode = get("/console/AutoScroll", 1)
+            mode = 1 if mode is None else int(mode)
+        except (TypeError, ValueError):
+            mode = 1
+        self._auto_scroll_mode = max(0, min(2, mode))
+        self._auto_scroll = self._auto_scroll_mode in (1, 2)
+
+        try:
+            self._save_history = bool(get("/console/cli/SaveCmdHistory", True))
+            mh = get("/console/cli/CmdMaxHistory", self._max_history)
+            if mh is not None:
+                self._max_history = max(1, int(mh))
+        except (TypeError, ValueError):
+            pass
+
+    def update_settings(self) -> None:
+        """wx Console.UpdateSettings entry point."""
+        self.apply_settings()
+
+    def _on_log_caret_changed(self) -> None:
+        # wx: modes >= 2 stop auto-scroll when user moves caret
+        if self._auto_scroll_mode >= 2:
+            self._auto_scroll = False
+
+    def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
+
+        if obj is self.log_view and event.type() == QEvent.Type.FocusOut:
+            if self._auto_scroll_mode == 2:
+                self._auto_scroll = True
+        return super().eventFilter(obj, event)
+
     @Slot(object)
     def append_text(self, text):
         """Append console text; strip trailing newlines (Qt adds one)."""
@@ -208,6 +298,13 @@ class ConsolePanel(QWidget):
         if not text:
             return
         self.log_view.appendPlainText(text)
+        if self._auto_scroll_mode == 0:
+            return
+        if self._auto_scroll or self._auto_scroll_mode == 1:
+            cursor = self.log_view.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            self.log_view.setTextCursor(cursor)
+            self.log_view.ensureCursorVisible()
 
     def set_cli_enabled(self, enabled: bool):
         self.cli.setEnabled(enabled)

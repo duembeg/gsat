@@ -4,7 +4,7 @@
     DRO + machine status for the PySide workbench.
 
     Matches wx Machine Status panel layout intent:
-    - DRO box: X/Y/Z/A/B/C + FR (feed) + ST (state) — same big mono fields
+    - DRO box: enabled axes only (/machine/DRO/Enable*) + FR + ST
     - Status box: device name, version, buffer, sent %, runtime (host/side data)
 
     Interactive (when armed, machine open) — same as wx OnDroLeftUp:
@@ -24,6 +24,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+import modules.config as gc
 
 from modules.pyside_workbench import theme
 from modules.pyside_workbench.numeric_entry_dialog import NumericEntryDialog
@@ -101,7 +103,9 @@ class DroPanel(QWidget):
 
         self._axis_edits: dict[str, QLineEdit] = {}
         self._axis_labels: dict[str, QLabel] = {}
+        self._axis_enabled: dict[str, bool] = {}
         self._interactive = False
+        self._dro_form = dro_form
 
         for label, key in self.AXIS_KEYS:
             axis = label  # "X"
@@ -112,6 +116,8 @@ class DroPanel(QWidget):
             dro_form.addRow(axis_lbl, edit)
             self._axis_edits[key] = edit
             self._axis_labels[key] = axis_lbl
+            # Default XYZ on until config applied (wx-ish)
+            self._axis_enabled[key] = axis in ("X", "Y", "Z")
 
         # Feed rate (vel) — display only
         fr_lbl = QLabel("FR")
@@ -157,6 +163,60 @@ class DroPanel(QWidget):
         self._last_stat = ""
         self._apply_state_style("")
         self.set_interactive(False)
+        self.apply_settings()
+
+    def apply_settings(self) -> None:
+        """Honor /machine/DRO/Enable* and font (wx Machine Status UpdateSettings)."""
+        # Defaults: XYZ on, ABC off — match typical 3-axis; config overrides
+        defaults = {
+            "posx": True,
+            "posy": True,
+            "posz": True,
+            "posa": False,
+            "posb": False,
+            "posc": False,
+        }
+        for label, key in self.AXIS_KEYS:
+            enabled = defaults[key]
+            if gc.CONFIG_DATA is not None:
+                raw = gc.CONFIG_DATA.get(f"/machine/DRO/Enable{label}", None)
+                if raw is not None:
+                    enabled = bool(raw)
+            self._axis_enabled[key] = enabled
+            edit = self._axis_edits[key]
+            lbl = self._axis_labels[key]
+            edit.setVisible(enabled)
+            lbl.setVisible(enabled)
+
+        # Optional DRO font from machine settings
+        if gc.CONFIG_DATA is not None:
+            try:
+                face = str(
+                    gc.CONFIG_DATA.get("/machine/DRO/FontFace", "Monospace")
+                    or "Monospace"
+                )
+                if face == "System":
+                    face = "Monospace"
+                size = int(gc.CONFIG_DATA.get("/machine/DRO/FontSize", 20) or 20)
+                if size <= 0:
+                    size = 20
+                style = str(
+                    gc.CONFIG_DATA.get("/machine/DRO/FontStyle", "bold") or "bold"
+                ).lower()
+                bold = "bold" in style
+                font = theme.mono_font(size, bold=bold)
+                if face and face != "Monospace":
+                    font.setFamily(face)
+                for edit in self._axis_edits.values():
+                    edit.setFont(font)
+                self.feed_rate.setFont(font)
+                self.run_status.setFont(font)
+            except (TypeError, ValueError):
+                pass
+
+    def update_settings(self) -> None:
+        """wx machineStatusPanel.UpdateSettings entry."""
+        self.apply_settings()
 
     def _make_dro_field(self, initial: str) -> QLineEdit:
         edit = QLineEdit(initial)
@@ -176,10 +236,14 @@ class DroPanel(QWidget):
             if enabled
             else QCursor(Qt.CursorShape.ArrowCursor)
         )
-        for edit in self._axis_edits.values():
+        for key, edit in self._axis_edits.items():
+            if not self._axis_enabled.get(key, False):
+                continue
             edit.setEnabled(True)  # always show values; clicks gated in handlers
             edit.setCursor(cursor)
-        for lbl in self._axis_labels.values():
+        for key, lbl in self._axis_labels.items():
+            if not self._axis_enabled.get(key, False):
+                continue
             lbl.setCursor(cursor)
 
     def clear(self):
@@ -199,6 +263,8 @@ class DroPanel(QWidget):
             return
 
         for _label, key in self.AXIS_KEYS:
+            if not self._axis_enabled.get(key, False):
+                continue
             if key in status_data:
                 try:
                     val = f"{float(status_data[key]):.3f}"
@@ -275,6 +341,8 @@ class DroPanel(QWidget):
         if not self._interactive:
             return
         key = f"pos{axis.lower()}"
+        if not self._axis_enabled.get(key, False):
+            return
         initial = ""
         edit = self._axis_edits.get(key)
         if edit is not None:
@@ -292,6 +360,9 @@ class DroPanel(QWidget):
 
     def _on_letter_clicked(self, axis: str) -> None:
         if not self._interactive:
+            return
+        key = f"pos{axis.lower()}"
+        if not self._axis_enabled.get(key, False):
             return
         menu = QMenu(self)
         act_home = menu.addAction("Home Axis")

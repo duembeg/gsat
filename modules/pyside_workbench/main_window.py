@@ -95,6 +95,14 @@ class MainWindow(QMainWindow):
         )
         self.act_remote_settings.triggered.connect(self.on_remote_settings)
 
+        # Explicit pull — not automatic (may overwrite local editor G-code)
+        self.act_remote_get_gcode = QAction("Get G-code", self)
+        self.act_remote_get_gcode.setToolTip(
+            "Get G-code from remote server (backend program buffer). "
+            "Not automatic so you can keep or replace local editor content."
+        )
+        self.act_remote_get_gcode.triggered.connect(self.on_remote_get_gcode)
+
         self.act_quit = QAction("E&xit", self)
         self.act_quit.setShortcut("Ctrl+Q")
         self.act_quit.triggered.connect(self.close)
@@ -201,6 +209,7 @@ class MainWindow(QMainWindow):
             (self.act_remote, "remote"),
             (self.act_settings, "settings"),
             (self.act_remote_settings, "remote_settings"),
+            (self.act_remote_get_gcode, "remote_gcode"),
         ):
             wb_icons.apply_action_icon(act, name)
 
@@ -219,15 +228,13 @@ class MainWindow(QMainWindow):
         )
         return dock
 
-    def _apply_default_dock_arrangement(self) -> None:
-        """Default like wx: G-code center, Console under center only, DRO|Jog right column.
+    def _apply_dock_corners(self) -> None:
+        """Column-style: right docks own the right edge full height.
 
-        Qt dock *corners* control whether the bottom dock is a full-width row
-        or only under the center (column-style with the right stack). User can
-        still drag docks to other areas (full-width bottom, left, float, etc.).
+        Bottom dock (Console) only sits under the center (G-code), not under
+        DRO/Jog — so Console height is not tied to Jog in one shared row.
+        restoreState() can clobber this; call again after layout load.
         """
-        # Right column owns top/bottom-right → full-height right stack;
-        # bottom dock stays under central (G-code) only — wx column look.
         self.setCorner(
             Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
         )
@@ -240,6 +247,18 @@ class MainWindow(QMainWindow):
         self.setCorner(
             Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.BottomDockWidgetArea
         )
+
+    def _apply_default_dock_arrangement(self) -> None:
+        """Default like wx: G-code center, Console under center, DRO|Jog right column.
+
+        User can still drag docks to a full-width bottom row, etc. Saved layouts
+        via View → Save layout override this until View → Reset layout.
+        """
+        self._apply_dock_corners()
+
+        # Force docks out of any previous area (reset / recovery from row layout)
+        for d in (self.dock_console, self.dock_dro, self.dock_jog):
+            self.removeDockWidget(d)
 
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
@@ -290,6 +309,10 @@ class MainWindow(QMainWindow):
         self.jog.jog_relative.connect(self.on_jog_relative)
         self.jog.jog_stop.connect(self.on_jog_stop)
         self.jog.home_axes.connect(self.on_home_axes)
+        self.jog.zero_axes.connect(self.on_jog_zero_axes)
+        self.jog.jog_absolute.connect(self.on_jog_absolute)
+        self.jog.probe_axes.connect(self.on_jog_probe)
+        self.jog.gcode_script.connect(self.on_jog_gcode_script)
         self.dock_jog = self._make_dock("Machine Jogging", self.jog, "dockJog")
 
         self._apply_default_dock_arrangement()
@@ -401,6 +424,7 @@ class MainWindow(QMainWindow):
         self.port_edit.setMaximumWidth(64)
         self.tb_remote.addWidget(self.port_edit)
         self.tb_remote.addAction(self.act_remote)
+        self.tb_remote.addAction(self.act_remote_get_gcode)
         self.tb_remote.addAction(self.act_remote_settings)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_remote)
 
@@ -410,12 +434,17 @@ class MainWindow(QMainWindow):
             "machine": self.tb_machine,
             "remote": self.tb_remote,
         }
-        # Tooltips already set; ensure icon-only buttons still show status tips
+        # Tooltips + role styling (theme: flat strip tools; danger = abort)
         for tb in self._toolbars.values():
             for btn in tb.findChildren(QToolButton):
                 act = btn.defaultAction()
                 if act is not None and act.toolTip():
                     btn.setToolTip(act.toolTip())
+                if act is self.act_abort:
+                    btn.setObjectName("toolButtonDanger")
+                    # Re-apply so objectName stylesheet selectors take effect
+                    btn.style().unpolish(btn)
+                    btn.style().polish(btn)
 
     def _build_menu(self):
         # File (wx: Open, Recent, Save, Save As, Exit)
@@ -449,6 +478,7 @@ class MainWindow(QMainWindow):
         # Remote
         remote_menu = self.menuBar().addMenu("R&emote")
         remote_menu.addAction(self.act_remote)
+        remote_menu.addAction(self.act_remote_get_gcode)
         remote_menu.addAction(self.act_remote_settings)
 
         # Run (wx name) — program controls
@@ -866,6 +896,77 @@ class MainWindow(QMainWindow):
         self.bridge.send_command(gc.EV_CMD_HOME, dict(axes))
         self.append_log(f"Home requested: {','.join(sorted(axes.keys())).upper()}")
 
+    def _jog_cmd_ready(self, label: str = "Jog") -> bool:
+        """Machine open, backend up, not streaming program (wx jog enable)."""
+        if not self.bridge.is_backend_active():
+            self.append_log(f"{label}: no machine backend.")
+            return False
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if not machine_open:
+            self.append_log(f"{label}: machine not open.")
+            return False
+        if gc.STATE_DATA.swState == gc.STATE_RUN:
+            self.append_log(f"{label}: blocked while program is running.")
+            return False
+        return True
+
+    @Slot(dict)
+    def on_jog_zero_axes(self, axes: dict):
+        """Work-zero axes from jog pad (wx SetToZero* → EV_CMD_SET_AXIS)."""
+        if not self._jog_cmd_ready("Zero"):
+            return
+        self.bridge.send_command(gc.EV_CMD_SET_AXIS, dict(axes))
+        self.append_log(
+            f"Zero work: {','.join(sorted(axes.keys())).upper()}"
+        )
+
+    @Slot(dict, bool, object)
+    def on_jog_absolute(self, axes: dict, rapid: bool, feed):
+        """Absolute jog (wx GoToZeroXY → EV_CMD_JOG_MOVE / RAPID)."""
+        if not self._jog_cmd_ready("Jog abs"):
+            return
+        payload = dict(axes)
+        if rapid:
+            self.bridge.send_command(gc.EV_CMD_JOG_RAPID_MOVE, payload)
+            self.append_log(
+                f"Jog rapid → {', '.join(f'{k.upper()}={v}' for k, v in axes.items())}"
+            )
+        else:
+            if feed is not None:
+                payload["feed"] = feed
+            self.bridge.send_command(gc.EV_CMD_JOG_MOVE, payload)
+            self.append_log(
+                f"Jog → {', '.join(f'{k.upper()}={v}' for k, v in axes.items())}"
+                + (f" F{feed}" if feed is not None else "")
+            )
+
+    @Slot(dict)
+    def on_jog_probe(self, axes: dict):
+        """Probe helper (wx Probe Z → EV_CMD_PROBE_HELPER)."""
+        if not self._jog_cmd_ready("Probe"):
+            return
+        self.bridge.send_command(gc.EV_CMD_PROBE_HELPER, dict(axes))
+        self.append_log(
+            f"Probe requested: {','.join(sorted(axes.keys())).upper()}"
+        )
+
+    @Slot(str)
+    def on_jog_gcode_script(self, script: str):
+        """Spindle/coolant/custom buttons → serial lines (wx SerialWrite)."""
+        if not self._jog_cmd_ready("Machine cmd"):
+            return
+        lines = [ln.strip() for ln in str(script).splitlines() if ln.strip()]
+        if not lines:
+            return
+        for line in lines:
+            if not self.bridge.send_line(line):
+                self.append_log(f"Machine cmd send failed: {line}")
+                return
+        if len(lines) == 1:
+            self.append_log(f"Sent: {lines[0]}")
+        else:
+            self.append_log(f"Sent {len(lines)} G-code lines (custom).")
+
     def _dro_cmd_ready(self) -> bool:
         """wx DRO clicks: machine open, backend up, not streaming program."""
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
@@ -1166,6 +1267,85 @@ class MainWindow(QMainWindow):
         self.bridge.send_command(gc.EV_CMD_UPDATE_CONFIG, self._remote_config_data)
         self.append_log("Remote settings sent to server.")
 
+    @Slot()
+    def on_remote_get_gcode(self):
+        """wx OnRemoteGetGcode: request program buffer from server (explicit only)."""
+        if not self.bridge.is_remote_connected():
+            self.append_log("Get G-code: not connected to remote.")
+            return
+        self.bridge.send_command(gc.EV_CMD_GET_GCODE)
+        self.append_log("Requested G-code from remote server…")
+
+    def _on_ev_gcode(self, data) -> None:
+        """Handle EV_GCODE from remote GET_GCODE (wx OnRemoteGetGcode result)."""
+        # Server sends dict; local progexec may send a bare list of lines
+        if isinstance(data, dict):
+            lines = data.get("gcodeLines") or []
+            fname = data.get("gcodeFileName") or ""
+            pc = data.get("gcodePC", 0)
+            bps = data.get("breakPoints") or set()
+        elif isinstance(data, (list, tuple)):
+            lines = list(data)
+            fname = ""
+            pc = 0
+            bps = set()
+        else:
+            self.append_log("Get G-code: unexpected payload type.")
+            return
+
+        if not lines:
+            self.append_log("Get G-code: remote has no program loaded.")
+            return
+
+        # wx: if editor modified, offer save before override
+        if self.gcode.editor.document().isModified():
+            reply = QMessageBox.question(
+                self,
+                "Get Remote G-code",
+                "Current G-code has been modified.\n"
+                "Save before override from remote?",
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No
+                | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Yes,
+            )
+            if reply == QMessageBox.StandardButton.Cancel:
+                self.append_log("Get G-code: cancelled.")
+                return
+            if reply == QMessageBox.StandardButton.Yes:
+                self.on_save_gcode_as()
+
+        # Normalize lines to list[str] with newlines preserved where possible
+        norm: list[str] = []
+        for ln in lines:
+            s = str(ln)
+            if s and not s.endswith("\n"):
+                s = s + "\n"
+            norm.append(s)
+
+        path = str(fname) if fname else ""
+        self.gcode.load_lines(path, norm)
+        self.gcode.editor.document().setModified(False)
+        gc.STATE_DATA.gcodeFileName = path
+        gc.STATE_DATA.gcodeFileLines = self.gcode.lines()
+        gc.STATE_DATA.fileIsOpen = True
+        try:
+            pc_i = int(pc)
+        except (TypeError, ValueError):
+            pc_i = 0
+        self.set_pc(pc_i)
+        try:
+            bp_set = set(int(x) for x in bps)
+        except (TypeError, ValueError):
+            bp_set = set()
+        self.gcode.set_breakpoints(bp_set)
+        gc.STATE_DATA.breakPoints = bp_set
+
+        base = os.path.basename(path) if path else "(remote)"
+        self.setWindowTitle(f"{base} — {vinfo.__appname__} — PySide workbench")
+        self.append_log(f"Loaded G-code from remote: {base} ({len(norm)} lines)")
+        self._update_connection_ui()
+
     def _apply_settings_to_ui(self) -> None:
         """Push a subset of settings into live widgets after local save."""
         # Remote toolbar host/port from profile
@@ -1178,29 +1358,24 @@ class MainWindow(QMainWindow):
                 self.port_edit.setText(str(port))
         except Exception:
             pass
-        # Jog defaults
+        # Jog panel (feed/rapid/spindle/custom — wx UpdateSettings)
         try:
-            feed = float(gc.CONFIG_DATA.get("/jogging/JogFeedRate", 1000) or 1000)
-            self.jog.feed_spin.setValue(feed)
-            rapid = bool(gc.CONFIG_DATA.get("/jogging/JogRapid", False))
-            self.jog.rapid_check.setChecked(rapid)
-            gc.STATE_DATA.joggingFeedRate = feed
-            gc.STATE_DATA.joggingRapid = rapid
-        except Exception:
-            pass
-        # G-code colors (highlighter re-reads config on next open; refresh style now)
+            self.jog.update_settings()
+        except Exception as exc:
+            self.logger.warning("Jog settings apply failed: %s", exc)
+        # G-code + console fonts/colors/syntax (wx UpdateSettings on each panel)
         try:
-            bg = gc.CONFIG_DATA.get("/code/WindowBackground", "#FFFFFF") or "#FFFFFF"
-            fg = gc.CONFIG_DATA.get("/code/WindowForeground", "#000000") or "#000000"
-            self.gcode.editor.setStyleSheet(
-                f"QPlainTextEdit {{ background: {bg}; color: {fg}; }}"
-            )
-        except Exception:
-            pass
+            self.gcode.update_settings()
+        except Exception as exc:
+            self.logger.warning("G-code settings apply failed: %s", exc)
         try:
-            self.gcode.reload_auto_scroll_setting()
-        except Exception:
-            pass
+            self.console.update_settings()
+        except Exception as exc:
+            self.logger.warning("Console settings apply failed: %s", exc)
+        try:
+            self.dro_panel.update_settings()
+        except Exception as exc:
+            self.logger.warning("DRO settings apply failed: %s", exc)
 
     # ------------------------------------------------------------------
     # Backend events (GUI thread)
@@ -1390,6 +1565,9 @@ class MainWindow(QMainWindow):
         elif eid == gc.EV_GCODE_MD5:
             pass
 
+        elif eid == gc.EV_GCODE:
+            self._on_ev_gcode(data)
+
         else:
             name = gc.EV_2STR_DICT.get(eid, str(eid))
             if self.cmd_line_options.verbose:
@@ -1463,6 +1641,7 @@ class MainWindow(QMainWindow):
         self.act_remote.setEnabled(True)
         self._sync_remote_affordance(remote=remote, connecting=connecting)
         self.act_remote_settings.setEnabled(remote or client_alive)
+        self.act_remote_get_gcode.setEnabled(remote or client_alive)
         self.act_local.setEnabled(not busy_remote and not backend)
         # Connect toggle: open when closed (remote or free local); close when open
         can_open = remote or (not busy_remote and not backend)
@@ -1549,7 +1728,13 @@ class MainWindow(QMainWindow):
             self.append_log(f"Layout save failed: {exc}")
 
     def _load_layout(self):
-        """Restore docks/geometry if previously saved."""
+        """Restore docks/geometry if previously saved.
+
+        restoreState can place Jog next to Console (shared bottom row) and can
+        reset dock corners — re-assert column corners afterward. If the saved
+        layout clearly put Jog on the bottom band with Console, recover the
+        factory column arrangement (user can re-save after intentional rearrange).
+        """
         try:
             geo_b64 = gc.CONFIG_DATA.get(f"{self._LAYOUT_KEY}/Geometry", "") or ""
             state_b64 = gc.CONFIG_DATA.get(f"{self._LAYOUT_KEY}/State", "") or ""
@@ -1557,8 +1742,26 @@ class MainWindow(QMainWindow):
                 self.restoreGeometry(QByteArray(base64.b64decode(geo_b64)))
             if state_b64:
                 self.restoreState(QByteArray(base64.b64decode(state_b64)))
+            # Always re-apply corners after restore (Qt often drops them)
+            self._apply_dock_corners()
+            # Recover from the known-bad "Console | Jog" bottom row save
+            if (
+                self.dockWidgetArea(self.dock_jog)
+                == Qt.DockWidgetArea.BottomDockWidgetArea
+                and self.dockWidgetArea(self.dock_console)
+                == Qt.DockWidgetArea.BottomDockWidgetArea
+            ):
+                self.logger.info(
+                    "Saved layout had Console+Jog on bottom row; "
+                    "restoring column default (DRO|Jog right)."
+                )
+                self._apply_default_dock_arrangement()
         except Exception as exc:
             self.logger.warning("Layout load failed: %s", exc)
+            try:
+                self._apply_default_dock_arrangement()
+            except Exception:
+                pass
 
     def _reset_layout(self):
         """Clear saved layout and restore default dock arrangement (wx-like)."""

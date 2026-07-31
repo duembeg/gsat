@@ -4,11 +4,18 @@
     Shared visual system for the PySide workbench.
 
     Design decisions (keep future panels consistent):
-    - Fusion base + compact stylesheet (not a full custom paint engine)
+    - Fusion base + compact QSS (not a full custom paint engine)
     - Cool neutral chrome; state color only for machine/run status
     - Monospace for DRO, G-code, console (debug density)
     - Grouped action bars over one endless button row
     - Machine state must stay obvious (Idle / Run / Hold / Alarm / Break)
+
+    Component roles (same language as the jog pad polish — not one flat look):
+    - toolbar strip …………… soft surface + separators; scannable bar
+    - toolbar tool button … nearly flat glyph tiles, soft hover/checked
+    - form QPushButton …… outlined, light fill on hover
+    - pad button …………… densest flat tiles (jogPadButton)
+    - primary / danger …… accent fill / red tint (object names)
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
@@ -24,6 +31,17 @@ COLOR_TEXT = "#1A1D23"
 COLOR_MUTED = "#5C6570"
 COLOR_ACCENT = "#2563EB"
 COLOR_ACCENT_HOVER = "#1D4ED8"
+COLOR_HOVER_BG = "#EEF2FF"
+COLOR_HOVER_BORDER = "#BFDBFE"
+COLOR_PRESS_BG = "#DBEAFE"
+COLOR_PRESS_BORDER = "#93C5FD"
+COLOR_DISABLED_BG = "#F8F9FB"
+COLOR_DISABLED_BORDER = "#E8EAED"
+COLOR_DISABLED_TEXT = "#A0A8B3"
+COLOR_DANGER = "#B91C1C"
+COLOR_DANGER_BG = "#FEF2F2"
+COLOR_DANGER_BORDER = "#FECACA"
+COLOR_DANGER_HOVER = "#FEE2E2"
 
 # Machine / run state (used by status badge + DRO state field)
 STATE_COLORS = {
@@ -61,7 +79,6 @@ def state_color_key(stat: str | None, sw_state: int | None = None) -> str:
         return "run"
     if "idle" in s:
         return "idle"
-    # software states from config.py
     try:
         import modules.config as gc
 
@@ -101,7 +118,9 @@ def apply_app_theme(app: QApplication) -> None:
 
 
 WORKBENCH_QSS = f"""
-/* --- global --- */
+/* =========================================================================
+   Shell
+   ========================================================================= */
 QMainWindow, QDialog {{
     background: {COLOR_BG};
     color: {COLOR_TEXT};
@@ -109,11 +128,33 @@ QMainWindow, QDialog {{
 QMenuBar {{
     background: {COLOR_SURFACE};
     border-bottom: 1px solid {COLOR_BORDER};
-    padding: 2px 4px;
+    padding: 2px 6px;
+}}
+QMenuBar::item {{
+    padding: 4px 8px;
+    border-radius: 4px;
 }}
 QMenuBar::item:selected {{
-    background: #E8EEF9;
+    background: {COLOR_HOVER_BG};
     color: {COLOR_TEXT};
+}}
+QMenu {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 6px;
+    padding: 4px;
+}}
+QMenu::item {{
+    padding: 6px 24px 6px 12px;
+    border-radius: 4px;
+}}
+QMenu::item:selected {{
+    background: {COLOR_HOVER_BG};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {COLOR_BORDER};
+    margin: 4px 8px;
 }}
 QStatusBar {{
     background: {COLOR_SURFACE};
@@ -121,37 +162,111 @@ QStatusBar {{
     color: {COLOR_MUTED};
     font-size: 12px;
 }}
-QToolBar {{
+QDockWidget {{
+    color: {COLOR_TEXT};
+    titlebar-close-icon: none;
+}}
+QDockWidget::title {{
     background: {COLOR_SURFACE};
     border: 1px solid {COLOR_BORDER};
     border-radius: 6px;
-    spacing: 4px;
-    padding: 4px 6px;
-    margin: 0px;
+    padding: 5px 8px;
+    text-align: left;
+}}
+
+/* =========================================================================
+   Toolbars — soft strip; buttons stay glyph-first (not heavy boxes)
+   ========================================================================= */
+QToolBar {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 8px;
+    spacing: 2px;
+    padding: 3px 5px;
+    margin: 1px 2px;
 }}
 QToolBar::separator {{
     width: 1px;
     background: {COLOR_BORDER};
-    margin: 4px 6px;
+    margin: 6px 5px;
 }}
-QToolButton, QPushButton {{
+/* Icon-only (and text-beside) tools on a strip */
+QToolBar QToolButton {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 6px;
+    margin: 0px 1px;
+    min-height: 0px;
+    min-width: 0px;
+}}
+QToolBar QToolButton:hover {{
+    background: {COLOR_HOVER_BG};
+    border: 1px solid {COLOR_HOVER_BORDER};
+}}
+QToolBar QToolButton:pressed {{
+    background: {COLOR_PRESS_BG};
+    border: 1px solid {COLOR_PRESS_BORDER};
+}}
+QToolBar QToolButton:checked {{
+    background: {COLOR_PRESS_BG};
+    border: 1px solid {COLOR_PRESS_BORDER};
+}}
+QToolBar QToolButton:disabled {{
+    background: transparent;
+    border: 1px solid transparent;
+    color: {COLOR_DISABLED_TEXT};
+}}
+/* Main bar Open split + text-beside need a little more room */
+QToolBar QToolButton#btnOpenGcode {{
+    padding: 4px 10px;
+    font-weight: 500;
+}}
+/* Abort / other destructive toolbar tools */
+QToolBar QToolButton#toolButtonDanger {{
+    background: transparent;
+    border: 1px solid transparent;
+}}
+QToolBar QToolButton#toolButtonDanger:hover {{
+    background: {COLOR_DANGER_HOVER};
+    border: 1px solid {COLOR_DANGER_BORDER};
+}}
+QToolBar QToolButton#toolButtonDanger:pressed {{
+    background: #FECACA;
+    border: 1px solid #F87171;
+}}
+QToolBar QToolButton#toolButtonDanger:disabled {{
+    background: transparent;
+    border: 1px solid transparent;
+}}
+
+/* =========================================================================
+   Form buttons — outlined soft (dialogs, panels); not flat pad tiles
+   ========================================================================= */
+QPushButton {{
     background: {COLOR_SURFACE};
     border: 1px solid {COLOR_BORDER};
-    border-radius: 5px;
-    padding: 5px 10px;
-    min-height: 22px;
+    border-radius: 6px;
+    padding: 5px 12px;
+    min-height: 24px;
+    font-weight: 500;
 }}
-QToolButton:hover, QPushButton:hover {{
-    background: #EEF2FF;
-    border-color: #93C5FD;
+QPushButton:hover {{
+    background: {COLOR_HOVER_BG};
+    border-color: {COLOR_HOVER_BORDER};
 }}
-QToolButton:pressed, QPushButton:pressed {{
-    background: #DBEAFE;
+QPushButton:pressed {{
+    background: {COLOR_PRESS_BG};
+    border-color: {COLOR_PRESS_BORDER};
 }}
-QToolButton:disabled, QPushButton:disabled {{
-    color: #A0A8B3;
-    background: #F8F9FB;
-    border-color: #E5E7EB;
+QPushButton:disabled {{
+    color: {COLOR_DISABLED_TEXT};
+    background: {COLOR_DISABLED_BG};
+    border-color: {COLOR_DISABLED_BORDER};
+}}
+QPushButton:checked {{
+    background: {COLOR_PRESS_BG};
+    border-color: {COLOR_PRESS_BORDER};
 }}
 QPushButton#btnPrimary {{
     background: {COLOR_ACCENT};
@@ -163,38 +278,129 @@ QPushButton#btnPrimary:hover {{
     background: {COLOR_ACCENT_HOVER};
     border-color: {COLOR_ACCENT_HOVER};
 }}
+QPushButton#btnPrimary:pressed {{
+    background: #1E40AF;
+    border-color: #1E40AF;
+}}
+QPushButton#btnPrimary:disabled {{
+    background: #93C5FD;
+    border-color: #93C5FD;
+    color: #F8FAFC;
+}}
 QPushButton#btnDanger {{
-    background: #FEF2F2;
-    border-color: #FECACA;
-    color: #B91C1C;
+    background: {COLOR_DANGER_BG};
+    border-color: {COLOR_DANGER_BORDER};
+    color: {COLOR_DANGER};
 }}
 QPushButton#btnDanger:hover {{
-    background: #FEE2E2;
+    background: {COLOR_DANGER_HOVER};
+    border-color: #F87171;
 }}
+QDialogButtonBox QPushButton {{
+    min-width: 80px;
+    padding: 6px 14px;
+}}
+/* Standalone tool buttons (not in a toolbar) — same soft language */
+QToolButton {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 6px;
+    padding: 4px 8px;
+    min-height: 0px;
+}}
+QToolButton:hover {{
+    background: {COLOR_HOVER_BG};
+    border-color: {COLOR_HOVER_BORDER};
+}}
+QToolButton:pressed {{
+    background: {COLOR_PRESS_BG};
+    border-color: {COLOR_PRESS_BORDER};
+}}
+QToolButton:disabled {{
+    color: {COLOR_DISABLED_TEXT};
+    background: {COLOR_DISABLED_BG};
+    border-color: {COLOR_DISABLED_BORDER};
+}}
+
+/* =========================================================================
+   Inputs / chrome
+   ========================================================================= */
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
     background: {COLOR_SURFACE};
     border: 1px solid {COLOR_BORDER};
-    border-radius: 4px;
-    padding: 4px 6px;
+    border-radius: 5px;
+    padding: 4px 8px;
     min-height: 22px;
     selection-background-color: {COLOR_ACCENT};
 }}
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border: 1px solid {COLOR_ACCENT};
+}}
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {{
+    background: {COLOR_DISABLED_BG};
+    color: {COLOR_DISABLED_TEXT};
+}}
+QComboBox::drop-down {{
+    border: none;
+    width: 20px;
 }}
 QGroupBox {{
     font-weight: 600;
     border: 1px solid {COLOR_BORDER};
-    border-radius: 6px;
-    margin-top: 10px;
-    padding-top: 8px;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
     background: {COLOR_SURFACE};
 }}
 QGroupBox::title {{
     subcontrol-origin: margin;
     left: 10px;
-    padding: 0 4px;
+    padding: 0 6px;
     color: {COLOR_MUTED};
+}}
+QTabWidget::pane {{
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 6px;
+    background: {COLOR_SURFACE};
+    top: -1px;
+}}
+QTabBar::tab {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 6px 14px;
+    margin-right: 2px;
+    color: {COLOR_MUTED};
+    font-weight: 500;
+}}
+QTabBar::tab:selected {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-bottom: 1px solid {COLOR_SURFACE};
+    color: {COLOR_TEXT};
+}}
+QTabBar::tab:hover:!selected {{
+    background: {COLOR_HOVER_BG};
+    color: {COLOR_TEXT};
+}}
+QCheckBox {{
+    spacing: 6px;
+}}
+QCheckBox::indicator {{
+    width: 15px;
+    height: 15px;
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 3px;
+    background: {COLOR_SURFACE};
+}}
+QCheckBox::indicator:checked {{
+    background: {COLOR_ACCENT};
+    border-color: {COLOR_ACCENT};
+}}
+QCheckBox::indicator:hover {{
+    border-color: {COLOR_HOVER_BORDER};
 }}
 QSplitter::handle {{
     background: {COLOR_BORDER};
@@ -204,6 +410,35 @@ QSplitter::handle:horizontal {{
 }}
 QSplitter::handle:vertical {{
     height: 3px;
+}}
+QScrollBar:vertical {{
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}}
+QScrollBar::handle:vertical {{
+    background: #C5CAD3;
+    border-radius: 4px;
+    min-height: 24px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: #A8B0BC;
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0px;
+}}
+QScrollBar:horizontal {{
+    background: transparent;
+    height: 10px;
+    margin: 2px;
+}}
+QScrollBar::handle:horizontal {{
+    background: #C5CAD3;
+    border-radius: 4px;
+    min-width: 24px;
+}}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0px;
 }}
 QLabel#sectionLabel {{
     color: {COLOR_MUTED};
@@ -223,15 +458,14 @@ QLabel#statusBadge {{
 QFrame#toolbarStrip {{
     background: {COLOR_SURFACE};
     border: 1px solid {COLOR_BORDER};
-    border-radius: 6px;
+    border-radius: 8px;
 }}
+
+/* Console fg/bg/font come from /console/* via ConsolePanel — do not hardcode. */
 QPlainTextEdit#consoleView {{
     font-family: monospace;
-    font-size: 11px;
-    background: #0F172A;
-    color: #E2E8F0;
-    border: 1px solid #1E293B;
-    border-radius: 4px;
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 6px;
     padding: 4px;
 }}
 QLineEdit#cliInput {{
@@ -245,8 +479,85 @@ QLineEdit#droAxis, QLineEdit#droState {{
     background: #0B1220;
     color: #F8FAFC;
     border: 1px solid #1E293B;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 4px 8px;
     min-height: 28px;
+}}
+
+/* =========================================================================
+   Jog pad roles (densest flat tiles — same tokens, less chrome)
+   ========================================================================= */
+QWidget#jogPanel {{
+    background: transparent;
+}}
+QFrame#jogPad {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 10px;
+}}
+QToolButton#jogPadButton {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 1px;
+    margin: 0px;
+    min-height: 0px;
+    min-width: 0px;
+}}
+QToolButton#jogPadButton:hover {{
+    background: {COLOR_HOVER_BG};
+    border: 1px solid {COLOR_HOVER_BORDER};
+}}
+QToolButton#jogPadButton:pressed {{
+    background: {COLOR_PRESS_BG};
+    border: 1px solid {COLOR_PRESS_BORDER};
+}}
+QToolButton#jogPadButton:disabled {{
+    background: transparent;
+    border: 1px solid transparent;
+}}
+QPushButton#jogPresetButton {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 5px;
+    padding: 3px 4px;
+    min-height: 24px;
+    min-width: 36px;
+    font-size: 12px;
+    font-weight: 500;
+}}
+QPushButton#jogPresetButton:hover {{
+    background: {COLOR_HOVER_BG};
+    border-color: {COLOR_HOVER_BORDER};
+}}
+QPushButton#jogPresetButton:pressed {{
+    background: {COLOR_PRESS_BG};
+}}
+QPushButton#jogCustomButton {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-height: 28px;
+    font-size: 12px;
+    font-weight: 500;
+}}
+QPushButton#jogCustomButton:hover {{
+    background: {COLOR_HOVER_BG};
+    border-color: {COLOR_HOVER_BORDER};
+}}
+QPushButton#jogCustomButton:disabled {{
+    color: {COLOR_DISABLED_TEXT};
+    background: {COLOR_DISABLED_BG};
+    border-color: {COLOR_DISABLED_BORDER};
+}}
+QDoubleSpinBox#jogSpin {{
+    min-height: 26px;
+    padding: 3px 6px;
+    font-size: 13px;
+}}
+QCheckBox#jogRapid {{
+    spacing: 6px;
+    font-weight: 500;
 }}
 """
