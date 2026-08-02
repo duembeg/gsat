@@ -610,6 +610,13 @@ QLineEdit#droAxis, QLineEdit#droState {{
 QWidget#jogPanel {{
     background: transparent;
 }}
+QScrollArea#jogScroll {{
+    background: transparent;
+    border: none;
+}}
+QWidget#jogPanelContent {{
+    background: transparent;
+}}
 QFrame#jogPad {{
     background: {COLOR_SURFACE};
     border: 1px solid {COLOR_BORDER};
@@ -621,8 +628,11 @@ QToolButton#jogPadButton {{
     border-radius: 8px;
     padding: 1px;
     margin: 0px;
-    min-height: 0px;
-    min-width: 0px;
+    /* Keep 50×50 tiles — do not allow dock squeeze to zero-out min size */
+    min-width: 50px;
+    max-width: 50px;
+    min-height: 50px;
+    max-height: 50px;
 }}
 QToolButton#jogPadButton:hover {{
     background: {COLOR_HOVER_BG};

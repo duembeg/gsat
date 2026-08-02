@@ -13,14 +13,17 @@
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QCursor, QMouseEvent
 from PySide6.QtWidgets import (
     QFormLayout,
+    QFrame,
     QGroupBox,
     QLabel,
     QLineEdit,
     QMenu,
+    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -91,7 +94,27 @@ class DroPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        root = QVBoxLayout(self)
+        # Scroll shell so a short dock (saved layout) does not force ~500px min
+        # height and steal space from the Jog dock after restoreState.
+        shell = QVBoxLayout(self)
+        shell.setContentsMargins(0, 0, 0, 0)
+        shell.setSpacing(0)
+
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self._scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+        content = QWidget()
+        root = QVBoxLayout(content)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
@@ -159,11 +182,26 @@ class DroPanel(QWidget):
 
         root.addWidget(dro_box)
         root.addWidget(status_box)
+        root.addStretch(1)
+
+        self._scroll.setWidget(content)
+        shell.addWidget(self._scroll)
+
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
         self._last_stat = ""
         self._apply_state_style("")
         self.set_interactive(False)
         self.apply_settings()
+
+    def minimumSizeHint(self) -> QSize:
+        # Allow short saved DRO docks; content scrolls inside
+        return QSize(180, 100)
+
+    def sizeHint(self) -> QSize:
+        return QSize(220, 280)
 
     def apply_settings(self) -> None:
         """Honor /machine/DRO/Enable* and font (wx Machine Status UpdateSettings)."""

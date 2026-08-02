@@ -216,8 +216,8 @@ class _GcodeEdit(QPlainTextEdit):
         return QSize(80, 40)
 
     def sizeHint(self) -> QSize:
-        # Prefer short center pane so bottom Console can claim most of the height
-        return QSize(256, 100)
+        # Prefer short/narrow center so docks (console, jog) keep room at open
+        return QSize(200, 100)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -447,7 +447,7 @@ class GcodePanel(QWidget):
         return QSize(120, 72)
 
     def sizeHint(self) -> QSize:
-        return QSize(256, 140)
+        return QSize(200, 140)
 
     # ------------------------------------------------------------------
     # Public API (stable for main_window / smoke)

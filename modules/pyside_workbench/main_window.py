@@ -258,11 +258,16 @@ class MainWindow(QMainWindow):
             Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.BottomDockWidgetArea
         )
 
-    def _apply_default_dock_arrangement(self) -> None:
+    def _apply_default_dock_arrangement(self, apply_factory_sizes: bool = True) -> None:
         """Default like wx: G-code center, Console under center, DRO|Jog right column.
 
         User can still drag docks to a full-width bottom row, etc. Saved layouts
         via View → Save layout override this until View → Reset layout.
+
+        ``apply_factory_sizes``: when False, only place docks (used before
+        restoreState so we do not bake 400/280 into a layout that is about to
+        be replaced). When True (reset / no save / recovery), apply factory
+        dock pixel sizes.
         """
         self._apply_dock_corners()
 
@@ -278,10 +283,34 @@ class MainWindow(QMainWindow):
         self.dock_console.show()
         self.dock_dro.show()
         self.dock_jog.show()
-        self.resizeDocks([self.dock_console], [220], Qt.Orientation.Vertical)
-        self.resizeDocks(
-            [self.dock_dro, self.dock_jog], [400, 280], Qt.Orientation.Vertical
-        )
+        if apply_factory_sizes:
+            self.resizeDocks([self.dock_console], [220], Qt.Orientation.Vertical)
+            self.resizeDocks(
+                [self.dock_dro, self.dock_jog], [400, 280], Qt.Orientation.Vertical
+            )
+            self._ensure_jog_dock_width(force_resize=True)
+
+    def _ensure_jog_dock_width(self, force_resize: bool = False) -> None:
+        """Keep right column wide enough for the fixed jog pad.
+
+        After restoreState, only raise the minimum and grow if the dock is
+        *already too narrow* — never force a default width (that clobbers
+        saved horizontal and can reshuffle the DRO|Jog vertical split).
+        """
+        try:
+            jog_w = max(380, int(self.jog.minimumSizeHint().width()))
+        except Exception:
+            jog_w = 380
+        try:
+            self.dock_jog.setMinimumWidth(jog_w)
+            cur = int(self.dock_jog.width())
+            if force_resize or cur < jog_w:
+                self.resizeDocks(
+                    [self.dock_jog], [jog_w if force_resize else max(jog_w, cur)],
+                    Qt.Orientation.Horizontal,
+                )
+        except Exception:
+            pass
 
     def _build_ui(self):
         """Dockable panels (wx AUI-like): toolbars for actions, docks for content."""
@@ -324,8 +353,15 @@ class MainWindow(QMainWindow):
         self.jog.probe_axes.connect(self.on_jog_probe)
         self.jog.gcode_script.connect(self.on_jog_gcode_script)
         self.dock_jog = self._make_dock("Machine Jogging", self.jog, "dockJog")
+        # Modest min only; full pad min + factory sizes applied after we know
+        # whether a saved layout will restore (see _load_layout).
+        try:
+            self.dock_jog.setMinimumWidth(200)
+        except Exception:
+            pass
 
-        self._apply_default_dock_arrangement()
+        # Place docks only — do not bake factory 400/280 before restoreState
+        self._apply_default_dock_arrangement(apply_factory_sizes=False)
 
         sb = QStatusBar(self)
         self.setStatusBar(sb)
@@ -1790,19 +1826,24 @@ class MainWindow(QMainWindow):
         reset dock corners — re-assert column corners afterward. If the saved
         layout clearly put Jog on the bottom band with Console, recover the
         factory column arrangement (user can re-save after intentional rearrange).
+
+        Important: do **not** call resizeDocks with factory sizes after a
+        successful restore — that was resetting DRO|Jog split heights.
         """
         try:
             geo_b64 = gc.CONFIG_DATA.get(f"{self._LAYOUT_KEY}/Geometry", "") or ""
             state_b64 = gc.CONFIG_DATA.get(f"{self._LAYOUT_KEY}/State", "") or ""
+            has_state = bool(state_b64)
             if geo_b64:
                 self.restoreGeometry(QByteArray(base64.b64decode(geo_b64)))
-            if state_b64:
+            if has_state:
                 self.restoreState(QByteArray(base64.b64decode(state_b64)))
             # Always re-apply corners after restore (Qt often drops them)
             self._apply_dock_corners()
             # Recover from the known-bad "Console | Jog" bottom row save
             if (
-                self.dockWidgetArea(self.dock_jog)
+                has_state
+                and self.dockWidgetArea(self.dock_jog)
                 == Qt.DockWidgetArea.BottomDockWidgetArea
                 and self.dockWidgetArea(self.dock_console)
                 == Qt.DockWidgetArea.BottomDockWidgetArea
@@ -1811,11 +1852,17 @@ class MainWindow(QMainWindow):
                     "Saved layout had Console+Jog on bottom row; "
                     "restoring column default (DRO|Jog right)."
                 )
-                self._apply_default_dock_arrangement()
+                self._apply_default_dock_arrangement(apply_factory_sizes=True)
+            elif has_state:
+                # Keep restored DRO|Jog|console sizes; only grow if too narrow
+                self._ensure_jog_dock_width(force_resize=False)
+            else:
+                # No saved state — apply factory pixel sizes once
+                self._apply_default_dock_arrangement(apply_factory_sizes=True)
         except Exception as exc:
             self.logger.warning("Layout load failed: %s", exc)
             try:
-                self._apply_default_dock_arrangement()
+                self._apply_default_dock_arrangement(apply_factory_sizes=True)
             except Exception:
                 pass
 
@@ -1833,7 +1880,7 @@ class MainWindow(QMainWindow):
             gc.CONFIG_DATA.save()
         except Exception:
             pass
-        self._apply_default_dock_arrangement()
+        self._apply_default_dock_arrangement(apply_factory_sizes=True)
         for tb in self._toolbars.values():
             tb.show()
             self.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)

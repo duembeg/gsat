@@ -10,7 +10,7 @@
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import QSize, Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -53,23 +54,71 @@ class JogPanel(QWidget):
         super().__init__(parent)
         self.setObjectName("jogPanel")
 
-        root = QVBoxLayout(self)
+        # Outer shell: scroll when dock is shorter/narrower than content
+        # (avoids step/rapid controls painting over the fixed icon pad).
+        shell = QVBoxLayout(self)
+        shell.setContentsMargins(0, 0, 0, 0)
+        shell.setSpacing(0)
+
+        self._scroll = QScrollArea()
+        self._scroll.setObjectName("jogScroll")
+        # False: never compress content into the viewport (that caused STEP
+        # SIZE / Rapid to paint over the fixed icon pad when the dock is short).
+        self._scroll.setWidgetResizable(False)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self._scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self._scroll.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+        )
+        self._scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+        content = QWidget()
+        content.setObjectName("jogPanelContent")
+        self._content = content
+        root = QVBoxLayout(content)
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(10)
+        root.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinAndMaxSize)
+        self._content_layout = root
 
         # ------------------------------------------------------------------
-        # Icon pad card — same grid positions as wx CreateJoggingControls
+        # Icon pad card — same grid positions as wx CreateJoggingControls.
+        # Fixed size: dock squeeze must not shrink tiles (tiny/invisible icons).
         # ------------------------------------------------------------------
         pad_frame = QFrame()
         pad_frame.setObjectName("jogPad")
+        pad_frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        pad_sz = wb_icons.jog_pad_content_size()
+        pad_frame.setFixedSize(pad_sz)
+        pad_frame.setMinimumSize(pad_sz)
+        self._pad_frame = pad_frame
+
         pad_outer = QVBoxLayout(pad_frame)
-        pad_outer.setContentsMargins(6, 6, 6, 6)
+        m = wb_icons.JOG_PAD_MARGIN
+        pad_outer.setContentsMargins(m, m, m, m)
         pad_outer.setSpacing(0)
 
         pad = QGridLayout()
-        pad.setSpacing(3)
+        pad.setSpacing(wb_icons.JOG_PAD_SPACING)
         pad.setContentsMargins(0, 0, 0, 0)
         pad.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        # Never let the grid redistribute extra space into button cells
+        for c in range(wb_icons.JOG_PAD_COLS):
+            pad.setColumnMinimumWidth(c, wb_icons.JOG_BUTTON_SIZE.width())
+            pad.setColumnStretch(c, 0)
+        for r in range(wb_icons.JOG_PAD_ROWS):
+            pad.setRowMinimumHeight(r, wb_icons.JOG_BUTTON_SIZE.height())
+            pad.setRowStretch(r, 0)
+
+        btn_w = wb_icons.JOG_BUTTON_SIZE.width()
+        btn_h = wb_icons.JOG_BUTTON_SIZE.height()
 
         def icon_btn(icon_name: str, tip: str) -> QToolButton:
             b = QToolButton()
@@ -77,7 +126,9 @@ class JogPanel(QWidget):
             b.setAutoRaise(True)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-            b.setFixedSize(wb_icons.JOG_BUTTON_SIZE)
+            b.setFixedSize(btn_w, btn_h)
+            b.setMinimumSize(btn_w, btn_h)
+            b.setMaximumSize(btn_w, btn_h)
             b.setIconSize(wb_icons.JOG_ICON_SIZE)
             b.setToolTip(tip)
             b.setFocusPolicy(Qt.FocusPolicy.TabFocus)
@@ -294,7 +345,16 @@ class JogPanel(QWidget):
         root.addLayout(self._custom_grid)
         self._rebuild_custom_buttons()
 
-        root.addStretch(1)
+        # No stretch: content height must stay the sum of children (no squeeze)
+
+        self._scroll.setWidget(content)
+        shell.addWidget(self._scroll)
+
+        # Panel may shrink; content is fixed natural size → scrollbars, no overlap
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self._sync_content_size()
 
         self._machine_widgets = [
             self.btn_x_pos,
@@ -322,6 +382,15 @@ class JogPanel(QWidget):
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def minimumSizeHint(self) -> QSize:
+        # Allow a short dock; user scrolls for the rest
+        pad = wb_icons.jog_pad_content_size()
+        return QSize(min(280, pad.width() + 16), 160)
+
+    def sizeHint(self) -> QSize:
+        pad = wb_icons.jog_pad_content_size()
+        return QSize(pad.width() + 24, pad.height() + 240)
+
     def set_enabled(self, enabled: bool):
         """Enable machine actions when session is open and not streaming."""
         for w in self._machine_widgets:
@@ -354,6 +423,22 @@ class JogPanel(QWidget):
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+    def _sync_content_size(self) -> None:
+        """Lock content to full layout size so QScrollArea never compresses it."""
+        content = getattr(self, "_content", None)
+        if content is None:
+            return
+        layout = content.layout()
+        if layout is not None:
+            layout.activate()
+        # sizeHint after activate is the non-overlapping stack height
+        sh = content.sizeHint()
+        pad = wb_icons.jog_pad_content_size()
+        w = max(sh.width(), pad.width() + 16, content.minimumSizeHint().width())
+        h = max(sh.height(), pad.height() + 200, content.minimumSizeHint().height())
+        content.setFixedSize(w, h)
+        content.updateGeometry()
+
     def _make_preset(self, label: str, value: float) -> QPushButton:
         b = QPushButton(label)
         b.setObjectName("jogPresetButton")
@@ -406,6 +491,10 @@ class JogPanel(QWidget):
                 {"name": name, "label": label, "script": script}
             )
             btn.setEnabled(False)
+
+        # Custom row height can change; keep scroll content non-compressed
+        if getattr(self, "_scroll", None) is not None:
+            self._sync_content_size()
 
     def _emit_script(self, script: str) -> None:
         script = (script or "").strip()

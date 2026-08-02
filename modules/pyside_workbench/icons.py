@@ -57,9 +57,14 @@ ICON_FILES: dict[str, str] = {
 
 _cache: dict[str, QIcon] = {}
 
-# Jog pad: glyph-first tiles (icon nearly fills hit target; less chrome than wx).
+# Jog pad: fixed tiles — do not shrink with dock size (see JogPanel pad frame).
 JOG_ICON_SIZE = QSize(48, 48)
 JOG_BUTTON_SIZE = QSize(50, 50)
+# 7×3 grid: buttons + spacing(3) + frame margins(6)
+JOG_PAD_COLS = 7
+JOG_PAD_ROWS = 3
+JOG_PAD_SPACING = 3
+JOG_PAD_MARGIN = 6
 
 JOG_ICON_FILES: dict[str, str] = {
     "pos_x": "jogging_pos_x_48x48.png",
@@ -86,6 +91,18 @@ JOG_ICON_FILES: dict[str, str] = {
 }
 
 _jog_cache: dict[str, QIcon] = {}
+
+
+def jog_pad_content_size() -> QSize:
+    """Intrinsic size of the 7×3 icon pad (buttons + spacing + frame margins)."""
+    bw = JOG_BUTTON_SIZE.width()
+    bh = JOG_BUTTON_SIZE.height()
+    sp = JOG_PAD_SPACING
+    m = JOG_PAD_MARGIN * 2
+    w = JOG_PAD_COLS * bw + (JOG_PAD_COLS - 1) * sp + m
+    h = JOG_PAD_ROWS * bh + (JOG_PAD_ROWS - 1) * sp + m
+    return QSize(w, h)
+
 
 # App / window icon (wx used imgGCSBlack16/32 embeds — file twins under icons/black).
 _APP_ICON_CANDIDATES: tuple[Path, ...] = (
