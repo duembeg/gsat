@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>gsat PySide — control style options</title>
+  <style>
+    :root {
+      --bg: #F4F5F7;
+      --surface: #FFFFFF;
+      --border: #D0D5DD;
+      --text: #1A1D23;
+      --muted: #5C6570;
+      --accent: #2563EB;
+      --accent-hover: #1D4ED8;
+      --hover-bg: #EEF2FF;
+      --hover-border: #BFDBFE;
+      --press-bg: #DBEAFE;
+      --danger: #B91C1C;
+      --radius: 6px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding: 24px 20px 64px;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 24px; max-width: 720px; font-size: 0.95rem; }
+    h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 28px 0 12px;
+      font-weight: 700;
+    }
+    .note {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      max-width: 820px;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+      max-width: 1100px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 140px;
+    }
+    .card.recommended { outline: 2px solid var(--accent); outline-offset: 0; }
+    .card header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .card .name { font-weight: 600; font-size: 0.95rem; }
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      background: var(--press-bg);
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .badge.current {
+      color: #92400E;
+      background: #FEF3C7;
+    }
+    .demo {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+    }
+    .desc { font-size: 0.8rem; color: var(--muted); margin: 0; }
+    code { font-size: 0.78em; background: #EEF0F3; padding: 1px 5px; border-radius: 4px; }
+
+    /* ========== CHECKBOXES ========== */
+    label.row { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 0.92rem; }
+    input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
+
+    /* A — Broken old app look: solid blue, NO tick */
+    .cb-a {
+      width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 3px;
+      background: var(--surface); display: inline-grid; place-items: center; flex-shrink: 0;
+    }
+    .row:has(input:checked) .cb-a {
+      background: var(--accent); border-color: var(--accent);
+    }
+    /* intentionally no ::after — this was the real bug */
+
+    /* B — Outline + blue check (recommended) */
+    .cb-b {
+      width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 3px;
+      background: var(--surface); display: inline-grid; place-items: center; flex-shrink: 0;
+    }
+    .row:has(input:checked) .cb-b {
+      background: var(--surface); border-color: var(--accent);
+    }
+    .row:has(input:checked) .cb-b::after {
+      content: ""; width: 4px; height: 8px; border: solid var(--accent); border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-0.5px, -0.5px);
+    }
+    .row:hover .cb-b { border-color: var(--hover-border); }
+
+    /* C — Soft tint + check */
+    .cb-c {
+      width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--surface); display: inline-grid; place-items: center; flex-shrink: 0;
+    }
+    .row:has(input:checked) .cb-c {
+      background: var(--press-bg); border-color: var(--accent);
+    }
+    .row:has(input:checked) .cb-c::after {
+      content: ""; width: 4px; height: 8px; border: solid var(--accent); border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-0.5px, -0.5px);
+    }
+
+    /* D — Dark tick on light */
+    .cb-d {
+      width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 3px;
+      background: var(--surface); display: inline-grid; place-items: center; flex-shrink: 0;
+    }
+    .row:has(input:checked) .cb-d {
+      background: #F0FDF4; border-color: #15803D;
+    }
+    .row:has(input:checked) .cb-d::after {
+      content: ""; width: 4px; height: 8px; border: solid #15803D; border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-0.5px, -0.5px);
+    }
+
+    /* E — Minimal: no fill, just mark */
+    .cb-e {
+      width: 16px; height: 16px; border: 1px solid #94A3B8; border-radius: 2px;
+      background: transparent; display: inline-grid; place-items: center; flex-shrink: 0;
+    }
+    .row:has(input:checked) .cb-e { border-color: var(--text); }
+    .row:has(input:checked) .cb-e::after {
+      content: "✓"; font-size: 12px; font-weight: 700; color: var(--text); line-height: 1;
+    }
+
+    /* ========== SPIN STEPPERS ========== */
+    .spin {
+      display: inline-flex; align-items: stretch;
+      border: 1px solid var(--border); border-radius: 5px; overflow: hidden;
+      background: var(--surface); height: 30px;
+    }
+    .spin input {
+      border: none; outline: none; width: 72px; padding: 0 8px;
+      font: inherit; font-size: 13px; text-align: right; background: transparent;
+    }
+    .spin-btns { display: flex; flex-direction: column; border-left: 1px solid var(--border); width: 22px; }
+    .spin-btns button {
+      flex: 1; border: none; background: #F8F9FB; cursor: pointer; padding: 0;
+      display: grid; place-items: center; color: var(--muted); font-size: 9px; line-height: 1;
+    }
+    .spin-btns button:hover { background: var(--hover-bg); color: var(--text); }
+    .spin-btns button + button { border-top: 1px solid var(--border); }
+
+    /* Side +/- */
+    .spin-side {
+      display: inline-flex; align-items: center; gap: 0;
+      border: 1px solid var(--border); border-radius: 5px; overflow: hidden; height: 30px;
+      background: var(--surface);
+    }
+    .spin-side button {
+      width: 28px; height: 100%; border: none; background: #F8F9FB; cursor: pointer;
+      color: var(--text); font-weight: 600; font-size: 14px;
+    }
+    .spin-side button:hover { background: var(--hover-bg); }
+    .spin-side input {
+      border: none; outline: none; width: 64px; text-align: center; font: inherit; font-size: 13px;
+    }
+    .spin-side .sep { width: 1px; align-self: stretch; background: var(--border); }
+
+    /* Flat arrows only */
+    .spin-flat .spin-btns button { background: transparent; }
+    .spin-flat .spin-btns button:hover { background: var(--hover-bg); }
+
+    /* Accent edge */
+    .spin-accent { border-color: var(--hover-border); }
+    .spin-accent .spin-btns button { color: var(--accent); background: var(--hover-bg); }
+
+    /* Broken: empty buttons (simulates current Qt feel) */
+    .spin-broken .spin-btns button { color: transparent; background: #EEF0F3; }
+    .spin-broken .spin-btns button:hover { background: #E2E5EA; color: transparent; }
+
+    /* ========== BUTTONS ========== */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; padding: 7px 16px; min-width: 80px;
+      font: inherit; font-size: 0.9rem; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    }
+    .btn:hover { background: var(--hover-bg); border-color: var(--hover-border); }
+    .btn:active { background: var(--press-bg); }
+
+    .btn-solid {
+      background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600;
+    }
+    .btn-solid:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+
+    .btn-outline-accent {
+      background: var(--surface); color: var(--accent); border-color: var(--accent); font-weight: 600;
+    }
+    .btn-outline-accent:hover { background: var(--hover-bg); color: var(--accent-hover); }
+
+    .btn-soft {
+      background: var(--press-bg); color: var(--accent-hover); border-color: var(--hover-border); font-weight: 600;
+    }
+    .btn-soft:hover { background: #C7D7FE; }
+
+    .btn-default-ok {
+      /* default form outlined — Cancel-like */
+    }
+    .pair { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    footer {
+      margin-top: 36px; max-width: 820px; font-size: 0.85rem; color: var(--muted);
+      border-top: 1px solid var(--border); padding-top: 16px;
+    }
+    footer strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <h1>gsat PySide — control style options</h1>
+  <p class="sub">
+    Visual gallery only (HTML/CSS). Pick directions for checkboxes, spin steppers, and primary/OK buttons.
+    Tokens match the workbench cool neutrals + accent blue. Not pixel-linked to Qt QSS yet — this is for choosing.
+  </p>
+
+  <div class="note">
+    <strong>What the app was doing (before fix):</strong>
+    checkbox = solid blue box with <em>no checkmark at all</em> (QSS filled the indicator
+    and Fusion does not paint a tick on a fully restyled indicator — the HTML “A” card
+    below used to wrongly show a white tick). OK = solid blue primary; spin arrows often empty.
+    <br/><strong>App fixes applied:</strong> checkbox → <strong>C</strong>; spin → <strong>E</strong> (accent steppers);
+    primary OK → <strong>C</strong> (soft blue).
+  </div>
+
+  <!-- ===================== CHECKBOXES ===================== -->
+  <h2>Checkbox</h2>
+  <div class="grid">
+    <div class="card">
+      <header>
+        <span class="name">A · Solid blue, no tick</span>
+        <span class="badge current">old bug</span>
+      </header>
+      <div class="demo">
+        <label class="row"><input type="checkbox" checked /><span class="cb-a"></span> Rapid</label>
+        <label class="row"><input type="checkbox" /><span class="cb-a"></span> Off</label>
+      </div>
+      <p class="desc">What your screenshot showed: QSS solid fill, no image → empty blue square. Not intentional design.</p>
+    </div>
+
+    <div class="card">
+      <header>
+        <span class="name">B · Outline + blue check</span>
+      </header>
+      <div class="demo">
+        <label class="row"><input type="checkbox" checked /><span class="cb-b"></span> Rapid</label>
+        <label class="row"><input type="checkbox" /><span class="cb-b"></span> Off</label>
+      </div>
+      <p class="desc">White/light box, blue tick only. Clear without painting the whole control accent.</p>
+    </div>
+
+    <div class="card recommended">
+      <header>
+        <span class="name">C · Soft blue tint + check</span>
+        <span class="badge">now in app</span>
+      </header>
+      <div class="demo">
+        <label class="row"><input type="checkbox" checked /><span class="cb-c"></span> Rapid</label>
+        <label class="row"><input type="checkbox" /><span class="cb-c"></span> Off</label>
+      </div>
+      <p class="desc">Middle ground: light blue wash + accent tick. Nice with hover language.</p>
+    </div>
+
+    <div class="card">
+      <header><span class="name">D · Green success tick</span></header>
+      <div class="demo">
+        <label class="row"><input type="checkbox" checked /><span class="cb-d"></span> Rapid</label>
+        <label class="row"><input type="checkbox" /><span class="cb-d"></span> Off</label>
+      </div>
+      <p class="desc">Reserves blue for actions; green = “enabled/on”. Can feel more machine/HMI.</p>
+    </div>
+
+    <div class="card">
+      <header><span class="name">E · Minimal dark check</span></header>
+      <div class="demo">
+        <label class="row"><input type="checkbox" checked /><span class="cb-e"></span> Rapid</label>
+        <label class="row"><input type="checkbox" /><span class="cb-e"></span> Off</label>
+      </div>
+      <p class="desc">Almost monochrome. Very quiet; least “branded”.</p>
+    </div>
+  </div>
+
+  <!-- ===================== SPIN ===================== -->
+  <h2>Spin up / down (step size, feed, spindle…)</h2>
+  <div class="grid">
+    <div class="card">
+      <header>
+        <span class="name">A · Empty steppers</span>
+        <span class="badge current">≈ current pain</span>
+      </header>
+      <div class="demo">
+        <div class="spin spin-broken">
+          <input value="11700" readonly />
+          <div class="spin-btns"><button type="button">▲</button><button type="button">▼</button></div>
+        </div>
+      </div>
+      <p class="desc">What you feel now: hit targets exist, arrows invisible or missing under Fusion + our QSS.</p>
+    </div>
+
+    <div class="card">
+      <header>
+        <span class="name">B · Stacked ▲ ▼ (visible)</span>
+      </header>
+      <div class="demo">
+        <div class="spin">
+          <input value="11700" readonly />
+          <div class="spin-btns"><button type="button">▲</button><button type="button">▼</button></div>
+        </div>
+      </div>
+      <p class="desc">Classic Qt layout, but with real glyphs and light gray strip. Compact for dense panels.</p>
+    </div>
+
+    <div class="card">
+      <header><span class="name">C · Flat stacked arrows</span></header>
+      <div class="demo">
+        <div class="spin spin-flat">
+          <input value="0.100" readonly />
+          <div class="spin-btns"><button type="button">▲</button><button type="button">▼</button></div>
+        </div>
+      </div>
+      <p class="desc">No gray strip; arrows only. Closest to “pad-like” quiet chrome.</p>
+    </div>
+
+    <div class="card">
+      <header><span class="name">D · Side − / +</span></header>
+      <div class="demo">
+        <div class="spin-side">
+          <button type="button">−</button>
+          <span class="sep"></span>
+          <input value="1000" readonly />
+          <span class="sep"></span>
+          <button type="button">+</button>
+        </div>
+      </div>
+      <p class="desc">wx-ish and very obvious. Wider; great for jog feed/spindle, a bit big for tables.</p>
+    </div>
+
+    <div class="card recommended">
+      <header>
+        <span class="name">E · Accent steppers</span>
+        <span class="badge">now in app</span>
+      </header>
+      <div class="demo">
+        <div class="spin spin-accent">
+          <input value="1.000" readonly />
+          <div class="spin-btns"><button type="button">▲</button><button type="button">▼</button></div>
+        </div>
+      </div>
+      <p class="desc">Blue-tinted buttons. Clear affordance; slightly louder.</p>
+    </div>
+  </div>
+
+  <!-- ===================== PRIMARY / OK ===================== -->
+  <h2>Primary / OK buttons</h2>
+  <div class="grid">
+    <div class="card">
+      <header>
+        <span class="name">A · Solid blue OK</span>
+        <span class="badge current">old</span>
+      </header>
+      <div class="demo pair">
+        <button type="button" class="btn btn-default-ok">Cancel</button>
+        <button type="button" class="btn btn-solid">OK</button>
+      </div>
+      <p class="desc">Strong default. Fine for rare dialogs; feels heavy if every confirm is a blue brick.</p>
+    </div>
+
+    <div class="card">
+      <header>
+        <span class="name">B · Outline accent OK</span>
+      </header>
+      <div class="demo pair">
+        <button type="button" class="btn">Cancel</button>
+        <button type="button" class="btn btn-outline-accent">OK</button>
+      </div>
+      <p class="desc">Same weight language as form buttons; OK stands out by border/color, not a full fill.</p>
+    </div>
+
+    <div class="card recommended">
+      <header>
+        <span class="name">C · Soft blue OK</span>
+        <span class="badge">now in app</span>
+      </header>
+      <div class="demo pair">
+        <button type="button" class="btn">Cancel</button>
+        <button type="button" class="btn btn-soft">OK</button>
+      </div>
+      <p class="desc">Tinted primary — between solid and outline. Friendly, modern.</p>
+    </div>
+
+    <div class="card">
+      <header><span class="name">D · Both outlined; OK bold text</span></header>
+      <div class="demo pair">
+        <button type="button" class="btn">Cancel</button>
+        <button type="button" class="btn" style="font-weight:700; border-color:#94A3B8;">OK</button>
+      </div>
+      <p class="desc">Most neutral. Hierarchy only by weight — may be too subtle for settings save.</p>
+    </div>
+
+    <div class="card">
+      <header><span class="name">E · Keep solid for primary only</span></header>
+      <div class="demo pair">
+        <button type="button" class="btn">Cancel</button>
+        <button type="button" class="btn btn-solid">Save</button>
+      </div>
+      <p class="desc">Compromise: solid only for rare high-intent actions (Save / Connect), not every OK.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>How to use:</strong> open this file in a browser
+      (<code>tools/ui_style_gallery.html</code>). Tell me your picks, e.g.
+      <em>“Checkbox B, Spin B or D, OK C”</em> — then we map them into
+      <code>theme.py</code> QSS (and spin indicators if needed).</p>
+    <p>There isn’t a single public “Qt style catalog” link that matches our tokens;
+      this gallery is the decision surface. Qt Fusion + custom QSS is what we control.</p>
+  </footer>
+</body>
+</html>

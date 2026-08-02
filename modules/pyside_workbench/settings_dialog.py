@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import modules.config as gc
 import modules.machif_config as mi
 
 
@@ -540,6 +541,31 @@ class RemotePage(_SettingsPage):
             tok_row.addWidget(self.api_token, 1)
             tok_row.addWidget(gen)
             form.addRow("API token", tok_row)
+            default_bytes = getattr(
+                gc, "REMOTE_MAX_MESSAGE_BYTES_DEFAULT", 16 * 1024 * 1024
+            )
+            stored = _cfg_get(
+                cfg,
+                f"/remotes/remote{self.idx}/MaxMessageBytes",
+                default_bytes,
+            )
+            try:
+                mb_val = gc.remote_message_bytes_to_mb(stored)
+            except Exception:
+                mb_val = float(getattr(gc, "REMOTE_MAX_MESSAGE_MB_DEFAULT", 16))
+            # Prefer whole numbers when exact (e.g. 16 not 16.0)
+            if abs(mb_val - round(mb_val)) < 1e-9:
+                mb_display = str(int(round(mb_val)))
+            else:
+                mb_display = f"{mb_val:g}"
+            self.max_msg = QLineEdit(mb_display)
+            self.max_msg.setToolTip(
+                "Engine.IO / Socket.IO max message size in MB (default 16). "
+                "Must match on gsat-server (restart server after change). "
+                "Needed so first Step/Run of large G-code is not dropped. "
+                "Stored in config as bytes."
+            )
+            form.addRow("Max message size (MB)", self.max_msg)
             self.tcp_port = self.udp_port = self.udp_bcast = None
         else:
             self.tcp_port = QLineEdit(
@@ -555,7 +581,7 @@ class RemotePage(_SettingsPage):
             form.addRow("TCP port", self.tcp_port)
             form.addRow("UDP port", self.udp_port)
             form.addRow(self.udp_bcast)
-            self.ws_port = self.api_token = None
+            self.ws_port = self.api_token = self.max_msg = None
 
         root.addLayout(form)
         if self.auto_gcode is not None:
@@ -582,6 +608,11 @@ class RemotePage(_SettingsPage):
                 raise ValueError("WebSocket port must be an integer") from exc
             _cfg_set(self.cfg, f"/remotes/remote{self.idx}/WebSocketPort", port)
             _cfg_set(self.cfg, f"/remotes/remote{self.idx}/ApiToken", self.api_token.text())
+            try:
+                max_b = gc.remote_message_mb_to_bytes(str(self.max_msg.text()).strip())
+            except ValueError as exc:
+                raise ValueError(str(exc)) from exc
+            _cfg_set(self.cfg, f"/remotes/remote{self.idx}/MaxMessageBytes", max_b)
         else:
             try:
                 tcp = int(str(self.tcp_port.text()).strip())

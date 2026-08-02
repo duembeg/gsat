@@ -177,6 +177,14 @@ class ClientBridge(QObject, gc.EventQueueIf):
         self.remote_client.add_event(gc.EV_CMD_GET_SW_STATE)
         # Status if a machine session is already open on the server
         self.remote_client.add_event(gc.EV_CMD_GET_STATUS)
+        # Program fingerprint for MD5-gated Step/Run (no full G-code unless auto)
+        self.request_gcode_md5()
+
+    def request_gcode_md5(self):
+        """Ask backend for current program MD5 (multi-UI; does not reset server)."""
+        if self.machif_progexec is None:
+            return
+        self.machif_progexec.add_event(gc.EV_CMD_GET_GCODE_MD5, sender=self)
 
     def send_command(self, event_id, data=None):
         """Forward an explicit user command to the backend (no polling helpers)."""

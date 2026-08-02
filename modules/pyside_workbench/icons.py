@@ -87,6 +87,15 @@ JOG_ICON_FILES: dict[str, str] = {
 
 _jog_cache: dict[str, QIcon] = {}
 
+# App / window icon (wx used imgGCSBlack16/32 embeds — file twins under icons/black).
+_APP_ICON_CANDIDATES: tuple[Path, ...] = (
+    _ROOT / "images" / "icons" / "black" / "gcs_g0_cog_16x16.png",
+    _ROOT / "images" / "icons" / "black" / "gcs_g0_cog_32x32.png",
+    _COLOR / "gcs_g1_cog_16x16.png",
+    _COLOR / "gcs_g1_cog_32x32.png",
+)
+_app_icon: QIcon | None = None
+
 
 def icons_root() -> Path:
     return _COLOR
@@ -256,4 +265,61 @@ def apply_jog_button_icon(button, name: str) -> bool:
         return False
     button.setIcon(ico)
     button.setIconSize(JOG_ICON_SIZE)
+    return True
+
+
+def get_app_icon() -> QIcon:
+    """Multi-size app icon (title bar / taskbar) from existing GCS cog PNGs.
+
+    Uses the same art family as classic wx ``imgGCSBlack*`` embeds
+    (``images/icons/black/gcs_g0_cog_*.png``), plus color cog variants.
+    Scaled 48/64 sizes are added so window managers pick a sharper tile.
+    """
+    global _app_icon
+    if _app_icon is not None:
+        return _app_icon
+
+    ico = QIcon()
+    largest: QPixmap | None = None
+    for path in _APP_ICON_CANDIDATES:
+        if not path.is_file():
+            continue
+        pix = QPixmap(str(path))
+        if pix.isNull():
+            continue
+        ico.addPixmap(pix, QIcon.Mode.Normal, QIcon.State.Off)
+        if largest is None or pix.width() > largest.width():
+            largest = pix
+
+    if largest is not None and not largest.isNull():
+        for side in (48, 64):
+            if largest.width() >= side:
+                continue
+            scaled = largest.scaled(
+                side,
+                side,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            if not scaled.isNull():
+                ico.addPixmap(scaled, QIcon.Mode.Normal, QIcon.State.Off)
+
+    _app_icon = ico
+    return ico
+
+
+def apply_app_icon(app, window=None) -> bool:
+    """Set QApplication (and optional main window) icon. Returns True if loaded."""
+    ico = get_app_icon()
+    if ico.isNull():
+        return False
+    try:
+        app.setWindowIcon(ico)
+    except Exception:
+        return False
+    if window is not None:
+        try:
+            window.setWindowIcon(ico)
+        except Exception:
+            pass
     return True

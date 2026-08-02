@@ -53,6 +53,57 @@ STATE_DATA = None
 SOCK_HEADER_SIZE = 10
 SOCK_DATA_SIZE = 2048
 
+# Engine.IO default is 1_000_000; gsat default for new installs is 16 MB
+# (16 * 1024 * 1024 bytes). UI shows MB; config stores bytes.
+REMOTE_MAX_MESSAGE_BYTES_DEFAULT = 16 * 1024 * 1024
+REMOTE_MAX_MESSAGE_MB_DEFAULT = 16
+_BYTES_PER_MB = 1024 * 1024
+
+
+def remote_message_bytes_to_mb(num_bytes: int) -> float:
+    """Convert stored MaxMessageBytes to MB for UI display (1024-based)."""
+    try:
+        b = int(num_bytes)
+    except (TypeError, ValueError):
+        b = REMOTE_MAX_MESSAGE_BYTES_DEFAULT
+    return b / float(_BYTES_PER_MB)
+
+
+def remote_message_mb_to_bytes(mb) -> int:
+    """Convert UI MB value to MaxMessageBytes (floor 1 MB)."""
+    try:
+        val = float(mb)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Max message size (MB) must be a number") from exc
+    if val < 1:
+        raise ValueError("Max message size must be at least 1 MB")
+    return int(round(val * _BYTES_PER_MB))
+
+
+def get_remote_max_message_bytes(config_data=None, remote_index=None) -> int:
+    """Max Socket.IO/Engine.IO message size for the active remote profile.
+
+    Used by websocket server (must accept large pickles) and optionally client.
+    Missing/invalid config falls back to REMOTE_MAX_MESSAGE_BYTES_DEFAULT.
+    """
+    cfg = config_data if config_data is not None else CONFIG_DATA
+    if cfg is None:
+        return REMOTE_MAX_MESSAGE_BYTES_DEFAULT
+    try:
+        if remote_index is None:
+            remote_index = int(cfg.get("/remotes/Index", 0) or 0)
+        raw = cfg.get(
+            f"/remotes/remote{remote_index}/MaxMessageBytes",
+            REMOTE_MAX_MESSAGE_BYTES_DEFAULT,
+        )
+        val = int(raw)
+        # Reject nonsense; floor at 1 MB
+        if val < _BYTES_PER_MB:
+            return _BYTES_PER_MB
+        return val
+    except (TypeError, ValueError):
+        return REMOTE_MAX_MESSAGE_BYTES_DEFAULT
+
 # --------------------------------------------------------------------------
 # device commands
 # --------------------------------------------------------------------------
@@ -899,6 +950,12 @@ class gsatConfigData(ConfigData):
                 "UdpBroadcast": False,
                 "UdpPort": 61802,
                 "WebSocketPort": 61803,
+                # Engine.IO / Socket.IO max payload (bytes). Default 16 MB so
+                # first Step/Run with large gcodeLines is not dropped (stock
+                # engineio default is 1_000_000). Server must use the same
+                # (or higher) value; restart gsat-server after change.
+                # UI edits this as MB; stored as bytes (16 * 1024 * 1024).
+                "MaxMessageBytes": 16 * 1024 * 1024,
             }
         }
     }

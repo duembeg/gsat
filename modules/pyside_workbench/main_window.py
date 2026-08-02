@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
 import os
 
@@ -40,6 +41,11 @@ from modules.pyside_workbench.jog_panel import JogPanel
 from modules.pyside_workbench.settings_dialog import SettingsDialog
 
 
+def _gcode_lines_md5(lines) -> str:
+    """Same fingerprint as wx / machif_progexec (cache key, not security)."""
+    return hashlib.md5(str(lines if lines is not None else []).encode("utf-8")).hexdigest()
+
+
 class MainWindow(QMainWindow):
     def __init__(self, cmd_line_options, parent=None):
         super().__init__(parent)
@@ -56,6 +62,10 @@ class MainWindow(QMainWindow):
         self._machine_open = False
         self._remote_connected = False
         self._remote_connecting = False
+        # Last program MD5 reported by backend (wx: machifProgExecGcodeMd5).
+        # Client-only; reconnect adopts server value via EV_GCODE_MD5 — never
+        # clears server buffer (multi-UI / headless).
+        self._backend_gcode_md5 = 0
 
         self._create_actions()
         self._build_ui()
@@ -793,30 +803,71 @@ class MainWindow(QMainWindow):
         self.append_log("All breakpoints cleared.")
 
     def _program_payload(self) -> dict:
-        """Build dict for EV_CMD_STEP / RUN (same keys as wx)."""
+        """Build dict for EV_CMD_STEP / RUN (same keys and MD5 policy as wx).
+
+        - Always send ``gcodePC`` and ``breakPoints`` (BPs can change without
+          text change).
+        - Send ``gcodeLines`` only when local MD5 ≠ last backend MD5
+          (``EV_GCODE_MD5`` / first upload).
+        """
         lines = self.gcode.lines()
         gc.STATE_DATA.gcodeFileLines = lines
-        gc.STATE_DATA.breakPoints = self.gcode.get_breakpoints()
+        bps = self.gcode.get_breakpoints()
+        gc.STATE_DATA.breakPoints = bps
         payload = {
             "gcodePC": gc.STATE_DATA.programCounter,
-            "breakPoints": self.gcode.get_breakpoints(),
+            "breakPoints": bps,
         }
+        if gc.STATE_DATA.gcodeFileName:
+            payload["gcodeFileName"] = gc.STATE_DATA.gcodeFileName
         if lines:
-            if gc.STATE_DATA.gcodeFileName:
-                payload["gcodeFileName"] = gc.STATE_DATA.gcodeFileName
-            # Always send lines for spike simplicity (no MD5 cache yet)
-            payload["gcodeLines"] = lines
+            h = _gcode_lines_md5(lines)
+            if self._backend_gcode_md5 != h:
+                payload["gcodeLines"] = lines
         return payload
+
+    def _backend_has_program(self) -> bool:
+        """True if local editor or known backend buffer has G-code (multi-UI)."""
+        if self.gcode.line_count() > 0:
+            return True
+        empty_h = _gcode_lines_md5([])
+        md5 = self._backend_gcode_md5
+        return bool(md5) and md5 != 0 and md5 != empty_h
 
     def _can_run_or_step(self) -> bool:
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
         return (
             self.bridge.is_backend_active()
             and machine_open
-            and self.gcode.line_count() > 0
+            and self._backend_has_program()
             and gc.STATE_DATA.swState
             in (gc.STATE_IDLE, gc.STATE_BREAK, gc.STATE_PAUSE)
         )
+
+    def _on_ev_gcode_md5(self, data) -> None:
+        """Adopt backend program fingerprint (wx EV_GCODE_MD5 handler)."""
+        self._backend_gcode_md5 = data
+        # Optional auto-pull of full G-code when remote buffer differs (wx).
+        try:
+            idx = int(gc.CONFIG_DATA.get("/remotes/Index", 0) or 0)
+            auto = bool(
+                gc.CONFIG_DATA.get(
+                    f"/remotes/remote{idx}/AutoGcodeRequest", False
+                )
+            )
+        except Exception:
+            auto = False
+        if not auto or not self.bridge.is_remote_connected():
+            return
+        empty_h = _gcode_lines_md5([])
+        if not data or data == empty_h:
+            return
+        local_h = _gcode_lines_md5(self.gcode.lines())
+        if local_h == data:
+            return
+        # Explicit pull — same event as Remote → Get G-code
+        self.bridge.send_command(gc.EV_CMD_GET_GCODE)
+        self.append_log("Auto G-code request (remote MD5 differs from local).")
 
     @Slot()
     def on_run(self):
@@ -1432,6 +1483,8 @@ class MainWindow(QMainWindow):
             self._machine_open = True
             gc.STATE_DATA.serialPortIsOpen = True
             self.bridge.request_status()
+            # Learn program fingerprint after session open (local or remote)
+            self.bridge.request_gcode_md5()
             self._update_connection_ui()
 
         elif eid == gc.EV_SER_PORT_CLOSE:
@@ -1456,6 +1509,9 @@ class MainWindow(QMainWindow):
             self._remote_connected = False
             self._machine_open = False
             gc.STATE_DATA.serialPortIsOpen = False
+            # Client-only: forget last-known MD5 for this UI session so a new
+            # connect re-learns from EV_GCODE_MD5. Does not clear server buffer.
+            self._backend_gcode_md5 = 0
             self.dro_panel.clear()
             self._update_connection_ui()
 
@@ -1563,7 +1619,7 @@ class MainWindow(QMainWindow):
             self._update_connection_ui()
 
         elif eid == gc.EV_GCODE_MD5:
-            pass
+            self._on_ev_gcode_md5(data)
 
         elif eid == gc.EV_GCODE:
             self._on_ev_gcode(data)

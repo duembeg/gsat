@@ -132,7 +132,35 @@ def test_offline() -> list[str]:
         if 2 not in payload.get("breakPoints", set()):
             _fail("breakpoint not in program payload")
         if "gcodeLines" not in payload:
-            _fail("payload missing gcodeLines")
+            _fail("payload missing gcodeLines (MD5 miss on first build)")
+
+        # MD5 gate: after backend fingerprint matches local, omit gcodeLines
+        from modules.pyside_workbench.main_window import _gcode_lines_md5
+
+        local_md5 = _gcode_lines_md5(w.gcode.lines())
+        w._backend_gcode_md5 = local_md5
+        payload2 = w._program_payload()
+        if "gcodeLines" in payload2:
+            _fail("payload should omit gcodeLines when MD5 matches backend")
+        if 2 not in payload2.get("breakPoints", set()):
+            _fail("breakpoints must still be sent when MD5 matches")
+        # BP-only change still omits lines
+        w.gcode.set_breakpoints({2, 4})
+        payload3 = w._program_payload()
+        if "gcodeLines" in payload3:
+            _fail("BP change must not force gcodeLines resend")
+        if payload3.get("breakPoints") != {2, 4}:
+            _fail("updated breakpoints missing from payload")
+        # EV_GCODE_MD5 updates known fingerprint
+        w._on_ev_gcode_md5("deadbeef")
+        if w._backend_gcode_md5 != "deadbeef":
+            _fail("EV_GCODE_MD5 not stored")
+        w._backend_gcode_md5 = 0  # restore for later steps (force lines)
+
+        # MaxMessageBytes helper
+        mb = gc.get_remote_max_message_bytes()
+        if mb < 1000000:
+            _fail(f"MaxMessageBytes too small: {mb}")
 
         notes.append("gcode/pc/bp: ok")
 
@@ -148,6 +176,17 @@ def test_offline() -> list[str]:
         w.on_step()
         if not fake.events or fake.events[-1][0] != gc.EV_CMD_STEP:
             _fail(f"step did not send EV_CMD_STEP: {fake.events}")
+        step_data = fake.events[-1][1] or {}
+        if "gcodeLines" not in step_data:
+            _fail("first step should include gcodeLines (MD5 unknown)")
+        # Simulate backend ack of same program MD5
+        w._backend_gcode_md5 = _gcode_lines_md5(w.gcode.lines())
+        w.on_step()
+        step_data2 = fake.events[-1][1] or {}
+        if "gcodeLines" in step_data2:
+            _fail("second step should omit gcodeLines when MD5 matches")
+        if "breakPoints" not in step_data2:
+            _fail("second step must still send breakPoints")
 
         w.on_run()
         if fake.events[-1][0] != gc.EV_CMD_RUN:
@@ -303,6 +342,16 @@ def test_offline() -> list[str]:
             if act.icon().isNull():
                 _fail(f"action icon missing for {name}")
         notes.append("toolbar icons (existing PNGs): ok")
+
+        # --- app / window icon (GCS cog PNGs; wx SetIcon never reliable) ---
+        app_ico = wb_icons.get_app_icon()
+        if app_ico.isNull():
+            _fail("app icon empty — expected images/icons/black/gcs_g0_cog_*.png")
+        if not wb_icons.apply_app_icon(app, w):
+            _fail("apply_app_icon failed")
+        if w.windowIcon().isNull():
+            _fail("main window icon not set")
+        notes.append("app window icon: ok")
 
         # --- file recent history config keys ---
         w._add_to_file_history(path)

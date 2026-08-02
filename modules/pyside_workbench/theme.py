@@ -19,8 +19,18 @@
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication, QStyleFactory
+
+# Repo root: modules/pyside_workbench/theme.py → ../../
+_ROOT = Path(__file__).resolve().parents[2]
+_ICON_COLOR = _ROOT / "images" / "icons" / "color"
+# QSS cannot draw checkbox ticks / spin arrows without images
+_CHECK_TICK_BLUE = _ICON_COLOR / "checkbox_tick_blue.png"
+_SPIN_UP = _ICON_COLOR / "spin_up.png"
+_SPIN_DOWN = _ICON_COLOR / "spin_down.png"
 
 
 # --- palette tokens ---
@@ -97,6 +107,115 @@ def state_color_key(stat: str | None, sw_state: int | None = None) -> str:
     return "unknown"
 
 
+def _qss_file_url(path: Path) -> str:
+    """Absolute path for QSS ``url(...)`` (works when CWD is not the repo)."""
+    return path.resolve().as_posix()
+
+
+def build_workbench_qss() -> str:
+    """Assemble stylesheet with resolved asset URLs (checkbox tick, spin arrows).
+
+    Solid accent fill alone (no ``image``) produces a blue box with no
+    checkmark — Fusion does not paint a tick on a fully restyled indicator.
+    Gallery: checkbox C; spin E (accent steppers); primary OK C (soft blue).
+    """
+    extras: list[str] = []
+
+    tick = _qss_file_url(_CHECK_TICK_BLUE) if _CHECK_TICK_BLUE.is_file() else ""
+    if tick:
+        # Option C: soft accent wash + blue tick (not solid fill, not plain white)
+        extras.append(
+            f"""
+QCheckBox::indicator:checked {{
+    background: {COLOR_PRESS_BG};
+    border: 1.5px solid {COLOR_ACCENT};
+    image: url({tick});
+}}
+QCheckBox::indicator:checked:hover {{
+    background: {COLOR_HOVER_BG};
+    border-color: {COLOR_ACCENT};
+    image: url({tick});
+}}
+QCheckBox::indicator:checked:disabled {{
+    background: {COLOR_DISABLED_BG};
+    border-color: {COLOR_DISABLED_BORDER};
+    image: url({tick});
+}}
+"""
+        )
+    else:
+        extras.append(
+            f"""
+QCheckBox::indicator:checked {{
+    background: {COLOR_PRESS_BG};
+    border: 1.5px solid {COLOR_ACCENT};
+}}
+"""
+        )
+
+    # Spin option E: stacked steppers with accent-tinted strip + arrow images
+    up = _qss_file_url(_SPIN_UP) if _SPIN_UP.is_file() else ""
+    down = _qss_file_url(_SPIN_DOWN) if _SPIN_DOWN.is_file() else ""
+    if up and down:
+        extras.append(
+            f"""
+QSpinBox, QDoubleSpinBox {{
+    padding-right: 2px;
+    border-color: {COLOR_HOVER_BORDER};
+}}
+QSpinBox::up-button, QDoubleSpinBox::up-button {{
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 18px;
+    border: none;
+    border-left: 1px solid {COLOR_HOVER_BORDER};
+    border-top-right-radius: 4px;
+    background: {COLOR_HOVER_BG};
+}}
+QSpinBox::down-button, QDoubleSpinBox::down-button {{
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 18px;
+    border: none;
+    border-left: 1px solid {COLOR_HOVER_BORDER};
+    border-top: 1px solid {COLOR_HOVER_BORDER};
+    border-bottom-right-radius: 4px;
+    background: {COLOR_HOVER_BG};
+}}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
+    background: {COLOR_PRESS_BG};
+}}
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed,
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {{
+    background: #C7D7FE;
+}}
+QSpinBox::up-button:disabled, QDoubleSpinBox::up-button:disabled,
+QSpinBox::down-button:disabled, QDoubleSpinBox::down-button:disabled {{
+    background: {COLOR_DISABLED_BG};
+    border-left-color: {COLOR_DISABLED_BORDER};
+}}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
+    image: url({up});
+    width: 9px;
+    height: 9px;
+}}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
+    image: url({down});
+    width: 9px;
+    height: 9px;
+}}
+QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled,
+QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled {{
+    width: 9px;
+    height: 9px;
+}}
+"""
+        )
+
+    return WORKBENCH_QSS + "\n" + "\n".join(extras)
+
+
 def apply_app_theme(app: QApplication) -> None:
     """Apply Fusion + workbench stylesheet once at startup."""
     if "Fusion" in QStyleFactory.keys():
@@ -114,7 +233,7 @@ def apply_app_theme(app: QApplication) -> None:
     pal.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))
     app.setPalette(pal)
 
-    app.setStyleSheet(WORKBENCH_QSS)
+    app.setStyleSheet(build_workbench_qss())
 
 
 WORKBENCH_QSS = f"""
@@ -268,24 +387,27 @@ QPushButton:checked {{
     background: {COLOR_PRESS_BG};
     border-color: {COLOR_PRESS_BORDER};
 }}
+/* Primary OK — gallery option C: soft blue tint (not solid brick) */
 QPushButton#btnPrimary {{
-    background: {COLOR_ACCENT};
-    color: white;
-    border-color: {COLOR_ACCENT};
+    background: {COLOR_PRESS_BG};
+    color: {COLOR_ACCENT_HOVER};
+    border-color: {COLOR_HOVER_BORDER};
     font-weight: 600;
 }}
 QPushButton#btnPrimary:hover {{
-    background: {COLOR_ACCENT_HOVER};
-    border-color: {COLOR_ACCENT_HOVER};
+    background: #C7D7FE;
+    border-color: #93C5FD;
+    color: {COLOR_ACCENT_HOVER};
 }}
 QPushButton#btnPrimary:pressed {{
-    background: #1E40AF;
-    border-color: #1E40AF;
+    background: #A5B4FC;
+    border-color: #818CF8;
+    color: #1E3A8A;
 }}
 QPushButton#btnPrimary:disabled {{
-    background: #93C5FD;
-    border-color: #93C5FD;
-    color: #F8FAFC;
+    background: {COLOR_DISABLED_BG};
+    border-color: {COLOR_DISABLED_BORDER};
+    color: {COLOR_DISABLED_TEXT};
 }}
 QPushButton#btnDanger {{
     background: {COLOR_DANGER_BG};
@@ -330,9 +452,10 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
     border: 1px solid {COLOR_BORDER};
     border-radius: 5px;
     padding: 4px 8px;
-    min-height: 22px;
+    min-height: 24px;
     selection-background-color: {COLOR_ACCENT};
 }}
+/* Spin steppers styled in build_workbench_qss() (gallery option B) */
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border: 1px solid {COLOR_ACCENT};
 }}
@@ -389,16 +512,13 @@ QCheckBox {{
     spacing: 6px;
 }}
 QCheckBox::indicator {{
-    width: 15px;
-    height: 15px;
-    border: 1px solid {COLOR_BORDER};
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid {COLOR_BORDER};
     border-radius: 3px;
     background: {COLOR_SURFACE};
 }}
-QCheckBox::indicator:checked {{
-    background: {COLOR_ACCENT};
-    border-color: {COLOR_ACCENT};
-}}
+/* checked rules appended in build_workbench_qss() with tick image url */
 QCheckBox::indicator:hover {{
     border-color: {COLOR_HOVER_BORDER};
 }}
@@ -453,7 +573,7 @@ QLabel#statusBadge {{
     font-weight: 600;
     font-size: 12px;
     color: white;
-    background: {STATE_COLORS["offline"]};
+    background: {STATE_COLORS['offline']};
 }}
 QFrame#toolbarStrip {{
     background: {COLOR_SURFACE};
