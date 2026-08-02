@@ -53,7 +53,9 @@ class MainWindow(QMainWindow):
         self.logger = logging.getLogger(__name__)
 
         self.setWindowTitle(f"{vinfo.__appname__} — PySide workbench")
-        self.resize(1280, 800)
+        # Factory first impression: compact G-code, taller console, roomy right
+        # column (DRO|Jog unscrolled). Saved layouts override.
+        self.resize(1400, 1080)
 
         self.bridge = ClientBridge(self)
         self.bridge.backend_event.connect(self.on_backend_event)
@@ -284,9 +286,12 @@ class MainWindow(QMainWindow):
         self.dock_dro.show()
         self.dock_jog.show()
         if apply_factory_sizes:
-            self.resizeDocks([self.dock_console], [220], Qt.Orientation.Vertical)
+            # Console ~2× older factory (was ~170–180): debug log needs room.
+            # G-code center stays relatively short/narrow (typical lines are short).
+            # Right column: enough for DRO+Jog without scrollbars.
+            self.resizeDocks([self.dock_console], [340], Qt.Orientation.Vertical)
             self.resizeDocks(
-                [self.dock_dro, self.dock_jog], [400, 280], Qt.Orientation.Vertical
+                [self.dock_dro, self.dock_jog], [530, 460], Qt.Orientation.Vertical
             )
             self._ensure_jog_dock_width(force_resize=True)
 
@@ -298,9 +303,12 @@ class MainWindow(QMainWindow):
         saved horizontal and can reshuffle the DRO|Jog vertical split).
         """
         try:
-            jog_w = max(380, int(self.jog.minimumSizeHint().width()))
+            # Content ~396 + dock title chrome; factory prefers a bit wider so
+            # the center G-code pane is not huge (typical G-code lines are short).
+            content_w = int(self.jog._content.width()) if hasattr(self.jog, "_content") else 0
+            jog_w = max(440, content_w + 36, int(self.jog.minimumSizeHint().width()))
         except Exception:
-            jog_w = 380
+            jog_w = 440
         try:
             self.dock_jog.setMinimumWidth(jog_w)
             cur = int(self.dock_jog.width())

@@ -201,7 +201,8 @@ class DroPanel(QWidget):
         return QSize(180, 100)
 
     def sizeHint(self) -> QSize:
-        return QSize(220, 280)
+        # Prefer enough height that factory layout rarely starts scrolled
+        return QSize(220, 480)
 
     def apply_settings(self) -> None:
         """Honor /machine/DRO/Enable* and font (wx Machine Status UpdateSettings)."""

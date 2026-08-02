@@ -388,8 +388,9 @@ class JogPanel(QWidget):
         return QSize(min(280, pad.width() + 16), 160)
 
     def sizeHint(self) -> QSize:
+        # Prefer full pad + step/feed/customs so factory dock starts unscrolled
         pad = wb_icons.jog_pad_content_size()
-        return QSize(pad.width() + 24, pad.height() + 240)
+        return QSize(pad.width() + 24, pad.height() + 280)
 
     def set_enabled(self, enabled: bool):
         """Enable machine actions when session is open and not streaming."""
