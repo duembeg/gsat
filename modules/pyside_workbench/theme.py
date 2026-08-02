@@ -213,6 +213,50 @@ QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled {{
 """
         )
 
+    # Combo pull-down: custom QSS hides Fusion's native arrow unless we supply
+    # an image (same spin_down.png). Soft strip matches spin steppers.
+    if down:
+        extras.append(
+            f"""
+QComboBox {{
+    padding-right: 4px;
+}}
+QComboBox:disabled {{
+    background: {COLOR_DISABLED_BG};
+    color: {COLOR_DISABLED_TEXT};
+}}
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 22px;
+    border: none;
+    border-left: 1px solid {COLOR_HOVER_BORDER};
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background: {COLOR_HOVER_BG};
+}}
+QComboBox::drop-down:hover {{
+    background: {COLOR_PRESS_BG};
+}}
+QComboBox::drop-down:disabled {{
+    background: {COLOR_DISABLED_BG};
+    border-left-color: {COLOR_DISABLED_BORDER};
+}}
+QComboBox::down-arrow {{
+    image: url({down});
+    width: 9px;
+    height: 9px;
+}}
+QComboBox::down-arrow:on {{
+    top: 1px;
+}}
+QComboBox::down-arrow:disabled {{
+    width: 9px;
+    height: 9px;
+}}
+"""
+        )
+
     return WORKBENCH_QSS + "\n" + "\n".join(extras)
 
 
@@ -463,10 +507,7 @@ QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {{
     background: {COLOR_DISABLED_BG};
     color: {COLOR_DISABLED_TEXT};
 }}
-QComboBox::drop-down {{
-    border: none;
-    width: 20px;
-}}
+/* Combo drop-down + arrow image assembled in build_workbench_qss() */
 QGroupBox {{
     font-weight: 600;
     border: 1px solid {COLOR_BORDER};

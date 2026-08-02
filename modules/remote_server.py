@@ -350,8 +350,16 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             self.socBroadcast = None
 
     def get_serial_ports(self):
+        """Scan serial ports for Remote Settings (same filter as local Machine UI).
+
+        * Windows: all COM ports.
+        * Linux / macOS: USB / ACM / cu path substrings only.
+        """
         ser_list = []
         port_search_fail_safe = False
+
+        def _unix_ok(dev: str) -> bool:
+            return "USB" in dev or "ACM" in dev or "cu" in dev
 
         try:
             import glob
@@ -360,8 +368,14 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             ser_list_info = serial.tools.list_ports.comports()
 
             if len(ser_list_info) > 0:
-                ser_list = [f"{i.device}, {i.description}" for i in ser_list_info]
-
+                if os.name == "nt":
+                    ser_list = [f"{i.device}, {i.description}" for i in ser_list_info]
+                else:
+                    ser_list = [
+                        f"{i.device}, {i.description}"
+                        for i in ser_list_info
+                        if _unix_ok(str(i.device or ""))
+                    ]
                 ser_list.sort()
 
         except ImportError:

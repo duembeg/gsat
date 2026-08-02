@@ -14,8 +14,8 @@ import secrets
 import string
 from typing import Any, Callable
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QResizeEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -31,6 +32,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QTabWidget,
     QTextEdit,
@@ -74,12 +76,14 @@ def _section(title: str) -> QLabel:
 
 def _color_btn(parent: QWidget, hex_color: str) -> QPushButton:
     btn = QPushButton()
-    btn.setFixedWidth(72)
+    btn.setFixedSize(56, 26)
     hx = hex_color or "#000000"
     if not str(hx).startswith("#"):
         hx = f"#{hx}"
     btn.setProperty("hex", hx)
-    btn.setStyleSheet(f"background-color: {hx}; border: 1px solid #666;")
+    btn.setStyleSheet(
+        f"background-color: {hx}; border: 1px solid #666; border-radius: 4px;"
+    )
     btn.setToolTip(hx)
 
     def pick(_checked=False, b=btn):
@@ -88,7 +92,9 @@ def _color_btn(parent: QWidget, hex_color: str) -> QPushButton:
         if c.isValid():
             hx2 = c.name()
             b.setProperty("hex", hx2)
-            b.setStyleSheet(f"background-color: {hx2}; border: 1px solid #666;")
+            b.setStyleSheet(
+                f"background-color: {hx2}; border: 1px solid #666; border-radius: 4px;"
+            )
             b.setToolTip(hx2)
 
     btn.clicked.connect(pick)
@@ -97,6 +103,142 @@ def _color_btn(parent: QWidget, hex_color: str) -> QPushButton:
 
 def _color_hex(btn: QPushButton) -> str:
     return str(btn.property("hex") or "#000000")
+
+
+def _color_field(parent: QWidget, label: str, hex_color: str) -> tuple[QWidget, QPushButton]:
+    """Compact label + swatch chip for wrapping grid cells."""
+    chip = QWidget(parent)
+    chip.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+    row = QHBoxLayout(chip)
+    row.setContentsMargins(0, 0, 4, 0)
+    row.setSpacing(6)
+    lab = QLabel(label)
+    lab.setObjectName("colorChipLabel")
+    lab.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+    lab.setMinimumWidth(88)
+    btn = _color_btn(parent, hex_color)
+    row.addWidget(lab)
+    row.addWidget(btn)
+    row.addStretch(1)
+    return chip, btn
+
+
+class _WrappingGrid(QWidget):
+    """Row-first wrap that forms an aligned grid as width changes.
+
+    Unlike free flow (uneven chip widths → ragged columns), all cells share
+    a uniform column width (max chip width in the group), so row N lines up
+    under row 0. Column count = how many cells fit in the available width.
+
+    Height is set explicitly after layout — relying only on height-for-width
+    inside a QScrollArea collapsed the host to 0px and hid all chips.
+    """
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        h_spacing: int = 12,
+        v_spacing: int = 8,
+    ):
+        super().__init__(parent)
+        self._widgets: list[QWidget] = []
+        self._h = h_spacing
+        self._v = v_spacing
+        self._cols = -1
+        self._cell_w = 0
+        self._cell_h = 0
+        self._grid = QGridLayout(self)
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setHorizontalSpacing(h_spacing)
+        self._grid.setVerticalSpacing(v_spacing)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
+
+    def addWidget(self, widget: QWidget) -> None:
+        self._widgets.append(widget)
+        self._cols = -1
+        self._relayout()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._relayout()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        # First show often has width 0 during construction — relayout once visible
+        self._cols = -1
+        self._relayout()
+
+    def sizeHint(self) -> QSize:
+        if not self._widgets:
+            return QSize(0, 0)
+        cell_w, cell_h = self._cell_metrics()
+        n = len(self._widgets)
+        cols = min(n, max(1, self._cols if self._cols > 0 else 4))
+        rows = (n + cols - 1) // cols
+        return QSize(
+            cols * cell_w + max(0, cols - 1) * self._h,
+            rows * cell_h + max(0, rows - 1) * self._v,
+        )
+
+    def minimumSizeHint(self) -> QSize:
+        if not self._widgets:
+            return QSize(0, 0)
+        cell_w, cell_h = self._cell_metrics()
+        return QSize(cell_w, cell_h)
+
+    def _cell_metrics(self) -> tuple[int, int]:
+        cell_w = 1
+        cell_h = 26  # at least color button height
+        for w in self._widgets:
+            sh = w.sizeHint()
+            # sizeHint can be 0 before style polish — use minSizeHint too
+            mh = w.minimumSizeHint()
+            cell_w = max(cell_w, sh.width(), mh.width(), w.minimumWidth())
+            cell_h = max(cell_h, sh.height(), mh.height(), 26)
+        cell_w = max(cell_w, 148)
+        return cell_w, cell_h
+
+    def _relayout(self) -> None:
+        if not self._widgets:
+            return
+        cell_w, cell_h = self._cell_metrics()
+        avail = max(self.width(), cell_w)
+        cols = max(1, (avail + self._h) // (cell_w + self._h))
+        cols = min(cols, len(self._widgets))
+        if (
+            cols == self._cols
+            and cell_w == self._cell_w
+            and cell_h == self._cell_h
+            and self.height() > 0
+        ):
+            return
+        self._cols = cols
+        self._cell_w = cell_w
+        self._cell_h = cell_h
+
+        for w in self._widgets:
+            self._grid.removeWidget(w)
+
+        for i, w in enumerate(self._widgets):
+            w.setMinimumWidth(cell_w)
+            w.setMaximumWidth(16777215)
+            w.setMinimumHeight(cell_h)
+            r, c = divmod(i, cols)
+            self._grid.addWidget(w, r, c, Qt.AlignmentFlag.AlignLeft)
+
+        for c in range(cols):
+            self._grid.setColumnMinimumWidth(c, cell_w)
+            self._grid.setColumnStretch(c, 0)
+
+        rows = (len(self._widgets) + cols - 1) // cols
+        total_h = rows * cell_h + max(0, rows - 1) * self._v
+        # Force non-zero height so VBox/ScrollArea cannot collapse the host
+        self.setMinimumHeight(total_h)
+        self.setMaximumHeight(total_h)
+        self.updateGeometry()
 
 
 class _SettingsPage(QWidget):
@@ -212,30 +354,51 @@ class OutputStylePage(_SettingsPage):
         form_f.addRow("Font style (normal/bold/italic)", self.font_style)
         root.addLayout(form_f)
 
+        # Colors: row-first wrap into an aligned grid (columns line up across rows)
         root.addWidget(_section("Colors — foreground"))
-        fg = QFormLayout()
-        self.col_win_fg = _color_btn(self, str(_cfg_get(cfg, f"/{key}/WindowForeground", "#000000")))
-        self.col_ln_fg = _color_btn(self, str(_cfg_get(cfg, f"/{key}/LineNumberForeground", "#606060")))
-        self.col_caret_fg = _color_btn(self, str(_cfg_get(cfg, f"/{key}/CaretLineForeground", "#000000")))
-        fg.addRow("Window", self.col_win_fg)
-        fg.addRow("Line numbers", self.col_ln_fg)
-        fg.addRow("Caret line", self.col_caret_fg)
-        root.addLayout(fg)
+        fg_host = _WrappingGrid(self)
+        chip, self.col_win_fg = _color_field(
+            self, "Window", str(_cfg_get(cfg, f"/{key}/WindowForeground", "#000000"))
+        )
+        fg_host.addWidget(chip)
+        chip, self.col_ln_fg = _color_field(
+            self,
+            "Line numbers",
+            str(_cfg_get(cfg, f"/{key}/LineNumberForeground", "#606060")),
+        )
+        fg_host.addWidget(chip)
+        chip, self.col_caret_fg = _color_field(
+            self,
+            "Caret line",
+            str(_cfg_get(cfg, f"/{key}/CaretLineForeground", "#000000")),
+        )
+        fg_host.addWidget(chip)
+        root.addWidget(fg_host)
 
         root.addWidget(_section("Colors — background"))
-        bg = QFormLayout()
-        self.col_win_bg = _color_btn(self, str(_cfg_get(cfg, f"/{key}/WindowBackground", "#FFFFFF")))
-        self.col_ln_bg = _color_btn(self, str(_cfg_get(cfg, f"/{key}/LineNumberBackground", "#F0F0F0")))
-        self.col_caret_bg = _color_btn(self, str(_cfg_get(cfg, f"/{key}/CaretLineBackground", "#FFF0A0")))
-        bg.addRow("Window", self.col_win_bg)
-        bg.addRow("Line numbers", self.col_ln_bg)
-        bg.addRow("Caret line", self.col_caret_bg)
-        root.addLayout(bg)
+        bg_host = _WrappingGrid(self)
+        chip, self.col_win_bg = _color_field(
+            self, "Window", str(_cfg_get(cfg, f"/{key}/WindowBackground", "#FFFFFF"))
+        )
+        bg_host.addWidget(chip)
+        chip, self.col_ln_bg = _color_field(
+            self,
+            "Line numbers",
+            str(_cfg_get(cfg, f"/{key}/LineNumberBackground", "#F0F0F0")),
+        )
+        bg_host.addWidget(chip)
+        chip, self.col_caret_bg = _color_field(
+            self,
+            "Caret line",
+            str(_cfg_get(cfg, f"/{key}/CaretLineBackground", "#FFF0A0")),
+        )
+        bg_host.addWidget(chip)
+        root.addWidget(bg_host)
 
         self.syntax_btns: dict[str, QPushButton] = {}
         if syntax:
             root.addWidget(_section("Syntax highlight"))
-            syn = QFormLayout()
+            syn_host = _WrappingGrid(self)
             for label, path_suffix, default in (
                 ("G-code", "GCodeHighlight", "#0000AA"),
                 ("M-code", "MCodeHighlight", "#AA0000"),
@@ -245,10 +408,14 @@ class OutputStylePage(_SettingsPage):
                 ("Comments", "CommentsHighlight", "#808080"),
                 ("G-code line #", "GCodeLineNumberHighlight", "#000000"),
             ):
-                b = _color_btn(self, str(_cfg_get(cfg, f"/{key}/{path_suffix}", default)))
+                chip, b = _color_field(
+                    self,
+                    label,
+                    str(_cfg_get(cfg, f"/{key}/{path_suffix}", default)),
+                )
                 self.syntax_btns[path_suffix] = b
-                syn.addRow(label, b)
-            root.addLayout(syn)
+                syn_host.addWidget(chip)
+            root.addWidget(syn_host)
 
         if cli:
             root.addWidget(_section("CLI history"))
@@ -286,6 +453,16 @@ class OutputStylePage(_SettingsPage):
             _cfg_set(self.cfg, f"/{k}/cli/CmdMaxHistory", self.sp_hist.value())
 
 
+class _PortComboBox(QComboBox):
+    """Editable port combo that re-scans the OS list when the drop-down opens (wx)."""
+
+    about_to_popup = Signal()
+
+    def showPopup(self) -> None:
+        self.about_to_popup.emit()
+        super().showPopup()
+
+
 class MachinePage(_SettingsPage):
     def __init__(self, cfg, parent=None):
         super().__init__(parent)
@@ -301,13 +478,26 @@ class MachinePage(_SettingsPage):
         self.device.setCurrentIndex(i if i >= 0 else 0)
         form.addRow("Device", self.device)
 
-        self.port = QComboBox()
+        # Serial port: editable combo + list with "device, description" (wx).
+        # Re-scan on drop-down open; strip description on select; optional Refresh.
+        self.port = _PortComboBox()
         self.port.setEditable(True)
-        ports = self._list_ports()
-        self.port.addItems(ports)
+        self.port.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.port.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.port.setMinimumContentsLength(18)
+        # Seed with path-only config value (list filled on first popup / refresh)
         self.port.setCurrentText(str(_cfg_get(cfg, "/machine/Port", "") or ""))
-        refresh = QPushButton("Refresh ports")
-        refresh.clicked.connect(self._refresh_ports)
+        self.port.about_to_popup.connect(self._on_port_popup)
+        self.port.activated.connect(self._on_port_activated)
+        # Also strip if user types "port, desc" and leaves the field
+        self.port.lineEdit().editingFinished.connect(self._strip_port_field)
+
+        refresh = QPushButton("Refresh")
+        refresh.setToolTip("Re-scan serial ports (same as opening the port list)")
+        refresh.clicked.connect(lambda: self._refresh_ports(description=True))
+
         port_wrap = QWidget()
         port_row = QHBoxLayout(port_wrap)
         port_row.setContentsMargins(0, 0, 0, 0)
@@ -322,6 +512,9 @@ class MachinePage(_SettingsPage):
         self.baud.setCurrentText(str(_cfg_get(cfg, "/machine/Baud", "115200") or "115200"))
         form.addRow("Baud Rate", self.baud)
         root.addLayout(form)
+
+        # Initial scan so the drop-down already has items (wx also fills soon after open)
+        self._refresh_ports(description=True)
 
         root.addWidget(_section("DRO"))
         dro = QFormLayout()
@@ -398,27 +591,186 @@ class MachinePage(_SettingsPage):
 
         root.addStretch(1)
 
-    def _list_ports(self) -> list[str]:
+    @staticmethod
+    def _port_device_only(value: str) -> str:
+        """wx OnSpComboBoxSelect: keep path only before optional ', description'."""
+        return str(value or "").split(",")[0].strip()
+
+    @staticmethod
+    def _is_windows_com_name(device: str) -> bool:
+        """True for Windows-style ``COM12`` names (case-insensitive)."""
+        import re
+
+        return bool(re.match(r"^COM\d+$", (device or "").strip(), re.IGNORECASE))
+
+    @staticmethod
+    def _unix_serial_device_ok(device: str) -> bool:
+        """wx non-Windows filter: Linux ``USB``/``ACM`` and macOS ``cu`` (case-sensitive).
+
+        Matches wx ``GetListOfSerialPorts`` / fail-safe globs
+        ``/dev/ttyUSB*``, ``/dev/ttyACM*``, ``/dev/cu*``.
+        """
+        dev = device or ""
+        return "USB" in dev or "ACM" in dev or "cu" in dev
+
+    @classmethod
+    def _serial_device_allowed(cls, device: str) -> bool:
+        """Whether a device path belongs in the port list.
+
+        Filter is driven by **path shape** (not client ``os.name``) so Remote
+        Settings can filter a Linux/macOS server list when the UI runs on
+        Windows, and vice versa:
+
+        * ``COM*`` — Windows; no further filter (wx shows all COM ports)
+        * Unix-like paths — require USB / ACM / cu (Linux + macOS)
+        * placeholder ``None`` — always kept
+        """
+        dev = (device or "").strip()
+        if not dev or dev == "None":
+            return True
+        if cls._is_windows_com_name(dev):
+            return True
+        # Unix-style absolute paths and common bare names from server scans
+        if (
+            dev.startswith("/")
+            or dev.startswith("tty")
+            or dev.startswith("cu")
+            or "/dev/" in dev
+        ):
+            return cls._unix_serial_device_ok(dev)
+        # Local Windows scan may use other names; keep them (wx: no filter on nt)
+        import os
+
+        if os.name == "nt":
+            return True
+        return cls._unix_serial_device_ok(dev)
+
+    def _format_port_entry(self, device: str, description: str | None, want_desc: bool) -> str:
+        if not want_desc:
+            return device
+        desc = (description or "").strip()
+        return f"{device}, {desc}" if desc else device
+
+    def _filter_port_strings(self, entries: list[str], description: bool) -> list[str]:
+        """Apply wx-style filter to preformatted ``device`` or ``device, desc`` rows."""
+        out: list[str] = []
+        for raw in entries:
+            s = str(raw).strip()
+            if not s:
+                continue
+            dev = self._port_device_only(s)
+            if not self._serial_device_allowed(dev):
+                continue
+            if description:
+                out.append(s)  # keep server "device, description" when present
+            else:
+                out.append(dev)
+        return out
+
+    def _list_ports(self, description: bool = True) -> list[str]:
+        """Match wx ``GetListOfSerialPorts``.
+
+        Prefer ``/temp/SerialPorts`` (remote server scan), still applying the
+        same USB/ACM/cu (Unix) vs all-COM (Windows) filter as local scan.
+        With ``description``, entries are ``\"device, description\"``.
+        """
         ser = _cfg_get(self.cfg, "/temp/SerialPorts", None)
         if ser and isinstance(ser, (list, tuple)) and len(ser) > 0:
-            return [str(x).split(",")[0].strip() for x in ser]
+            out = self._filter_port_strings([str(x) for x in ser], description)
+            return out or ["None"]
+
         try:
+            import os
+            import glob
             import serial.tools.list_ports
 
-            ports = sorted({p.device for p in serial.tools.list_ports.comports()})
-            return ports or ["None"]
+            ser_list_info = list(serial.tools.list_ports.comports())
+            ser_list: list[str] = []
+
+            if ser_list_info:
+                for ser in ser_list_info:
+                    dev = str(getattr(ser, "device", "") or "")
+                    if not self._serial_device_allowed(dev):
+                        continue
+                    desc = getattr(ser, "description", "") or ""
+                    ser_list.append(self._format_port_entry(dev, desc, description))
+                ser_list.sort()
+            else:
+                ser_list = ["None"]
+
+            return ser_list if ser_list else ["None"]
+        except ImportError:
+            # wx fail-safe: COM probe on Windows; USB/ACM/cu globs elsewhere
+            try:
+                import os
+                import glob
+
+                if os.name == "nt":
+                    ser_list = []
+                    try:
+                        import serial
+
+                        for i in range(256):
+                            try:
+                                serial.Serial(i)
+                                ser_list.append(f"COM{i + 1}")
+                            except Exception:
+                                pass
+                    except Exception:
+                        ser_list = []
+                    return ser_list if ser_list else ["None"]
+                ser_list = (
+                    glob.glob("/dev/ttyUSB*")
+                    + glob.glob("/dev/ttyACM*")
+                    + glob.glob("/dev/cu*")
+                )
+                ser_list.sort()
+                return ser_list if ser_list else ["None"]
+            except Exception:
+                return ["None"]
         except Exception:
             return ["None"]
 
-    def _refresh_ports(self) -> None:
+    def _refresh_ports(self, description: bool = True) -> None:
+        """Re-fill the combo list; keep current port path in the edit field."""
+        cur = self._port_device_only(self.port.currentText())
+        self.port.blockSignals(True)
+        try:
+            self.port.clear()
+            items = self._list_ports(description=description)
+            self.port.addItems(items)
+            # Keep short path in the field (not the long description line)
+            self.port.setCurrentText(cur if cur else "")
+            # Widen popup to fit "device, description" without resizing the field forever
+            fm = self.port.fontMetrics()
+            max_w = self.port.width()
+            for text in items:
+                max_w = max(max_w, fm.horizontalAdvance(text) + 48)
+            self.port.view().setMinimumWidth(min(max_w, 520))
+        finally:
+            self.port.blockSignals(False)
+
+    def _on_port_popup(self) -> None:
+        """wx OnSpComboBoxDropDown — refresh list every time the menu opens."""
+        self._refresh_ports(description=True)
+
+    def _on_port_activated(self, index: int) -> None:
+        """wx OnSpComboBoxSelect — store port path only after choosing a list row."""
+        if index < 0:
+            return
+        text = self.port.itemText(index)
+        self.port.setCurrentText(self._port_device_only(text))
+
+    def _strip_port_field(self) -> None:
+        """If user typed or left a 'port, desc' string, keep path only."""
         cur = self.port.currentText()
-        self.port.clear()
-        self.port.addItems(self._list_ports())
-        self.port.setCurrentText(cur)
+        stripped = self._port_device_only(cur)
+        if stripped != cur:
+            self.port.setCurrentText(stripped)
 
     def apply(self) -> None:
         _cfg_set(self.cfg, "/machine/Device", self.device.currentText())
-        port = self.port.currentText().split(",")[0].strip()
+        port = self._port_device_only(self.port.currentText())
         _cfg_set(self.cfg, "/machine/Port", port)
         _cfg_set(self.cfg, "/machine/Baud", self.baud.currentText().strip())
         _cfg_set(self.cfg, "/machine/DRO/FontFace", self.dro_font.text().strip())
@@ -675,6 +1027,12 @@ class SettingsDialog(QDialog):
     * ``config_data`` — local CONFIG_DATA (always passed)
     * ``config_remote_data`` — if set, dialog edits that blob and only shows
       Machine + Remote pages (wx remote settings mode)
+
+    Local Settings and Remote Settings share the same ``MachinePage`` /
+    ``RemotePage`` classes (wx reuses those notebooks too). Serial-port
+    polish (descriptions, refresh-on-popup, path strip, Refresh button)
+    therefore applies to both; remote port lists prefer
+    ``/temp/SerialPorts`` from the server snapshot when present.
     """
 
     def __init__(
@@ -696,6 +1054,7 @@ class SettingsDialog(QDialog):
         self.tabs = QTabWidget()
         self.pages: list[_SettingsPage] = []
 
+        # Same MachinePage / RemotePage for local and remote modes (wx-style reuse).
         if config_remote_data is not None:
             builders: list[tuple[str, Callable[[], _SettingsPage]]] = [
                 ("Machine", lambda: MachinePage(self.cfg)),

@@ -51,7 +51,8 @@ ICON_FILES: dict[str, str] = {
     # Remote
     "remote": "remote.png",
     "remote_disconnect": "plug-disconnect.png",
-    "remote_settings": "remote_settings.png",
+    # Same gear as local Settings (was remote_settings.png)
+    "remote_settings": "gear.png",
     "remote_gcode": "remote_gcode.png",
 }
 

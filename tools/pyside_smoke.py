@@ -677,15 +677,73 @@ def test_offline() -> list[str]:
         # restore
         gen.sp_history.setValue(old_hist)
         gen.apply()
-        # remote-mode notebook has 2 pages
+        # remote-mode notebook has 2 pages; Machine tab is the same MachinePage
+        # class as local Settings (serial-port UX is shared, not duplicated).
+        from modules.pyside_workbench.settings_dialog import MachinePage
+
         rdlg = SettingsDialog(
             w, config_data=gc.CONFIG_DATA, config_remote_data=gc.CONFIG_DATA, title="Remote Settings"
         )
         if rdlg.tabs.count() != 2:
             _fail(f"remote settings should be Machine+Remote, got {rdlg.tabs.count()}")
+        if not isinstance(rdlg.pages[0], MachinePage):
+            _fail(f"remote Machine tab type {type(rdlg.pages[0])}, expected MachinePage")
+        local_machine = next((p for p in dlg.pages if isinstance(p, MachinePage)), None)
+        if local_machine is None:
+            _fail("local Settings missing MachinePage")
+        for label, page in (("local", local_machine), ("remote", rdlg.pages[0])):
+            if not hasattr(page, "port") or page.port is None:
+                _fail(f"{label} MachinePage missing serial port combo")
+            if not hasattr(page, "_refresh_ports"):
+                _fail(f"{label} MachinePage missing _refresh_ports")
+            if page.port.lineEdit() is None:
+                _fail(f"{label} serial port combo should be editable")
+        # /temp/SerialPorts (server snapshot) + same filter as local (USB/ACM/cu, COM*)
+        stub = gc.ConfigData()
+        stub.add("/machine/Device", "grblHAL")
+        stub.add("/machine/Port", "/dev/ttyUSB0")
+        stub.add("/machine/Baud", "115200")
+        stub.add(
+            "/temp/SerialPorts",
+            [
+                "/dev/ttyS0, onboard UART",  # filtered out (Linux)
+                "/dev/ttyUSB99, Fake CNC (remote)",  # kept
+                "/dev/ttyACM1, CDC ACM",  # kept
+                "/dev/cu.usbmodem14201, Apple USB",  # kept (macOS)
+                "/dev/tty.Bluetooth-Incoming-Port, bt",  # filtered (no USB/ACM/cu)
+                "COM7, USB Serial Device",  # kept (Windows)
+                "COM3",  # kept
+            ],
+        )
+        stub.add("/temp/RemoteServer", True)
+        mp = MachinePage(stub)
+        items = [mp.port.itemText(i) for i in range(mp.port.count())]
+        joined = " | ".join(items)
+        for must in ("ttyUSB99", "ttyACM1", "cu.usbmodem14201", "COM7", "COM3"):
+            if must not in joined:
+                _fail(f"MachinePage remote list missing {must!r}: {items!r}")
+        for must_not in ("ttyS0", "Bluetooth"):
+            if must_not in joined:
+                _fail(f"MachinePage should filter out {must_not!r}: {items!r}")
+        # Allow helpers: Windows COM always; Unix needs USB/ACM/cu
+        if not MachinePage._serial_device_allowed("COM12"):
+            _fail("COM12 should be allowed (Windows)")
+        if not MachinePage._serial_device_allowed("/dev/ttyUSB0"):
+            _fail("ttyUSB0 should be allowed (Linux)")
+        if not MachinePage._serial_device_allowed("/dev/cu.usbserial-A"):
+            _fail("cu.* should be allowed (macOS)")
+        if MachinePage._serial_device_allowed("/dev/ttyS0"):
+            _fail("ttyS0 should be filtered")
+        # Select list row → path only (strip description)
+        for i, t in enumerate(items):
+            if "ttyUSB99" in t:
+                mp._on_port_activated(i)
+                break
+        if mp.port.currentText() != "/dev/ttyUSB99":
+            _fail(f"port activate should strip description, got {mp.port.currentText()!r}")
         if not hasattr(w, "act_settings") or w.act_settings is None:
             _fail("settings action missing")
-        notes.append("settings dialog (local+remote modes): ok")
+        notes.append("settings dialog (local+remote modes + shared Machine serial): ok")
 
         # --- G-code AutoScroll includes On Goto PC (wx index 3) ---
         from modules.pyside_workbench.settings_dialog import OutputStylePage
