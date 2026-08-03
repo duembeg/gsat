@@ -741,6 +741,35 @@ def test_offline() -> list[str]:
                 break
         if mp.port.currentText() != "/dev/ttyUSB99":
             _fail(f"port activate should strip description, got {mp.port.currentText()!r}")
+        # Probe + MachIf visibility (wx UpdateUI parity)
+        if not getattr(mp, "probe_widgets", None) or "Z" not in mp.probe_widgets:
+            _fail("MachinePage missing Probe widgets")
+        mp.probe_widgets["Z"]["Offset"].setValue(1.25)
+        mp.probe_widgets["Z"]["FeedRate"].setValue(42)
+        mp.apply()
+        if float(stub.get("/machine/Probe/Z/Offset", 0) or 0) != 1.25:
+            _fail("Probe Z Offset did not apply")
+        if int(stub.get("/machine/Probe/Z/FeedRate", 0) or 0) != 42:
+            _fail("Probe Z FeedRate did not apply")
+        # Enable only Z → only Z probe group visible
+        for ax, cb in mp.dro_axes.items():
+            cb.setChecked(ax == "Z")
+        mp._update_conditional_sections()
+        # isHidden() (not isVisible): page may not be shown yet in offscreen smoke
+        if mp.probe_groups["Z"].isHidden():
+            _fail("Z probe group should be visible when Z DRO enabled")
+        if not mp.probe_groups["X"].isHidden():
+            _fail("X probe group should hide when X DRO disabled")
+        # Device-specific: only selected controller group visible (if any)
+        if mp.spec_groups:
+            name = next(iter(mp.spec_groups))
+            mp.device.setCurrentText(name)
+            mp._update_conditional_sections()
+            if mp.spec_groups[name].isHidden():
+                _fail(f"MachIf group for {name} should be visible when selected")
+            for other, box in mp.spec_groups.items():
+                if other != name and not box.isHidden():
+                    _fail(f"MachIf group {other} should hide when Device={name}")
         if not hasattr(w, "act_settings") or w.act_settings is None:
             _fail("settings action missing")
         notes.append("settings dialog (local+remote modes + shared Machine serial): ok")

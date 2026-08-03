@@ -516,6 +516,8 @@ class MachinePage(_SettingsPage):
         # Initial scan so the drop-down already has items (wx also fills soon after open)
         self._refresh_ports(description=True)
 
+        self._axis_list = ("X", "Y", "Z", "A", "B", "C")
+
         root.addWidget(_section("DRO"))
         dro = QFormLayout()
         self.dro_font = QLineEdit(str(_cfg_get(cfg, "/machine/DRO/FontFace", "Monospace") or "Monospace"))
@@ -527,9 +529,11 @@ class MachinePage(_SettingsPage):
         dro.addRow("Font size", self.dro_size)
         dro.addRow("Font style", self.dro_style)
         self.dro_axes: dict[str, QCheckBox] = {}
-        for ax in ("X", "Y", "Z", "A", "B", "C"):
+        for ax in self._axis_list:
             cb = QCheckBox(f"Enable {ax} axis")
             cb.setChecked(bool(_cfg_get(cfg, f"/machine/DRO/Enable{ax}", ax in ("X", "Y", "Z"))))
+            # Probe groups follow enabled DRO axes (wx HideProperty on probe cats)
+            cb.toggled.connect(self._update_conditional_sections)
             self.dro_axes[ax] = cb
             dro.addRow(cb)
         root.addLayout(dro)
@@ -552,15 +556,18 @@ class MachinePage(_SettingsPage):
         self.init_script.setMinimumHeight(120)
         root.addWidget(self.init_script)
 
-        # MachIf-specific properties (flat int/float/bool/str)
+        # MachIf-specific: one group per controller; only selected Device is shown
+        # (wx PropertyGrid HideProperty on non-selected categories).
         self.spec_widgets: dict[str, QWidget] = {}
+        self.spec_groups: dict[str, QGroupBox] = {}
         specific = _cfg_get(cfg, "/machine/MachIfSpecific", {}) or {}
         if isinstance(specific, dict) and specific:
             root.addWidget(_section("Device-specific"))
-            form_s = QFormLayout()
             for machine, props in specific.items():
-                if not isinstance(props, dict):
+                if not isinstance(props, dict) or not props:
                     continue
+                box = QGroupBox(f"{machine} specific")
+                form_s = QFormLayout(box)
                 for prop, meta in props.items():
                     if not isinstance(meta, dict) or "Value" not in meta:
                         continue
@@ -581,15 +588,79 @@ class MachinePage(_SettingsPage):
                         w.setRange(-1e9, 1e9)
                         w.setValue(float(_cfg_get(cfg, path, value) or 0.0))
                     else:
-                        w = QLineEdit(str(_cfg_get(cfg, path, value) if _cfg_get(cfg, path, value) is not None else value))
+                        w = QLineEdit(
+                            str(
+                                _cfg_get(cfg, path, value)
+                                if _cfg_get(cfg, path, value) is not None
+                                else value
+                            )
+                        )
                     tip = meta.get("ToolTip") or ""
                     if tip:
                         w.setToolTip(str(tip))
                     self.spec_widgets[key] = w
-                    form_s.addRow(f"{machine}: {name}", w)
-            root.addLayout(form_s)
+                    form_s.addRow(str(name), w)
+                self.spec_groups[machine] = box
+                root.addWidget(box)
+
+        # Probe: per-axis Offset / Feed / Travel / Retract (wx Probe Settings).
+        # Only axes enabled in DRO are shown (wx hides disabled probe categories).
+        root.addWidget(_section("Probe"))
+        self.probe_groups: dict[str, QGroupBox] = {}
+        self.probe_widgets: dict[str, dict[str, QWidget]] = {}
+        probe_cfg = _cfg_get(cfg, "/machine/Probe", {}) or {}
+        if not isinstance(probe_cfg, dict):
+            probe_cfg = {}
+        for ax in self._axis_list:
+            ax_cfg = probe_cfg.get(ax, {}) if isinstance(probe_cfg.get(ax), dict) else {}
+            box = QGroupBox(f"{ax} Probe")
+            fl = QFormLayout(box)
+            w_off = QDoubleSpinBox()
+            w_off.setDecimals(4)
+            w_off.setRange(-1e6, 1e6)
+            w_off.setValue(float(ax_cfg.get("Offset", 0) or 0))
+            w_off.setToolTip("Axis value after the probe triggers")
+            w_fr = QSpinBox()
+            w_fr.setRange(0, 10_000_000)
+            w_fr.setValue(int(ax_cfg.get("FeedRate", 0) or 0))
+            w_fr.setToolTip("Probe seek feed rate")
+            w_tl = QDoubleSpinBox()
+            w_tl.setDecimals(4)
+            w_tl.setRange(-1e6, 1e6)
+            w_tl.setValue(float(ax_cfg.get("TravelLimit", 0) or 0))
+            w_tl.setToolTip("Max travel before probe gives up")
+            w_rd = QDoubleSpinBox()
+            w_rd.setDecimals(4)
+            w_rd.setRange(-1e6, 1e6)
+            w_rd.setValue(float(ax_cfg.get("Retract", 0) or 0))
+            w_rd.setToolTip("Retract distance after touch")
+            fl.addRow("Offset", w_off)
+            fl.addRow("Feed rate", w_fr)
+            fl.addRow("Travel limit", w_tl)
+            fl.addRow("Retract distance", w_rd)
+            self.probe_widgets[ax] = {
+                "Offset": w_off,
+                "FeedRate": w_fr,
+                "TravelLimit": w_tl,
+                "Retract": w_rd,
+            }
+            self.probe_groups[ax] = box
+            root.addWidget(box)
+
+        # Device change shows only that controller's MachIf group (wx UpdateUI)
+        self.device.currentTextChanged.connect(self._update_conditional_sections)
+        self._update_conditional_sections()
 
         root.addStretch(1)
+
+    def _update_conditional_sections(self, *_args) -> None:
+        """wx UpdateUI: show selected Device MachIf props; probe axes for enabled DRO."""
+        device = self.device.currentText().strip()
+        for machine, box in self.spec_groups.items():
+            box.setVisible(machine == device)
+        for ax, box in self.probe_groups.items():
+            cb = self.dro_axes.get(ax)
+            box.setVisible(bool(cb is not None and cb.isChecked()))
 
     @staticmethod
     def _port_device_only(value: str) -> str:
@@ -783,6 +854,7 @@ class MachinePage(_SettingsPage):
         fl = ",".join(x.strip() for x in self.filter_list.text().split(",") if x.strip())
         _cfg_set(self.cfg, "/machine/FilterGcodes", fl)
         _cfg_set(self.cfg, "/machine/InitScript", self.init_script.toPlainText())
+        # Save all MachIf slots (including hidden controllers) — same as wx
         for key, w in self.spec_widgets.items():
             machine, prop = key.split("|", 1)
             path = f"/machine/MachIfSpecific/{machine}/{prop}/Value"
@@ -794,6 +866,14 @@ class MachinePage(_SettingsPage):
                 _cfg_set(self.cfg, path, float(w.value()))
             elif isinstance(w, QLineEdit):
                 _cfg_set(self.cfg, path, w.text())
+        # Probe — all axes (wx saves even when probe category is hidden)
+        for ax, fields in self.probe_widgets.items():
+            _cfg_set(self.cfg, f"/machine/Probe/{ax}/Offset", float(fields["Offset"].value()))
+            _cfg_set(self.cfg, f"/machine/Probe/{ax}/FeedRate", int(fields["FeedRate"].value()))
+            _cfg_set(
+                self.cfg, f"/machine/Probe/{ax}/TravelLimit", float(fields["TravelLimit"].value())
+            )
+            _cfg_set(self.cfg, f"/machine/Probe/{ax}/Retract", float(fields["Retract"].value()))
 
 
 class JoggingPage(_SettingsPage):
