@@ -666,6 +666,15 @@ def test_offline() -> list[str]:
         dlg = SettingsDialog(w, config_data=gc.CONFIG_DATA)
         if dlg.tabs.count() < 5:
             _fail(f"expected full local settings tabs, got {dlg.tabs.count()}")
+        # wx notebook tab icons (settings_tab_* → existing color PNGs)
+        from modules.pyside_workbench import icons as _wb_icons
+
+        for i in range(dlg.tabs.count()):
+            title = dlg.tabs.tabText(i)
+            if title not in _wb_icons.SETTINGS_TAB_ICONS:
+                _fail(f"settings tab {title!r} missing SETTINGS_TAB_ICONS entry")
+            if dlg.tabs.tabIcon(i).isNull():
+                _fail(f"settings tab {title!r} has no icon")
         # Apply without modal: mutate a known key and write back
         gen = dlg.pages[0]
         old_hist = int(gc.CONFIG_DATA.get("/mainApp/FileHistory/FilesMaxHistory", 10) or 10)
@@ -798,6 +807,41 @@ def test_offline() -> list[str]:
         if not w.gcode._should_scroll_on_pc_update():
             _fail("after goto_pc, PC updates should follow")
         notes.append("gcode AutoScroll On Goto PC: ok")
+
+        # --- G-code find/replace (in-panel bar, not toolbar) ---
+        if not hasattr(w, "act_find") or w.act_find is None:
+            _fail("Edit Find action missing")
+        if not hasattr(w.gcode, "find_bar"):
+            _fail("GcodePanel missing find_bar")
+        w.gcode.load_lines(
+            "find_test.ngc",
+            ["G0 X0\n", "G1 X10 F100\n", "G0 X0\n", "M2\n"],
+        )
+        w.gcode.show_find(replace=False)
+        if not w.gcode.find_bar.is_open():
+            _fail("find bar should open")
+        w.gcode.find_bar.find_edit.setText("G0")
+        if not w.gcode.find_bar.find_next(wrap=True):
+            _fail("find_next should match G0")
+        # Second G0
+        if not w.gcode.find_bar.find_next(wrap=True):
+            _fail("find_next second G0 failed")
+        w.gcode.show_find(replace=True)
+        if not w.gcode.find_bar.replace_edit.isVisible():
+            _fail("replace mode should show replace field")
+        w.gcode.find_bar.find_edit.setText("G0")
+        w.gcode.find_bar.replace_edit.setText("G00")
+        w.gcode.find_bar.replace_all()
+        text = w.gcode.document_text()
+        if "G0 " in text or text.count("G00") < 2:
+            _fail(f"replace_all G0→G00 failed: {text!r}")
+        w.gcode.hide_find()
+        if w.gcode.find_bar.is_open():
+            _fail("hide_find should close bar")
+        # replace_all dirties the document — clear so later EV_GCODE tests
+        # do not open a blocking Save dialog (offscreen hang)
+        w.gcode.editor.document().setModified(False)
+        notes.append("gcode find/replace bar: ok")
 
         # --- fonts/colors apply from config (init + update_settings) ---
         # Save/restore so smoke does not pollute ~/.gsat.json

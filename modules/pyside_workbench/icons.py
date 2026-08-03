@@ -54,6 +54,25 @@ ICON_FILES: dict[str, str] = {
     # Same gear as local Settings (was remote_settings.png)
     "remote_settings": "gear.png",
     "remote_gcode": "remote_gcode.png",
+    # Settings notebook tabs (wx gsatSettingsDialog ImageList / Factory.GetIcon)
+    "settings_tab_general": "equalizer.png",  # wx imgGeneralSettings
+    "settings_tab_gcode": "gcs_g1_16x16.png",  # wx imgProgram
+    "settings_tab_console": "application-terminal.png",  # wx imgCli
+    "settings_tab_machine": "gear.png",  # wx imgMachine
+    "settings_tab_jogging": "arrow-move-a.png",  # wx imgMove (color twin)
+    "settings_tab_compvision": "eye.png",  # wx imgEye
+    "settings_tab_remote": "remote.png",  # wx imgRemote
+}
+
+# Tab title (as shown on SettingsDialog) → ICON_FILES key
+SETTINGS_TAB_ICONS: dict[str, str] = {
+    "General": "settings_tab_general",
+    "G-code": "settings_tab_gcode",
+    "Console": "settings_tab_console",
+    "Machine": "settings_tab_machine",
+    "Jogging": "settings_tab_jogging",
+    "CompVision": "settings_tab_compvision",
+    "Remote": "settings_tab_remote",
 }
 
 _cache: dict[str, QIcon] = {}

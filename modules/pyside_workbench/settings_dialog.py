@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 
 import modules.config as gc
 import modules.machif_config as mi
+from modules.pyside_workbench import icons as wb_icons
 
 
 def _cfg_get(cfg, path: str, default=None):
@@ -1132,6 +1133,8 @@ class SettingsDialog(QDialog):
 
         root = QVBoxLayout(self)
         self.tabs = QTabWidget()
+        # wx notebook used 16×16 ImageList on each page (Factory.GetIcon)
+        self.tabs.setIconSize(wb_icons.TOOLBAR_ICON_SIZE)
         self.pages: list[_SettingsPage] = []
 
         # Same MachinePage / RemotePage for local and remote modes (wx-style reuse).
@@ -1154,7 +1157,12 @@ class SettingsDialog(QDialog):
         for name, factory in builders:
             page = factory()
             self.pages.append(page)
-            self.tabs.addTab(_scroll(page), name)
+            icon_key = wb_icons.SETTINGS_TAB_ICONS.get(name)
+            ico = wb_icons.get_icon(icon_key) if icon_key else None
+            if ico is not None and not ico.isNull():
+                self.tabs.addTab(_scroll(page), ico, name)
+            else:
+                self.tabs.addTab(_scroll(page), name)
 
         root.addWidget(self.tabs, 1)
         buttons = QDialogButtonBox(

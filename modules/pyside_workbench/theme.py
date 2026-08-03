@@ -522,6 +522,20 @@ QGroupBox::title {{
     padding: 0 6px;
     color: {COLOR_MUTED};
 }}
+/* G-code in-panel find/replace (VS Code–style; not a main toolbar) */
+QWidget#gcodeFindBar {{
+    background: {COLOR_SURFACE};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 6px;
+}}
+QWidget#gcodeFindBar QLineEdit {{
+    min-height: 22px;
+}}
+QWidget#gcodeFindBar QPushButton {{
+    min-height: 22px;
+    padding: 2px 8px;
+}}
+
 QTabWidget::pane {{
     border: 1px solid {COLOR_BORDER};
     border-radius: 6px;
@@ -534,7 +548,8 @@ QTabBar::tab {{
     border-bottom: none;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
-    padding: 6px 14px;
+    /* room for 16px settings-tab icons (wx notebook ImageList) */
+    padding: 6px 12px 6px 10px;
     margin-right: 2px;
     color: {COLOR_MUTED};
     font-weight: 500;

@@ -19,13 +19,17 @@ from PySide6.QtGui import (
     QPainter,
     QPalette,
     QTextCursor,
+    QTextDocument,
     QTextFormat,
     QShortcut,
 )
 from PySide6.QtWidgets import (
+    QCheckBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPlainTextEdit,
+    QPushButton,
     QSizePolicy,
     QTextEdit,
     QVBoxLayout,
@@ -35,6 +39,9 @@ from PySide6.QtWidgets import (
 import modules.config as gc
 
 from modules.pyside_workbench.gcode_highlighter import GcodeHighlighter
+
+# Cap all-match highlights so huge NGC files stay snappy
+_FIND_HIGHLIGHT_MAX = 400
 
 
 class _LineNumberArea(QWidget):
@@ -96,6 +103,8 @@ class _GcodeEdit(QPlainTextEdit):
         self._bp_color = QColor("#FFCCCC")
         self._show_line_numbers = True
         self._show_caret_line = True
+        # Find/replace ExtraSelections (merged after PC/BP/caret)
+        self._find_selections: list = []
 
         get = (
             (lambda k, d=None: gc.CONFIG_DATA.get(k, d))
@@ -338,6 +347,16 @@ class _GcodeEdit(QPlainTextEdit):
         self._line_number_area.update()
         self._highlight_current_extras()
 
+    def set_find_selections(self, selections: list) -> None:
+        """Find-match highlights (merged into PC/BP/caret extras)."""
+        self._find_selections = list(selections or [])
+        self._highlight_current_extras()
+
+    def clear_find_selections(self) -> None:
+        if self._find_selections:
+            self._find_selections = []
+            self._highlight_current_extras()
+
     def _highlight_current_extras(self):
         extras = []
 
@@ -374,7 +393,299 @@ class _GcodeEdit(QPlainTextEdit):
             sel.cursor = cursor
             extras.append(sel)
 
+        # Find matches last so current hit stays readable over line paints
+        extras.extend(self._find_selections)
+
         self.setExtraSelections(extras)
+
+
+class _FindReplaceBar(QWidget):
+    """VS Code–style find/replace strip (not a main-window toolbar)."""
+
+    closed = Signal()
+
+    def __init__(self, panel: "GcodePanel", parent=None):
+        super().__init__(parent)
+        self._panel = panel
+        self._replace_mode = False
+        self._match_count = 0
+        self._match_index = 0  # 1-based when matches exist
+        self.setObjectName("gcodeFindBar")
+        self.setVisible(False)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(6, 4, 6, 4)
+        root.setSpacing(4)
+
+        row1 = QHBoxLayout()
+        row1.setSpacing(6)
+        self.find_edit = QLineEdit()
+        self.find_edit.setPlaceholderText("Find")
+        self.find_edit.setClearButtonEnabled(True)
+        self.find_edit.returnPressed.connect(lambda: self.find_next(wrap=True))
+        self.find_edit.textChanged.connect(self._on_query_changed)
+        row1.addWidget(self.find_edit, 1)
+
+        self.btn_prev = QPushButton("▲")
+        self.btn_prev.setFixedWidth(28)
+        self.btn_prev.setToolTip("Previous match — Shift+F3")
+        self.btn_prev.clicked.connect(lambda: self.find_prev(wrap=True))
+        row1.addWidget(self.btn_prev)
+
+        self.btn_next = QPushButton("▼")
+        self.btn_next.setFixedWidth(28)
+        self.btn_next.setToolTip("Next match — F3")
+        self.btn_next.clicked.connect(lambda: self.find_next(wrap=True))
+        row1.addWidget(self.btn_next)
+
+        self.cb_case = QCheckBox("Match case")
+        self.cb_case.toggled.connect(self._on_query_changed)
+        row1.addWidget(self.cb_case)
+
+        self.count_label = QLabel("")
+        self.count_label.setMinimumWidth(72)
+        self.count_label.setStyleSheet("color: #5C6570;")
+        row1.addWidget(self.count_label)
+
+        self.btn_close = QPushButton("✕")
+        self.btn_close.setFixedWidth(28)
+        self.btn_close.setToolTip("Close (Esc)")
+        self.btn_close.setObjectName("findBarClose")
+        self.btn_close.clicked.connect(self.hide_bar)
+        row1.addWidget(self.btn_close)
+        root.addLayout(row1)
+
+        row2 = QHBoxLayout()
+        row2.setSpacing(6)
+        self.replace_edit = QLineEdit()
+        self.replace_edit.setPlaceholderText("Replace")
+        self.replace_edit.returnPressed.connect(self.replace_one)
+        row2.addWidget(self.replace_edit, 1)
+        self.btn_replace = QPushButton("Replace")
+        self.btn_replace.clicked.connect(self.replace_one)
+        row2.addWidget(self.btn_replace)
+        self.btn_replace_all = QPushButton("Replace all")
+        self.btn_replace_all.clicked.connect(self.replace_all)
+        row2.addWidget(self.btn_replace_all)
+        root.addLayout(row2)
+        self._replace_row = row2
+        self._set_replace_visible(False)
+
+        # Esc on the bar
+        sc_esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        sc_esc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        sc_esc.activated.connect(self.hide_bar)
+
+    def _set_replace_visible(self, on: bool) -> None:
+        self._replace_mode = on
+        self.replace_edit.setVisible(on)
+        self.btn_replace.setVisible(on)
+        self.btn_replace_all.setVisible(on)
+
+    def open_bar(self, *, replace: bool = False, seed: str = "") -> None:
+        self._set_replace_visible(replace)
+        self.setVisible(True)
+        if seed:
+            self.find_edit.setText(seed)
+            self.find_edit.selectAll()
+        elif not self.find_edit.text():
+            # Seed from current editor selection (single line)
+            ed = self._panel.editor
+            cur = ed.textCursor()
+            if cur.hasSelection():
+                sel = cur.selectedText().replace("\u2029", "\n")
+                if "\n" not in sel and sel:
+                    self.find_edit.setText(sel)
+                    self.find_edit.selectAll()
+        self.find_edit.setFocus()
+        self.find_edit.selectAll()
+        self._refresh_highlights(move_to_match=False)
+
+    def hide_bar(self) -> None:
+        self.setVisible(False)
+        self._panel.editor.clear_find_selections()
+        self.count_label.setText("")
+        self._panel.editor.setFocus()
+        self.closed.emit()
+
+    def is_open(self) -> bool:
+        return self.isVisible()
+
+    def _find_flags(self, *, backward: bool = False) -> QTextDocument.FindFlag:
+        flags = QTextDocument.FindFlag(0)
+        if self.cb_case.isChecked():
+            flags |= QTextDocument.FindFlag.FindCaseSensitively
+        if backward:
+            flags |= QTextDocument.FindFlag.FindBackward
+        return flags
+
+    def _on_query_changed(self, *_args) -> None:
+        self._refresh_highlights(move_to_match=True)
+
+    def _all_match_cursors(self) -> list[QTextCursor]:
+        query = self.find_edit.text()
+        if not query:
+            return []
+        doc = self._panel.editor.document()
+        flags = self._find_flags()
+        out: list[QTextCursor] = []
+        c = doc.find(query, 0, flags)
+        while not c.isNull() and len(out) < _FIND_HIGHLIGHT_MAX:
+            out.append(c)
+            c = doc.find(query, c, flags)
+        return out
+
+    def _refresh_highlights(self, *, move_to_match: bool) -> None:
+        query = self.find_edit.text()
+        matches = self._all_match_cursors() if query else []
+        self._match_count = len(matches)
+
+        extras = []
+        current_pos = self._panel.editor.textCursor().position()
+        current_bg = QColor("#F59E0B")  # current hit
+        other_bg = QColor("#FDE68A")  # other hits
+
+        self._match_index = 0
+        for i, c in enumerate(matches):
+            sel = QTextEdit.ExtraSelection()
+            is_cur = c.selectionStart() <= current_pos <= c.selectionEnd()
+            if is_cur and self._match_index == 0:
+                self._match_index = i + 1
+            sel.format.setBackground(current_bg if is_cur else other_bg)
+            sel.cursor = c
+            extras.append(sel)
+
+        # If no cursor-on-match, still paint first as "other"
+        if matches and self._match_index == 0:
+            # Prefer first match after cursor for count display after move
+            self._match_index = 0
+
+        self._panel.editor.set_find_selections(extras)
+
+        if not query:
+            self.count_label.setText("")
+            self.count_label.setStyleSheet("color: #5C6570;")
+            return
+
+        if self._match_count == 0:
+            self.count_label.setText("No results")
+            self.count_label.setStyleSheet("color: #B91C1C;")
+            if move_to_match:
+                pass
+            return
+
+        # Cap note
+        label_n = self._match_count
+        more = "+" if label_n >= _FIND_HIGHLIGHT_MAX else ""
+        if self._match_index > 0:
+            self.count_label.setText(f"{self._match_index} of {label_n}{more}")
+        else:
+            self.count_label.setText(f"{label_n}{more} matches")
+        self.count_label.setStyleSheet("color: #5C6570;")
+
+        if move_to_match and matches:
+            # Jump to first match at/after caret without wrapping preference
+            self.find_next(wrap=True, from_refresh=True)
+
+    def find_next(self, *, wrap: bool = True, from_refresh: bool = False) -> bool:
+        return self._find_step(backward=False, wrap=wrap)
+
+    def find_prev(self, *, wrap: bool = True) -> bool:
+        return self._find_step(backward=True, wrap=wrap)
+
+    def _find_step(self, *, backward: bool, wrap: bool) -> bool:
+        query = self.find_edit.text()
+        if not query:
+            return False
+        ed = self._panel.editor
+        doc = ed.document()
+        flags = self._find_flags(backward=backward)
+        start = ed.textCursor()
+        found = doc.find(query, start, flags)
+        if found.isNull() and wrap:
+            # wrap: from start or end of document
+            if backward:
+                end_c = QTextCursor(doc)
+                end_c.movePosition(QTextCursor.MoveOperation.End)
+                found = doc.find(query, end_c, flags)
+            else:
+                found = doc.find(query, 0, flags)
+        if found.isNull():
+            self._refresh_highlights(move_to_match=False)
+            self.count_label.setText("No results")
+            self.count_label.setStyleSheet("color: #B91C1C;")
+            return False
+
+        self._panel._ignore_caret_for_follow = True
+        try:
+            ed.setTextCursor(found)
+            ed.centerCursor()
+        finally:
+            self._panel._ignore_caret_for_follow = False
+
+        # Rebuild highlights so current hit colors correctly
+        matches = self._all_match_cursors()
+        self._match_count = len(matches)
+        pos = found.selectionStart()
+        extras = []
+        self._match_index = 0
+        for i, c in enumerate(matches):
+            sel = QTextEdit.ExtraSelection()
+            is_cur = c.selectionStart() == pos
+            if is_cur:
+                self._match_index = i + 1
+            sel.format.setBackground(
+                QColor("#F59E0B") if is_cur else QColor("#FDE68A")
+            )
+            sel.cursor = c
+            extras.append(sel)
+        ed.set_find_selections(extras)
+        more = "+" if self._match_count >= _FIND_HIGHLIGHT_MAX else ""
+        if self._match_index:
+            self.count_label.setText(f"{self._match_index} of {self._match_count}{more}")
+        else:
+            self.count_label.setText(f"{self._match_count}{more} matches")
+        self.count_label.setStyleSheet("color: #5C6570;")
+        return True
+
+    def replace_one(self) -> None:
+        query = self.find_edit.text()
+        if not query:
+            return
+        ed = self._panel.editor
+        cur = ed.textCursor()
+        selected = cur.selectedText().replace("\u2029", "\n")
+        if self.cb_case.isChecked():
+            matches = selected == query
+        else:
+            matches = selected.lower() == query.lower()
+        if matches and selected:
+            cur.insertText(self.replace_edit.text())
+        self.find_next(wrap=True)
+
+    def replace_all(self) -> None:
+        query = self.find_edit.text()
+        if not query:
+            return
+        repl = self.replace_edit.text()
+        ed = self._panel.editor
+        doc = ed.document()
+        flags = self._find_flags()
+        cursor = QTextCursor(doc)
+        cursor.beginEditBlock()
+        n = 0
+        # Safety cap: empty/odd queries must not loop forever
+        c = doc.find(query, 0, flags)
+        while not c.isNull() and n < 100_000:
+            c.insertText(repl)
+            n += 1
+            c = doc.find(query, c.position(), flags)
+        cursor.endEditBlock()
+        self._refresh_highlights(move_to_match=False)
+        self.count_label.setText(f"Replaced {n}" if n else "No results")
+        self.count_label.setStyleSheet(
+            "color: #5C6570;" if n else "color: #B91C1C;"
+        )
 
 
 class GcodePanel(QWidget):
@@ -413,6 +724,10 @@ class GcodePanel(QWidget):
         header.addWidget(self.bp_label)
         root.addLayout(header)
 
+        # Find/replace: under header, above editor (VS Code–style in-panel)
+        self.find_bar = _FindReplaceBar(self)
+        root.addWidget(self.find_bar)
+
         self.editor = _GcodeEdit()
         self.editor.set_pc_requested.connect(self.set_pc_requested.emit)
         self.editor.break_toggle_requested.connect(self.toggle_breakpoint)
@@ -426,8 +741,8 @@ class GcodePanel(QWidget):
 
         # Word-wrap so this footer does not force a ~500px min width on the panel
         hint = QLabel(
-            "Gutter (wx-style): line# | ● break (click strip) | ▶ PC  ·  "
-            "F9: toggle break  ·  Double-click text: Set PC"
+            "Gutter: line# | ● break | ▶ PC  ·  F9 break  ·  "
+            "Ctrl+F find  ·  F3/Shift+F3 next/prev  ·  Ctrl+H replace"
         )
         hint.setWordWrap(True)
         hint.setStyleSheet("color: gray; font-size: 11px;")
@@ -442,6 +757,29 @@ class GcodePanel(QWidget):
         self._follow_pc = True
         self._ignore_caret_for_follow = False
         self.reload_auto_scroll_setting()
+
+    # ------------------------------------------------------------------
+    # Find / replace (Edit menu + shortcuts)
+    # ------------------------------------------------------------------
+    def show_find(self, *, replace: bool = False) -> None:
+        """Open in-panel find (or replace) bar — browser/VS Code style."""
+        self.find_bar.open_bar(replace=replace)
+
+    def find_next(self) -> None:
+        if not self.find_bar.is_open():
+            self.show_find(replace=False)
+            return
+        self.find_bar.find_next(wrap=True)
+
+    def find_prev(self) -> None:
+        if not self.find_bar.is_open():
+            self.show_find(replace=False)
+            return
+        self.find_bar.find_prev(wrap=True)
+
+    def hide_find(self) -> None:
+        if self.find_bar.is_open():
+            self.find_bar.hide_bar()
 
     def minimumSizeHint(self) -> QSize:
         # header + short editor + wrapped hint — keep low so console can dominate
@@ -481,6 +819,7 @@ class GcodePanel(QWidget):
         self.editor.setPlainText("")
         self.editor.set_breakpoints(set())
         self.editor.set_pc_line(0)
+        self.editor.clear_find_selections()
         self.title_label.setText("G-code: (none)")
         self.pc_label.setText("PC: 0")
         self.bp_label.setText("BP: 0")
@@ -497,6 +836,9 @@ class GcodePanel(QWidget):
         # Recalc gutter after blockCount is known (1000+ line files)
         self.editor._update_line_number_area_width()
         self.editor.set_breakpoints(set())
+        self.editor.clear_find_selections()
+        if self.find_bar.is_open():
+            self.find_bar._refresh_highlights(move_to_match=False)
         base = path.rsplit("/", 1)[-1] if path else "(memory)"
         n = len(self._lines)
         self.title_label.setText(f"G-code: {base}  ({n} lines)")

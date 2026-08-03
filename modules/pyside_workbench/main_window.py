@@ -101,6 +101,27 @@ class MainWindow(QMainWindow):
         self.act_settings.setToolTip("Application and machine settings")
         self.act_settings.triggered.connect(self.on_settings)
 
+        # Edit — G-code find/replace (VS Code–style in-panel bar, not a toolbar)
+        self.act_find = QAction("&Find…", self)
+        self.act_find.setShortcut(QKeySequence.StandardKey.Find)
+        self.act_find.setToolTip("Find in G-code (Ctrl+F)")
+        self.act_find.triggered.connect(self.on_find)
+        self.act_replace = QAction("&Replace…", self)
+        self.act_replace.setShortcut(QKeySequence.StandardKey.Replace)
+        self.act_replace.setToolTip("Find and replace in G-code (Ctrl+H)")
+        self.act_replace.triggered.connect(self.on_replace)
+        # Next/prev: F3 / Shift+F3 only (no menu; avoid platform Ctrl+G / Ctrl+Shift+G)
+        self.act_find_next = QAction(self)
+        self.act_find_next.setShortcut(QKeySequence("F3"))
+        self.act_find_next.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        self.act_find_next.triggered.connect(self.on_find_next)
+        self.addAction(self.act_find_next)
+        self.act_find_prev = QAction(self)
+        self.act_find_prev.setShortcut(QKeySequence("Shift+F3"))
+        self.act_find_prev.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        self.act_find_prev.triggered.connect(self.on_find_prev)
+        self.addAction(self.act_find_prev)
+
         self.act_remote_settings = QAction("Remote settings…", self)
         self.act_remote_settings.setToolTip(
             "Edit machine/remote config from the connected server (wx Remote Settings)"
@@ -513,6 +534,12 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.act_settings)
         file_menu.addSeparator()
         file_menu.addAction(self.act_quit)
+
+        # Edit — find/replace on G-code panel (no search toolbar)
+        # Next/prev are F3 / Shift+F3 only — no menu entries
+        edit_menu = self.menuBar().addMenu("&Edit")
+        edit_menu.addAction(self.act_find)
+        edit_menu.addAction(self.act_replace)
 
         # Machine
         machine_menu = self.menuBar().addMenu("&Machine")
@@ -1295,6 +1322,24 @@ class MainWindow(QMainWindow):
             "PySide6 workbench spike — thin client over existing gsat core.\n"
             "Classic wx UI remains the production desktop until cutover.",
         )
+
+    @Slot()
+    def on_find(self):
+        """Edit → Find: open G-code in-panel find bar (Ctrl+F)."""
+        self.gcode.show_find(replace=False)
+
+    @Slot()
+    def on_find_next(self):
+        self.gcode.find_next()
+
+    @Slot()
+    def on_find_prev(self):
+        self.gcode.find_prev()
+
+    @Slot()
+    def on_replace(self):
+        """Edit → Replace: open find bar in replace mode (Ctrl+H)."""
+        self.gcode.show_find(replace=True)
 
     @Slot()
     def on_settings(self):
