@@ -184,9 +184,7 @@ class MainWindow(QMainWindow):
         self.act_abort = QAction("Abort", self)
         self.act_abort.setToolTip("Feed hold + stop program (emergency-ish stop)")
         self.act_abort.triggered.connect(self.on_abort)
-        self.act_local = QAction("Local serial", self)
-        self.act_local.setToolTip("Start local MachIfExecuteThread")
-        self.act_local.triggered.connect(self.on_open_local)
+        # Local serial open is Machine Connect when not remote (wx); no separate action.
 
         # Program
         self.act_run = QAction("Run", self)
@@ -238,7 +236,6 @@ class MainWindow(QMainWindow):
             (self.act_machine_reset, "machine_reset"),
             (self.act_clear_alarm, "clear_alarm"),
             (self.act_abort, "abort"),
-            (self.act_local, "local"),
             (self.act_remote, "remote"),
             (self.act_settings, "settings"),
             (self.act_remote_settings, "remote_settings"),
@@ -477,8 +474,6 @@ class MainWindow(QMainWindow):
             self.act_abort,
         ):
             self.tb_machine.addAction(act)
-        self.tb_machine.addSeparator()
-        self.tb_machine.addAction(self.act_local)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tb_machine)
 
         # Remote (host/port widgets + connect — lab-friendly)
@@ -553,8 +548,6 @@ class MainWindow(QMainWindow):
         machine_menu.addAction(self.act_clear_alarm)
         machine_menu.addSeparator()
         machine_menu.addAction(self.act_abort)
-        machine_menu.addSeparator()
-        machine_menu.addAction(self.act_local)
 
         # Remote
         remote_menu = self.menuBar().addMenu("R&emote")
@@ -1241,17 +1234,6 @@ class MainWindow(QMainWindow):
             self.act_machine_connect.setChecked(False)
 
     @Slot()
-    def on_open_local(self):
-        if self.bridge.is_remote_connected():
-            QMessageBox.information(
-                self,
-                "Remote active",
-                "Disconnect remote before opening a local serial machine interface.",
-            )
-            return
-        self.bridge.open_local()
-
-    @Slot()
     def on_refresh_status(self):
         self.bridge.request_status()
 
@@ -1787,7 +1769,6 @@ class MainWindow(QMainWindow):
         self._sync_remote_affordance(remote=remote, connecting=connecting)
         self.act_remote_settings.setEnabled(remote or client_alive)
         self.act_remote_get_gcode.setEnabled(remote or client_alive)
-        self.act_local.setEnabled(not busy_remote and not backend)
         # Connect toggle: open when closed (remote or free local); close when open
         can_open = remote or (not busy_remote and not backend)
         can_close = backend and not connecting
