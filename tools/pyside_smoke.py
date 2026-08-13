@@ -15,6 +15,8 @@
       python tools/pyside_smoke.py
       QT_QPA_PLATFORM=offscreen python tools/pyside_smoke.py --offline
       python tools/pyside_smoke.py --live --host river --port 61803
+      pytest tests/unit
+      GSAT_LIVE_HOST=river pytest -m live
 ----------------------------------------------------------------------------"""
 from __future__ import annotations
 
@@ -1015,9 +1017,12 @@ def test_live(
         _fail(f"live connect failed to {host}:{port} within {timeout}s")
 
     notes.append(f"live connect {host}:{port}: ok")
-    log = w.console.log_view.toPlainText()
-    if "Welcome" in log or "Connected" in log or "config" in log.lower():
-        notes.append("live hello/config traffic: ok")
+
+    def _console() -> str:
+        return w.console.log_view.toPlainText()
+
+    def _stat() -> str:
+        return str(gc.STATE_DATA.machineStatusString or "")
 
     # Lab: controller without motors is safe to open + command
     w.on_open_machine()
@@ -1026,53 +1031,52 @@ def test_live(
         lambda: w._machine_open or gc.STATE_DATA.serialPortIsOpen,
         timeout,
     ):
-        # Leave remote up for diagnostics but fail the suite
         w.on_disconnect_remote()
         _wait_until(app, lambda: not w.bridge.is_remote_connected(), 5.0)
         w.close()
         _fail("live open machine did not report open")
 
     notes.append("live open machine: ok")
-    time.sleep(0.3)
-    app.processEvents()
 
     w.on_refresh_status()
-    time.sleep(0.4)
-    app.processEvents()
-    notes.append("live refresh status: ok")
+    if not _wait_until(app, lambda: bool(_stat().strip()), timeout):
+        w.on_close_machine()
+        w.on_disconnect_remote()
+        w.close()
+        _fail("live: no machine status after open/refresh")
+    stat = _stat()
+    notes.append(f"live status: {stat!r}")
+    if "alarm" in stat.lower():
+        notes.append("live: controller in Alarm (still connected)")
 
-    # CLI status query (grbl-like)
+    # CLI status query — require some TX/RX evidence
+    log_before = _console()
     w.on_cli_submit("?")
-    time.sleep(0.5)
-    app.processEvents()
-    log = w.console.log_view.toPlainText()
-    if ">" not in log and "?" not in log:
-        # TX might be filtered or status-only path
-        pass
+    if not _wait_until(
+        app,
+        lambda: _console() != log_before
+        and (
+            "?" in _console()[len(log_before) :]
+            or ">" in _console()[len(log_before) :]
+            or "ok" in _console()[len(log_before) :].lower()
+            or "idle" in _console()[len(log_before) :].lower()
+            or "<" in _console()[len(log_before) :]
+        ),
+        timeout,
+    ):
+        w.on_close_machine()
+        w.on_disconnect_remote()
+        w.close()
+        _fail("live CLI ? produced no TX/RX in console")
     notes.append("live CLI ?: ok")
 
-    # Small jog (lab controller has no motors — safe)
-    w.on_jog_relative("x", "0.100", False, 500.0)
-    time.sleep(0.5)
-    app.processEvents()
-    w.on_jog_relative("x", "-0.100", False, 500.0)
-    time.sleep(0.5)
-    app.processEvents()
-    notes.append("live jog ±X 0.1: ok")
-
-    # Prefer user's lab file when present; else tiny synthetic
-    lab_gcode = os.environ.get(
-        "GSAT_LAB_GCODE",
-        "/home/wduembeg/Documents/Python/gcode/test2.ngc",
-    )
+    # Tiny synthetic program for Step (dwell only — no travel). --gcode overrides.
     unlink_path = None
     if gcode_path:
         path = gcode_path
-    elif os.path.isfile(lab_gcode):
-        path = lab_gcode
     else:
-        fd, path = tempfile.mkstemp(suffix=".ngc")
-        os.write(fd, b"G21\nG90\nG0 X0\n")
+        fd, path = tempfile.mkstemp(suffix=".ngc", prefix="gsat_live_")
+        os.write(fd, b"G21\nG90\nG4 P0.05\n")
         os.close(fd)
         unlink_path = path
 
@@ -1082,34 +1086,53 @@ def test_live(
         notes.append(f"live open gcode: {os.path.basename(path)}")
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()
+        pc0 = int(gc.STATE_DATA.programCounter or 0)
+        log_before = _console()
         w.on_step()
-        time.sleep(0.8)
-        app.processEvents()
+        if not _wait_until(
+            app,
+            lambda: (
+                int(gc.STATE_DATA.programCounter or 0) > pc0
+                or gc.STATE_DATA.swState == gc.STATE_IDLE
+                and (">" in _console()[len(log_before) :] or "ok" in _console()[len(log_before) :].lower())
+            ),
+            timeout,
+        ):
+            _fail(
+                "live step: no PC advance or TX/ack "
+                f"(pc={gc.STATE_DATA.programCounter} sw={gc.STATE_DATA.swState})"
+            )
         notes.append("live step gcode: ok")
 
-        # If file has (MSG, …) lines, stepping past setup may not hit them;
-        # set PC to MSG line and run once to exercise continue path when safe.
+        # Optional MSG path if caller passed a file that contains (MSG, …)
         msg_line = None
         for i, line in enumerate(w.gcode.lines()):
             if "(MSG," in line.upper() or "(MSG ," in line.upper():
                 msg_line = i
                 break
         if msg_line is not None:
-            # Run from start so backend encounters MSG (not first PC skip rule:
-            # MSG is ignored only when workingPC == initialPC)
             w.set_pc(0)
             w.on_run()
-            # Wait for MSG handling / break
-            time.sleep(1.5)
-            app.processEvents()
-            log = w.console.log_view.toPlainText()
-            if "** MSG:" in log or "CHANGE TOOL" in log or "MSG" in log:
-                notes.append("live MSG path: ok")
+            if not _wait_until(
+                app,
+                lambda: (
+                    "** MSG:" in _console()
+                    or "CHANGE TOOL" in _console()
+                    or gc.STATE_DATA.swState == gc.STATE_BREAK
+                ),
+                timeout,
+            ):
+                w.on_stop()
+                notes.append("live MSG path: no break/MSG within timeout")
             else:
-                notes.append("live MSG path: no MSG log yet (controller timing)")
+                notes.append("live MSG path: ok")
             w.on_stop()
-            time.sleep(0.3)
-            app.processEvents()
+            _wait_until(
+                app,
+                lambda: gc.STATE_DATA.swState
+                in (gc.STATE_IDLE, gc.STATE_BREAK, gc.STATE_ABORT),
+                5.0,
+            )
     finally:
         if unlink_path:
             try:
@@ -1155,7 +1178,7 @@ def main() -> int:
     )
     p.add_argument("--host", default=None)
     p.add_argument("--port", type=int, default=None)
-    p.add_argument("--timeout", type=float, default=8.0)
+    p.add_argument("--timeout", type=float, default=12.0)
     p.add_argument(
         "--gcode",
         default=None,

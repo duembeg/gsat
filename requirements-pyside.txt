@@ -12,6 +12,9 @@ colorama>=0.4.6
 # (pulls aiohttp). The plain [client] extra is only for the sync Client.
 python-socketio[asyncio-client]>=5.10
 
+# Test suite (unit + optional live)
+pytest>=8.0
+
 # G-code highlighting uses pure PySide6 QSyntaxHighlighter (same rules as
 # wx.stc container lexer). PyPI "QScintilla" / "PyQt6-QScintilla" are PyQt-only
 # and conflict with a PySide6 QApplication — do not mix without migrating the
