@@ -1,6 +1,10 @@
 # Dependencies for the PySide workbench (gsat-pyside.py)
 # Classic wx UI still uses the README wxPython stack.
 #
+# OS packages (Ubuntu 22.04/24.04): see README "PySide workbench".
+# pip does not install libxcb-cursor0; without it the GUI fails on X11
+# even when offline tests pass (those use QT_QPA_PLATFORM=offscreen).
+#
 #   python3 -m venv .venv
 #   .venv/bin/pip install -r requirements-pyside.txt
 #   .venv/bin/python gsat-pyside.py
@@ -8,9 +12,16 @@
 PySide6>=6.6
 pyserial>=3.5
 colorama>=0.4.6
-# AsyncClient (modules/remote_ws_client.py) needs the asyncio-client extra
-# (pulls aiohttp). The plain [client] extra is only for the sync Client.
+
+# Client: AsyncClient (modules/remote_ws_client.py) needs the asyncio-client
+# extra (pulls aiohttp). The plain [client] extra is only for the sync Client.
+# Server: gsat-server.py uses socketio.AsyncServer + ASGIApp from the same
+# package (no extra required for the server side).
 python-socketio[asyncio-client]>=5.10
+
+# gsat-server WebSocket front (modules/remote_ws_server.py):
+# socketio.ASGIApp served by uvicorn (not FastAPI).
+uvicorn>=0.27
 
 # Test suite (unit + optional live)
 pytest>=8.0
