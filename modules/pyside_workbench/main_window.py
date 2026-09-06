@@ -1515,6 +1515,21 @@ class MainWindow(QMainWindow):
         """Abort/close: do not show the runtime dialog."""
         self._run_end_waiting_idle = False
 
+    def _reset_machine_session_flags(self, *, drop_remote_config: bool = False) -> None:
+        """wx abort/close/remote-drop: do not leave RUN / detected / old remote blob.
+
+        Enablement already keys off ``_machine_open``; ``swState`` must still
+        reset or the status badge can stay RUN after disconnect.
+        """
+        self._cancel_run_end_wait()
+        self._machine_open = False
+        gc.STATE_DATA.serialPortIsOpen = False
+        gc.STATE_DATA.deviceDetected = False
+        gc.STATE_DATA.swState = gc.STATE_IDLE
+        gc.STATE_DATA.machineStatusString = ""
+        if drop_remote_config:
+            self._remote_config_data = None
+
     def _maybe_finish_run_end_wait(self) -> None:
         """wx: after EV_RUN_END, wait until machine Idle/Stop/End then optional dialog."""
         if not run_end_util.should_finish_run_end_wait(
@@ -1606,9 +1621,7 @@ class MainWindow(QMainWindow):
 
         elif eid == gc.EV_SER_PORT_CLOSE:
             self.append_log("Machine serial/port closed.")
-            self._machine_open = False
-            gc.STATE_DATA.serialPortIsOpen = False
-            self._cancel_run_end_wait()
+            self._reset_machine_session_flags(drop_remote_config=False)
             self.dro_panel.clear()
             self._update_connection_ui()
 
@@ -1625,12 +1638,10 @@ class MainWindow(QMainWindow):
             self.append_log(str(msg).rstrip("\n"))
             self._remote_connecting = False
             self._remote_connected = False
-            self._machine_open = False
-            gc.STATE_DATA.serialPortIsOpen = False
             # Client-only: forget last-known MD5 for this UI session so a new
             # connect re-learns from EV_GCODE_MD5. Does not clear server buffer.
             self._backend_gcode_md5 = 0
-            self._cancel_run_end_wait()
+            self._reset_machine_session_flags(drop_remote_config=True)
             self.dro_panel.clear()
             self._update_connection_ui()
 
@@ -1710,17 +1721,14 @@ class MainWindow(QMainWindow):
 
         elif eid == gc.EV_ABORT:
             self.append_log(str(data) if data else "ABORT")
-            self._cancel_run_end_wait()
-            if te.sender is self.bridge.remote_client or self._remote_connecting:
+            drop_remote = (
+                te.sender is self.bridge.remote_client or self._remote_connecting
+            )
+            if drop_remote:
                 self._remote_connecting = False
                 self._remote_connected = False
-                self._machine_open = False
-                gc.STATE_DATA.serialPortIsOpen = False
-                self.dro_panel.clear()
-            elif te.sender is self.bridge.machif_progexec:
-                self._machine_open = False
-                gc.STATE_DATA.serialPortIsOpen = False
-                self.dro_panel.clear()
+            self._reset_machine_session_flags(drop_remote_config=drop_remote)
+            self.dro_panel.clear()
             self._update_connection_ui()
 
         elif eid == gc.EV_EXIT:
@@ -1735,9 +1743,12 @@ class MainWindow(QMainWindow):
             self._remote_connecting = False
             if was_remote or not self.bridge.is_remote_connected():
                 self._remote_connected = False
-            if was_local or not self.bridge.is_backend_active():
-                self._machine_open = False
-                gc.STATE_DATA.serialPortIsOpen = False
+            if was_remote:
+                self._reset_machine_session_flags(drop_remote_config=True)
+                self.dro_panel.clear()
+            elif was_local or not self.bridge.is_backend_active():
+                self._reset_machine_session_flags(drop_remote_config=False)
+                self.dro_panel.clear()
             self._update_connection_ui()
 
         elif eid == gc.EV_GCODE_MD5:

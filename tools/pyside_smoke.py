@@ -271,6 +271,38 @@ def test_offline() -> list[str]:
             w._reload_runtime_dialog_setting()
         notes.append("run-end Idle wait + runtime dialog: ok")
 
+        # --- abort/close stale flags (wx: Idle, deviceDetected, remote blob) ---
+        gc.STATE_DATA.swState = gc.STATE_RUN
+        gc.STATE_DATA.deviceDetected = True
+        gc.STATE_DATA.machineStatusString = "Run"
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        w._remote_config_data = {"keep": True}
+        w._update_connection_ui()
+        w.on_backend_event(SimpleEvent(gc.EV_ABORT, "serial fail", fake))
+        if gc.STATE_DATA.swState != gc.STATE_IDLE:
+            _fail(f"abort should Idle swState, got {gc.STATE_DATA.swState}")
+        if gc.STATE_DATA.deviceDetected:
+            _fail("abort should clear deviceDetected")
+        if w.status_badge.text() == "RUN":
+            _fail("badge should not stay RUN after abort")
+        if w._remote_config_data is None:
+            _fail("local abort should keep remote config blob")
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        gc.STATE_DATA.swState = gc.STATE_RUN
+        w._remote_config_data = {"drop": True}
+        w.on_backend_event(SimpleEvent(gc.EV_RMT_PORT_CLOSE, "bye", fake))
+        if w._remote_config_data is not None:
+            _fail("remote close should drop config blob")
+        if gc.STATE_DATA.swState != gc.STATE_IDLE:
+            _fail("remote close should Idle swState")
+        w._machine_open = True
+        gc.STATE_DATA.serialPortIsOpen = True
+        gc.STATE_DATA.swState = gc.STATE_IDLE
+        w._update_connection_ui()
+        notes.append("abort/close stale flags: ok")
+
         # --- CLI send ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()
