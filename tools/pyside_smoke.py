@@ -205,6 +205,72 @@ def test_offline() -> list[str]:
 
         notes.append("run/step/pause/stop: ok")
 
+        # --- after-run Idle wait + optional runtime dialog (wx) ---
+        info_calls: list[tuple[str, str]] = []
+        _orig_info = QMessageBox.information
+
+        def _rec_info(_parent, title, text, *_a, **_k):
+            info_calls.append((str(title), str(text)))
+            return QMessageBox.StandardButton.Ok
+
+        QMessageBox.information = staticmethod(_rec_info)
+        try:
+            w._display_runtime_dialog = True
+            w._run_end_waiting_idle = False
+            w._progexec_rtime = 0.0
+            w.on_backend_event(SimpleEvent(gc.EV_RUN_END, None, fake))
+            if not w._run_end_waiting_idle:
+                _fail("EV_RUN_END should start Idle wait")
+            if info_calls:
+                _fail("runtime dialog must not show before Idle")
+            w.on_backend_event(
+                SimpleEvent(gc.EV_DATA_STATUS, {"sr": {"stat": "Run", "rtime": 3}}, fake)
+            )
+            if not w._run_end_waiting_idle:
+                _fail("should still wait while status is Run")
+            if info_calls:
+                _fail("no runtime dialog while Run")
+            w.on_backend_event(
+                SimpleEvent(
+                    gc.EV_DATA_STATUS, {"sr": {"stat": "Idle", "rtime": 12}}, fake
+                )
+            )
+            if w._run_end_waiting_idle:
+                _fail("Idle should finish run-end wait")
+            if len(info_calls) != 1:
+                _fail(f"expected one runtime dialog, got {info_calls!r}")
+            title, text = info_calls[0]
+            if title != "G-Code Program":
+                _fail(f"runtime dialog title {title!r}")
+            if "Run time:" not in text or "00:00:12" not in text:
+                _fail(f"runtime dialog body {text!r}")
+            info_calls.clear()
+            w._display_runtime_dialog = False
+            w.on_backend_event(SimpleEvent(gc.EV_RUN_END, None, fake))
+            w.on_backend_event(
+                SimpleEvent(gc.EV_DATA_STATUS, {"sr": {"stat": "Idle", "rtime": 1}}, fake)
+            )
+            if info_calls:
+                _fail("DisplayRunTimeDialog off should not show a box")
+            w.on_backend_event(SimpleEvent(gc.EV_RUN_END, None, fake))
+            w.on_backend_event(SimpleEvent(gc.EV_ABORT, "x", fake))
+            if w._run_end_waiting_idle:
+                _fail("ABORT should cancel run-end wait")
+            w.on_backend_event(
+                SimpleEvent(gc.EV_DATA_STATUS, {"sr": {"stat": "Idle"}}, fake)
+            )
+            if info_calls:
+                _fail("no runtime dialog after abort cancel")
+            # EV_ABORT with sender=fake (progexec) closes local machine — restore
+            w._machine_open = True
+            gc.STATE_DATA.serialPortIsOpen = True
+            gc.STATE_DATA.swState = gc.STATE_IDLE
+            w._update_connection_ui()
+        finally:
+            QMessageBox.information = _orig_info
+            w._reload_runtime_dialog_setting()
+        notes.append("run-end Idle wait + runtime dialog: ok")
+
         # --- CLI send ---
         gc.STATE_DATA.swState = gc.STATE_IDLE
         w._update_connection_ui()

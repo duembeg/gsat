@@ -39,6 +39,7 @@ from modules.pyside_workbench.gcode_panel import GcodePanel
 from modules.pyside_workbench import icons as wb_icons
 from modules.pyside_workbench.jog_panel import JogPanel
 from modules.pyside_workbench.settings_dialog import SettingsDialog
+from modules.pyside_workbench import run_end as run_end_util
 
 
 def _gcode_lines_md5(lines) -> str:
@@ -68,6 +69,10 @@ class MainWindow(QMainWindow):
         # Client-only; reconnect adopts server value via EV_GCODE_MD5 — never
         # clears server buffer (multi-UI / headless).
         self._backend_gcode_md5 = 0
+        # wx runEndWaitingForMachIfIdle: software sent all lines, wait for Idle
+        self._run_end_waiting_idle = False
+        self._progexec_rtime = 0.0
+        self._reload_runtime_dialog_setting()
 
         self._create_actions()
         self._build_ui()
@@ -1498,6 +1503,33 @@ class MainWindow(QMainWindow):
             self.dro_panel.update_settings()
         except Exception as exc:
             self.logger.warning("DRO settings apply failed: %s", exc)
+        self._reload_runtime_dialog_setting()
+
+    def _reload_runtime_dialog_setting(self) -> None:
+        show = False
+        if gc.CONFIG_DATA is not None:
+            show = bool(gc.CONFIG_DATA.get("/mainApp/DisplayRunTimeDialog", False))
+        self._display_runtime_dialog = show
+
+    def _cancel_run_end_wait(self) -> None:
+        """Abort/close: do not show the runtime dialog."""
+        self._run_end_waiting_idle = False
+
+    def _maybe_finish_run_end_wait(self) -> None:
+        """wx: after EV_RUN_END, wait until machine Idle/Stop/End then optional dialog."""
+        if not run_end_util.should_finish_run_end_wait(
+            waiting=self._run_end_waiting_idle,
+            stat=gc.STATE_DATA.machineStatusString,
+        ):
+            return
+        self._run_end_waiting_idle = False
+        self._update_connection_ui()
+        if self._display_runtime_dialog:
+            self._show_run_time_dialog()
+
+    def _show_run_time_dialog(self) -> None:
+        body = run_end_util.format_run_time_dialog(self._progexec_rtime)
+        QMessageBox.information(self, "G-Code Program", body)
 
     # ------------------------------------------------------------------
     # Backend events (GUI thread)
@@ -1517,9 +1549,21 @@ class MainWindow(QMainWindow):
                     if isinstance(sr, dict):
                         if "stat" in sr:
                             gc.STATE_DATA.machineStatusString = sr["stat"]
+                        if "rtime" in sr:
+                            try:
+                                self._progexec_rtime = float(sr["rtime"])
+                            except (TypeError, ValueError):
+                                pass
                         self.dro_panel.update_from_status(sr)
 
                 self.dro_panel.update_from_status(data)
+                if "stat" in data and data["stat"] is not None:
+                    gc.STATE_DATA.machineStatusString = data["stat"]
+                if "rtime" in data:
+                    try:
+                        self._progexec_rtime = float(data["rtime"])
+                    except (TypeError, ValueError):
+                        pass
 
                 if "rx_data" in data and data["rx_data"]:
                     self.append_log(data["rx_data"])
@@ -1536,6 +1580,8 @@ class MainWindow(QMainWindow):
                     except (TypeError, ValueError):
                         pass
                     self._update_connection_ui()
+
+                self._maybe_finish_run_end_wait()
 
         elif eid == gc.EV_PC_UPDATE:
             try:
@@ -1562,6 +1608,7 @@ class MainWindow(QMainWindow):
             self.append_log("Machine serial/port closed.")
             self._machine_open = False
             gc.STATE_DATA.serialPortIsOpen = False
+            self._cancel_run_end_wait()
             self.dro_panel.clear()
             self._update_connection_ui()
 
@@ -1583,6 +1630,7 @@ class MainWindow(QMainWindow):
             # Client-only: forget last-known MD5 for this UI session so a new
             # connect re-learns from EV_GCODE_MD5. Does not clear server buffer.
             self._backend_gcode_md5 = 0
+            self._cancel_run_end_wait()
             self.dro_panel.clear()
             self._update_connection_ui()
 
@@ -1615,6 +1663,8 @@ class MainWindow(QMainWindow):
             self._update_connection_ui()
 
         elif eid == gc.EV_RUN_END:
+            # Software finished sending; wait for controller Idle before dialog
+            self._run_end_waiting_idle = True
             self._update_connection_ui()
 
         elif eid == gc.EV_BRK_PT_STOP:
@@ -1660,6 +1710,7 @@ class MainWindow(QMainWindow):
 
         elif eid == gc.EV_ABORT:
             self.append_log(str(data) if data else "ABORT")
+            self._cancel_run_end_wait()
             if te.sender is self.bridge.remote_client or self._remote_connecting:
                 self._remote_connecting = False
                 self._remote_connected = False
