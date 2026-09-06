@@ -2,6 +2,13 @@
 
 gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl-like GCODE interpreters. It features functionalities similar to software debuggers, such as breakpoints, program counter (position) changes, stopping, inspecting/modifying machine variables, stepping, and running.
 
+**Two desktop UIs (same machine core and `~/.gsat.json`):**
+
+- **PySide workbench** (`gsat-pyside.py`) — current desktop; use this for day-to-day work.
+- **Classic wx** (`gsat.py`) — still supported, **maintenance only** (no new feature UI).
+
+Install each in its **own venv**. The WebSocket machine server is `gsat-server.py` (works with either UI).
+
 ## Use Case
 
 For instance, if the GCODE file is a drill program for a PCB, gsat allows you to set a breakpoint right before the tool plunges. At this point, you can use jogging controls to lower the tool just before it penetrates the surface to verify alignment. Once verified or adjusted, the program can continue.
@@ -112,13 +119,26 @@ python3.8 -m pip install opencv-python
 
 ## Screenshots
 
-### Main Window (Linux)
-![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux")
+These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
 
-### Settings Dialog
-![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog")
+### Main Window (Linux, classic wx)
+![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux (classic wx)")
+
+### Settings Dialog (classic wx)
+![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog (classic wx)")
 
 ## Changelog
+
+### 1.9.0
+
+- **PySide workbench** (`gsat-pyside.py`) — new desktop UI over the existing machine core
+  - Same `gsat-server` / MachIf / `~/.gsat.json` as classic wx
+  - Dockable layout, themed chrome, in-panel G-code find/replace
+  - Settings notebook (local + remote), serial-port UX, probe / MachIf show-hide
+  - After-run Idle wait + optional runtime dialog; status DRO extras
+  - Offline unit tests (`pytest tests/unit`) and UI smoke (`tools/pyside_smoke.py`)
+- Classic **wx UI remains** (`gsat.py`) for this release (maintenance only)
+- Install: Ubuntu 22.04/24.04 PySide section below; do not mix wxPython and PySide6 in one venv
 
 ### 1.8.0
 
