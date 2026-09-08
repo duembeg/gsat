@@ -53,6 +53,9 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
         self.remote_index = gc.CONFIG_DATA.get('/remotes/Index', 0)
         self.port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/webSocketPort', 61803)
         self.api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "")
+        self.max_message_bytes = gc.get_remote_max_message_bytes(
+            gc.CONFIG_DATA, self.remote_index
+        )
         self.machif_prog_exec = None
         self.serial_port_is_open = False
         self.device_detected = False
@@ -70,6 +73,9 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
             self.logger.info(f"init logging id:0x{id(self):x} {self}")
+            self.logger.info(
+                f"Engine.IO max_http_buffer_size={self.max_message_bytes}"
+            )
 
         if event_handler is not None:
             if gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_SERVER):
@@ -77,8 +83,12 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
 
             self.add_event_listener(event_handler)
 
-        # websocket init vars
-        self.sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+        # websocket init vars (max payload: large gcodeLines pickle on Step/Run)
+        self.sio = socketio.AsyncServer(
+            async_mode='asgi',
+            cors_allowed_origins='*',
+            max_http_buffer_size=self.max_message_bytes,
+        )
         self.app = socketio.ASGIApp(self.sio)
         self.VALID_TOKENS = {self.api_token}
 
@@ -184,8 +194,17 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
                 break
 
     def get_serial_ports(self):
+        """Scan serial ports for Remote Settings (same filter as local Machine UI).
+
+        * Windows (``os.name == 'nt'``): all COM ports (no path filter).
+        * Linux / macOS: keep devices with ``USB``, ``ACM``, or ``cu`` in the
+          path (ttyUSB*, ttyACM*, macOS cu.*).
+        """
         ser_list = []
         port_search_fail_safe = False
+
+        def _unix_ok(dev: str) -> bool:
+            return "USB" in dev or "ACM" in dev or "cu" in dev
 
         try:
             import glob
@@ -194,8 +213,14 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             ser_list_info = serial.tools.list_ports.comports()
 
             if len(ser_list_info) > 0:
-                ser_list = [f"{i.device}, {i.description}" for i in ser_list_info]
-
+                if os.name == "nt":
+                    ser_list = [f"{i.device}, {i.description}" for i in ser_list_info]
+                else:
+                    ser_list = [
+                        f"{i.device}, {i.description}"
+                        for i in ser_list_info
+                        if _unix_ok(str(i.device or ""))
+                    ]
                 ser_list.sort()
 
         except ImportError:

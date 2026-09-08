@@ -694,6 +694,22 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
         return rxDataDict
 
+    def prepare_program_gcode_line(self, gcode_line: str) -> str:
+        """Strip comments and apply FilterGcodes before Run/Step send.
+
+        Matching is substring (``token in line``), same as historical Run path.
+        Step previously skipped this filter — so tokens only worked under Run.
+        """
+        gcode = gcode_line
+        for re_comments in gReGcodeComments:
+            gcode = re_comments.sub("", gcode)
+
+        if self.filterGCodesEnable:
+            for token in self.filterGCodesList:
+                if token and token in gcode:
+                    return ""
+        return gcode
+
     def send_run_step_gcode(self, gcode_data):
         write_to_device = True
         rc_error = False
@@ -784,15 +800,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             self.notify_event_listeners(gc.EV_GCODE_MSG, reMsgSearch.group(1))
             return
 
-        # don't sent unnecessary data save the bits for speed
-        for reComments in gReGcodeComments:
-            gcode = reComments.sub("", gcode)
-
-        if self.filterGCodesEnable:
-            for filter in self.filterGCodesList:
-                if filter in gcode:
-                    gcode = ""
-                    break
+        gcode = self.prepare_program_gcode_line(gcode)
 
         # send g-code command
         error = self.send_run_step_gcode(gcode)
@@ -844,10 +852,7 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
             return
 
         gcode = self.gcodeDataLines[self.workingProgramCounter]
-
-        # don't sent unnecessary data save the bits for speed
-        for reComments in gReGcodeComments:
-            gcode = reComments.sub("", gcode)
+        gcode = self.prepare_program_gcode_line(gcode)
 
         error = self.send_run_step_gcode(gcode)
 

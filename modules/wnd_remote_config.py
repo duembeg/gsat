@@ -28,6 +28,7 @@ import wx
 from wx.lib import scrolledpanel as scrolled
 
 import images.icons as ico
+import modules.config as gc
 
 
 class Factory():
@@ -115,6 +116,34 @@ class gsatRemoteSettingsPanel(scrolled.ScrolledPanel):
 
             row += 1
 
+            # Max Socket.IO / Engine.IO message size (large G-code Step/Run)
+            # UI in MB; config stores bytes (1024-based MB).
+            st = wx.StaticText(self, wx.ID_ANY, "Max message size (MB)")
+            default_bytes = getattr(
+                gc, "REMOTE_MAX_MESSAGE_BYTES_DEFAULT", 16 * 1024 * 1024)
+            stored = self.configData.get(
+                f'/remotes/remote{self.remoteIndex}/MaxMessageBytes',
+                default_bytes)
+            try:
+                mb_val = gc.remote_message_bytes_to_mb(stored)
+            except Exception:
+                mb_val = float(getattr(gc, "REMOTE_MAX_MESSAGE_MB_DEFAULT", 16))
+            if abs(mb_val - round(mb_val)) < 1e-9:
+                mb_display = str(int(round(mb_val)))
+            else:
+                mb_display = f"{mb_val:g}"
+            self.maxMessageMb = wx.TextCtrl(self, -1, mb_display)
+            self.maxMessageMb.SetToolTip(wx.ToolTip(
+                "Engine.IO / Socket.IO max message size in MB (default 16). "
+                "gsat-server must use the same value; restart server after change. "
+                "Allows first Step/Run of large G-code programs over WebSocket. "
+                "Stored in config as bytes."))
+            gridSizer.Add(st, pos=(row, 0), flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL)
+            gridSizer.Add(
+                self.maxMessageMb, pos=(row, 1), span=(1, 3),
+                flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=5)
+            row += 1
+
             gridSizer.AddGrowableCol(1)
 
         else:
@@ -187,6 +216,9 @@ class gsatRemoteSettingsPanel(scrolled.ScrolledPanel):
             self.configData.set(
                 f'/remotes/remote{self.remoteIndex}/WebSocketPort', int(self.websocketPort.GetValue().strip()))
             self.configData.set(f'/remotes/remote{self.remoteIndex}/ApiToken', self.apiToken.GetValue())
+            max_b = gc.remote_message_mb_to_bytes(self.maxMessageMb.GetValue().strip())
+            self.configData.set(
+                f'/remotes/remote{self.remoteIndex}/MaxMessageBytes', max_b)
         elif self.remoteInterface == "socket":
             self.configData.set(f'/remotes/remote{self.remoteIndex}/TcpPort', int(self.tcpPort.GetValue().strip()))
             self.configData.set(f'/remotes/remote{self.remoteIndex}/UdpPort', int(self.udpPort.GetValue().strip()))

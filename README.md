@@ -2,6 +2,13 @@
 
 gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl-like GCODE interpreters. It features functionalities similar to software debuggers, such as breakpoints, program counter (position) changes, stopping, inspecting/modifying machine variables, stepping, and running.
 
+**Two desktop UIs (same machine core and `~/.gsat.json`):**
+
+- **PySide workbench** (`gsat-pyside.py`) — current desktop; use this for day-to-day work.
+- **Classic wx** (`gsat.py`) — still supported, **maintenance only** (no new feature UI).
+
+Install each in its **own venv**. The WebSocket machine server is `gsat-server.py` (works with either UI).
+
 ## Use Case
 
 For instance, if the GCODE file is a drill program for a PCB, gsat allows you to set a breakpoint right before the tool plunges. At this point, you can use jogging controls to lower the tool just before it penetrates the surface to verify alignment. Once verified or adjusted, the program can continue.
@@ -10,9 +17,10 @@ For instance, if the GCODE file is a drill program for a PCB, gsat allows you to
 
 ### Dependencies
 
-- **Python**: [Python 3.8](http://www.python.org/) or later
+- **Python**: [Python 3.8](http://www.python.org/) or later (3.10+ for the PySide workbench)
 - **Serial Communication**: [pySerial](http://pyserial.sourceforge.net/)
-- **GUI Library**: [wxPython 4.x](http://www.wxpython.org/) or later
+- **GUI Library (classic)**: [wxPython 4.x](http://www.wxpython.org/) or later — `gsat.py`
+- **GUI Library (workbench)**: [PySide6](https://pypi.org/project/PySide6/) — `gsat-pyside.py` (see the PySide section below)
 
 ### Optional Dependencies (for OpenCV)
 
@@ -34,13 +42,13 @@ For instance, if the GCODE file is a drill program for a PCB, gsat allows you to
 
 ### Supported Operating Systems
 
-#### Ubuntu 20.04, 22.04, 24.04
+#### Ubuntu 20.04, 22.04, 24.04 — classic wx UI (`gsat.py`)
 
 ```bash
 sudo apt install python3 python3-pip python3-venv git python3-dev
 sudo apt install build-essential libgtk-3-dev
 python3 -m pip install -U pip
-python3 -m pip install charset-normalizer==2.0.0 aiohttp==3.8.3 fastapi uvicorn python-socketio colorama pyserial
+python3 -m pip install charset-normalizer==2.0.0 aiohttp==3.8.3 uvicorn python-socketio colorama pyserial
 python3 -m pip install wxPython
 
 ```
@@ -51,6 +59,40 @@ python3 -m pip install wxPython
 python3 -m pip install numpy
 python3 -m pip install opencv-python
 ```
+
+#### Ubuntu 22.04, 24.04 — PySide workbench (`gsat-pyside.py`)
+
+The PySide wheel ships Qt, but **not** the extra X11 libraries the `xcb` platform plugin needs on a real display. Unit tests and `tools/pyside_smoke.py --offline` use `QT_QPA_PLATFORM=offscreen`, so they can pass on a machine that still cannot open the workbench window.
+
+Use a venv (the Qt stack is large; do not mix it with the wxPython environment).
+
+```bash
+sudo apt install python3 python3-pip python3-venv git
+sudo apt install libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 \
+  libxcb-keysyms1 libxcb-render-util0 libxkbcommon-x11-0 libegl1 libgl1
+
+python3 -m venv .venv
+.venv/bin/pip install -U pip
+.venv/bin/pip install -r requirements-pyside.txt
+.venv/bin/python gsat-pyside.py
+# same venv can run the machine server (WebSocket):
+.venv/bin/python gsat-server.py
+```
+
+After `source .venv/bin/activate`, `./gsat-pyside.py` also works because the venv provides `python`. Without the venv, `python3 gsat-pyside.py` will fail with `No module named 'PySide6'`.
+
+`requirements-pyside.txt` already includes `colorama` and `python-socketio` (client + server). `uvicorn` is required to run `gsat-server.py`. The WebSocket server is `socketio.ASGIApp` served by uvicorn (not FastAPI).
+
+**Offline checks (no hardware):**
+
+```bash
+.venv/bin/pytest tests/unit
+QT_QPA_PLATFORM=offscreen .venv/bin/python tools/pyside_smoke.py --offline
+```
+
+If the workbench aborts with `xcb-cursor0 or libxcb-cursor0 is needed` / `Could not load the Qt platform plugin "xcb"`, install `libxcb-cursor0` and retry. That package is the usual miss on a fresh Ubuntu desktop.
+
+Do not install PyPI `QScintilla` / `PyQt6-QScintilla` into this venv — those wheels are PyQt-only and conflict with PySide6.
 
 #### Ubuntu 18.04
 
@@ -77,13 +119,26 @@ python3.8 -m pip install opencv-python
 
 ## Screenshots
 
-### Main Window (Linux)
-![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux")
+These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
 
-### Settings Dialog
-![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog")
+### Main Window (Linux, classic wx)
+![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux (classic wx)")
+
+### Settings Dialog (classic wx)
+![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog (classic wx)")
 
 ## Changelog
+
+### 1.9.0
+
+- **PySide workbench** (`gsat-pyside.py`) — new desktop UI over the existing machine core
+  - Same `gsat-server` / MachIf / `~/.gsat.json` as classic wx
+  - Dockable layout, themed chrome, in-panel G-code find/replace
+  - Settings notebook (local + remote), serial-port UX, probe / MachIf show-hide
+  - After-run Idle wait + optional runtime dialog; status DRO extras
+  - Offline unit tests (`pytest tests/unit`) and UI smoke (`tools/pyside_smoke.py`)
+- Classic **wx UI remains** (`gsat.py`) for this release (maintenance only)
+- Install: Ubuntu 22.04/24.04 PySide section below; do not mix wxPython and PySide6 in one venv
 
 ### 1.8.0
 

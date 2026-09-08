@@ -83,10 +83,27 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
 
         self.connected = False  # Connection status flag
         self.keep_alive = keep_alive
+        self.max_message_bytes = gc.get_remote_max_message_bytes(
+            gc.CONFIG_DATA, self.remote_index
+        )
 
         # socket io init
         # self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
-        self.sio = socketio.AsyncClient(reconnection=True, reconnection_attempts=5, reconnection_delay=5)
+        # max_http_buffer_size is an Engine.IO *server* limit; client accepts
+        # kwargs only if the installed engineio client supports them — set on
+        # eio after construct when present (outgoing large pickles + parity).
+        self.sio = socketio.AsyncClient(
+            reconnection=True, reconnection_attempts=5, reconnection_delay=5
+        )
+        if hasattr(self.sio, "eio") and hasattr(
+            self.sio.eio, "max_http_buffer_size"
+        ):
+            self.sio.eio.max_http_buffer_size = self.max_message_bytes
+        elif gc.test_verbose_mask(gc.VERBOSE_MASK_REMOTEIF_CLIENT):
+            self.logger.info(
+                "Client Engine.IO has no max_http_buffer_size attr; "
+                f"server-side limit is authoritative ({self.max_message_bytes})"
+            )
 
         if self.keep_alive:
             self.sio.eio.ping_interval = 20
@@ -229,6 +246,9 @@ class RemoteClient(threading.Thread, gc.EventQueueIf):
                 self.logger.info("Exit signal received")
         except socketio.exceptions.ConnectionError as e:
             self.logger.error(f"Failed to connect: {e}")
+            # Notify UI listeners (wx / PySide) so connect failures clear state
+            self.notify_event_listeners(
+                gc.EV_ABORT, f"Failed to connect: {e}\n")
         finally:
             if self.sio.connected:
                 await self.sio.disconnect()
