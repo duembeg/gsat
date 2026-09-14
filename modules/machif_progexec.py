@@ -455,7 +455,13 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     -------------------------------------------------------------------------"""
 
     def init_machine_if_module(self):
-        self.machIfModule = mi.GetMachIfModule(self.machIfId)
+        # PySide-only Virtual CNC: not in MACHIF_CLS_LIST (no wx Device entry).
+        from modules.machif_virtual import MachIf_Virtual, virtual_cnc_enabled
+
+        if virtual_cnc_enabled():
+            self.machIfModule = MachIf_Virtual()
+        else:
+            self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
         if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_EXEC):
             msg = "init MachIf Module (%s)." % self.machIfModule.getName()

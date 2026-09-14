@@ -38,8 +38,10 @@ from modules.pyside_workbench.dro_panel import DroPanel
 from modules.pyside_workbench.gcode_panel import GcodePanel
 from modules.pyside_workbench import icons as wb_icons
 from modules.pyside_workbench.jog_panel import JogPanel
+from modules.pyside_workbench.path_canvas import PathPanel
 from modules.pyside_workbench.settings_dialog import SettingsDialog
 from modules.pyside_workbench import run_end as run_end_util
+from modules.machif_virtual import virtual_cnc_enabled, CONFIG_KEY as VIRTUAL_CNC_KEY
 
 
 def _gcode_lines_md5(lines) -> str:
@@ -80,6 +82,7 @@ class MainWindow(QMainWindow):
         self._build_menu()
         self._load_remote_defaults()
         self._load_layout()
+        self._sync_virtual_cnc_controls(virtual_cnc_enabled())
         self._update_connection_ui()
         self.set_pc(0)
 
@@ -167,6 +170,13 @@ class MainWindow(QMainWindow):
             "Machine Connect — open serial/machine session"
         )
         self.act_machine_connect.triggered.connect(self.on_machine_connect)
+        self.act_virtual_cnc = QAction("&Virtual CNC", self)
+        self.act_virtual_cnc.setCheckable(True)
+        self.act_virtual_cnc.setToolTip(
+            "Open Virtual CNC as the machine instead of serial "
+            "(plotter, no hardware). PySide only."
+        )
+        self.act_virtual_cnc.triggered.connect(self.on_virtual_cnc_toggled)
         self.act_machine_refresh = QAction("Refresh", self)
         self.act_machine_refresh.setShortcut("Ctrl+R")
         self.act_machine_refresh.setToolTip("Request one status update")
@@ -264,11 +274,10 @@ class MainWindow(QMainWindow):
         return dock
 
     def _apply_dock_corners(self) -> None:
-        """Column-style: right docks own the right edge full height.
+        """Path left (above Console), DRO|Jog own the right edge full height.
 
-        Bottom dock (Console) only sits under the center (G-code), not under
-        DRO/Jog — so Console height is not tied to Jog in one shared row.
-        restoreState() can clobber this; call again after layout load.
+        Console sits under Path and G-code, not under DRO/Jog. restoreState()
+        can clobber this; call again after layout load.
         """
         self.setCorner(
             Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea
@@ -284,7 +293,7 @@ class MainWindow(QMainWindow):
         )
 
     def _apply_default_dock_arrangement(self, apply_factory_sizes: bool = True) -> None:
-        """Default like wx: G-code center, Console under center, DRO|Jog right column.
+        """Factory: Path left, G-code center, Console under Path+G-code, DRO|Jog right.
 
         User can still drag docks to a full-width bottom row, etc. Saved layouts
         via View → Save layout override this until View → Reset layout.
@@ -297,9 +306,10 @@ class MainWindow(QMainWindow):
         self._apply_dock_corners()
 
         # Force docks out of any previous area (reset / recovery from row layout)
-        for d in (self.dock_console, self.dock_dro, self.dock_jog):
+        for d in (self.dock_console, self.dock_dro, self.dock_jog, self.dock_path):
             self.removeDockWidget(d)
 
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_path)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_console)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_dro)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_jog)
@@ -308,14 +318,16 @@ class MainWindow(QMainWindow):
         self.dock_console.show()
         self.dock_dro.show()
         self.dock_jog.show()
+        self.dock_path.show()
         if apply_factory_sizes:
             # Console ~2× older factory (was ~170–180): debug log needs room.
-            # G-code center stays relatively short/narrow (typical lines are short).
-            # Right column: enough for DRO+Jog without scrollbars.
+            # Path: left of G-code, above Console. DRO|Jog keep the far-right
+            # column (full height). Typical G-code lines are short.
             self.resizeDocks([self.dock_console], [340], Qt.Orientation.Vertical)
             self.resizeDocks(
                 [self.dock_dro, self.dock_jog], [530, 460], Qt.Orientation.Vertical
             )
+            self.resizeDocks([self.dock_path], [440], Qt.Orientation.Horizontal)
             self._ensure_jog_dock_width(force_resize=True)
 
     def _ensure_jog_dock_width(self, force_resize: bool = False) -> None:
@@ -353,11 +365,17 @@ class MainWindow(QMainWindow):
             | QMainWindow.DockOption.GroupedDragging
         )
 
-        # G-code is the center workspace (like wx CenterPane — not a dock)
+        # G-code is the center workspace (like wx CenterPane — not a dock).
+        # Path docks to its left; Console sits under Path and G-code.
         self.gcode = GcodePanel()
         self.gcode.set_pc_requested.connect(self.set_pc)
         self.gcode.break_toggled.connect(self.on_break_toggled)
         self.setCentralWidget(self.gcode)
+
+        self.path_panel = PathPanel()
+        self.path_panel.preview_requested.connect(self._refresh_path_preview)
+        self.path_panel.machine_target_toggled.connect(self.on_virtual_cnc_toggled)
+        self.dock_path = self._make_dock("Path", self.path_panel, "dockPath")
 
         max_hist = 100
         try:
@@ -407,6 +425,7 @@ class MainWindow(QMainWindow):
 
         self._docks = {
             "console": self.dock_console,
+            "path": self.dock_path,
             "dro": self.dock_dro,
             "jog": self.dock_jog,
         }
@@ -544,6 +563,7 @@ class MainWindow(QMainWindow):
         # Machine
         machine_menu = self.menuBar().addMenu("&Machine")
         machine_menu.addAction(self.act_machine_connect)
+        machine_menu.addAction(self.act_virtual_cnc)
         machine_menu.addAction(self.act_machine_refresh)
         machine_menu.addSeparator()
         machine_menu.addAction(self.act_cycle_start)
@@ -593,6 +613,7 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
         for key, dock in (
             ("&Console", "console"),
+            ("&Path", "path"),
             ("Machine &Status", "dro"),
             ("Machine &Jogging", "jog"),
         ):
@@ -764,6 +785,7 @@ class MainWindow(QMainWindow):
         )
         self.append_log(f"Opened {path} ({n} lines)")
         self.statusBar().showMessage(os.path.basename(path))
+        self._refresh_path_preview()
         self._update_connection_ui()
         return True
 
@@ -830,6 +852,7 @@ class MainWindow(QMainWindow):
         gc.STATE_DATA.programCounter = pc
         # scroll=None → honor /code/AutoScroll (Always / On Goto PC / …)
         self.gcode.set_pc(pc, scroll=None)
+        self.path_panel.set_pc(pc)
 
     @Slot()
     def on_set_pc(self):
@@ -1471,6 +1494,7 @@ class MainWindow(QMainWindow):
         base = os.path.basename(path) if path else "(remote)"
         self.setWindowTitle(f"{base} — {vinfo.__appname__} — PySide workbench")
         self.append_log(f"Loaded G-code from remote: {base} ({len(norm)} lines)")
+        self._refresh_path_preview()
         self._update_connection_ui()
 
     def _apply_settings_to_ui(self) -> None:
@@ -1505,6 +1529,49 @@ class MainWindow(QMainWindow):
             self.logger.warning("DRO settings apply failed: %s", exc)
         self._reload_runtime_dialog_setting()
 
+    def _refresh_path_preview(self) -> None:
+        """Rebuild the path plot from the editor (open file / Preview button)."""
+        if self.path_panel.is_live():
+            return
+        self.path_panel.set_program(self.gcode.lines())
+        self.path_panel.set_pc(gc.STATE_DATA.programCounter)
+
+    def _sync_virtual_cnc_controls(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        for widget in (self.act_virtual_cnc, self.path_panel.chk_machine):
+            widget.blockSignals(True)
+            widget.setChecked(enabled)
+            widget.blockSignals(False)
+
+    @Slot(bool)
+    def on_virtual_cnc_toggled(self, checked: bool):
+        """PySide-only: Virtual CNC as the local machine (no serial)."""
+        if self.bridge.is_remote_connected() or self._remote_connecting:
+            self.append_log("Virtual CNC is local-only — disconnect remote first.")
+            self._sync_virtual_cnc_controls(virtual_cnc_enabled())
+            return
+        checked = bool(checked)
+        if gc.CONFIG_DATA is not None:
+            try:
+                gc.CONFIG_DATA.set(VIRTUAL_CNC_KEY, checked)
+                gc.CONFIG_DATA.save()
+            except Exception as exc:
+                self.append_log(f"Virtual CNC setting save failed: {exc}")
+        self._sync_virtual_cnc_controls(checked)
+        machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        if machine_open:
+            self.append_log(
+                "Virtual CNC changed — closing the machine session. "
+                "Connect again to apply."
+            )
+            self.on_close_machine()
+        if checked:
+            self.append_log(
+                "Virtual CNC enabled: Connect opens a plotter (no serial)."
+            )
+        else:
+            self.append_log("Virtual CNC disabled: Connect uses serial as usual.")
+
     def _reload_runtime_dialog_setting(self) -> None:
         show = False
         if gc.CONFIG_DATA is not None:
@@ -1521,6 +1588,9 @@ class MainWindow(QMainWindow):
         Enablement already keys off ``_machine_open``; ``swState`` must still
         reset or the status badge can stay RUN after disconnect.
         """
+        if self.path_panel.is_live():
+            self.path_panel.end_live()
+            self._refresh_path_preview()
         self._cancel_run_end_wait()
         self._machine_open = False
         gc.STATE_DATA.serialPortIsOpen = False
@@ -1609,9 +1679,15 @@ class MainWindow(QMainWindow):
 
         elif eid == gc.EV_DATA_OUT:
             self.append_log(f"> {data}")
+            if self.path_panel.is_live() and data:
+                self.path_panel.apply_live_line(str(data))
 
         elif eid == gc.EV_SER_PORT_OPEN:
-            self.append_log("Machine serial/port open.")
+            if virtual_cnc_enabled():
+                self.append_log("Virtual CNC open (no serial).")
+                self.path_panel.begin_live()
+            else:
+                self.append_log("Machine serial/port open.")
             self._machine_open = True
             gc.STATE_DATA.serialPortIsOpen = True
             self.bridge.request_status()
@@ -1620,6 +1696,9 @@ class MainWindow(QMainWindow):
             self._update_connection_ui()
 
         elif eid == gc.EV_SER_PORT_CLOSE:
+            if self.path_panel.is_live():
+                self.path_panel.end_live()
+                self._refresh_path_preview()
             self.append_log("Machine serial/port closed.")
             self._reset_machine_session_flags(drop_remote_config=False)
             self.dro_panel.clear()
@@ -1851,6 +1930,9 @@ class MainWindow(QMainWindow):
 
         self.host_edit.setEnabled(not busy_remote)
         self.port_edit.setEnabled(not busy_remote)
+        # Virtual CNC is a local plotter target — not a remote-server device
+        self.act_virtual_cnc.setEnabled(not busy_remote)
+        self.path_panel.chk_machine.setEnabled(not busy_remote)
 
         cli_ok = machine_open and backend and gc.STATE_DATA.swState != gc.STATE_RUN
         self.console.set_cli_enabled(cli_ok)
@@ -1981,8 +2063,9 @@ class MainWindow(QMainWindow):
             tb.show()
             self.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)
         self.append_log(
-            "Layout reset: G-code center, Console under it, Status|Jog right "
-            "(drag docks to full-width bottom or other areas as needed)."
+            "Layout reset: Path left, G-code center, Console under Path and "
+            "G-code, Status|Jog right "
+            "(drag docks to other areas as needed)."
         )
 
     def closeEvent(self, event: QCloseEvent):
