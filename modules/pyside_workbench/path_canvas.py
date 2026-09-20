@@ -764,8 +764,9 @@ class PathCanvas(QWidget):
     def _sync_drawn_prefix(self) -> None:
         """Show only segments with line_index < upto_pc (None = all).
 
-        Forward: append onto paths and the stamp. Reverse while deferred
-        (scrub/play): only move drawn_end; bake on gesture end.
+        Forward with paths in sync: append onto paths and the stamp.
+        While deferred (scrub/play), either direction only moves drawn_end
+        when paths are ahead; bake on gesture end.
         """
         end = self._target_drawn_end()
         if end == self._drawn_end and self._drawn_exact:
@@ -785,10 +786,12 @@ class PathCanvas(QWidget):
             self._drawn_end = end
             self._paths_end = end
             return
-        self._rebuild_drawn(end)
         self._drawn_end = end
-        if not self._defer_stamp:
-            self._invalidate_stamp()
+        self._drawn_exact = True
+        if self._defer_stamp:
+            return
+        self._rebuild_drawn(end)
+        self._invalidate_stamp()
 
     def _shrink_prefix(self, end: int) -> None:
         self._drawn_end = end

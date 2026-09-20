@@ -163,9 +163,23 @@ def test_reverse_scrub_defers_path_rebuild():
     assert p.canvas._paths_end == 80
     p._on_scrub(50)
     assert p.canvas._drawn_end == 50
-    assert p.canvas._paths_end == 50
+    assert p.canvas._paths_end == 80
     p._on_scrub_released()
     assert p.canvas._paths_end == 50
+
+
+def test_scrub_direction_cross_does_not_rebuild():
+    p = _panel()
+    p.set_program([f"G1 X{i}\n" for i in range(1, 81)])
+    p._on_scrub_pressed()
+    for pc in (70, 40, 60, 30, 75, 20, 55):
+        p._on_scrub(pc)
+        assert p.canvas._drawn_end == pc
+        assert p.canvas._paths_end == 80
+        assert p.canvas._drawn_exact is True
+    p._on_scrub_released()
+    assert p.canvas._drawn_end == 55
+    assert p.canvas._paths_end == 55
 
 
 def test_reverse_play_defers_until_stop():
@@ -174,6 +188,12 @@ def test_reverse_play_defers_until_stop():
     p._play_dir = -1
     p.start_play()
     assert p.canvas._defer_stamp
+    p._play_tick(1.0 / 45.0)
+    p._play_tick(1.0 / 45.0)
+    assert p._pc == 2
+    assert p.canvas._drawn_end == 2
+    assert p.canvas._paths_end == 4
+    p._play_dir = 1
     p._play_tick(1.0 / 45.0)
     assert p._pc == 3
     assert p.canvas._drawn_end == 3
