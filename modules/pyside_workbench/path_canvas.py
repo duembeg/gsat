@@ -20,16 +20,19 @@ from PySide6.QtGui import (
     QPainter,
     QPainterPath,
     QPen,
+    QPixmap,
     QPolygonF,
     QTransform,
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QSizePolicy,
+    QSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -46,6 +49,8 @@ _ZOOM_MAX = 80.0
 _ZOOM_STEP = 1.15
 # Max vertices in the live-orbit subsample (world XYZ, reprojected each move).
 _PREVIEW_MAX = 4096
+_PLAY_RATES = (0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
+_PLAY_LINES_PER_SEC = 45.0  # at 1×
 
 
 @dataclass(frozen=True)
@@ -338,6 +343,12 @@ class PathCanvas(QWidget):
         self._preview_xyz: list[tuple[float, float, float, str]] = []
         self._orbit_live = False
         self._nav_preview = False
+        self._stamp: QPixmap | None = None
+        self._stamp_key: tuple | None = None
+        self._view_segs: list[tuple[float, float, float, float, str, int]] = []
+        self._upto_pc: int | None = None
+        self._drawn_end = 0
+        self._drawn_exact = True
 
         self._orbit_timer = QTimer(self)
         self._orbit_timer.setSingleShot(True)
@@ -370,6 +381,7 @@ class PathCanvas(QWidget):
         self._zoom = 1.0
         self._pan_vx = 0.0
         self._pan_vy = 0.0
+        self._invalidate_stamp()
         self.update()
 
     def _xf(self) -> ViewTransform:
@@ -397,6 +409,64 @@ class PathCanvas(QWidget):
 
     def is_nav_preview(self) -> bool:
         return self._nav_preview
+
+    def set_stroke_preview(self, on: bool) -> None:
+        """Use the decimated stroke (pan/zoom/orbit only — not play/scrub)."""
+        self._nav_preview = bool(on)
+        if not on:
+            self.update()
+
+    def _invalidate_stamp(self) -> None:
+        self._stamp = None
+        self._stamp_key = None
+
+    def _stamp_key_now(self) -> tuple:
+        return (
+            self._cache_cam,
+            round(self._zoom, 6),
+            round(self._pan_vx, 6),
+            round(self._pan_vy, 6),
+            self.width(),
+            self.height(),
+            self._cache_n,
+        )
+
+    def _ensure_stamp(self) -> QPixmap | None:
+        """Rasterize static path (no marker/highlight) for cheap play/scrub paints."""
+        w, h = self.width(), self.height()
+        if w < 2 or h < 2 or self._cache_n <= 0:
+            self._invalidate_stamp()
+            return None
+        key = self._stamp_key_now()
+        if self._stamp is not None and self._stamp_key == key:
+            return self._stamp
+        dpr = self.devicePixelRatioF() or 1.0
+        pm = QPixmap(max(1, int(w * dpr)), max(1, int(h * dpr)))
+        pm.setDevicePixelRatio(dpr)
+        pm.fill(QColor(theme.COLOR_SURFACE))
+        painter = QPainter(pm)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, self._cache_n < 80000)
+        xf = self._xf()
+        painter.setTransform(
+            QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
+        )
+        rapid_pen = QPen(QColor("#64748B"))
+        rapid_pen.setWidthF(1.2)
+        rapid_pen.setStyle(Qt.PenStyle.DashLine)
+        rapid_pen.setCosmetic(True)
+        feed_pen = QPen(QColor(theme.COLOR_ACCENT))
+        feed_pen.setWidthF(2.0)
+        feed_pen.setCosmetic(True)
+        if not self._path_rapid.isEmpty():
+            painter.setPen(rapid_pen)
+            painter.drawPath(self._path_rapid)
+        if not self._path_feed.isEmpty():
+            painter.setPen(feed_pen)
+            painter.drawPath(self._path_feed)
+        painter.end()
+        self._stamp = pm
+        self._stamp_key = key
+        return pm
 
     def _use_preview_stroke(self) -> bool:
         return bool(
@@ -485,6 +555,7 @@ class PathCanvas(QWidget):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._place_cube()
+        self._invalidate_stamp()
 
     def set_path(
         self,
@@ -492,12 +563,17 @@ class PathCanvas(QWidget):
         position: Point,
         *,
         highlight_line: int | None = None,
+        upto_pc: int | None = None,
+        prefix_exact: bool = True,
     ) -> None:
         self._segments = segments
         self._position = position
         hi_changed = highlight_line != self._highlight_line
         self._highlight_line = highlight_line
+        self._upto_pc = upto_pc
         self._sync_cache(hi_changed=hi_changed)
+        if not self._orbit_live:
+            self._sync_drawn_prefix(exact=prefix_exact)
         self.update()
 
     def _rebuild_preview_samples(self) -> None:
@@ -533,6 +609,8 @@ class PathCanvas(QWidget):
             self._rebuild_preview_samples()
             self._refresh_marker_axes()
             self._rebuild_hi_paths()
+            self._sync_drawn_prefix(exact=True)
+            self._invalidate_stamp()
             return
         self._refresh_marker_axes()
         if hi_changed:
@@ -544,6 +622,8 @@ class PathCanvas(QWidget):
         self._last_rapid = None
         self._last_feed = None
         self._seg_ranges = {}
+        self._view_segs = []
+        self._drawn_end = 0
         self._cache_n = 0
         self._cache_cam = self._camera
         n = len(self._segments)
@@ -555,6 +635,8 @@ class PathCanvas(QWidget):
         self._refresh_marker_axes()
         self._rebuild_hi_paths()
         self._keep_orbit_pivot()
+        self._sync_drawn_prefix(exact=True)
+        self._invalidate_stamp()
         self.update()
 
     def _apply_locked_view_scale(self) -> None:
@@ -589,20 +671,92 @@ class PathCanvas(QWidget):
                 self._seg_ranges[seg.line_index] = [i, i + 1]
             else:
                 rng[1] = i + 1
-            if seg.kind == "rapid":
-                self._last_rapid = _path_add(
-                    self._path_rapid, self._last_rapid, x0, y0, x1, y1
-                )
-            else:
-                self._last_feed = _path_add(
-                    self._path_feed, self._last_feed, x0, y0, x1, y1
-                )
+            self._view_segs.append(
+                (x0, y0, x1, y1, seg.kind, int(seg.line_index))
+            )
         mx, my, _ = cam.to_view(
             self._position.x, self._position.y, self._position.z
         )
         xs.append(mx)
         ys.append(my)
         self._bounds = (min(xs), min(ys), max(xs), max(ys))
+
+    def _target_drawn_end(self) -> int:
+        n = len(self._view_segs)
+        if self._upto_pc is None:
+            return n
+        pc = self._upto_pc
+        lo, hi = 0, n
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if self._view_segs[mid][5] < pc:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo
+
+    def _add_view_seg(self, i: int) -> None:
+        x0, y0, x1, y1, kind, _li = self._view_segs[i]
+        if kind == "rapid":
+            self._last_rapid = _path_add(
+                self._path_rapid, self._last_rapid, x0, y0, x1, y1
+            )
+        else:
+            self._last_feed = _path_add(
+                self._path_feed, self._last_feed, x0, y0, x1, y1
+            )
+
+    def _rebuild_drawn(self, end: int, *, exact: bool) -> None:
+        self._path_rapid = QPainterPath()
+        self._path_feed = QPainterPath()
+        self._last_rapid = None
+        self._last_feed = None
+        if end <= 0:
+            return
+        stride = 1 if exact else max(1, end // _PREVIEW_MAX)
+        last_i = 0
+        for i in range(0, end, stride):
+            self._add_view_seg(i)
+            last_i = i
+        if last_i != end - 1:
+            self._add_view_seg(end - 1)
+
+    def _append_stamp_segs(self, i0: int, i1: int) -> None:
+        if self._stamp is None or i0 >= i1:
+            return
+        painter = QPainter(self._stamp)
+        xf = self._xf()
+        painter.setTransform(
+            QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
+        )
+        rapid_pen = QPen(QColor("#64748B"))
+        rapid_pen.setWidthF(1.2)
+        rapid_pen.setStyle(Qt.PenStyle.DashLine)
+        rapid_pen.setCosmetic(True)
+        feed_pen = QPen(QColor(theme.COLOR_ACCENT))
+        feed_pen.setWidthF(2.0)
+        feed_pen.setCosmetic(True)
+        for i in range(i0, i1):
+            x0, y0, x1, y1, kind, _li = self._view_segs[i]
+            painter.setPen(rapid_pen if kind == "rapid" else feed_pen)
+            painter.drawLine(QPointF(x0, y0), QPointF(x1, y1))
+        painter.end()
+
+    def _sync_drawn_prefix(self, *, exact: bool = True) -> None:
+        """Show only segments with line_index < upto_pc (None = all)."""
+        end = self._target_drawn_end()
+        if end == self._drawn_end and self._drawn_exact == exact:
+            return
+        if exact and self._drawn_exact and end > self._drawn_end:
+            self._append_stamp_segs(self._drawn_end, end)
+            for i in range(self._drawn_end, end):
+                self._add_view_seg(i)
+            self._drawn_end = end
+            return
+        self._rebuild_drawn(end, exact=exact)
+        self._drawn_end = end
+        self._drawn_exact = exact
+        self._invalidate_stamp()
 
     def _refresh_marker_axes(self) -> None:
         cam = self._camera
@@ -664,14 +818,7 @@ class PathCanvas(QWidget):
             QPainter.RenderHint.Antialiasing,
             n < 80000 and not self._use_preview_stroke(),
         )
-        painter.fillRect(self.rect(), QColor(theme.COLOR_SURFACE))
-
         xf = self._xf()
-        # view (x right, y up) → widget pixels
-        painter.setTransform(
-            QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
-        )
-
         rapid_pen = QPen(QColor("#64748B"))
         rapid_pen.setWidthF(1.2)
         rapid_pen.setStyle(Qt.PenStyle.DashLine)
@@ -687,15 +834,33 @@ class PathCanvas(QWidget):
         hi_feed.setWidthF(3.0)
         hi_feed.setCosmetic(True)
 
+        used_stamp = False
         if self._use_preview_stroke():
+            painter.fillRect(self.rect(), QColor(theme.COLOR_SURFACE))
+            painter.setTransform(
+                QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
+            )
             self._paint_orbit_preview(painter, rapid_pen, feed_pen)
         else:
-            if not self._path_rapid.isEmpty():
-                painter.setPen(rapid_pen)
-                painter.drawPath(self._path_rapid)
-            if not self._path_feed.isEmpty():
-                painter.setPen(feed_pen)
-                painter.drawPath(self._path_feed)
+            stamp = self._ensure_stamp()
+            if stamp is not None:
+                painter.drawPixmap(0, 0, stamp)
+                used_stamp = True
+            else:
+                painter.fillRect(self.rect(), QColor(theme.COLOR_SURFACE))
+                painter.setTransform(
+                    QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
+                )
+                if not self._path_rapid.isEmpty():
+                    painter.setPen(rapid_pen)
+                    painter.drawPath(self._path_rapid)
+                if not self._path_feed.isEmpty():
+                    painter.setPen(feed_pen)
+                    painter.drawPath(self._path_feed)
+            if used_stamp:
+                painter.setTransform(
+                    QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
+                )
             if not self._path_hi_r.isEmpty():
                 painter.setPen(hi_rapid)
                 painter.drawPath(self._path_hi_r)
@@ -774,6 +939,7 @@ class PathCanvas(QWidget):
         self._pan_vx = vx - cx - (px - w / 2.0) / scale
         self._pan_vy = vy - cy + (py - h / 2.0) / scale
         self._nav_preview = True
+        self._invalidate_stamp()
         self._nav_timer.start()
         self.update()
 
@@ -852,6 +1018,7 @@ class PathPanel(QWidget):
 
     preview_requested = Signal()
     machine_target_toggled = Signal(bool)
+    pc_seeked = Signal(int)  # preview play/scrub → MainWindow.set_pc
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -860,8 +1027,14 @@ class PathPanel(QWidget):
         self._pc = 0
         self._live = False
         self._live_i = 0
+        self._scrubbing = False
         self._full = VirtualCnc()
-        self._head = VirtualCnc()
+        self._poses: list[Point] = [Point(0.0, 0.0, 0.0)]
+        self._playing = False
+        self._play_dir = 1
+        self._play_speed = 1.0
+        self._play_accum = 0.0
+        self._updating_slider = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(6, 6, 6, 6)
@@ -901,6 +1074,47 @@ class PathPanel(QWidget):
         self.btn_fit.clicked.connect(self.canvas.fit_view)
         root.addWidget(self.canvas, 1)
 
+        transport = QHBoxLayout()
+        transport.setSpacing(6)
+        self.btn_play = QPushButton("Play")
+        self.btn_play.setObjectName("pathPlay")
+        self.btn_play.setToolTip(
+            "Preview play along the drawn path (Preview first; does not send G-code)"
+        )
+        self.btn_play.clicked.connect(self.toggle_play)
+        transport.addWidget(self.btn_play)
+        self.chk_reverse = QCheckBox("Rev")
+        self.chk_reverse.setObjectName("pathReverse")
+        self.chk_reverse.setToolTip("Play toward the start of the program")
+        self.chk_reverse.toggled.connect(self._on_reverse_toggled)
+        transport.addWidget(self.chk_reverse)
+        self.cmb_speed = QComboBox()
+        self.cmb_speed.setObjectName("pathSpeed")
+        self.cmb_speed.setToolTip("Preview play speed")
+        for rate in _PLAY_RATES:
+            self.cmb_speed.addItem(f"{rate:g}×", rate)
+        self.cmb_speed.setCurrentIndex(_PLAY_RATES.index(1.0))
+        self.cmb_speed.currentIndexChanged.connect(self._on_speed_changed)
+        transport.addWidget(self.cmb_speed)
+        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.setObjectName("pathScrub")
+        self.slider.setToolTip("Scrub program counter / path marker")
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(0)
+        self.slider.valueChanged.connect(self._on_scrub)
+        self.slider.sliderPressed.connect(self._on_scrub_pressed)
+        self.slider.sliderReleased.connect(self._on_scrub_released)
+        transport.addWidget(self.slider, 1)
+        self.lbl_pc = QLabel("PC 0/0")
+        self.lbl_pc.setObjectName("pathPcLabel")
+        self.lbl_pc.setFont(theme.mono_font(10))
+        transport.addWidget(self.lbl_pc)
+        root.addLayout(transport)
+
+        self._play_timer = QTimer(self)
+        self._play_timer.setInterval(33)
+        self._play_timer.timeout.connect(self._on_play_timer)
+
         self.status = QLabel()
         self.status.setObjectName("pathStatus")
         self.status.setFont(theme.mono_font(10))
@@ -913,7 +1127,7 @@ class PathPanel(QWidget):
 
     @property
     def marker_position(self) -> Point:
-        return self._full.position if self._live else self._head.position
+        return self._full.position if self._live else self._pose_at_pc()
 
     @property
     def segments(self) -> tuple[Segment, ...]:
@@ -929,16 +1143,16 @@ class PathPanel(QWidget):
         """Clear the plot and append from the machine send stream."""
         self._live = True
         self._live_i = 0
-        self._lines = []
-        self._pc = 0
         self._full.reset()
-        self._head.reset()
+        self.stop_play()
         self.btn_preview.setEnabled(False)
+        self._set_transport_enabled(False)
         self._refresh()
 
     def end_live(self) -> None:
         self._live = False
         self.btn_preview.setEnabled(True)
+        self._set_transport_enabled(bool(self._lines))
 
     def apply_live_line(self, line: str) -> Segment | None:
         """Plot one commanded line (EV_DATA_OUT while Virtual is open)."""
@@ -958,7 +1172,11 @@ class PathPanel(QWidget):
         self._lines = list(lines)
         self._full.reset()
         self._full.apply_lines(self._lines)
-        self._rebuild_head()
+        self._build_pc_poses()
+        self.stop_play()
+        n = len(self._lines)
+        self._pc = n
+        self._set_transport_enabled(bool(self._lines))
         self._refresh()
 
     def set_pc(self, pc: int) -> None:
@@ -966,24 +1184,160 @@ class PathPanel(QWidget):
             pc_i = int(pc)
         except (TypeError, ValueError):
             pc_i = 0
-        self._pc = max(0, pc_i)
+        n = len(self._lines)
+        if n == 0:
+            self._pc = 0
+        else:
+            self._pc = max(0, min(pc_i, n))
+        self._sync_transport_ui()
         if self._live:
             return
-        self._rebuild_head()
         self._refresh()
 
     @Slot()
     def clear(self) -> None:
+        self.stop_play()
         self._lines = []
         self._pc = 0
         self._full.reset()
-        self._head.reset()
+        self._poses = [Point(0.0, 0.0, 0.0)]
+        self._set_transport_enabled(False)
         self._refresh()
 
-    def _rebuild_head(self) -> None:
-        self._head.reset()
-        if self._pc > 0 and self._lines:
-            self._head.apply_lines(self._lines[: self._pc])
+    def _build_pc_poses(self) -> None:
+        """Position after lines[:i] for i in 0..n — O(segments) once per preview."""
+        origin = Point(0.0, 0.0, 0.0)
+        n = len(self._lines)
+        segs = self._full.segment_list()
+        if segs:
+            origin = segs[0].start
+        poses = [origin] * (n + 1)
+        last = origin
+        si = 0
+        for i in range(n):
+            while si < len(segs) and segs[si].line_index == i:
+                last = segs[si].end
+                si += 1
+            poses[i + 1] = last
+        self._poses = poses
+
+    def _pose_at_pc(self) -> Point:
+        poses = self._poses
+        if not poses:
+            return Point(0.0, 0.0, 0.0)
+        i = max(0, min(self._pc, len(poses) - 1))
+        return poses[i]
+
+    def _set_transport_enabled(self, on: bool) -> None:
+        on = bool(on) and not self._live
+        self.btn_play.setEnabled(on)
+        self.chk_reverse.setEnabled(on)
+        self.cmb_speed.setEnabled(on)
+        self.slider.setEnabled(on)
+
+    def _sync_transport_ui(self) -> None:
+        n = len(self._lines)
+        self._updating_slider = True
+        self.slider.setMaximum(n)  # n = after last line
+        self.slider.setValue(self._pc if n else 0)
+        self._updating_slider = False
+        self.lbl_pc.setText(f"PC {self._pc}/{n}")
+        self.btn_play.setText("Pause" if self._playing else "Play")
+
+    def _seek(self, pc: int) -> None:
+        n = len(self._lines)
+        if n == 0:
+            pc = 0
+        else:
+            pc = max(0, min(int(pc), n))
+        self._pc = pc
+        self._sync_transport_ui()
+        self._refresh()
+        self.pc_seeked.emit(pc)
+
+    @Slot()
+    def toggle_play(self) -> None:
+        if self._playing:
+            self.stop_play()
+        else:
+            self.start_play()
+
+    def start_play(self) -> None:
+        if self._live or not self._lines:
+            return
+        n = len(self._lines)
+        if self._play_dir > 0 and self._pc >= n:
+            self._seek(0)
+        elif self._play_dir < 0 and self._pc <= 0:
+            self._seek(n)
+        self._playing = True
+        self._play_accum = 0.0
+        self._play_timer.start()
+        self._sync_transport_ui()
+
+    def stop_play(self) -> None:
+        was = self._playing
+        self._playing = False
+        self._play_timer.stop()
+        self._play_accum = 0.0
+        if was:
+            self._sync_transport_ui()
+
+    @Slot()
+    def _on_play_timer(self) -> None:
+        self._play_tick(self._play_timer.interval() / 1000.0)
+
+    def _play_tick(self, dt: float) -> None:
+        if not self._playing or self._live:
+            return
+        n = len(self._lines)
+        if n <= 0:
+            self.stop_play()
+            return
+        self._play_accum += self._play_speed * _PLAY_LINES_PER_SEC * dt
+        step = int(self._play_accum)
+        if step <= 0:
+            return
+        self._play_accum -= step
+        pc = self._pc + self._play_dir * step
+        if pc >= n:
+            self._seek(n)
+            self.stop_play()
+            return
+        if pc < 0:
+            self._seek(0)
+            self.stop_play()
+            return
+        self._seek(pc)
+
+    @Slot()
+    def _on_speed_changed(self) -> None:
+        data = self.cmb_speed.currentData()
+        try:
+            self._play_speed = float(data)
+        except (TypeError, ValueError):
+            self._play_speed = 1.0
+
+    @Slot(bool)
+    def _on_reverse_toggled(self, checked: bool) -> None:
+        self._play_dir = -1 if checked else 1
+
+    @Slot(int)
+    def _on_scrub(self, value: int) -> None:
+        if self._updating_slider or self._live:
+            return
+        self.stop_play()
+        self._seek(value)
+
+    @Slot()
+    def _on_scrub_pressed(self) -> None:
+        self.stop_play()
+        self._scrubbing = True
+
+    @Slot()
+    def _on_scrub_released(self) -> None:
+        self._scrubbing = False
+        self._refresh()
 
     def _refresh(self) -> None:
         if self._live:
@@ -992,12 +1346,14 @@ class PathPanel(QWidget):
                 self._full.segments[-1].line_index if self._full.segments else None
             )
         else:
-            pos = self._head.position
+            pos = self._pose_at_pc()
             hi = self._pc - 1 if self._pc > 0 else None
         self.canvas.set_path(
             self._full.segment_list(),
             pos,
             highlight_line=hi,
+            upto_pc=None if self._live else self._pc,
+            prefix_exact=not self._scrubbing,
         )
         n = self.segment_count()
         msg = (
@@ -1011,3 +1367,5 @@ class PathPanel(QWidget):
             codes = ", ".join(sorted(set(skipped)))
             msg += f"  ·  skipped {codes}"
         self.status.setText(msg)
+        self._sync_transport_ui()
+        self._set_transport_enabled(bool(self._lines) and not self._live)

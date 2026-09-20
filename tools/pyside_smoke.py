@@ -188,6 +188,19 @@ def test_offline() -> list[str]:
             _fail("Preview button should rebuild path from the editor")
         notes.append("path canvas preview/PC: ok")
 
+        if not hasattr(w.path_panel, "btn_play") or not hasattr(w.path_panel, "slider"):
+            _fail("path transport Play/scrub missing")
+        w.set_pc(0)
+        w.path_panel._playing = True
+        w.path_panel._play_speed = 8.0
+        w.path_panel._play_tick(0.1)
+        app.processEvents()
+        if gc.STATE_DATA.programCounter < 1:
+            _fail("preview play tick should advance PC via set_pc")
+        w.path_panel.stop_play()
+        w.on_reset_pc()
+        notes.append("path transport play/scrub: ok")
+
         # --- Virtual CNC as machine target (PySide): live append, no serial ---
         if not hasattr(w, "act_virtual_cnc") or w.act_virtual_cnc is None:
             _fail("act_virtual_cnc missing")

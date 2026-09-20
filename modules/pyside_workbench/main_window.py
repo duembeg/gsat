@@ -375,6 +375,7 @@ class MainWindow(QMainWindow):
         self.path_panel = PathPanel()
         self.path_panel.preview_requested.connect(self._refresh_path_preview)
         self.path_panel.machine_target_toggled.connect(self.on_virtual_cnc_toggled)
+        self.path_panel.pc_seeked.connect(self.set_pc)
         self.dock_path = self._make_dock("Path", self.path_panel, "dockPath")
 
         max_hist = 100
@@ -845,14 +846,18 @@ class MainWindow(QMainWindow):
             pc = int(pc)
         except (TypeError, ValueError):
             pc = 0
-        if self.gcode.line_count() == 0:
-            pc = 0
+        n = self.gcode.line_count()
+        if n == 0:
+            gcode_pc = 0
+            path_pc = 0
         else:
-            pc = max(0, min(pc, self.gcode.line_count() - 1))
-        gc.STATE_DATA.programCounter = pc
+            pc = max(0, pc)
+            gcode_pc = min(pc, n - 1)
+            path_pc = min(pc, n)
+        gc.STATE_DATA.programCounter = gcode_pc
         # scroll=None → honor /code/AutoScroll (Always / On Goto PC / …)
-        self.gcode.set_pc(pc, scroll=None)
-        self.path_panel.set_pc(pc)
+        self.gcode.set_pc(gcode_pc, scroll=None)
+        self.path_panel.set_pc(path_pc)
 
     @Slot()
     def on_set_pc(self):
@@ -1529,12 +1534,15 @@ class MainWindow(QMainWindow):
             self.logger.warning("DRO settings apply failed: %s", exc)
         self._reload_runtime_dialog_setting()
 
-    def _refresh_path_preview(self) -> None:
+    def _refresh_path_preview(self, *, at_pc: bool = False) -> None:
         """Rebuild the path plot from the editor (open file / Preview button)."""
         if self.path_panel.is_live():
             return
         self.path_panel.set_program(self.gcode.lines())
-        self.path_panel.set_pc(gc.STATE_DATA.programCounter)
+        # Preview/open: scrub at 100% (full reveal). After a virtual run,
+        # pin scrub to the program counter so the bar matches the plot.
+        if at_pc:
+            self.path_panel.set_pc(gc.STATE_DATA.programCounter)
 
     def _sync_virtual_cnc_controls(self, enabled: bool) -> None:
         enabled = bool(enabled)
@@ -1590,7 +1598,7 @@ class MainWindow(QMainWindow):
         """
         if self.path_panel.is_live():
             self.path_panel.end_live()
-            self._refresh_path_preview()
+            self._refresh_path_preview(at_pc=True)
         self._cancel_run_end_wait()
         self._machine_open = False
         gc.STATE_DATA.serialPortIsOpen = False
@@ -1698,7 +1706,7 @@ class MainWindow(QMainWindow):
         elif eid == gc.EV_SER_PORT_CLOSE:
             if self.path_panel.is_live():
                 self.path_panel.end_live()
-                self._refresh_path_preview()
+                self._refresh_path_preview(at_pc=True)
             self.append_log("Machine serial/port closed.")
             self._reset_machine_session_flags(drop_remote_config=False)
             self.dro_panel.clear()
