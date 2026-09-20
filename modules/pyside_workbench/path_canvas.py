@@ -711,9 +711,10 @@ class PathCanvas(QWidget):
         self._paint_hud_triad(painter)
 
     def _paint_hud_triad(self, painter: QPainter) -> None:
-        """Lettered RGB axes, screen-fixed at bottom-left; follow the path camera."""
+        """Lettered RGB axes, screen-fixed at bottom-right; follow the path camera."""
         margin, axis_px = 16.0, 28.0
-        ox, oy = margin, float(self.height()) - margin
+        ox = float(self.width()) - margin - axis_px
+        oy = float(self.height()) - margin - axis_px
         cam = self._camera
         oxv, oyv, _ = cam.to_view(0.0, 0.0, 0.0)
         font = QFont(self.font())
