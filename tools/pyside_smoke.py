@@ -166,6 +166,99 @@ def test_offline() -> list[str]:
 
         notes.append("gcode/pc/bp: ok")
 
+        # --- path canvas: preview of open file; marker = position after lines[:pc] ---
+        if not hasattr(w, "path_panel") or w.path_panel is None:
+            _fail("path_panel missing")
+        if w.path_panel.segment_count() < 1:
+            _fail("open_gcode_path should preview the G1 X1 segment")
+        w.set_pc(4)
+        pos = w.path_panel.marker_position
+        if abs(pos.x - 1.0) > 1e-9 or abs(pos.y) > 1e-9:
+            _fail(f"PC 4 marker expected X1 Y0, got {pos}")
+        w.on_reset_pc()
+        pos0 = w.path_panel.marker_position
+        if abs(pos0.x) > 1e-9 or abs(pos0.y) > 1e-9:
+            _fail(f"reset PC marker should be origin, got {pos0}")
+        w.path_panel.clear()
+        if w.path_panel.segment_count() < 1:
+            _fail("Clear should keep the previewed program")
+        if w.path_panel._pc != 0:
+            _fail("Clear should seek to 0%")
+        if w.path_panel.canvas._drawn_end != 0:
+            _fail("Clear at 0% should hide program ink")
+        if not w.path_panel.btn_play.isEnabled():
+            _fail("Clear should not disable Play")
+        w.path_panel.btn_preview.click()
+        app.processEvents()
+        if w.path_panel.segment_count() < 1:
+            _fail("Preview button should rebuild path from the editor")
+        notes.append("path canvas preview/PC: ok")
+
+        if not hasattr(w.path_panel, "btn_play") or not hasattr(w.path_panel, "slider"):
+            _fail("path transport Play/scrub missing")
+        w.set_pc(0)
+        w.path_panel._playing = True
+        w.path_panel._play_speed = 8.0
+        w.path_panel._play_tick(0.1)
+        app.processEvents()
+        if gc.STATE_DATA.programCounter < 1:
+            _fail("preview play tick should advance PC via set_pc")
+        w.path_panel.stop_play()
+        w.on_reset_pc()
+        notes.append("path transport play/scrub: ok")
+
+        # --- Virtual CNC as machine target (PySide): live append, no serial ---
+        if not hasattr(w, "act_virtual_cnc") or w.act_virtual_cnc is None:
+            _fail("act_virtual_cnc missing")
+        if not hasattr(w.path_panel, "chk_machine"):
+            _fail("path Machine target checkbox missing")
+        w.path_panel.begin_live()
+        if not w.path_panel.is_live():
+            _fail("begin_live should enter live mode")
+        w.path_panel.apply_live_line("G0 X4 Y0\n")
+        w.path_panel.apply_live_line("G1 X4 Y3\n")
+        w.path_panel.apply_live_line("G91 G01 Y1.000 F1000.0\n", jog=True)
+        if w.path_panel.segment_count() != 3:
+            _fail(
+                f"live path expected 3 segments, got {w.path_panel.segment_count()}"
+            )
+        kinds = [s.kind for s in w.path_panel.segments]
+        if kinds != ["rapid", "feed", "jog"]:
+            _fail(f"live kinds expected rapid/feed/jog, got {kinds}")
+        live_pos = w.path_panel.marker_position
+        if abs(live_pos.x - 4.0) > 1e-9 or abs(live_pos.y - 4.0) > 1e-9:
+            _fail(f"live marker expected (4,4), got {live_pos}")
+        if "live" not in w.path_panel.status.text():
+            _fail("live status should say live")
+        w.path_panel.end_live()
+        w.path_panel.btn_preview.click()
+        app.processEvents()
+        notes.append("virtual CNC live path: ok")
+
+        # --- view cube: default Top, snap Front/Right ---
+        if not hasattr(w.path_panel.canvas, "view_cube"):
+            _fail("path view cube missing")
+        cam = w.path_panel.canvas.camera
+        if abs(cam.pitch_deg - 90.0) > 1e-6:
+            _fail(f"default camera should be Top, pitch={cam.pitch_deg}")
+        w.path_panel.canvas.snap_view("front")
+        if abs(w.path_panel.canvas.camera.pitch_deg) > 1e-6:
+            _fail("snap Front should set pitch 0")
+        w.path_panel.canvas.snap_view("right")
+        if abs(w.path_panel.canvas.camera.yaw_deg + 90.0) > 1e-6:
+            _fail("snap Right should set yaw -90")
+        w.path_panel.canvas.snap_view("top")
+        notes.append("path view cube: ok")
+
+        if not hasattr(w.path_panel, "btn_fit"):
+            _fail("path Fit button missing")
+        w.path_panel.canvas._zoom = 3.0
+        w.path_panel.btn_fit.click()
+        app.processEvents()
+        if w.path_panel.canvas._zoom != 1.0:
+            _fail("Fit should reset zoom to 1")
+        notes.append("path pan/zoom fit: ok")
+
         # --- fake backend program commands ---
         fake = FakeBackend()
         w.bridge.machif_progexec = fake
@@ -412,6 +505,8 @@ def test_offline() -> list[str]:
             _fail("dock_console missing")
         if not hasattr(w, "dock_dro") or not hasattr(w, "dock_jog"):
             _fail("status/jog docks missing")
+        if not hasattr(w, "dock_path") or w.dock_path is None:
+            _fail("dock_path missing")
         if w.centralWidget() is not w.gcode:
             _fail("gcode should be central widget")
         # Factory default (ignore any saved user layout)
@@ -425,6 +520,8 @@ def test_offline() -> list[str]:
             _fail("default: dro should be right dock")
         if w.dockWidgetArea(w.dock_jog) != _Qt.DockWidgetArea.RightDockWidgetArea:
             _fail("default: jog should be right dock")
+        if w.dockWidgetArea(w.dock_path) != _Qt.DockWidgetArea.LeftDockWidgetArea:
+            _fail("default: path should be left of G-code")
         notes.append("toolbars + docks: ok")
 
         # --- existing gsat PNG icons on key actions (not theme packs) ---
