@@ -51,6 +51,8 @@ _ZOOM_STEP = 1.15
 _PREVIEW_MAX = 4096
 _PLAY_RATES = (0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
 _PLAY_LINES_PER_SEC = 45.0  # at 1×
+_JOG_COLOR = "#D97706"  # amber; not G0 slate, not G1 accent
+_JOG_HI = "#B45309"
 
 
 @dataclass(frozen=True)
@@ -301,6 +303,31 @@ def _path_add(
     return (x1, y1)
 
 
+def _stroke_pens() -> tuple[QPen, QPen, QPen]:
+    """rapid (dashed slate), feed/arc (accent), jog (amber)."""
+    rapid_pen = QPen(QColor("#64748B"))
+    rapid_pen.setWidthF(1.2)
+    rapid_pen.setStyle(Qt.PenStyle.DashLine)
+    rapid_pen.setCosmetic(True)
+    feed_pen = QPen(QColor(theme.COLOR_ACCENT))
+    feed_pen.setWidthF(2.0)
+    feed_pen.setCosmetic(True)
+    jog_pen = QPen(QColor(_JOG_COLOR))
+    jog_pen.setWidthF(2.0)
+    jog_pen.setCosmetic(True)
+    return rapid_pen, feed_pen, jog_pen
+
+
+def _pen_for_kind(
+    kind: str, rapid_pen: QPen, feed_pen: QPen, jog_pen: QPen
+) -> QPen:
+    if kind == "rapid":
+        return rapid_pen
+    if kind == "jog":
+        return jog_pen
+    return feed_pen
+
+
 class PathCanvas(QWidget):
     """Paints G0/G1/G2/G3 segments with an orthographic camera and a view cube.
 
@@ -331,10 +358,13 @@ class PathCanvas(QWidget):
 
         self._path_rapid = QPainterPath()
         self._path_feed = QPainterPath()
+        self._path_jog = QPainterPath()
         self._path_hi_r = QPainterPath()
         self._path_hi_f = QPainterPath()
+        self._path_hi_j = QPainterPath()
         self._last_rapid: tuple[float, float] | None = None
         self._last_feed: tuple[float, float] | None = None
+        self._last_jog: tuple[float, float] | None = None
         self._bounds = (0.0, 0.0, 0.0, 0.0)
         self._marker_view = (0.0, 0.0)
         self._seg_ranges: dict[int, list[int]] = {}
@@ -472,19 +502,16 @@ class PathCanvas(QWidget):
         painter.setTransform(
             QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
         )
-        rapid_pen = QPen(QColor("#64748B"))
-        rapid_pen.setWidthF(1.2)
-        rapid_pen.setStyle(Qt.PenStyle.DashLine)
-        rapid_pen.setCosmetic(True)
-        feed_pen = QPen(QColor(theme.COLOR_ACCENT))
-        feed_pen.setWidthF(2.0)
-        feed_pen.setCosmetic(True)
+        rapid_pen, feed_pen, jog_pen = _stroke_pens()
         if not self._path_rapid.isEmpty():
             painter.setPen(rapid_pen)
             painter.drawPath(self._path_rapid)
         if not self._path_feed.isEmpty():
             painter.setPen(feed_pen)
             painter.drawPath(self._path_feed)
+        if not self._path_jog.isEmpty():
+            painter.setPen(jog_pen)
+            painter.drawPath(self._path_jog)
         painter.end()
         self._stamp = pm
         self._stamp_key = key
@@ -642,8 +669,10 @@ class PathCanvas(QWidget):
     def _rebuild_view_cache(self) -> None:
         self._path_rapid = QPainterPath()
         self._path_feed = QPainterPath()
+        self._path_jog = QPainterPath()
         self._last_rapid = None
         self._last_feed = None
+        self._last_jog = None
         self._seg_ranges = {}
         self._view_segs = []
         self._drawn_end = 0
@@ -725,6 +754,10 @@ class PathCanvas(QWidget):
             self._last_rapid = _path_add(
                 self._path_rapid, self._last_rapid, x0, y0, x1, y1
             )
+        elif kind == "jog":
+            self._last_jog = _path_add(
+                self._path_jog, self._last_jog, x0, y0, x1, y1
+            )
         else:
             self._last_feed = _path_add(
                 self._path_feed, self._last_feed, x0, y0, x1, y1
@@ -734,8 +767,10 @@ class PathCanvas(QWidget):
         """Exact prefix only — never a coarse stride (orbit subsample is separate)."""
         self._path_rapid = QPainterPath()
         self._path_feed = QPainterPath()
+        self._path_jog = QPainterPath()
         self._last_rapid = None
         self._last_feed = None
+        self._last_jog = None
         for i in range(end):
             self._add_view_seg(i)
         self._paths_end = end
@@ -748,16 +783,10 @@ class PathCanvas(QWidget):
         painter.setTransform(
             QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
         )
-        rapid_pen = QPen(QColor("#64748B"))
-        rapid_pen.setWidthF(1.2)
-        rapid_pen.setStyle(Qt.PenStyle.DashLine)
-        rapid_pen.setCosmetic(True)
-        feed_pen = QPen(QColor(theme.COLOR_ACCENT))
-        feed_pen.setWidthF(2.0)
-        feed_pen.setCosmetic(True)
+        rapid_pen, feed_pen, jog_pen = _stroke_pens()
         for i in range(i0, i1):
             x0, y0, x1, y1, kind, _li = self._view_segs[i]
-            painter.setPen(rapid_pen if kind == "rapid" else feed_pen)
+            painter.setPen(_pen_for_kind(kind, rapid_pen, feed_pen, jog_pen))
             painter.drawLine(QPointF(x0, y0), QPointF(x1, y1))
         painter.end()
 
@@ -821,6 +850,7 @@ class PathCanvas(QWidget):
     def _rebuild_hi_paths(self) -> None:
         self._path_hi_r = QPainterPath()
         self._path_hi_f = QPainterPath()
+        self._path_hi_j = QPainterPath()
         hi = self._highlight_line
         if hi is None or hi < 0:
             return
@@ -828,18 +858,24 @@ class PathCanvas(QWidget):
         if not rng:
             return
         cam = self._camera
-        last_r = last_f = None
+        last_r = last_f = last_j = None
         for i in range(rng[0], rng[1]):
             seg = self._segments[i]
             x0, y0, _ = cam.to_view(seg.start.x, seg.start.y, seg.start.z)
             x1, y1, _ = cam.to_view(seg.end.x, seg.end.y, seg.end.z)
             if seg.kind == "rapid":
                 last_r = _path_add(self._path_hi_r, last_r, x0, y0, x1, y1)
+            elif seg.kind == "jog":
+                last_j = _path_add(self._path_hi_j, last_j, x0, y0, x1, y1)
             else:
                 last_f = _path_add(self._path_hi_f, last_f, x0, y0, x1, y1)
 
     def _paint_drawn_prefix(
-        self, painter: QPainter, rapid_pen: QPen, feed_pen: QPen
+        self,
+        painter: QPainter,
+        rapid_pen: QPen,
+        feed_pen: QPen,
+        jog_pen: QPen,
     ) -> None:
         """Stroke the visible prefix. Prefer cached paths; else view_segs[:end]."""
         if self._paths_end == self._drawn_end:
@@ -849,34 +885,56 @@ class PathCanvas(QWidget):
             if not self._path_feed.isEmpty():
                 painter.setPen(feed_pen)
                 painter.drawPath(self._path_feed)
+            if not self._path_jog.isEmpty():
+                painter.setPen(jog_pen)
+                painter.drawPath(self._path_jog)
             return
         last_kind: str | None = None
         end = self._drawn_end
         for i in range(end):
             x0, y0, x1, y1, kind, _li = self._view_segs[i]
             if kind != last_kind:
-                painter.setPen(rapid_pen if kind == "rapid" else feed_pen)
+                painter.setPen(_pen_for_kind(kind, rapid_pen, feed_pen, jog_pen))
                 last_kind = kind
             painter.drawLine(QPointF(x0, y0), QPointF(x1, y1))
 
     def _paint_orbit_preview(
-        self, painter: QPainter, rapid_pen: QPen, feed_pen: QPen
+        self,
+        painter: QPainter,
+        rapid_pen: QPen,
+        feed_pen: QPen,
+        jog_pen: QPen,
     ) -> None:
         """Reproject the world subsample with the live camera (O(preview))."""
         cam = self._camera
         rapid = QPainterPath()
         feed = QPainterPath()
+        jog = QPainterPath()
         last_r: tuple[float, float] | None = None
         last_f: tuple[float, float] | None = None
+        last_j: tuple[float, float] | None = None
         prev: tuple[float, float, str] | None = None
         for x, y, z, kind in self._preview_xyz:
             vx, vy, _ = cam.to_view(x, y, z)
             if prev is not None:
                 px, py, pk = prev
-                if kind == "rapid" and pk == "rapid":
-                    last_r = _path_add(rapid, last_r, px, py, vx, vy)
+                if kind == "rapid":
+                    last_r = _path_add(
+                        rapid, last_r if pk == "rapid" else None, px, py, vx, vy
+                    )
+                elif kind == "jog":
+                    last_j = _path_add(
+                        jog, last_j if pk == "jog" else None, px, py, vx, vy
+                    )
                 else:
-                    last_f = _path_add(feed, last_f, px, py, vx, vy)
+                    last_f = _path_add(
+                        feed,
+                        last_f if pk not in ("rapid", "jog") else None,
+                        px,
+                        py,
+                        vx,
+                        vy,
+                    )
             prev = (vx, vy, kind)
         if not rapid.isEmpty():
             painter.setPen(rapid_pen)
@@ -884,6 +942,9 @@ class PathCanvas(QWidget):
         if not feed.isEmpty():
             painter.setPen(feed_pen)
             painter.drawPath(feed)
+        if not jog.isEmpty():
+            painter.setPen(jog_pen)
+            painter.drawPath(jog)
 
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
@@ -896,13 +957,7 @@ class PathCanvas(QWidget):
             and not cheap_prefix,
         )
         xf = self._xf()
-        rapid_pen = QPen(QColor("#64748B"))
-        rapid_pen.setWidthF(1.2)
-        rapid_pen.setStyle(Qt.PenStyle.DashLine)
-        rapid_pen.setCosmetic(True)
-        feed_pen = QPen(QColor(theme.COLOR_ACCENT))
-        feed_pen.setWidthF(2.0)
-        feed_pen.setCosmetic(True)
+        rapid_pen, feed_pen, jog_pen = _stroke_pens()
         hi_rapid = QPen(QColor("#475569"))
         hi_rapid.setWidthF(2.4)
         hi_rapid.setStyle(Qt.PenStyle.DashLine)
@@ -910,6 +965,9 @@ class PathCanvas(QWidget):
         hi_feed = QPen(QColor(theme.COLOR_ACCENT_HOVER))
         hi_feed.setWidthF(3.0)
         hi_feed.setCosmetic(True)
+        hi_jog = QPen(QColor(_JOG_HI))
+        hi_jog.setWidthF(3.0)
+        hi_jog.setCosmetic(True)
 
         used_stamp = False
         if self._use_preview_stroke():
@@ -917,7 +975,7 @@ class PathCanvas(QWidget):
             painter.setTransform(
                 QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
             )
-            self._paint_orbit_preview(painter, rapid_pen, feed_pen)
+            self._paint_orbit_preview(painter, rapid_pen, feed_pen, jog_pen)
         else:
             stamp = self._ensure_stamp()
             if stamp is not None:
@@ -928,7 +986,7 @@ class PathCanvas(QWidget):
                 painter.setTransform(
                     QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
                 )
-                self._paint_drawn_prefix(painter, rapid_pen, feed_pen)
+                self._paint_drawn_prefix(painter, rapid_pen, feed_pen, jog_pen)
             if used_stamp:
                 painter.setTransform(
                     QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
@@ -939,6 +997,9 @@ class PathCanvas(QWidget):
             if not self._path_hi_f.isEmpty():
                 painter.setPen(hi_feed)
                 painter.drawPath(self._path_hi_f)
+            if not self._path_hi_j.isEmpty():
+                painter.setPen(hi_jog)
+                painter.drawPath(self._path_hi_j)
 
         painter.resetTransform()
         mx, my = xf.to_px(*self._marker_view)
@@ -1230,9 +1291,12 @@ class PathPanel(QWidget):
         if not self._live:
             return None
         payload = line.strip()
-        if payload.startswith("$J="):
+        is_jog = payload.startswith("$J=")
+        if is_jog:
             payload = payload[3:]
-        seg = self._full.apply_line(payload, line_index=self._live_i)
+        seg = self._full.apply_line(
+            payload, line_index=self._live_i, jog=is_jog
+        )
         self._live_i += 1
         self._refresh()
         return seg

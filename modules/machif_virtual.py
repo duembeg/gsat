@@ -200,10 +200,11 @@ class MachIf_Virtual(mi.MachIf_Base):
             self._queue_ok()
             return
         payload = raw
-        if payload.startswith("$J="):
+        is_jog = payload.startswith("$J=")
+        if is_jog:
             payload = payload[3:]
         self._stat = "Idle"
-        self.vc.apply_line(payload)
+        self.vc.apply_line(payload, jog=is_jog)
         self._queue_ok()
 
     def write(self, txData, raw_write=False):

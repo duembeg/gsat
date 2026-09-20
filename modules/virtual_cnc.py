@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
-MotionKind = Literal["rapid", "feed", "arc"]
+MotionKind = Literal["rapid", "feed", "arc", "jog"]
 Plane = Literal["xy", "xz", "yz"]
 
 _COMMENTS = (re.compile(r"\(.*\)"), re.compile(r";.*"))
@@ -213,12 +213,19 @@ class VirtualCnc:
         return Point(nx, ny, nz)
 
     def _append_linear(
-        self, start: Point, end: Point, line_index: int
+        self,
+        start: Point,
+        end: Point,
+        line_index: int,
+        *,
+        kind: MotionKind | None = None,
     ) -> Segment | None:
         self._position = end
         if end == start:
             return None
-        seg = Segment(start, end, self._motion, line_index)
+        seg = Segment(
+            start, end, kind if kind is not None else self._motion, line_index
+        )
         self._segments.append(seg)
         return seg
 
@@ -265,8 +272,13 @@ class VirtualCnc:
         self._position = end
         return last
 
-    def apply_line(self, line: str, *, line_index: int = -1) -> Segment | None:
-        """Parse one G-code block. Returns last new segment if XYZ moved."""
+    def apply_line(
+        self, line: str, *, line_index: int = -1, jog: bool = False
+    ) -> Segment | None:
+        """Parse one G-code block. Returns last new segment if XYZ moved.
+
+        jog=True: emit kind "jog" (live $J=). Does not change modal G0/G1.
+        """
         payload = _strip_comments(line).strip()
         if not payload:
             return None
@@ -321,6 +333,12 @@ class VirtualCnc:
             self._absolute = new_absolute
         if new_plane is not None:
             self._plane = new_plane
+        if jog:
+            if not axes:
+                return None
+            start = self._position
+            end = self._target(axes)
+            return self._append_linear(start, end, line_index, kind="jog")
         if new_motion is not None:
             self._motion = new_motion
             if new_arc_cw is not None:

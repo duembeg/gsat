@@ -487,3 +487,24 @@ def test_live_appends_and_ignores_file_preview():
     assert p.marker_position == Point(10, 5, 0)
     p.end_live()
     assert not p.is_live()
+
+
+def test_live_jog_is_not_program_g0_or_g1():
+    p = _panel()
+    p.begin_live()
+    p.apply_live_line("G0 X10\n")
+    p.apply_live_line("$J=G91 X1 F1000\n")
+    p.apply_live_line("G1 Y5\n")
+    assert [s.kind for s in p.segments] == ["rapid", "jog", "feed"]
+    assert not p.canvas._path_jog.isEmpty()
+    p.end_live()
+
+
+def test_preview_program_has_no_jog_kind():
+    p = _panel()
+    p.set_program(["G0 X10\n", "G1 Y10\n", "G3 X0 Y20 I-10 J0\n"])
+    kinds = {s.kind for s in p.segments}
+    assert "jog" not in kinds
+    assert "rapid" in kinds
+    assert "feed" in kinds
+    assert p.canvas._path_jog.isEmpty()

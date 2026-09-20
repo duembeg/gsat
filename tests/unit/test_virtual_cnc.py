@@ -214,6 +214,32 @@ def test_g20_does_not_rescale():
     assert vc.position.x == 1.0
 
 
+def test_jog_kind_does_not_change_modal_motion():
+    vc = VirtualCnc()
+    vc.apply_line("G0 X1")
+    assert vc.motion_kind == "rapid"
+    seg = vc.apply_line("G91 X1", jog=True)
+    assert seg is not None
+    assert seg.kind == "jog"
+    assert vc.motion_kind == "rapid"
+    assert vc.position == Point(2, 0, 0)
+    vc.apply_line("G90")
+    feed = vc.apply_line("G1 X5 F100")
+    assert feed is not None
+    assert feed.kind == "feed"
+    assert vc.motion_kind == "feed"
+
+
+def test_jog_g0_payload_stays_jog_not_rapid():
+    vc = VirtualCnc()
+    vc.apply_line("G1 X0")
+    assert vc.motion_kind == "feed"
+    seg = vc.apply_line("G90 G0 X4", jog=True)
+    assert seg is not None
+    assert seg.kind == "jog"
+    assert vc.motion_kind == "feed"
+
+
 def test_z_only_is_segment():
     vc = VirtualCnc()
     seg = vc.apply_line("G0 Z5")

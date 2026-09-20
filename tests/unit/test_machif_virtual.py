@@ -77,6 +77,7 @@ def test_jog_prefix_stripped():
     m.write("$J=G91 X1 F1000\n")
     _drain(m)
     assert m.vc.position.x == 1.0
+    assert m.vc.segments[-1].kind == "jog"
 
 
 def test_close_queues_port_close_and_exit():
