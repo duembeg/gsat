@@ -44,6 +44,8 @@ _MARKER_R = 5.0
 _ZOOM_MIN = 0.05
 _ZOOM_MAX = 80.0
 _ZOOM_STEP = 1.15
+# Max vertices in the live-orbit subsample (world XYZ, reprojected each move).
+_PREVIEW_MAX = 4096
 
 
 @dataclass(frozen=True)
@@ -339,8 +341,9 @@ def _path_add(
 class PathCanvas(QWidget):
     """Paints G0/G1/G2/G3 segments with an orthographic camera and a view cube.
 
-    Geometry is projected once into a view-space QPainterPath. Resize only
-    changes the widget transform. Camera orbit rebuilds on a short debounce.
+    Geometry is projected once into a view-space QPainterPath. Resize/pan/zoom
+    only change the widget transform. During orbit drag a decimated world-space
+    subsample is reprojected each move; full cache rebuilds on release.
     """
 
     def __init__(self, parent=None):
@@ -375,11 +378,19 @@ class PathCanvas(QWidget):
         self._seg_ranges: dict[int, list[int]] = {}
         self._cache_n = 0
         self._cache_cam: Camera | None = None
+        self._preview_xyz: list[tuple[float, float, float, str]] = []
+        self._orbit_live = False
+        self._nav_preview = False
 
         self._orbit_timer = QTimer(self)
         self._orbit_timer.setSingleShot(True)
         self._orbit_timer.setInterval(32)
         self._orbit_timer.timeout.connect(self._rebuild_view_cache)
+
+        self._nav_timer = QTimer(self)
+        self._nav_timer.setSingleShot(True)
+        self._nav_timer.setInterval(80)
+        self._nav_timer.timeout.connect(self._end_nav_preview)
 
         self._zoom = 1.0
         self._pan_vx = 0.0
@@ -391,10 +402,14 @@ class PathCanvas(QWidget):
         self._orbit_pivot: Point | None = None
         self._orbit_px = 0.0
         self._orbit_py = 0.0
+        self._lock_view_scale: float | None = None
 
     def fit_view(self) -> None:
         """Reset zoom/pan so the path fills the widget (named-view default)."""
         self._clear_orbit_pivot()
+        self._nav_preview = False
+        if self._nav_timer.isActive():
+            self._nav_timer.stop()
         self._zoom = 1.0
         self._pan_vx = 0.0
         self._pan_vy = 0.0
@@ -420,14 +435,38 @@ class PathCanvas(QWidget):
         self.view_cube.set_camera(self._camera)
         self._rebuild_view_cache()
 
+    def is_orbit_preview(self) -> bool:
+        return self._orbit_live
+
+    def is_nav_preview(self) -> bool:
+        return self._nav_preview
+
+    def _use_preview_stroke(self) -> bool:
+        return bool(
+            self._preview_xyz
+            and (self._orbit_live or self._nav_preview)
+        )
+
+    def _end_nav_preview(self) -> None:
+        self._nav_preview = False
+        self.update()
+
+    def preview_count(self) -> int:
+        return len(self._preview_xyz)
+
     def orbit(self, d_yaw_deg: float, d_pitch_deg: float) -> None:
         if self._orbit_pivot is None:
             # View-cube drag: tumble about the point in the middle of the view.
             self._capture_orbit_pivot(self.width() / 2.0, self.height() / 2.0)
+        self._orbit_live = True
         self._camera = self._camera.orbit(d_yaw_deg, d_pitch_deg)
         self.view_cube.set_camera(self._camera)
-        # Debounce the expensive reproject; cube still tracks live.
-        self._orbit_timer.start()
+        self._keep_orbit_pivot()
+        self._refresh_marker_axes()
+        # Cheap subsample paint this frame; full project waits for release.
+        if self._orbit_timer.isActive():
+            self._orbit_timer.stop()
+        self.update()
 
     def _clear_orbit_pivot(self) -> None:
         self._orbit_pivot = None
@@ -435,7 +474,12 @@ class PathCanvas(QWidget):
     def _end_orbit_gesture(self) -> None:
         if self._orbit_timer.isActive():
             self._orbit_timer.stop()
-            self._rebuild_view_cache()
+        self._orbit_live = False
+        # Keep pixels-per-view-unit; orbit changes the AABB so the same
+        # zoom multiplier would otherwise jump the apparent zoom.
+        if self.width() > 0 and self.height() > 0:
+            self._lock_view_scale = self._xf().scale
+        self._rebuild_view_cache()
         self._clear_orbit_pivot()
 
     def _capture_orbit_pivot(self, px: float, py: float) -> None:
@@ -499,8 +543,29 @@ class PathCanvas(QWidget):
         self._sync_cache(hi_changed=hi_changed)
         self.update()
 
+    def _rebuild_preview_samples(self) -> None:
+        """World-space subsample for live orbit (O(n) index, no projection)."""
+        segs = self._segments
+        n = len(segs)
+        if n == 0:
+            self._preview_xyz = []
+            return
+        stride = max(1, (n + _PREVIEW_MAX - 1) // _PREVIEW_MAX)
+        out: list[tuple[float, float, float, str]] = []
+        for i in range(0, n, stride):
+            s = segs[i]
+            out.append((s.start.x, s.start.y, s.start.z, s.kind))
+        last = segs[-1]
+        end = (last.end.x, last.end.y, last.end.z, last.kind)
+        if not out or out[-1][:3] != end[:3]:
+            out.append(end)
+        self._preview_xyz = out
+
     def _sync_cache(self, *, hi_changed: bool = False) -> None:
         n = len(self._segments)
+        if self._orbit_live:
+            self._refresh_marker_axes()
+            return
         cam_changed = self._cache_cam != self._camera
         if cam_changed or n < self._cache_n:
             self._rebuild_view_cache()
@@ -508,6 +573,7 @@ class PathCanvas(QWidget):
         if n > self._cache_n:
             self._project_slice(self._cache_n, n)
             self._cache_n = n
+            self._rebuild_preview_samples()
             self._refresh_marker_axes()
             self._rebuild_hi_paths()
             return
@@ -527,10 +593,24 @@ class PathCanvas(QWidget):
         if n:
             self._project_slice(0, n)
             self._cache_n = n
+        self._rebuild_preview_samples()
+        self._apply_locked_view_scale()
         self._refresh_marker_axes()
         self._rebuild_hi_paths()
         self._keep_orbit_pivot()
         self.update()
+
+    def _apply_locked_view_scale(self) -> None:
+        locked = self._lock_view_scale
+        self._lock_view_scale = None
+        if locked is None or locked <= 0:
+            return
+        if self.width() < 1 or self.height() < 1:
+            return
+        fitted = fit_xy(*self._bounds, self.width(), self.height())
+        if fitted.scale <= 0:
+            return
+        self._zoom = min(_ZOOM_MAX, max(_ZOOM_MIN, locked / fitted.scale))
 
     def _project_slice(self, i0: int, i1: int) -> None:
         cam = self._camera
@@ -601,10 +681,39 @@ class PathCanvas(QWidget):
             else:
                 last_f = _path_add(self._path_hi_f, last_f, x0, y0, x1, y1)
 
+    def _paint_orbit_preview(
+        self, painter: QPainter, rapid_pen: QPen, feed_pen: QPen
+    ) -> None:
+        """Reproject the world subsample with the live camera (O(preview))."""
+        cam = self._camera
+        rapid = QPainterPath()
+        feed = QPainterPath()
+        last_r: tuple[float, float] | None = None
+        last_f: tuple[float, float] | None = None
+        prev: tuple[float, float, str] | None = None
+        for x, y, z, kind in self._preview_xyz:
+            vx, vy, _ = cam.to_view(x, y, z)
+            if prev is not None:
+                px, py, pk = prev
+                if kind == "rapid" and pk == "rapid":
+                    last_r = _path_add(rapid, last_r, px, py, vx, vy)
+                else:
+                    last_f = _path_add(feed, last_f, px, py, vx, vy)
+            prev = (vx, vy, kind)
+        if not rapid.isEmpty():
+            painter.setPen(rapid_pen)
+            painter.drawPath(rapid)
+        if not feed.isEmpty():
+            painter.setPen(feed_pen)
+            painter.drawPath(feed)
+
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         n = self._cache_n
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, n < 80000)
+        painter.setRenderHint(
+            QPainter.RenderHint.Antialiasing,
+            n < 80000 and not self._use_preview_stroke(),
+        )
         painter.fillRect(self.rect(), QColor(theme.COLOR_SURFACE))
 
         xf = self._xf()
@@ -640,18 +749,21 @@ class PathCanvas(QWidget):
         hi_feed.setWidthF(3.0)
         hi_feed.setCosmetic(True)
 
-        if not self._path_rapid.isEmpty():
-            painter.setPen(rapid_pen)
-            painter.drawPath(self._path_rapid)
-        if not self._path_feed.isEmpty():
-            painter.setPen(feed_pen)
-            painter.drawPath(self._path_feed)
-        if not self._path_hi_r.isEmpty():
-            painter.setPen(hi_rapid)
-            painter.drawPath(self._path_hi_r)
-        if not self._path_hi_f.isEmpty():
-            painter.setPen(hi_feed)
-            painter.drawPath(self._path_hi_f)
+        if self._use_preview_stroke():
+            self._paint_orbit_preview(painter, rapid_pen, feed_pen)
+        else:
+            if not self._path_rapid.isEmpty():
+                painter.setPen(rapid_pen)
+                painter.drawPath(self._path_rapid)
+            if not self._path_feed.isEmpty():
+                painter.setPen(feed_pen)
+                painter.drawPath(self._path_feed)
+            if not self._path_hi_r.isEmpty():
+                painter.setPen(hi_rapid)
+                painter.drawPath(self._path_hi_r)
+            if not self._path_hi_f.isEmpty():
+                painter.setPen(hi_feed)
+                painter.drawPath(self._path_hi_f)
 
         painter.resetTransform()
         mx, my = xf.to_px(*self._marker_view)
@@ -687,6 +799,8 @@ class PathCanvas(QWidget):
         self._zoom = new_zoom
         self._pan_vx = vx - cx - (px - w / 2.0) / scale
         self._pan_vy = vy - cy + (py - h / 2.0) / scale
+        self._nav_preview = True
+        self._nav_timer.start()
         self.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -704,6 +818,9 @@ class PathCanvas(QWidget):
             self._pan_from = event.position().toPoint()
             self._pan_vx0 = self._pan_vx
             self._pan_vy0 = self._pan_vy
+            self._nav_preview = True
+            if self._nav_timer.isActive():
+                self._nav_timer.stop()
             self.setCursor(QCursor(Qt.CursorShape.ClosedHandCursor))
             event.accept()
             return
@@ -738,7 +855,9 @@ class PathCanvas(QWidget):
             return
         if self._pan_from is not None:
             self._pan_from = None
+            self._nav_preview = False
             self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
+            self.update()
             event.accept()
             return
         super().mouseReleaseEvent(event)

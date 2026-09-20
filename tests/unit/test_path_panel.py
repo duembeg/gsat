@@ -99,7 +99,80 @@ def test_right_drag_orbits_not_pan():
     )
     p.canvas.mouseMoveEvent(move)
     assert p.canvas.camera.yaw_deg != yaw0
-    assert p.canvas._pan_vx == 0.0
+    assert p.canvas._pan_from is None
+    assert p.canvas.is_orbit_preview()
+
+
+def test_pan_uses_preview_until_release():
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QMouseEvent
+
+    p = _panel()
+    p.canvas.resize(400, 400)
+    p.set_program([f"G1 X{i} Y{i % 9}\n" for i in range(80)])
+    press = QMouseEvent(
+        QEvent.Type.MouseButtonPress,
+        QPointF(40, 40),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    p.canvas.mousePressEvent(press)
+    assert p.canvas.is_nav_preview()
+    move = QMouseEvent(
+        QEvent.Type.MouseMove,
+        QPointF(90, 55),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    p.canvas.mouseMoveEvent(move)
+    assert p.canvas._pan_vx != 0.0 or p.canvas._pan_vy != 0.0
+    rel = QMouseEvent(
+        QEvent.Type.MouseButtonRelease,
+        QPointF(90, 55),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    p.canvas.mouseReleaseEvent(rel)
+    assert not p.canvas.is_nav_preview()
+    assert p.canvas._pan_from is None
+
+
+def test_orbit_drag_uses_preview_until_release():
+    p = _panel()
+    p.canvas.resize(400, 400)
+    p.set_program([f"G1 X{i} Y{i % 9}\n" for i in range(200)])
+    assert p.canvas.preview_count() >= 2
+    assert p.canvas.preview_count() <= 4096
+    assert not p.canvas.is_orbit_preview()
+    cached = p.canvas._cache_cam
+    p.canvas._capture_orbit_pivot(80, 80)
+    p.canvas.orbit(20, 12)
+    assert p.canvas.is_orbit_preview()
+    assert p.canvas.camera != cached
+    assert p.canvas._cache_cam == cached  # full path not rebuilt mid-drag
+    p.canvas._end_orbit_gesture()
+    assert not p.canvas.is_orbit_preview()
+    assert p.canvas._cache_cam == p.canvas.camera
+
+
+def test_orbit_release_preserves_pixel_scale():
+    p = _panel()
+    p.canvas.resize(400, 400)
+    p.set_program(
+        ["G0 X0 Y0\n", "G1 X50 Y0\n", "G1 X50 Y40\n", "G1 X0 Y40\n"]
+    )
+    p.canvas._zoom = 3.0
+    p.canvas.repaint()
+    scale0 = p.canvas._xf().scale
+    p.canvas._capture_orbit_pivot(200, 200)
+    p.canvas.orbit(40, 25)
+    p.canvas._end_orbit_gesture()
+    scale1 = p.canvas._xf().scale
+    assert scale0 > 0
+    assert abs(scale1 - scale0) / scale0 < 0.05
 
 
 def test_orbit_keeps_clicked_world_point_on_screen():
