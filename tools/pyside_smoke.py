@@ -184,6 +184,8 @@ def test_offline() -> list[str]:
             _fail("Clear should keep the previewed program")
         if w.path_panel._pc != 0:
             _fail("Clear should seek to 0%")
+        if w.path_panel.canvas._drawn_end != 0:
+            _fail("Clear at 0% should hide program ink")
         if not w.path_panel.btn_play.isEnabled():
             _fail("Clear should not disable Play")
         w.path_panel.btn_preview.click()

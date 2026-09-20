@@ -26,16 +26,16 @@ def test_preview_builds_segments():
     assert [s.kind for s in p.segments] == ["rapid", "feed", "feed"]
 
 
-def test_scrub_keeps_full_path_moves_marker():
+def test_scrub_reveals_prefix_hides_future():
     p = _panel()
     p.set_program(["G0 X10\n", "G1 Y10\n", "G1 X0\n"])
     assert p._pc == 3
     assert p.canvas._drawn_end == 3
     p.set_pc(0)
-    assert p.canvas._drawn_end == 3
+    assert p.canvas._drawn_end == 0
     assert p.marker_position == Point(0, 0, 0)
     p.set_pc(1)
-    assert p.canvas._drawn_end == 3
+    assert p.canvas._drawn_end == 1
     assert p.marker_position == Point(10, 0, 0)
     p.set_pc(3)
     assert p.canvas._drawn_end == 3
@@ -92,6 +92,7 @@ def test_clear_seeks_to_start_keeps_play():
     p.set_pc(2)
     p.clear()
     assert p._pc == 0
+    assert p.canvas._drawn_end == 0
     assert p.marker_position == Point(0, 0, 0)
     assert p.btn_play.isEnabled()
     assert p.segment_count() == 2
@@ -100,15 +101,18 @@ def test_clear_seeks_to_start_keeps_play():
     p.stop_play()
 
 
-def test_play_keeps_full_path_not_subsample():
+def test_play_reveals_exact_prefix_not_subsample():
     p = _panel()
     p.set_program(["G0 X1\n", "G1 Y1\n", "G1 X0\n"])
     n = p.segment_count()
+    p.set_pc(0)
     p.start_play()
     assert p._playing
     assert not p.canvas.is_nav_preview()
     p._play_tick(0.05)
     assert p.segment_count() == n
+    assert p.canvas._drawn_end == p._pc
+    assert p.canvas._drawn_exact is True
     p.stop_play()
     assert not p.canvas.is_nav_preview()
 
@@ -125,20 +129,36 @@ def test_live_pc_moves_scrub_thumb():
     p.set_program(["G0 X1\n", "G1 X2\n", "G1 X3\n"])
     p.set_pc(2)
     assert p.slider.value() == 2
-    assert p.canvas._drawn_end == 3
+    assert p.canvas._drawn_end == 2
 
 
-def test_scrub_drag_keeps_full_path():
+def test_scrub_drag_is_exact_prefix():
     p = _panel()
-    p.set_program([f"G1 X{i}\n" for i in range(80)])
-    n = p.canvas._drawn_end
+    p.set_program([f"G1 X{i}\n" for i in range(1, 81)])
+    assert p.canvas._drawn_end == 80
     p._on_scrub_pressed()
     p._on_scrub(40)
-    assert p.canvas._drawn_end == n
+    assert p.canvas._drawn_end == 40
     assert p.canvas._drawn_exact is True
     assert not p.canvas.is_nav_preview()
+    p._on_scrub(24)
+    assert p.canvas._drawn_end == 24
     p._on_scrub_released()
-    assert p.canvas._drawn_end == n
+    assert p.canvas._drawn_end == 24
+    assert p.canvas._drawn_exact is True
+
+
+def test_scrub_back_removes_ink():
+    p = _panel()
+    p.set_program(["G0 X1\n", "G1 X2\n", "G1 X3\n", "G1 X4\n"])
+    p.set_pc(4)
+    assert p.canvas._drawn_end == 4
+    p.set_pc(1)
+    assert p.canvas._drawn_end == 1
+    assert p.canvas._drawn_exact is True
+    p.set_pc(0)
+    assert p.canvas._drawn_end == 0
+    assert p.marker_position == Point(0, 0, 0)
 
 
 def test_play_disabled_in_live_mode():
@@ -161,6 +181,7 @@ def test_clear_resets_path_and_marker():
     p.clear()
     assert p.segment_count() == 1
     assert p._pc == 0
+    assert p.canvas._drawn_end == 0
     assert p.marker_position == Point(0, 0, 0)
     assert p.status.text().startswith("X0.000")
     assert p.btn_play.isEnabled()

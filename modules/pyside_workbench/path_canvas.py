@@ -564,7 +564,6 @@ class PathCanvas(QWidget):
         *,
         highlight_line: int | None = None,
         upto_pc: int | None = None,
-        prefix_exact: bool = True,
     ) -> None:
         self._segments = segments
         self._position = position
@@ -574,7 +573,7 @@ class PathCanvas(QWidget):
         self._upto_pc = upto_pc
         self._sync_cache(hi_changed=hi_changed)
         if not self._orbit_live and upto_changed:
-            self._sync_drawn_prefix(exact=prefix_exact)
+            self._sync_drawn_prefix()
         self.update()
 
     def _rebuild_preview_samples(self) -> None:
@@ -610,7 +609,7 @@ class PathCanvas(QWidget):
             self._rebuild_preview_samples()
             self._refresh_marker_axes()
             self._rebuild_hi_paths()
-            self._sync_drawn_prefix(exact=True)
+            self._sync_drawn_prefix()
             self._invalidate_stamp()
             return
         self._refresh_marker_axes()
@@ -636,7 +635,7 @@ class PathCanvas(QWidget):
         self._refresh_marker_axes()
         self._rebuild_hi_paths()
         self._keep_orbit_pivot()
-        self._sync_drawn_prefix(exact=True)
+        self._sync_drawn_prefix()
         self._invalidate_stamp()
         self.update()
 
@@ -707,20 +706,14 @@ class PathCanvas(QWidget):
                 self._path_feed, self._last_feed, x0, y0, x1, y1
             )
 
-    def _rebuild_drawn(self, end: int, *, exact: bool) -> None:
+    def _rebuild_drawn(self, end: int) -> None:
+        """Exact prefix only — never a coarse stride (orbit subsample is separate)."""
         self._path_rapid = QPainterPath()
         self._path_feed = QPainterPath()
         self._last_rapid = None
         self._last_feed = None
-        if end <= 0:
-            return
-        stride = 1 if exact else max(1, end // _PREVIEW_MAX)
-        last_i = 0
-        for i in range(0, end, stride):
+        for i in range(end):
             self._add_view_seg(i)
-            last_i = i
-        if last_i != end - 1:
-            self._add_view_seg(end - 1)
 
     def _append_stamp_segs(self, i0: int, i1: int) -> None:
         if self._stamp is None or i0 >= i1:
@@ -743,20 +736,24 @@ class PathCanvas(QWidget):
             painter.drawLine(QPointF(x0, y0), QPointF(x1, y1))
         painter.end()
 
-    def _sync_drawn_prefix(self, *, exact: bool = True) -> None:
-        """Show only segments with line_index < upto_pc (None = all)."""
+    def _sync_drawn_prefix(self) -> None:
+        """Show only segments with line_index < upto_pc (None = all).
+
+        Forward: paint the new slice onto the existing stamp. Backward or
+        any non-append: rebuild the exact prefix and drop the stamp.
+        """
         end = self._target_drawn_end()
-        if end == self._drawn_end and self._drawn_exact == exact:
+        if end == self._drawn_end and self._drawn_exact:
             return
-        if exact and self._drawn_exact and end > self._drawn_end:
+        if self._drawn_exact and end > self._drawn_end:
             self._append_stamp_segs(self._drawn_end, end)
             for i in range(self._drawn_end, end):
                 self._add_view_seg(i)
             self._drawn_end = end
             return
-        self._rebuild_drawn(end, exact=exact)
+        self._rebuild_drawn(end)
         self._drawn_end = end
-        self._drawn_exact = exact
+        self._drawn_exact = True
         self._invalidate_stamp()
 
     def _refresh_marker_axes(self) -> None:
@@ -1355,6 +1352,7 @@ class PathPanel(QWidget):
             self._full.segment_list(),
             pos,
             highlight_line=hi,
+            upto_pc=None if self._live else self._pc,
         )
         n = self.segment_count()
         msg = (
