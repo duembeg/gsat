@@ -4,7 +4,7 @@ gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl-
 
 **Two desktop UIs (same machine core and `~/.gsat.json`):**
 
-- **PySide workbench** (`gsat-pyside.py`) — current desktop; use this for day-to-day work.
+- **PySide workbench** (`gsat-pyside.py`) — current desktop; use this for day-to-day work. Includes **Virtual CNC** Path preview (commanded motion).
 - **Classic wx** (`gsat.py`) — still supported, **maintenance only** (no new feature UI).
 
 Install each in its **own venv**. The WebSocket machine server is `gsat-server.py` (works with either UI).
@@ -128,6 +128,14 @@ These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
 ![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog (classic wx)")
 
 ## Changelog
+
+### 1.10.0
+
+- **Virtual CNC** (PySide workbench): commanded-motion Path plotter (G0/G1/G2/G3 XY); optional Connect target with no serial
+- Path view: orbit/pan/zoom, 26-region nav cube, XYZ HUD
+- Play/scrub along G-code PC; ink only up to the bar; Clear seeks to 0%
+- Live jog drawn amber (distinct from program G0/G1)
+- Classic wx (`gsat.py`) remains maintenance-only
 
 ### 1.9.0
 
