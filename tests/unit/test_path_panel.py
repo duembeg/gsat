@@ -227,8 +227,11 @@ def test_view_cube_is_top_right():
     p = _panel()
     p.canvas.resize(400, 300)
     p.canvas._place_cube()
-    assert p.canvas.view_cube.x() == 400 - 123 - 8
-    assert p.canvas.view_cube.y() == 8
+    cube = p.canvas.view_cube
+    assert cube.x() == 400 - 135 - 8
+    assert cube.y() == 8
+    ox, _oy = p.canvas._hud_origin()
+    assert abs(ox - (cube.x() + cube.width() / 2.0)) < 1e-6
 
 
 def test_view_cube_face_and_corner_hits_from_top():

@@ -135,11 +135,11 @@ def view_transform(
     )
 
 
-_CUBE_SIZE = 123
+_CUBE_SIZE = 135
 _CUBE_MARGIN = 8
 _CUBE_CX = _CUBE_SIZE / 2.0
 _CUBE_CY = _CUBE_SIZE / 2.0
-_CUBE_SCALE = 26.0  # world ±1 → pixels; ~10% over the old 24
+_CUBE_SCALE = 29.0  # world ±1 → pixels; ~10% over 26
 
 
 class ViewCube(QWidget):
@@ -710,11 +710,18 @@ class PathCanvas(QWidget):
         painter.drawEllipse(QPointF(mx, my), _MARKER_R, _MARKER_R)
         self._paint_hud_triad(painter)
 
-    def _paint_hud_triad(self, painter: QPainter) -> None:
-        """Lettered RGB axes, screen-fixed at bottom-right; follow the path camera."""
-        margin, axis_px = 16.0, 28.0
-        ox = float(self.width()) - margin - axis_px
+    def _hud_origin(self) -> tuple[float, float]:
+        """Triad origin: bottom, on the nav cube's vertical centerline."""
+        axis_px = 28.0
+        margin = 16.0
+        ox = float(self.width()) - _CUBE_MARGIN - _CUBE_SIZE / 2.0
         oy = float(self.height()) - margin - axis_px
+        return ox, oy
+
+    def _paint_hud_triad(self, painter: QPainter) -> None:
+        """Lettered RGB axes, screen-fixed under the cube; follow the path camera."""
+        ox, oy = self._hud_origin()
+        axis_px = 28.0
         cam = self._camera
         oxv, oyv, _ = cam.to_view(0.0, 0.0, 0.0)
         font = QFont(self.font())
