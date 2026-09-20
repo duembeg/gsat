@@ -479,7 +479,7 @@ class PathCanvas(QWidget):
     def _place_cube(self) -> None:
         self.view_cube.move(
             max(0, self.width() - _CUBE_SIZE - _CUBE_MARGIN),
-            max(0, self.height() - _CUBE_SIZE - _CUBE_MARGIN),
+            _CUBE_MARGIN,
         )
 
     def resizeEvent(self, event) -> None:  # noqa: N802

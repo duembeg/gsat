@@ -223,6 +223,14 @@ def _facet_center(cube, key: str):
     return poly.boundingRect().center()
 
 
+def test_view_cube_is_top_right():
+    p = _panel()
+    p.canvas.resize(400, 300)
+    p.canvas._place_cube()
+    assert p.canvas.view_cube.x() == 400 - 123 - 8
+    assert p.canvas.view_cube.y() == 8
+
+
 def test_view_cube_face_and_corner_hits_from_top():
     p = _panel()
     cube = p.canvas.view_cube
