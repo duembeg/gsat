@@ -135,8 +135,11 @@ def view_transform(
     )
 
 
-_CUBE_SIZE = 112
+_CUBE_SIZE = 123
 _CUBE_MARGIN = 8
+_CUBE_CX = _CUBE_SIZE / 2.0
+_CUBE_CY = _CUBE_SIZE / 2.0
+_CUBE_SCALE = 26.0  # world ±1 → pixels; ~10% over the old 24
 
 
 class ViewCube(QWidget):
@@ -169,10 +172,11 @@ class ViewCube(QWidget):
 
     def _project_cube(self, x: float, y: float, z: float) -> tuple[float, float, float]:
         vx, vy, vz = self._camera.to_view(x, y, z)
-        # Cube sits in the right half; axes occupy the left.
-        cx, cy = 68.0, 56.0
-        scale = 24.0
-        return cx + vx * scale, cy - vy * scale, vz
+        return (
+            _CUBE_CX + vx * _CUBE_SCALE,
+            _CUBE_CY - vy * _CUBE_SCALE,
+            vz,
+        )
 
     def _visible_facets(self) -> list[tuple[float, str, QPolygonF, bool]]:
         """(depth, region_key, poly, is_face) far → near."""
@@ -229,23 +233,6 @@ class ViewCube(QWidget):
                     Qt.AlignmentFlag.AlignCenter,
                     key.upper(),
                 )
-
-        # Screen-anchored triad (reorients with camera; not in hit-test).
-        ox, oy, axis_px = 14.0, 70.0, 18.0
-        ccx, ccy, _ = self._project_cube(0.0, 0.0, 0.0)
-        for vec, color, label in (
-            ((1.0, 0.0, 0.0), QColor("#DC2626"), "X"),
-            ((0.0, 1.0, 0.0), QColor("#16A34A"), "Y"),
-            ((0.0, 0.0, 1.0), QColor("#2563EB"), "Z"),
-        ):
-            px, py, _ = self._project_cube(*vec)
-            dx, dy = px - ccx, py - ccy
-            length = math.hypot(dx, dy) or 1.0
-            dx, dy = dx / length * axis_px, dy / length * axis_px
-            p.setPen(QPen(color, 2.0))
-            p.drawLine(QPointF(ox, oy), QPointF(ox + dx, oy + dy))
-            p.setPen(color)
-            p.drawText(QPointF(ox + dx + 2, oy + dy + 4), label)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -721,6 +708,34 @@ class PathCanvas(QWidget):
         painter.setPen(QPen(QColor("#FFFFFF"), 1.5))
         painter.setBrush(QColor("#EA580C"))
         painter.drawEllipse(QPointF(mx, my), _MARKER_R, _MARKER_R)
+        self._paint_hud_triad(painter)
+
+    def _paint_hud_triad(self, painter: QPainter) -> None:
+        """Lettered RGB axes, screen-fixed at bottom-left; follow the path camera."""
+        margin, axis_px = 16.0, 28.0
+        ox, oy = margin, float(self.height()) - margin
+        cam = self._camera
+        oxv, oyv, _ = cam.to_view(0.0, 0.0, 0.0)
+        font = QFont(self.font())
+        font.setPointSize(9)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        for vec, color, label in (
+            ((1.0, 0.0, 0.0), QColor("#DC2626"), "X"),
+            ((0.0, 1.0, 0.0), QColor("#16A34A"), "Y"),
+            ((0.0, 0.0, 1.0), QColor("#2563EB"), "Z"),
+        ):
+            vx, vy, _ = cam.to_view(*vec)
+            dx, dy = vx - oxv, vy - oyv
+            length = math.hypot(dx, dy)
+            if length < 1e-6:
+                continue
+            sx = dx / length * axis_px
+            sy = -dy / length * axis_px
+            painter.setPen(QPen(color, 2.0))
+            painter.drawLine(QPointF(ox, oy), QPointF(ox + sx, oy + sy))
+            painter.drawText(QPointF(ox + sx + 3, oy + sy + 4), label)
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         dy = event.angleDelta().y()

@@ -216,19 +216,25 @@ def test_canvas_defaults_to_top_view():
     assert abs(p.canvas.camera.pitch_deg - 90.0) < 1e-9
 
 
+def _facet_center(cube, key: str):
+    poly = next(
+        poly for _d, k, poly, _f in cube._visible_facets() if k == key
+    )
+    return poly.boundingRect().center()
+
+
 def test_view_cube_face_and_corner_hits_from_top():
     p = _panel()
     cube = p.canvas.view_cube
-    # Top-face center of the projected cube (see ViewCube._project_cube).
-    assert cube.region_at(68, 56) == "top"
-    # Chamfer triangle at +X −Y +Z (scale 24)
-    assert cube.region_at(89, 77) == "top-front-right"
+    top = _facet_center(cube, "top")
+    assert cube.region_at(top.x(), top.y()) == "top"
+    corner = _facet_center(cube, "top-front-right")
+    assert cube.region_at(corner.x(), corner.y()) == "top-front-right"
     # Face-on Top: edge strips overlap the octagon in 2D — must still pick the edge
-    assert cube.region_at(68, 76) == "top-front"
-    assert cube.region_at(88, 56) == "top-right"
-    p.canvas.snap_view("top")
-    p.canvas.view_cube.set_camera(p.canvas.camera)
-    assert cube.region_at(68, 76) == "top-front"
+    front_e = _facet_center(cube, "top-front")
+    assert cube.region_at(front_e.x(), front_e.y()) == "top-front"
+    right_e = _facet_center(cube, "top-right")
+    assert cube.region_at(right_e.x(), right_e.y()) == "top-right"
     p.canvas.snap_view("top-front")
     assert abs(p.canvas.camera.pitch_deg - 45.0) < 1e-6
     p.canvas.snap_view("top-front-right")
