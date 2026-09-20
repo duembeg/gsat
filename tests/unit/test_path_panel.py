@@ -216,6 +216,20 @@ def test_canvas_defaults_to_top_view():
     assert abs(p.canvas.camera.pitch_deg - 90.0) < 1e-9
 
 
+def test_view_cube_face_and_corner_hits_from_top():
+    p = _panel()
+    cube = p.canvas.view_cube
+    # Top-face center of the projected cube (see ViewCube._project_cube).
+    assert cube.region_at(68, 56) == "top"
+    # Chamfer triangle at +X −Y +Z (scale 24)
+    assert cube.region_at(89, 77) == "top-front-right"
+    p.canvas.snap_view("top-front-right")
+    assert abs(p.canvas.camera.yaw_deg + 45.0) < 1e-6
+    p.canvas.snap_view("front-right")
+    assert abs(p.canvas.camera.yaw_deg + 45.0) < 1e-6
+    assert abs(p.canvas.camera.pitch_deg) < 1e-6
+
+
 def test_live_appends_and_ignores_file_preview():
     p = _panel()
     p.set_program(["G0 X99\n"])

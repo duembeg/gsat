@@ -1,6 +1,14 @@
 """Orbit camera: Top / Front / Right named views."""
 
-from modules.pyside_workbench.path_camera import Camera, view_bounds
+from modules.pyside_workbench.path_camera import (
+    ISO_PITCH,
+    NAMED_VIEWS,
+    Camera,
+    canonical_cube_region,
+    cube_facets,
+    cube_region,
+    view_bounds,
+)
 from modules.virtual_cnc import Point, Segment
 
 
@@ -44,6 +52,56 @@ def test_snap_named_views():
     assert c == Camera.front()
     assert Camera.top().snap("right") == Camera.right()
     assert Camera.front().snap("top") == Camera.top()
+
+
+def test_cube_facets_face_outward():
+    from modules.pyside_workbench.path_camera import facet_normal
+
+    for key, verts in cube_facets():
+        nx, ny, nz = facet_normal(verts)
+        cx = sum(v[0] for v in verts) / len(verts)
+        cy = sum(v[1] for v in verts) / len(verts)
+        cz = sum(v[2] for v in verts) / len(verts)
+        assert cx * nx + cy * ny + cz * nz > 0, key
+
+
+def test_cube_facets_match_named_views():
+    keys = [k for k, _v in cube_facets()]
+    assert len(keys) == 26
+    assert set(keys) == set(NAMED_VIEWS)
+
+
+def test_named_views_has_26_regions():
+    assert len(NAMED_VIEWS) == 26
+    for key in (
+        "top",
+        "front-right",
+        "top-front-right",
+        "bottom-back-left",
+    ):
+        assert key in NAMED_VIEWS
+        yaw, pitch = NAMED_VIEWS[key]
+        snapped = Camera.top().snap(key)
+        assert snapped.yaw_deg == yaw
+        assert snapped.pitch_deg == pitch
+
+
+def test_canonical_region_order():
+    assert canonical_cube_region("right", "top", "front") == "top-front-right"
+    assert canonical_cube_region("front", "right") == "front-right"
+
+
+def test_cube_region_face_edge_corner():
+    assert cube_region("top", 0.0, 0.0, u_plus="right", v_plus="back") == "top"
+    assert cube_region("top", 0.8, 0.0, u_plus="right", v_plus="back") == "top-right"
+    assert cube_region("top", 0.8, -0.8, u_plus="right", v_plus="back") == "top-front-right"
+    assert cube_region("front", 0.8, 0.8, u_plus="right", v_plus="top") == "top-front-right"
+
+
+def test_corner_snap_is_isometric_pitch():
+    c = Camera.top().snap("top-front-right")
+    assert abs(c.yaw_deg + 45.0) < 1e-9
+    assert abs(c.pitch_deg - ISO_PITCH) < 1e-9
 
 
 def test_orbit_pitch_clamped():

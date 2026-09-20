@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from modules.pyside_workbench import theme
-from modules.pyside_workbench.path_camera import Camera
+from modules.pyside_workbench.path_camera import Camera, cube_facets, facet_normal
 from modules.virtual_cnc import Point, Segment, VirtualCnc
 
 _MARGIN_PX = 20.0
@@ -135,22 +135,12 @@ def view_transform(
     )
 
 
-# Cube faces in CNC world (outward). Front is −Y (operator side).
-_CUBE_FACES: tuple[tuple[str, tuple[tuple[float, float, float], ...]], ...] = (
-    ("Top", ((-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1))),
-    ("Bottom", ((-1, -1, -1), (-1, 1, -1), (1, 1, -1), (1, -1, -1))),
-    ("Front", ((-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1))),
-    ("Back", ((-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, 1, -1))),
-    ("Right", ((1, -1, -1), (1, 1, -1), (1, 1, 1), (1, -1, 1))),
-    ("Left", ((-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, 1, -1))),
-)
-
 _CUBE_SIZE = 112
 _CUBE_MARGIN = 8
 
 
 class ViewCube(QWidget):
-    """Corner gizmo: drag to orbit, click a face to snap (Top / Front / Right)."""
+    """CAD nav cube: click face / edge / corner to align; drag to orbit."""
 
     snap_requested = Signal(str)
     orbit_delta = Signal(float, float)  # d_yaw_deg, d_pitch_deg
@@ -161,10 +151,14 @@ class ViewCube(QWidget):
         self.setObjectName("pathViewCube")
         self.setFixedSize(_CUBE_SIZE, _CUBE_SIZE)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("Drag to orbit · click Top / Front / Right to snap")
+        self.setMouseTracking(True)
+        self.setToolTip(
+            "Drag to orbit · click a face, edge, or corner to align the view"
+        )
         self._camera = Camera.top()
         self._press: QPoint | None = None
         self._dragged = False
+        self._hover: str | None = None
 
     def set_camera(self, camera: Camera) -> None:
         self._camera = camera
@@ -177,50 +171,43 @@ class ViewCube(QWidget):
         vx, vy, vz = self._camera.to_view(x, y, z)
         # Cube sits in the right half; axes occupy the left.
         cx, cy = 68.0, 56.0
-        scale = 22.0
+        scale = 24.0
         return cx + vx * scale, cy - vy * scale, vz
 
-    def _visible_faces(self) -> list[tuple[float, str, list[QPointF]]]:
-        out: list[tuple[float, str, list[QPointF]]] = []
-        for name, verts in _CUBE_FACES:
-            a = (
-                verts[1][0] - verts[0][0],
-                verts[1][1] - verts[0][1],
-                verts[1][2] - verts[0][2],
-            )
-            b = (
-                verts[2][0] - verts[0][0],
-                verts[2][1] - verts[0][1],
-                verts[2][2] - verts[0][2],
-            )
-            nx = a[1] * b[2] - a[2] * b[1]
-            ny = a[2] * b[0] - a[0] * b[2]
-            nz = a[0] * b[1] - a[1] * b[0]
+    def _visible_facets(self) -> list[tuple[float, str, QPolygonF, bool]]:
+        """(depth, region_key, poly, is_face) far → near."""
+        out: list[tuple[float, str, QPolygonF, bool]] = []
+        for key, verts in cube_facets():
+            nx, ny, nz = facet_normal(verts)
             _, _, n_z = self._camera.to_view(nx, ny, nz)
-            # Camera looks toward −depth; view-normal +z faces the camera.
-            if n_z <= 0.12:
+            if n_z <= 0.08:
                 continue
             pts = [self._project_cube(*v) for v in verts]
-            depth = sum(p[2] for p in pts) / 4.0
-            poly = [QPointF(p[0], p[1]) for p in pts]
-            out.append((depth, name, poly))
-        out.sort(key=lambda t: t[0])  # far → near
+            depth = sum(p[2] for p in pts) / len(pts)
+            poly = QPolygonF([QPointF(p[0], p[1]) for p in pts])
+            out.append((depth, key, poly, "-" not in key))
+        out.sort(key=lambda item: item[0])
         return out
+
+    def region_at(self, x: float, y: float) -> str | None:
+        """Hit-test a cube region key, or None. Nearer facets win."""
+        hit = QPointF(x, y)
+        for _depth, key, poly, _is_face in reversed(self._visible_facets()):
+            if poly.containsPoint(hit, Qt.FillRule.OddEvenFill):
+                return key
+        return None
 
     def paintEvent(self, event) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        # Soft disc
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(255, 255, 255, 200))
         p.drawEllipse(QRect(2, 2, _CUBE_SIZE - 4, _CUBE_SIZE - 4))
-        # Orbit ring
         ring = QPen(QColor("#C5CAD3"))
         ring.setWidthF(1.2)
         p.setPen(ring)
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawEllipse(QRect(10, 8, 92, 92))
-        # Chevrons
         p.setPen(QPen(QColor("#94A3B8"), 1.4))
         cx, cy, r = 56.0, 54.0, 48.0
         for ang in (0, 90, 180, 270):
@@ -237,55 +224,42 @@ class ViewCube(QWidget):
                 QPointF(cx + (r - 7) * math.sin(right), cy - (r - 7) * math.cos(right)),
             )
 
-        faces = self._visible_faces()
         font = QFont(self.font())
         font.setPointSize(8)
         font.setBold(True)
         p.setFont(font)
-        for _depth, name, poly in faces:
-            qpoly = QPolygonF(poly)
+        hi = QColor(theme.COLOR_ACCENT)
+        hi.setAlpha(90)
+        for _depth, key, poly, is_face in self._visible_facets():
             p.setPen(QPen(QColor("#9AA3B0"), 1.0))
-            p.setBrush(QColor("#F4F6F8"))
-            p.drawPolygon(qpoly)
-            c = qpoly.boundingRect().center()
-            p.setPen(QColor("#334155"))
-            p.drawText(
-                QRect(int(c.x()) - 22, int(c.y()) - 8, 44, 16),
-                Qt.AlignmentFlag.AlignCenter,
-                name,
-            )
+            if key == self._hover:
+                p.setBrush(hi)
+            elif is_face:
+                p.setBrush(QColor("#F4F6F8"))
+            else:
+                p.setBrush(QColor("#DDE3EA"))
+            p.drawPolygon(poly)
+            if is_face:
+                c = poly.boundingRect().center()
+                p.setPen(QColor("#334155"))
+                p.drawText(
+                    QRect(int(c.x()) - 24, int(c.y()) - 8, 48, 16),
+                    Qt.AlignmentFlag.AlignCenter,
+                    key.upper(),
+                )
 
-        # RGB axes (world), left of the cube
-        origin = self._project_cube(0, 0, 0)
-        axes = (
+        ox, oy = 28.0, 72.0
+        ccx, ccy, _ = self._project_cube(0, 0, 0)
+        for vec, color, label in (
             ((1.15, 0, 0), QColor("#DC2626"), "X"),
             ((0, 1.15, 0), QColor("#16A34A"), "Y"),
             ((0, 0, 1.15), QColor("#2563EB"), "Z"),
-        )
-        # Draw from a slightly left-shifted origin so they don't cover labels
-        ox, oy = 28.0, 72.0
-        # Use cube-center relative vectors scaled into the left pocket
-        cx, cy, _ = self._project_cube(0, 0, 0)
-        for vec, color, label in axes:
+        ):
             px, py, _ = self._project_cube(*vec)
-            dx, dy = px - cx, py - cy
             p.setPen(QPen(color, 2.0))
-            p.drawLine(QPointF(ox, oy), QPointF(ox + dx, oy + dy))
+            p.drawLine(QPointF(ox, oy), QPointF(ox + (px - ccx), oy + (py - ccy)))
             p.setPen(color)
-            p.drawText(QPointF(ox + dx + 2, oy + dy + 4), label)
-
-    def _face_at(self, pos: QPoint) -> str | None:
-        hit = QPointF(pos)
-        best: tuple[float, str] | None = None
-        for _depth, name, poly in reversed(self._visible_faces()):
-            qpoly = QPolygonF(poly)
-            if qpoly.containsPoint(hit, Qt.FillRule.OddEvenFill):
-                return name
-            c = qpoly.boundingRect().center()
-            d = math.hypot(c.x() - pos.x(), c.y() - pos.y())
-            if d < 16 and (best is None or d < best[0]):
-                best = (d, name)
-        return best[1] if best else None
+            p.drawText(QPointF(ox + (px - ccx) + 2, oy + (py - ccy) + 4), label)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -296,24 +270,35 @@ class ViewCube(QWidget):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._press is None:
-            return
         pos = event.position().toPoint()
+        if self._press is None:
+            hover = self.region_at(pos.x(), pos.y())
+            if hover != self._hover:
+                self._hover = hover
+                self.update()
+            event.accept()
+            return
         dx = pos.x() - self._press.x()
         dy = pos.y() - self._press.y()
         if abs(dx) + abs(dy) > 3:
             self._dragged = True
-            # Drag right = yaw; drag up = look up (pitch down from Top).
             self.orbit_delta.emit(dx * 0.6, dy * 0.6)
             self._press = pos
         event.accept()
 
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        if self._hover is not None:
+            self._hover = None
+            self.update()
+        super().leaveEvent(event)
+
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton and self._press is not None:
             if not self._dragged:
-                face = self._face_at(event.position().toPoint())
-                if face:
-                    self.snap_requested.emit(face.lower())
+                pos = event.position()
+                region = self.region_at(pos.x(), pos.y())
+                if region:
+                    self.snap_requested.emit(region)
             self._press = None
             self._dragged = False
             self.orbit_finished.emit()
