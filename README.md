@@ -131,7 +131,7 @@ These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
 
 ### 1.10.0
 
-- **Virtual CNC** (PySide workbench): commanded-motion Path plotter (G0/G1/G2/G3 XY); optional Connect target with no serial
+- **Virtual CNC** (PySide workbench): commanded-motion Path preview (G0/G1/G2/G3 XY); optional Connect target with no serial
 - Path view: orbit/pan/zoom, 26-region nav cube, XYZ HUD
 - Play/scrub along G-code PC; ink only up to the bar; Clear seeks to 0%
 - Live jog drawn amber (distinct from program G0/G1)
