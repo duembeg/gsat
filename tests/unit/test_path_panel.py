@@ -139,13 +139,62 @@ def test_scrub_drag_is_exact_prefix():
     p._on_scrub_pressed()
     p._on_scrub(40)
     assert p.canvas._drawn_end == 40
+    assert p.canvas._paths_end == 80
     assert p.canvas._drawn_exact is True
     assert not p.canvas.is_nav_preview()
     p._on_scrub(24)
     assert p.canvas._drawn_end == 24
+    assert p.canvas._paths_end == 80
     p._on_scrub_released()
     assert p.canvas._drawn_end == 24
+    assert p.canvas._paths_end == 24
     assert p.canvas._drawn_exact is True
+
+
+def test_reverse_scrub_defers_path_rebuild():
+    p = _panel()
+    p.set_program([f"G1 X{i}\n" for i in range(1, 81)])
+    p._on_scrub_pressed()
+    p._on_scrub(79)
+    assert p.canvas._drawn_end == 79
+    assert p.canvas._paths_end == 80
+    p._on_scrub(40)
+    assert p.canvas._drawn_end == 40
+    assert p.canvas._paths_end == 80
+    p._on_scrub(50)
+    assert p.canvas._drawn_end == 50
+    assert p.canvas._paths_end == 50
+    p._on_scrub_released()
+    assert p.canvas._paths_end == 50
+
+
+def test_reverse_play_defers_until_stop():
+    p = _panel()
+    p.set_program(["G0 X1\n", "G1 X2\n", "G1 X3\n", "G1 X4\n"])
+    p._play_dir = -1
+    p.start_play()
+    assert p.canvas._defer_stamp
+    p._play_tick(1.0 / 45.0)
+    assert p._pc == 3
+    assert p.canvas._drawn_end == 3
+    assert p.canvas._paths_end == 4
+    p.stop_play()
+    assert not p.canvas._defer_stamp
+    assert p.canvas._paths_end == 3
+
+
+def test_forward_grow_stays_incremental():
+    p = _panel()
+    p.set_program(["G0 X1\n", "G1 X2\n", "G1 X3\n"])
+    p.set_pc(0)
+    assert p.canvas._drawn_end == 0
+    assert p.canvas._paths_end == 0
+    p.set_pc(1)
+    assert p.canvas._drawn_end == 1
+    assert p.canvas._paths_end == 1
+    p.set_pc(2)
+    assert p.canvas._drawn_end == 2
+    assert p.canvas._paths_end == 2
 
 
 def test_scrub_back_removes_ink():
@@ -155,9 +204,11 @@ def test_scrub_back_removes_ink():
     assert p.canvas._drawn_end == 4
     p.set_pc(1)
     assert p.canvas._drawn_end == 1
+    assert p.canvas._paths_end == 1
     assert p.canvas._drawn_exact is True
     p.set_pc(0)
     assert p.canvas._drawn_end == 0
+    assert p.canvas._paths_end == 0
     assert p.marker_position == Point(0, 0, 0)
 
 

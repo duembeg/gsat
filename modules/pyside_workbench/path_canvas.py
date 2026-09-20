@@ -345,10 +345,13 @@ class PathCanvas(QWidget):
         self._nav_preview = False
         self._stamp: QPixmap | None = None
         self._stamp_key: tuple | None = None
+        self._stamp_end = 0
         self._view_segs: list[tuple[float, float, float, float, str, int]] = []
         self._upto_pc: int | None = None
         self._drawn_end = 0
+        self._paths_end = 0
         self._drawn_exact = True
+        self._defer_stamp = False
 
         self._orbit_timer = QTimer(self)
         self._orbit_timer.setSingleShot(True)
@@ -416,9 +419,20 @@ class PathCanvas(QWidget):
         if not on:
             self.update()
 
+    def set_stamp_deferred(self, on: bool) -> None:
+        """Scrub/play: reverse skips restamp; bake when the gesture ends."""
+        on = bool(on)
+        if on == self._defer_stamp:
+            return
+        self._defer_stamp = on
+        if not on:
+            self._bake_prefix()
+            self.update()
+
     def _invalidate_stamp(self) -> None:
         self._stamp = None
         self._stamp_key = None
+        self._stamp_end = 0
 
     def _stamp_key_now(self) -> tuple:
         return (
@@ -438,8 +452,16 @@ class PathCanvas(QWidget):
             self._invalidate_stamp()
             return None
         key = self._stamp_key_now()
-        if self._stamp is not None and self._stamp_key == key:
+        if (
+            self._stamp is not None
+            and self._stamp_key == key
+            and self._stamp_end == self._drawn_end
+        ):
             return self._stamp
+        if self._defer_stamp:
+            return None
+        if self._paths_end != self._drawn_end:
+            self._rebuild_drawn(self._drawn_end)
         dpr = self.devicePixelRatioF() or 1.0
         pm = QPixmap(max(1, int(w * dpr)), max(1, int(h * dpr)))
         pm.setDevicePixelRatio(dpr)
@@ -466,6 +488,7 @@ class PathCanvas(QWidget):
         painter.end()
         self._stamp = pm
         self._stamp_key = key
+        self._stamp_end = self._drawn_end
         return pm
 
     def _use_preview_stroke(self) -> bool:
@@ -624,6 +647,7 @@ class PathCanvas(QWidget):
         self._seg_ranges = {}
         self._view_segs = []
         self._drawn_end = 0
+        self._paths_end = 0
         self._cache_n = 0
         self._cache_cam = self._camera
         n = len(self._segments)
@@ -714,6 +738,7 @@ class PathCanvas(QWidget):
         self._last_feed = None
         for i in range(end):
             self._add_view_seg(i)
+        self._paths_end = end
 
     def _append_stamp_segs(self, i0: int, i1: int) -> None:
         if self._stamp is None or i0 >= i1:
@@ -739,21 +764,48 @@ class PathCanvas(QWidget):
     def _sync_drawn_prefix(self) -> None:
         """Show only segments with line_index < upto_pc (None = all).
 
-        Forward: paint the new slice onto the existing stamp. Backward or
-        any non-append: rebuild the exact prefix and drop the stamp.
+        Forward: append onto paths and the stamp. Reverse while deferred
+        (scrub/play): only move drawn_end; bake on gesture end.
         """
         end = self._target_drawn_end()
         if end == self._drawn_end and self._drawn_exact:
             return
         if self._drawn_exact and end > self._drawn_end:
-            self._append_stamp_segs(self._drawn_end, end)
+            self._grow_prefix(end)
+            return
+        self._shrink_prefix(end)
+
+    def _grow_prefix(self, end: int) -> None:
+        if self._paths_end == self._drawn_end and self._drawn_exact:
+            if self._stamp is not None and self._stamp_end == self._drawn_end:
+                self._append_stamp_segs(self._drawn_end, end)
+                self._stamp_end = end
             for i in range(self._drawn_end, end):
                 self._add_view_seg(i)
             self._drawn_end = end
+            self._paths_end = end
             return
         self._rebuild_drawn(end)
         self._drawn_end = end
+        if not self._defer_stamp:
+            self._invalidate_stamp()
+
+    def _shrink_prefix(self, end: int) -> None:
+        self._drawn_end = end
         self._drawn_exact = True
+        if self._defer_stamp:
+            return
+        self._rebuild_drawn(end)
+        self._invalidate_stamp()
+
+    def _bake_prefix(self) -> None:
+        """Rebuild paths to drawn_end and drop a stale-long stamp."""
+        end = self._drawn_end
+        if self._paths_end != end or not self._drawn_exact:
+            self._rebuild_drawn(end)
+            self._drawn_exact = True
+        if self._stamp is not None and self._stamp_end == end:
+            return
         self._invalidate_stamp()
 
     def _refresh_marker_axes(self) -> None:
@@ -782,6 +834,27 @@ class PathCanvas(QWidget):
                 last_r = _path_add(self._path_hi_r, last_r, x0, y0, x1, y1)
             else:
                 last_f = _path_add(self._path_hi_f, last_f, x0, y0, x1, y1)
+
+    def _paint_drawn_prefix(
+        self, painter: QPainter, rapid_pen: QPen, feed_pen: QPen
+    ) -> None:
+        """Stroke the visible prefix. Prefer cached paths; else view_segs[:end]."""
+        if self._paths_end == self._drawn_end:
+            if not self._path_rapid.isEmpty():
+                painter.setPen(rapid_pen)
+                painter.drawPath(self._path_rapid)
+            if not self._path_feed.isEmpty():
+                painter.setPen(feed_pen)
+                painter.drawPath(self._path_feed)
+            return
+        last_kind: str | None = None
+        end = self._drawn_end
+        for i in range(end):
+            x0, y0, x1, y1, kind, _li = self._view_segs[i]
+            if kind != last_kind:
+                painter.setPen(rapid_pen if kind == "rapid" else feed_pen)
+                last_kind = kind
+            painter.drawLine(QPointF(x0, y0), QPointF(x1, y1))
 
     def _paint_orbit_preview(
         self, painter: QPainter, rapid_pen: QPen, feed_pen: QPen
@@ -812,9 +885,12 @@ class PathCanvas(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         n = self._cache_n
+        cheap_prefix = self._paths_end != self._drawn_end
         painter.setRenderHint(
             QPainter.RenderHint.Antialiasing,
-            n < 80000 and not self._use_preview_stroke(),
+            n < 80000
+            and not self._use_preview_stroke()
+            and not cheap_prefix,
         )
         xf = self._xf()
         rapid_pen = QPen(QColor("#64748B"))
@@ -849,12 +925,7 @@ class PathCanvas(QWidget):
                 painter.setTransform(
                     QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
                 )
-                if not self._path_rapid.isEmpty():
-                    painter.setPen(rapid_pen)
-                    painter.drawPath(self._path_rapid)
-                if not self._path_feed.isEmpty():
-                    painter.setPen(feed_pen)
-                    painter.drawPath(self._path_feed)
+                self._paint_drawn_prefix(painter, rapid_pen, feed_pen)
             if used_stamp:
                 painter.setTransform(
                     QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
@@ -1274,6 +1345,7 @@ class PathPanel(QWidget):
             self._seek(n)
         self._playing = True
         self._play_accum = 0.0
+        self.canvas.set_stamp_deferred(True)
         self._play_timer.start()
         self._sync_transport_ui()
 
@@ -1283,6 +1355,7 @@ class PathPanel(QWidget):
         self._play_timer.stop()
         self._play_accum = 0.0
         if was:
+            self.canvas.set_stamp_deferred(False)
             self._sync_transport_ui()
 
     @Slot()
@@ -1334,10 +1407,11 @@ class PathPanel(QWidget):
     @Slot()
     def _on_scrub_pressed(self) -> None:
         self.stop_play()
+        self.canvas.set_stamp_deferred(True)
 
     @Slot()
     def _on_scrub_released(self) -> None:
-        pass
+        self.canvas.set_stamp_deferred(False)
 
     def _refresh(self) -> None:
         if self._live:
