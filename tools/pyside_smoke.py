@@ -217,7 +217,7 @@ def test_offline() -> list[str]:
             _fail("begin_live should enter live mode")
         w.path_panel.apply_live_line("G0 X4 Y0\n")
         w.path_panel.apply_live_line("G1 X4 Y3\n")
-        w.path_panel.apply_live_line("$J=G91 X1 F500\n")
+        w.path_panel.apply_live_line("G91 G01 Y1.000 F1000.0\n", jog=True)
         if w.path_panel.segment_count() != 3:
             _fail(
                 f"live path expected 3 segments, got {w.path_panel.segment_count()}"
@@ -226,8 +226,8 @@ def test_offline() -> list[str]:
         if kinds != ["rapid", "feed", "jog"]:
             _fail(f"live kinds expected rapid/feed/jog, got {kinds}")
         live_pos = w.path_panel.marker_position
-        if abs(live_pos.x - 5.0) > 1e-9 or abs(live_pos.y - 3.0) > 1e-9:
-            _fail(f"live marker expected (5,3), got {live_pos}")
+        if abs(live_pos.x - 4.0) > 1e-9 or abs(live_pos.y - 4.0) > 1e-9:
+            _fail(f"live marker expected (4,4), got {live_pos}")
         if "live" not in w.path_panel.status.text():
             _fail("live status should say live")
         w.path_panel.end_live()

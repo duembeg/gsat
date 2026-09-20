@@ -56,9 +56,27 @@ class MachIf_Virtual(mi.MachIf_Base):
         self.cmdStatus = "?"
         self.cmdSystemInfo = "$I\n"
         self.cmdPostInit = "$I\n"
+        self._pending_jog = False
 
     def _init(self):
         self._stat = "Idle"
+        self._pending_jog = False
+
+    def doJogMove(self, dict_axis_coor):
+        self._pending_jog = True
+        super().doJogMove(dict_axis_coor)
+
+    def doJogMoveRelative(self, dict_axis_coor):
+        self._pending_jog = True
+        super().doJogMoveRelative(dict_axis_coor)
+
+    def doJogFastMove(self, dict_axis_coor):
+        self._pending_jog = True
+        super().doJogFastMove(dict_axis_coor)
+
+    def doJogFastMoveRelative(self, dict_axis_coor):
+        self._pending_jog = True
+        super().doJogFastMoveRelative(dict_axis_coor)
 
     def factory(self):
         return MachIf_Virtual()
@@ -200,9 +218,13 @@ class MachIf_Virtual(mi.MachIf_Base):
             self._queue_ok()
             return
         payload = raw
-        is_jog = payload.startswith("$J=")
-        if is_jog:
+        is_jog = payload.startswith("$J=") or (
+            self._pending_jog and any(ch in payload.upper() for ch in "XYZ")
+        )
+        if payload.startswith("$J="):
             payload = payload[3:]
+        if is_jog:
+            self._pending_jog = False
         self._stat = "Idle"
         self.vc.apply_line(payload, jog=is_jog)
         self._queue_ok()

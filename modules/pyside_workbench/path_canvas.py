@@ -1286,13 +1286,16 @@ class PathPanel(QWidget):
         self.btn_preview.setEnabled(True)
         self._set_transport_enabled(bool(self._lines))
 
-    def apply_live_line(self, line: str) -> Segment | None:
-        """Plot one commanded line (EV_DATA_OUT while Virtual is open)."""
+    def apply_live_line(self, line: str, *, jog: bool = False) -> Segment | None:
+        """Plot one commanded line (EV_DATA_OUT while Virtual is open).
+
+        jog=True: pad TX (G91 G01 …). $J= is also treated as jog (Grbl).
+        """
         if not self._live:
             return None
         payload = line.strip()
-        is_jog = payload.startswith("$J=")
-        if is_jog:
+        is_jog = bool(jog) or payload.startswith("$J=")
+        if payload.startswith("$J="):
             payload = payload[3:]
         seg = self._full.apply_line(
             payload, line_index=self._live_i, jog=is_jog

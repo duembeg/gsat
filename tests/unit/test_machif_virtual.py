@@ -80,6 +80,25 @@ def test_jog_prefix_stripped():
     assert m.vc.segments[-1].kind == "jog"
 
 
+def test_jog_relative_g91_g01_is_jog():
+    m = MachIf_Virtual()
+    m.open()
+    _drain(m)
+    m.doJogMoveRelative({"y": "1.000", "feed": 1000.0})
+    _drain(m)
+    assert m.vc.position.y == 1.0
+    assert m.vc.segments[-1].kind == "jog"
+
+
+def test_plain_g91_g01_write_is_feed():
+    m = MachIf_Virtual()
+    m.open()
+    _drain(m)
+    m.write("G91 G01 Y1.000 F1000.0\n")
+    _drain(m)
+    assert m.vc.segments[-1].kind == "feed"
+
+
 def test_close_queues_port_close_and_exit():
     m = MachIf_Virtual()
     m.open()

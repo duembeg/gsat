@@ -49,6 +49,12 @@ def _gcode_lines_md5(lines) -> str:
     return hashlib.md5(str(lines if lines is not None else []).encode("utf-8")).hexdigest()
 
 
+def _gcode_has_axis(text: str) -> bool:
+    """True if the TX block names an axis (jog move, not restore G90 / ?)."""
+    s = str(text).upper()
+    return "X" in s or "Y" in s or "Z" in s
+
+
 class MainWindow(QMainWindow):
     def __init__(self, cmd_line_options, parent=None):
         super().__init__(parent)
@@ -75,6 +81,8 @@ class MainWindow(QMainWindow):
         self._run_end_waiting_idle = False
         self._progexec_rtime = 0.0
         self._reload_runtime_dialog_setting()
+        # Pad jog: MachIf_Base writes "G91 G01 Y1.000 F1000.0", not $J=.
+        self._pending_jog_tx = False
 
         self._create_actions()
         self._build_ui()
@@ -1025,6 +1033,7 @@ class MainWindow(QMainWindow):
             cmd = gc.EV_CMD_JOG_MOVE_RELATIVE
             if feed is not None:
                 payload["feed"] = feed
+        self._pending_jog_tx = True
         self.bridge.send_command(cmd, payload)
 
     @Slot()
@@ -1074,6 +1083,7 @@ class MainWindow(QMainWindow):
         if not self._jog_cmd_ready("Jog abs"):
             return
         payload = dict(axes)
+        self._pending_jog_tx = True
         if rapid:
             self.bridge.send_command(gc.EV_CMD_JOG_RAPID_MOVE, payload)
             self.append_log(
@@ -1688,7 +1698,13 @@ class MainWindow(QMainWindow):
         elif eid == gc.EV_DATA_OUT:
             self.append_log(f"> {data}")
             if self.path_panel.is_live() and data:
-                self.path_panel.apply_live_line(str(data))
+                text = str(data)
+                jog = self._pending_jog_tx and _gcode_has_axis(text)
+                if text.lstrip().startswith("$J="):
+                    jog = True
+                if jog:
+                    self._pending_jog_tx = False
+                self.path_panel.apply_live_line(text, jog=jog)
 
         elif eid == gc.EV_SER_PORT_OPEN:
             if virtual_cnc_enabled():
@@ -1704,6 +1720,7 @@ class MainWindow(QMainWindow):
             self._update_connection_ui()
 
         elif eid == gc.EV_SER_PORT_CLOSE:
+            self._pending_jog_tx = False
             if self.path_panel.is_live():
                 self.path_panel.end_live()
                 self._refresh_path_preview(at_pc=True)

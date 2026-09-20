@@ -500,6 +500,25 @@ def test_live_jog_is_not_program_g0_or_g1():
     p.end_live()
 
 
+def test_live_pad_g91_g01_is_jog_when_flagged():
+    p = _panel()
+    p.begin_live()
+    p.apply_live_line("G0 X10\n")
+    p.apply_live_line("G91 G01 Y1.000 F1000.0\n", jog=True)
+    p.apply_live_line("G90\n")
+    p.apply_live_line("G1 Y5\n")
+    assert [s.kind for s in p.segments] == ["rapid", "jog", "feed"]
+    p.end_live()
+
+
+def test_live_g91_g01_without_flag_stays_feed():
+    p = _panel()
+    p.begin_live()
+    p.apply_live_line("G91 G01 Y1.000 F1000.0\n")
+    assert p.segments[-1].kind == "feed"
+    p.end_live()
+
+
 def test_preview_program_has_no_jog_kind():
     p = _panel()
     p.set_program(["G0 X10\n", "G1 Y10\n", "G3 X0 Y20 I-10 J0\n"])

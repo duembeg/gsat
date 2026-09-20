@@ -277,7 +277,7 @@ class VirtualCnc:
     ) -> Segment | None:
         """Parse one G-code block. Returns last new segment if XYZ moved.
 
-        jog=True: emit kind "jog" (live $J=). Does not change modal G0/G1.
+        jog=True: emit kind "jog" (pad G91 G01 or $J=). Does not change modal G0/G1.
         """
         payload = _strip_comments(line).strip()
         if not payload:
