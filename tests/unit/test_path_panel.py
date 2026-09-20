@@ -26,16 +26,16 @@ def test_preview_builds_segments():
     assert [s.kind for s in p.segments] == ["rapid", "feed", "feed"]
 
 
-def test_scrub_reveals_and_hides_path():
+def test_scrub_keeps_full_path_moves_marker():
     p = _panel()
     p.set_program(["G0 X10\n", "G1 Y10\n", "G1 X0\n"])
     assert p._pc == 3
     assert p.canvas._drawn_end == 3
     p.set_pc(0)
-    assert p.canvas._drawn_end == 0
+    assert p.canvas._drawn_end == 3
     assert p.marker_position == Point(0, 0, 0)
     p.set_pc(1)
-    assert p.canvas._drawn_end == 1
+    assert p.canvas._drawn_end == 3
     assert p.marker_position == Point(10, 0, 0)
     p.set_pc(3)
     assert p.canvas._drawn_end == 3
@@ -123,18 +123,20 @@ def test_live_pc_moves_scrub_thumb():
     p.set_program(["G0 X1\n", "G1 X2\n", "G1 X3\n"])
     p.set_pc(2)
     assert p.slider.value() == 2
-    assert p.canvas._drawn_end == 2
+    assert p.canvas._drawn_end == 3
 
 
-def test_scrub_drag_uses_coarse_prefix():
+def test_scrub_drag_keeps_full_path():
     p = _panel()
     p.set_program([f"G1 X{i}\n" for i in range(80)])
+    n = p.canvas._drawn_end
     p._on_scrub_pressed()
     p._on_scrub(40)
-    assert p._scrubbing
-    assert p.canvas._drawn_exact is False
-    p._on_scrub_released()
+    assert p.canvas._drawn_end == n
     assert p.canvas._drawn_exact is True
+    assert not p.canvas.is_nav_preview()
+    p._on_scrub_released()
+    assert p.canvas._drawn_end == n
 
 
 def test_play_disabled_in_live_mode():

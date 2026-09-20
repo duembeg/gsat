@@ -570,9 +570,10 @@ class PathCanvas(QWidget):
         self._position = position
         hi_changed = highlight_line != self._highlight_line
         self._highlight_line = highlight_line
+        upto_changed = upto_pc != self._upto_pc
         self._upto_pc = upto_pc
         self._sync_cache(hi_changed=hi_changed)
-        if not self._orbit_live:
+        if not self._orbit_live and upto_changed:
             self._sync_drawn_prefix(exact=prefix_exact)
         self.update()
 
@@ -1027,7 +1028,6 @@ class PathPanel(QWidget):
         self._pc = 0
         self._live = False
         self._live_i = 0
-        self._scrubbing = False
         self._full = VirtualCnc()
         self._poses: list[Point] = [Point(0.0, 0.0, 0.0)]
         self._playing = False
@@ -1186,9 +1186,13 @@ class PathPanel(QWidget):
             pc_i = 0
         n = len(self._lines)
         if n == 0:
-            self._pc = 0
+            new_pc = 0
         else:
-            self._pc = max(0, min(pc_i, n))
+            new_pc = max(0, min(pc_i, n))
+        if new_pc == self._pc:
+            self._sync_transport_ui()
+            return
+        self._pc = new_pc
         self._sync_transport_ui()
         if self._live:
             return
@@ -1250,6 +1254,9 @@ class PathPanel(QWidget):
             pc = 0
         else:
             pc = max(0, min(int(pc), n))
+        if pc == self._pc:
+            self.pc_seeked.emit(pc)
+            return
         self._pc = pc
         self._sync_transport_ui()
         self._refresh()
@@ -1332,12 +1339,10 @@ class PathPanel(QWidget):
     @Slot()
     def _on_scrub_pressed(self) -> None:
         self.stop_play()
-        self._scrubbing = True
 
     @Slot()
     def _on_scrub_released(self) -> None:
-        self._scrubbing = False
-        self._refresh()
+        pass
 
     def _refresh(self) -> None:
         if self._live:
@@ -1352,8 +1357,6 @@ class PathPanel(QWidget):
             self._full.segment_list(),
             pos,
             highlight_line=hi,
-            upto_pc=None if self._live else self._pc,
-            prefix_exact=not self._scrubbing,
         )
         n = self.segment_count()
         msg = (
