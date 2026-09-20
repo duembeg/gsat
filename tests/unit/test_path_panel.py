@@ -223,11 +223,28 @@ def test_view_cube_face_and_corner_hits_from_top():
     assert cube.region_at(68, 56) == "top"
     # Chamfer triangle at +X −Y +Z (scale 24)
     assert cube.region_at(89, 77) == "top-front-right"
+    # Face-on Top: edge strips overlap the octagon in 2D — must still pick the edge
+    assert cube.region_at(68, 76) == "top-front"
+    assert cube.region_at(88, 56) == "top-right"
+    p.canvas.snap_view("top")
+    p.canvas.view_cube.set_camera(p.canvas.camera)
+    assert cube.region_at(68, 76) == "top-front"
+    p.canvas.snap_view("top-front")
+    assert abs(p.canvas.camera.pitch_deg - 45.0) < 1e-6
     p.canvas.snap_view("top-front-right")
     assert abs(p.canvas.camera.yaw_deg + 45.0) < 1e-6
     p.canvas.snap_view("front-right")
     assert abs(p.canvas.camera.yaw_deg + 45.0) < 1e-6
     assert abs(p.canvas.camera.pitch_deg) < 1e-6
+    p.canvas.snap_view("top-front-right")
+    p.canvas.view_cube.set_camera(p.canvas.camera)
+    edge_poly = next(
+        poly
+        for _d, key, poly, _f in cube._visible_facets()
+        if key == "top-front"
+    )
+    c = edge_poly.boundingRect().center()
+    assert cube.region_at(c.x(), c.y()) == "top-front"
 
 
 def test_live_appends_and_ignores_file_preview():

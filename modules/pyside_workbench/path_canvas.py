@@ -186,16 +186,21 @@ class ViewCube(QWidget):
             depth = sum(p[2] for p in pts) / len(pts)
             poly = QPolygonF([QPointF(p[0], p[1]) for p in pts])
             out.append((depth, key, poly, "-" not in key))
-        out.sort(key=lambda item: item[0])
+        # Paint faces under edges under corners so chamfers stay pickable
+        # when they overlap a face in 2D (face-on views).
+        out.sort(key=lambda item: (item[1].count("-"), item[0]))
         return out
 
     def region_at(self, x: float, y: float) -> str | None:
-        """Hit-test a cube region key, or None. Nearer facets win."""
+        """Hit-test a cube region. Overlaps: corner > edge > face, then nearer."""
         hit = QPointF(x, y)
-        for _depth, key, poly, _is_face in reversed(self._visible_facets()):
+        hits: list[tuple[int, float, str]] = []
+        for depth, key, poly, _is_face in self._visible_facets():
             if poly.containsPoint(hit, Qt.FillRule.OddEvenFill):
-                return key
-        return None
+                hits.append((key.count("-"), depth, key))
+        if not hits:
+            return None
+        return max(hits, key=lambda item: (item[0], item[1]))[2]
 
     def paintEvent(self, event) -> None:  # noqa: N802
         p = QPainter(self)
