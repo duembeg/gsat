@@ -205,29 +205,6 @@ class ViewCube(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(255, 255, 255, 200))
-        p.drawEllipse(QRect(2, 2, _CUBE_SIZE - 4, _CUBE_SIZE - 4))
-        ring = QPen(QColor("#C5CAD3"))
-        ring.setWidthF(1.2)
-        p.setPen(ring)
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(QRect(10, 8, 92, 92))
-        p.setPen(QPen(QColor("#94A3B8"), 1.4))
-        cx, cy, r = 56.0, 54.0, 48.0
-        for ang in (0, 90, 180, 270):
-            a = math.radians(ang)
-            tx, ty = cx + r * math.sin(a), cy - r * math.cos(a)
-            left = math.radians(ang - 16)
-            right = math.radians(ang + 16)
-            p.drawLine(
-                QPointF(tx, ty),
-                QPointF(cx + (r - 7) * math.sin(left), cy - (r - 7) * math.cos(left)),
-            )
-            p.drawLine(
-                QPointF(tx, ty),
-                QPointF(cx + (r - 7) * math.sin(right), cy - (r - 7) * math.cos(right)),
-            )
 
         font = QFont(self.font())
         font.setPointSize(8)
@@ -253,18 +230,22 @@ class ViewCube(QWidget):
                     key.upper(),
                 )
 
-        ox, oy = 28.0, 72.0
-        ccx, ccy, _ = self._project_cube(0, 0, 0)
+        # Screen-anchored triad (reorients with camera; not in hit-test).
+        ox, oy, axis_px = 14.0, 70.0, 18.0
+        ccx, ccy, _ = self._project_cube(0.0, 0.0, 0.0)
         for vec, color, label in (
-            ((1.15, 0, 0), QColor("#DC2626"), "X"),
-            ((0, 1.15, 0), QColor("#16A34A"), "Y"),
-            ((0, 0, 1.15), QColor("#2563EB"), "Z"),
+            ((1.0, 0.0, 0.0), QColor("#DC2626"), "X"),
+            ((0.0, 1.0, 0.0), QColor("#16A34A"), "Y"),
+            ((0.0, 0.0, 1.0), QColor("#2563EB"), "Z"),
         ):
             px, py, _ = self._project_cube(*vec)
+            dx, dy = px - ccx, py - ccy
+            length = math.hypot(dx, dy) or 1.0
+            dx, dy = dx / length * axis_px, dy / length * axis_px
             p.setPen(QPen(color, 2.0))
-            p.drawLine(QPointF(ox, oy), QPointF(ox + (px - ccx), oy + (py - ccy)))
+            p.drawLine(QPointF(ox, oy), QPointF(ox + dx, oy + dy))
             p.setPen(color)
-            p.drawText(QPointF(ox + (px - ccx) + 2, oy + (py - ccy) + 4), label)
+            p.drawText(QPointF(ox + dx + 2, oy + dy + 4), label)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -364,7 +345,6 @@ class PathCanvas(QWidget):
         self._last_feed: tuple[float, float] | None = None
         self._bounds = (0.0, 0.0, 0.0, 0.0)
         self._marker_view = (0.0, 0.0)
-        self._axis_view: list[tuple[float, float]] = []
         self._seg_ranges: dict[int, list[int]] = {}
         self._cache_n = 0
         self._cache_cam: Camera | None = None
@@ -643,13 +623,6 @@ class PathCanvas(QWidget):
             self._position.x, self._position.y, self._position.z
         )
         self._marker_view = (mx, my)
-        span = max(abs(v) for v in self._bounds) if self._cache_n else 1.0
-        axis_len = max(span, 1.0) * 0.2
-        ox, oy, _ = cam.to_view(0.0, 0.0, 0.0)
-        self._axis_view = [(ox, oy)]
-        for vec in ((axis_len, 0.0, 0.0), (0.0, axis_len, 0.0), (0.0, 0.0, axis_len)):
-            vx, vy, _ = cam.to_view(*vec)
-            self._axis_view.append((vx, vy))
 
     def _rebuild_hi_paths(self) -> None:
         self._path_hi_r = QPainterPath()
@@ -711,18 +684,6 @@ class PathCanvas(QWidget):
         painter.setTransform(
             QTransform(xf.scale, 0.0, 0.0, -xf.scale, xf.origin_x, xf.origin_y)
         )
-
-        if len(self._axis_view) == 4:
-            origin = QPointF(*self._axis_view[0])
-            for pt, color in (
-                (self._axis_view[1], QColor("#FECACA")),
-                (self._axis_view[2], QColor("#BBF7D0")),
-                (self._axis_view[3], QColor("#BFDBFE")),
-            ):
-                pen = QPen(color, 1.0)
-                pen.setCosmetic(True)
-                painter.setPen(pen)
-                painter.drawLine(origin, QPointF(*pt))
 
         rapid_pen = QPen(QColor("#64748B"))
         rapid_pen.setWidthF(1.2)
