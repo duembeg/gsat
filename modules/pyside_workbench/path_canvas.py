@@ -1049,7 +1049,7 @@ class PathPanel(QWidget):
         tools.addWidget(self.btn_preview)
         self.btn_clear = QPushButton("Clear")
         self.btn_clear.setObjectName("pathClear")
-        self.btn_clear.setToolTip("Clear path and marker")
+        self.btn_clear.setToolTip("Jump preview to the start (0%)")
         self.btn_clear.clicked.connect(self.clear)
         tools.addWidget(self.btn_clear)
         self.btn_fit = QPushButton("Fit")
@@ -1200,13 +1200,11 @@ class PathPanel(QWidget):
 
     @Slot()
     def clear(self) -> None:
+        """Seek to 0% (start). Does not throw away the previewed program."""
         self.stop_play()
-        self._lines = []
-        self._pc = 0
-        self._full.reset()
-        self._poses = [Point(0.0, 0.0, 0.0)]
-        self._set_transport_enabled(False)
-        self._refresh()
+        if self._live or not self._lines:
+            return
+        self._seek(0)
 
     def _build_pc_poses(self) -> None:
         """Position after lines[:i] for i in 0..n — O(segments) once per preview."""

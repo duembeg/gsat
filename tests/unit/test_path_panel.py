@@ -86,16 +86,18 @@ def test_play_tick_advances_and_emits():
     assert not p._playing
 
 
-def test_clear_disables_play_until_preview():
+def test_clear_seeks_to_start_keeps_play():
     p = _panel()
     p.set_program(["G0 X1\n", "G1 X2\n"])
-    assert p.btn_play.isEnabled()
+    p.set_pc(2)
     p.clear()
-    assert not p.btn_play.isEnabled()
-    p.start_play()
-    assert not p._playing
-    p.set_program(["G0 X1\n", "G1 X2\n"])
+    assert p._pc == 0
+    assert p.marker_position == Point(0, 0, 0)
     assert p.btn_play.isEnabled()
+    assert p.segment_count() == 2
+    p.start_play()
+    assert p._playing
+    p.stop_play()
 
 
 def test_play_keeps_full_path_not_subsample():
@@ -157,9 +159,13 @@ def test_clear_resets_path_and_marker():
     p.set_pc(1)
     assert p.segment_count() == 1
     p.clear()
-    assert p.segment_count() == 0
+    assert p.segment_count() == 1
+    assert p._pc == 0
     assert p.marker_position == Point(0, 0, 0)
     assert p.status.text().startswith("X0.000")
+    assert p.btn_play.isEnabled()
+    assert p.slider.isEnabled()
+    assert p.slider.value() == 0
 
 
 def test_skipped_arcs_noted_in_status():

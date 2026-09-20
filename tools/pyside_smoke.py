@@ -180,8 +180,12 @@ def test_offline() -> list[str]:
         if abs(pos0.x) > 1e-9 or abs(pos0.y) > 1e-9:
             _fail(f"reset PC marker should be origin, got {pos0}")
         w.path_panel.clear()
-        if w.path_panel.segment_count() != 0:
-            _fail("Clear should empty the path")
+        if w.path_panel.segment_count() < 1:
+            _fail("Clear should keep the previewed program")
+        if w.path_panel._pc != 0:
+            _fail("Clear should seek to 0%")
+        if not w.path_panel.btn_play.isEnabled():
+            _fail("Clear should not disable Play")
         w.path_panel.btn_preview.click()
         app.processEvents()
         if w.path_panel.segment_count() < 1:
