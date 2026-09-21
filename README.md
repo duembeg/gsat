@@ -131,10 +131,10 @@ python3.8 -m pip install opencv-python
 ## Screenshots
 
 ### Main window, Linux (PySide)
-![Main window, Linux (PySide)](https://raw.githubusercontent.com/duembeg/gsat/wx-workbench-layout/images/screenshoot/main_window_pyside_linux.png "Main window, Linux (PySide)")
+![Main window, Linux (PySide)](images/screenshoot/main_window_pyside_linux.png "Main window, Linux (PySide)")
 
 ### Settings dialog (PySide)
-![Settings dialog (PySide)](https://raw.githubusercontent.com/duembeg/gsat/wx-workbench-layout/images/screenshoot/settings_pyside_dialog.png "Settings dialog (PySide)")
+![Settings dialog (PySide)](images/screenshoot/settings_pyside_dialog.png "Settings dialog (PySide)")
 
 ### Legacy wx
 
@@ -148,21 +148,17 @@ Classic wx (`gsat-wx.py`) shots for reference.
 
 ## Changelog
 
-### Unreleased
-
-- Classic wx GUI lives in `modules/wx_workbench/` (mirrors `modules/pyside_workbench/`)
-- Launch legacy wx with `gsat-wx.py`; `gsat.py` is a one-release shim (`gsat-pyside.py` / `gsat-wx.py`)
-- Shared core (`machif_*`, config, serial, remotes, `virtual_cnc`, …) stays at `modules/` root
-- Legacy wx install: `requirements-wx.txt` + Ubuntu extras wheels into `.venv-wx` (not the PySide venv)
-- README screenshots: PySide main window and settings (Linux)
-
 ### 1.10.0
 
 - **Virtual CNC** (PySide workbench): commanded-motion Path preview (G0/G1/G2/G3 XY); optional Connect target with no serial
 - Path view: orbit/pan/zoom, 26-region nav cube, XYZ HUD
 - Play/scrub along G-code PC; ink only up to the bar; Clear seeks to 0%
 - Live jog drawn amber (distinct from program G0/G1)
-- Classic wx (`gsat-wx.py`) remains maintenance-only
+- Classic wx GUI lives in `modules/wx_workbench/` (mirrors `modules/pyside_workbench/`)
+- Launch legacy wx with `gsat-wx.py`; `gsat.py` is a one-release shim (`gsat-pyside.py` / `gsat-wx.py`)
+- Shared core (`machif_*`, config, serial, remotes, `virtual_cnc`, …) stays at `modules/` root
+- Legacy wx install: `requirements-wx.txt` + Ubuntu extras wheels into `.venv-wx` (not the PySide venv)
+- README screenshots: PySide main window and settings (Linux)
 
 ### 1.9.0
 
