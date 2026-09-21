@@ -42,18 +42,18 @@ import modules.config as gc
 import modules.machif_config as mi
 import images.icons as ico
 
-import modules.wnd_main_config as mwc
-import modules.wnd_gcode as ged
-import modules.wnd_machine as mc
-import modules.wnd_jogging as jog
-import modules.wnd_compvision as compv
+import modules.wx_workbench.wnd_main_config as mwc
+import modules.wx_workbench.wnd_gcode as ged
+import modules.wx_workbench.wnd_machine as mc
+import modules.wx_workbench.wnd_jogging as jog
+import modules.wx_workbench.wnd_compvision as compv
 import modules.machif_progexec as mi_progexec
 import modules.remote_client as rc
 import modules.remote_ws_client as rcws
 import modules.remote_server as rs
 import modules.remote_ws_server as rsws
 import modules.version_info as vinfo
-import modules.wnd_console as cli
+import modules.wx_workbench.wnd_console as cli
 
 """----------------------------------------------------------------------------
     Globals:

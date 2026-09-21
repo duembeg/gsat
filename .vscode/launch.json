@@ -8,7 +8,7 @@
             "name": "Python: gsat-vmask",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/gsat.py",
+            "program": "${workspaceFolder}/gsat-wx.py",
             "python": "python2",
             "args": [
                 "--vm=ui,ui_ev"
@@ -38,16 +38,16 @@
             ]
         },
         {
-            "name": "Python: gsat",
+            "name": "Python: gsat-wx",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/gsat.py"
+            "program": "${workspaceFolder}/gsat-wx.py"
         },
         {
             "name": "Python: gsat-verbose",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/gsat.py",
+            "program": "${workspaceFolder}/gsat-wx.py",
             "args": [
                 "-v"
             ]
@@ -56,7 +56,7 @@
             "name": "Python: gsat-vverbose",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/gsat.py",
+            "program": "${workspaceFolder}/gsat-wx.py",
             "args": [
                 "--vv"
             ]

@@ -2,12 +2,11 @@
 
 gsat is a cross-platform GCODE debug/step and alignment tool for TinyG and Grbl-like GCODE interpreters. It features functionalities similar to software debuggers, such as breakpoints, program counter (position) changes, stopping, inspecting/modifying machine variables, stepping, and running.
 
-**Two desktop UIs (same machine core and `~/.gsat.json`):**
+**Desktop UI:** the day-to-day app is the **PySide workbench** (`gsat-pyside.py`). Same machine core and `~/.gsat.json`. Includes **Virtual CNC** Path preview (commanded motion).
 
-- **PySide workbench** (`gsat-pyside.py`) — current desktop; use this for day-to-day work. Includes **Virtual CNC** Path preview (commanded motion).
-- **Classic wx** (`gsat.py`) — still supported, **maintenance only** (no new feature UI).
+Classic wx (`gsat-wx.py`) is **legacy** — maintenance only, no new features, and may be removed in a future major. `gsat.py` is a one-release shim that points at those two entries.
 
-Install each in its **own venv**. The WebSocket machine server is `gsat-server.py` (works with either UI).
+Install PySide in its **own venv** (do not mix with wxPython). The WebSocket machine server is `gsat-server.py`.
 
 ## Use Case
 
@@ -19,8 +18,8 @@ For instance, if the GCODE file is a drill program for a PCB, gsat allows you to
 
 - **Python**: [Python 3.8](http://www.python.org/) or later (3.10+ for the PySide workbench)
 - **Serial Communication**: [pySerial](http://pyserial.sourceforge.net/)
-- **GUI Library (classic)**: [wxPython 4.x](http://www.wxpython.org/) or later — `gsat.py`
-- **GUI Library (workbench)**: [PySide6](https://pypi.org/project/PySide6/) — `gsat-pyside.py` (see the PySide section below)
+- **GUI Library**: [PySide6](https://pypi.org/project/PySide6/) — `gsat-pyside.py` (see the PySide section below)
+- **GUI Library (legacy wx)**: [wxPython 4.x](http://www.wxpython.org/) or later — `gsat-wx.py` (maintenance only)
 
 ### Optional Dependencies (for OpenCV)
 
@@ -41,24 +40,6 @@ For instance, if the GCODE file is a drill program for a PCB, gsat allows you to
 - Other CNC machines using the above devices
 
 ### Supported Operating Systems
-
-#### Ubuntu 20.04, 22.04, 24.04 — classic wx UI (`gsat.py`)
-
-```bash
-sudo apt install python3 python3-pip python3-venv git python3-dev
-sudo apt install build-essential libgtk-3-dev
-python3 -m pip install -U pip
-python3 -m pip install charset-normalizer==2.0.0 aiohttp==3.8.3 uvicorn python-socketio colorama pyserial
-python3 -m pip install wxPython
-
-```
-
-*Optional dependencies for OpenCV*
-
-```bash
-python3 -m pip install numpy
-python3 -m pip install opencv-python
-```
 
 #### Ubuntu 22.04, 24.04 — PySide workbench (`gsat-pyside.py`)
 
@@ -94,7 +75,37 @@ If the workbench aborts with `xcb-cursor0 or libxcb-cursor0 is needed` / `Could 
 
 Do not install PyPI `QScintilla` / `PyQt6-QScintilla` into this venv — those wheels are PyQt-only and conflict with PySide6.
 
-#### Ubuntu 18.04
+### Legacy (wx) — maintenance only
+
+No new features. Classic wx (`gsat-wx.py`) may be removed in a future major. Use a **separate** venv from PySide6.
+
+#### Ubuntu 22.04, 24.04 — `gsat-wx.py`
+
+wxPython Linux wheels are **not** on PyPI (pip would try a long source build). Use the extras index that matches the Ubuntu release, in a **separate** venv from PySide6.
+
+```bash
+sudo apt install python3 python3-pip python3-venv git
+# GTK3 runtime is enough for the extras wheels; libgtk-3-dev is only for a source build.
+
+python3 -m venv .venv-wx
+.venv-wx/bin/pip install -U pip
+.venv-wx/bin/pip install -r requirements-wx.txt
+# Ubuntu 24.04 / Python 3.12:
+.venv-wx/bin/pip install --only-binary=:all: \
+  -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04 \
+  wxPython
+# Ubuntu 22.04: use .../gtk3/ubuntu-22.04 instead.
+.venv-wx/bin/python gsat-wx.py
+```
+
+*Optional dependencies for OpenCV*
+
+```bash
+python3 -m pip install numpy
+python3 -m pip install opencv-python
+```
+
+#### Ubuntu 18.04 (historical)
 
 *Special installation for dependencies:*
 
@@ -119,7 +130,15 @@ python3.8 -m pip install opencv-python
 
 ## Screenshots
 
-These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
+### Main window, Linux (PySide)
+![Main window, Linux (PySide)](images/screenshoot/main_window_pyside_linux.png "Main window, Linux (PySide)")
+
+### Settings dialog (PySide)
+![Settings dialog (PySide)](images/screenshoot/settings_pyside_dialog.png "Settings dialog (PySide)")
+
+### Legacy wx
+
+Classic wx (`gsat-wx.py`) shots for reference.
 
 ### Main Window (Linux, classic wx)
 ![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux (classic wx)")
@@ -135,7 +154,11 @@ These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
 - Path view: orbit/pan/zoom, 26-region nav cube, XYZ HUD
 - Play/scrub along G-code PC; ink only up to the bar; Clear seeks to 0%
 - Live jog drawn amber (distinct from program G0/G1)
-- Classic wx (`gsat.py`) remains maintenance-only
+- Classic wx GUI lives in `modules/wx_workbench/` (mirrors `modules/pyside_workbench/`)
+- Launch legacy wx with `gsat-wx.py`; `gsat.py` is a one-release shim (`gsat-pyside.py` / `gsat-wx.py`)
+- Shared core (`machif_*`, config, serial, remotes, `virtual_cnc`, …) stays at `modules/` root
+- Legacy wx install: `requirements-wx.txt` + Ubuntu extras wheels into `.venv-wx` (not the PySide venv)
+- README screenshots: PySide main window and settings (Linux)
 
 ### 1.9.0
 
@@ -145,7 +168,7 @@ These shots are the **classic wx UI** (`gsat.py`), not the PySide workbench.
   - Settings notebook (local + remote), serial-port UX, probe / MachIf show-hide
   - After-run Idle wait + optional runtime dialog; status DRO extras
   - Offline unit tests (`pytest tests/unit`) and UI smoke (`tools/pyside_smoke.py`)
-- Classic **wx UI remains** (`gsat.py`) for this release (maintenance only)
+- Classic **wx UI remains** (`gsat-wx.py`) for this release (maintenance only)
 - Install: Ubuntu 22.04/24.04 PySide section below; do not mix wxPython and PySide6 in one venv
 
 ### 1.8.0

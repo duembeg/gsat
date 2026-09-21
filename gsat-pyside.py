@@ -2,9 +2,9 @@
 """----------------------------------------------------------------------------
     gsat-pyside.py
 
-    Entry point for the gsat PySide6 workbench (spike / successor desktop UI).
+    Entry point for the gsat PySide6 workbench (day-to-day desktop UI).
 
-    Classic production UI remains gsat.py (wx). This client reuses the same
+    Classic wx UI is gsat-wx.py (maintenance only). This client reuses the same
     backend (machif, progexec, gsat-server, remotes) as a thin shell.
 
     Dependencies (see requirements-pyside.txt):
