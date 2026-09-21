@@ -130,16 +130,20 @@ python3.8 -m pip install opencv-python
 
 ## Screenshots
 
-PySide workbench shots will go here (images pending). Until those land, the shots below are the **legacy wx** UI (`gsat-wx.py`).
+### Main window, Linux (PySide)
+![Main window, Linux (PySide)](https://raw.githubusercontent.com/duembeg/gsat/wx-workbench-layout/images/screenshoot/main_window_pyside_linux.png "Main window, Linux (PySide)")
 
-### PySide workbench (day-to-day)
+### Settings dialog (PySide)
+![Settings dialog (PySide)](https://raw.githubusercontent.com/duembeg/gsat/wx-workbench-layout/images/screenshoot/settings_pyside_dialog.png "Settings dialog (PySide)")
 
-_Images pending._
+### Legacy wx
 
-### Main Window (Linux, classic wx) — legacy
+Classic wx (`gsat-wx.py`) shots for reference.
+
+### Main Window (Linux, classic wx)
 ![Main window, Linux](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/main_window_linux.png "Main Window, Linux (classic wx)")
 
-### Settings Dialog (classic wx) — legacy
+### Settings Dialog (classic wx)
 ![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog (classic wx)")
 
 ## Changelog
@@ -150,6 +154,7 @@ _Images pending._
 - Launch legacy wx with `gsat-wx.py`; `gsat.py` is a one-release shim (`gsat-pyside.py` / `gsat-wx.py`)
 - Shared core (`machif_*`, config, serial, remotes, `virtual_cnc`, …) stays at `modules/` root
 - Legacy wx install: `requirements-wx.txt` + Ubuntu extras wheels into `.venv-wx` (not the PySide venv)
+- README screenshots: PySide main window and settings (Linux)
 
 ### 1.10.0
 
@@ -157,7 +162,7 @@ _Images pending._
 - Path view: orbit/pan/zoom, 26-region nav cube, XYZ HUD
 - Play/scrub along G-code PC; ink only up to the bar; Clear seeks to 0%
 - Live jog drawn amber (distinct from program G0/G1)
-- Classic wx (`gsat.py`) remains maintenance-only
+- Classic wx (`gsat-wx.py`) remains maintenance-only
 
 ### 1.9.0
 
@@ -167,7 +172,7 @@ _Images pending._
   - Settings notebook (local + remote), serial-port UX, probe / MachIf show-hide
   - After-run Idle wait + optional runtime dialog; status DRO extras
   - Offline unit tests (`pytest tests/unit`) and UI smoke (`tools/pyside_smoke.py`)
-- Classic **wx UI remains** (`gsat.py`) for this release (maintenance only)
+- Classic **wx UI remains** (`gsat-wx.py`) for this release (maintenance only)
 - Install: Ubuntu 22.04/24.04 PySide section below; do not mix wxPython and PySide6 in one venv
 
 ### 1.8.0
