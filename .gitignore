@@ -1,5 +1,6 @@
 #.venv
 .venv/
+.venv-wx/
 
 # other
 *.py[cod]

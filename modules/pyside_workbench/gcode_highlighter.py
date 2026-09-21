@@ -2,7 +2,7 @@
     gcode_highlighter.py
 
     G-code syntax highlighting rules ported from wx.stc container lexer
-    (modules/wnd_gcode.py onStyleNeeded). Used with QSyntaxHighlighter under
+    (modules/wx_workbench/wnd_gcode.py onStyleNeeded). Used with QSyntaxHighlighter under
     pure PySide6 (QScintilla pip is PyQt-only and clashes with PySide6).
 ----------------------------------------------------------------------------"""
 from __future__ import annotations

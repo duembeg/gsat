@@ -1,5 +1,5 @@
 # Dependencies for the PySide workbench (gsat-pyside.py)
-# Classic wx UI still uses the README wxPython stack.
+# Classic wx UI uses requirements-wx.txt in a separate .venv-wx (do not mix).
 #
 # OS packages (Ubuntu 22.04/24.04): see README "PySide workbench".
 # pip does not install libxcb-cursor0; without it the GUI fails on X11

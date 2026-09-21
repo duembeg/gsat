@@ -1,0 +1,21 @@
+# Dependencies for the legacy wx UI (gsat-wx.py).
+# Do not mix this with the PySide workbench venv.
+#
+# Linux wheels are not on PyPI. On Ubuntu, install wxPython from extras
+# (see README "Legacy (wx)") after this file:
+#
+#   python3 -m venv .venv-wx
+#   .venv-wx/bin/pip install -U pip
+#   .venv-wx/bin/pip install -r requirements-wx.txt
+#   .venv-wx/bin/python gsat-wx.py
+#
+# Windows / macOS: pip can install wxPython from PyPI; add it here or:
+#   .venv-wx/bin/pip install wxPython
+
+pyserial>=3.5
+colorama>=0.4.6
+python-socketio[asyncio-client]>=5.10
+uvicorn>=0.27
+pytest>=8.0
+pillow>=10.0
+six>=1.16

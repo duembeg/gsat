@@ -27,12 +27,12 @@ import wx
 from wx.lib import scrolledpanel as scrolled
 
 import images.icons as ico
-import modules.wnd_gcode_config as gcode_c
-import modules.wnd_machine_config as machine_c
-import modules.wnd_jogging_config as jog_c
-import modules.wnd_console_config as con_c
-import modules.wnd_compvision_config as compvision_c
-import modules.wnd_remote_config as remote_c
+import modules.wx_workbench.wnd_gcode_config as gcode_c
+import modules.wx_workbench.wnd_machine_config as machine_c
+import modules.wx_workbench.wnd_jogging_config as jog_c
+import modules.wx_workbench.wnd_console_config as con_c
+import modules.wx_workbench.wnd_compvision_config as compvision_c
+import modules.wx_workbench.wnd_remote_config as remote_c
 main_wnd_c = sys.modules[__name__]
 
 

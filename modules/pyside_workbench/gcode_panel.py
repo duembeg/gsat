@@ -6,7 +6,7 @@
     Note on QScintilla: the PyPI ``QScintilla`` / ``PyQt6-QScintilla`` wheels are
     **PyQt-only** and conflict with a PySide6 QApplication (Qt ABI mismatch).
     This panel uses pure PySide6 QPlainTextEdit + QSyntaxHighlighter with the
-    **same regex rules** as wx.stc container lexer (modules/wnd_gcode.py).
+    **same regex rules** as wx.stc container lexer (modules/wx_workbench/wnd_gcode.py).
     PC / breakpoint markers use ExtraSelections + a breakpoint margin.
 ----------------------------------------------------------------------------"""
 from __future__ import annotations

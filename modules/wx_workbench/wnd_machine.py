@@ -26,7 +26,7 @@ import wx
 from wx.lib import newevent as newev
 
 import modules.config as gc
-import modules.wnd_numeric_entry as ne
+import modules.wx_workbench.wnd_numeric_entry as ne
 import images.icons as ico
 
 
