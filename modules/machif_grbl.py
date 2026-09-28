@@ -332,9 +332,6 @@ class MachIf_GRBL(mi.MachIf_Base):
             axes = self.reGrblAxes.findall(f"{statusData[1]},")
             if len(axes):
 
-                print(f"statusData: {statusData}")
-                print(f"axes: {axes}")
-
                 for i in range(len(axes)):
                     sr['pos%s' % self.axes_list[i]] = float(axes[i])
 
