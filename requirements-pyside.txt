@@ -19,6 +19,11 @@ colorama>=0.4.6
 # package (no extra required for the server side).
 python-socketio[asyncio-client]>=5.10
 
+# Moonraker websocket client (modules/machif_klipper.py). Also pulled in by
+# python-socketio[asyncio-client]; listed here so the dependency is explicit.
+# Imported lazily so the app still starts if aiohttp is missing.
+aiohttp>=3.9
+
 # gsat-server WebSocket front (modules/remote_ws_server.py):
 # socketio.ASGIApp served by uvicorn (not FastAPI).
 uvicorn>=0.27

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import logging
 import os
@@ -1372,8 +1373,12 @@ class MainWindow(QMainWindow):
         if gc.CONFIG_DATA is None:
             QMessageBox.warning(self, "Settings", "Config is not loaded.")
             return
+        old_device = gc.CONFIG_DATA.get("/machine/Device")
         old_port = gc.CONFIG_DATA.get("/machine/Port")
         old_baud = gc.CONFIG_DATA.get("/machine/Baud")
+        old_specific = copy.deepcopy(
+            gc.CONFIG_DATA.get(f"/machine/MachIfSpecific/{old_device}")
+        )
         dlg = SettingsDialog(self, config_data=gc.CONFIG_DATA)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
@@ -1390,13 +1395,17 @@ class MainWindow(QMainWindow):
             and not self.bridge.is_remote_connected()
         ):
             self.bridge.send_command(gc.EV_CMD_UPDATE_CONFIG)
-        # Re-open machine if port/baud changed while open (wx)
+        # Re-open when the link settings change. Host lives under
+        # MachIfSpecific/<Device>, so a Klipper host edit must count too.
         machine_open = self._machine_open or gc.STATE_DATA.serialPortIsOpen
+        new_device = gc.CONFIG_DATA.get("/machine/Device")
         if machine_open and (
-            old_port != gc.CONFIG_DATA.get("/machine/Port")
+            old_device != new_device
+            or old_port != gc.CONFIG_DATA.get("/machine/Port")
             or old_baud != gc.CONFIG_DATA.get("/machine/Baud")
+            or old_specific != gc.CONFIG_DATA.get(f"/machine/MachIfSpecific/{new_device}")
         ):
-            self.append_log("Port/baud changed — closing machine session.")
+            self.append_log("Machine connection settings changed — closing machine session.")
             self.on_close_machine()
         self.append_log("Settings saved.")
         self._update_connection_ui()

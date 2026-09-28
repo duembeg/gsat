@@ -870,7 +870,44 @@ class gsatConfigData(ConfigData):
                         "Name": "Auto Refresh Period (msec)",
                         "ToolTip": "How often so send refresh request (msec)",
                     }
-                }
+                },
+                "klipper": {
+                    "Host": {
+                        "Value": "",
+                        "Name": "Moonraker host/IP",
+                        "ToolTip": "Hostname or IP of the Moonraker server (e.g. printer.local)",
+                    },
+                    "Port": {
+                        "Value": 7125,
+                        "Name": "Moonraker port",
+                        "ToolTip": "Moonraker HTTP/WebSocket port (default 7125)",
+                    },
+                    "ApiKey": {
+                        "Value": "",
+                        "Name": "API key (optional)",
+                        "ToolTip": "Only if gsat is not a Moonraker trusted client. Stored in plain text.",
+                    },
+                    "UseTls": {
+                        "Value": False,
+                        "Name": "Use TLS (wss/https)",
+                        "ToolTip": "Enable if Moonraker is behind an HTTPS proxy",
+                    },
+                    "ConnectTimeout": {
+                        "Value": 5000,
+                        "Name": "Connect timeout (msec)",
+                        "ToolTip": "WebSocket connect / klippy-ready wait timeout",
+                    },
+                    "IdleTimeoutSec": {
+                        "Value": 0,
+                        "Name": "Idle timeout override (sec)",
+                        "ToolTip": "0 = leave Klipper default (600s); else send SET_IDLE_TIMEOUT on connect",
+                    },
+                    "DroSource": {
+                        "Value": "live",
+                        "Name": "DRO source (live/commanded)",
+                        "ToolTip": "live = motion_report.live_position; commanded = gcode_move.gcode_position",
+                    },
+                },
             },
             "Port": "",
             "Probe": {
