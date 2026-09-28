@@ -78,6 +78,10 @@ def _has_init(items):
     return any(isinstance(d.get("r"), dict) and d["r"].get("init") for d in items)
 
 
+def _saw_ok(items):
+    return any(d.get("rx_data") == "ok\n" for d in items)
+
+
 def _ack(items, ok=None):
     acks = [d for d in items if "r" in d and "f" in d and "init" not in (d.get("r") or {})]
     if ok is True:
@@ -179,8 +183,9 @@ def test_unhomed_move_then_home_then_ok():
         assert "home" in str(errs[0].get("rx_data_info", "")).lower()
 
         mach.doHome({"x": 0, "y": 0, "z": 0})
-        homed = _collect(mach, 3, lambda xs: _ack(xs, ok=True))
-        assert _ack(homed, ok=True)
+        homed = _collect(mach, 3, _saw_ok)
+        assert _saw_ok(homed)
+        assert _ack(homed) == []
         assert "G28 X Y Z" in _scripts(fake)
 
         mach.write("G1 X10\n")
@@ -304,20 +309,20 @@ def test_relative_jog_estop_and_clear_alarm():
         assert _collect(mach, 8, _has_init)
 
         mach.doJogMoveRelative({"x": 1, "y": -2, "feed": 1500})
-        assert _collect(mach, 3, lambda xs: _ack(xs))
+        assert _collect(mach, 3, _saw_ok)
         scripts = _scripts(fake)
         assert "G91\nG1 X1 Y-2 F1500\nG90" in scripts
 
         mach.doJogFastMoveRelative({"y": 2})
-        assert _collect(mach, 3, lambda xs: len(_ack(xs)) >= 1)
+        assert _collect(mach, 3, _saw_ok)
         assert "G91\nG1 Y2 F3000\nG90" in _scripts(fake)
 
         mach.doJogMove({"x": 4})
-        assert _collect(mach, 3, lambda xs: len(_ack(xs)) >= 1)
+        assert _collect(mach, 3, _saw_ok)
         assert "G90\nG1 X4 F3000" in _scripts(fake)
 
         mach.doSetAxis({"x": 0, "y": 1})
-        assert _collect(mach, 3, lambda xs: len(_ack(xs)) >= 1)
+        assert _collect(mach, 3, _saw_ok)
         assert "G92 X0 Y1" in _scripts(fake)
 
         before = len(fake.snapshot_requests())
@@ -494,6 +499,73 @@ class _Sink(gc.EventQueueIf):
     def has(self, event_id):
         with self._lock:
             return any(event.event_id == event_id for event in self.seen)
+
+
+def test_run_estop_then_clear_alarm_does_not_resume():
+    """E-stop must end the Run. Clear Alarm must not send the next line."""
+    fake = FakeMoonraker(homed="xyz", gcode_delay=3.0)
+    fake.start()
+    old = gc.CONFIG_DATA
+    gc.CONFIG_DATA = _config(fake.port)
+    sink = _Sink()
+    exe = None
+    try:
+        exe = mi_progexec.MachIfExecuteThread(sink)
+        end = time.monotonic() + 8
+        while time.monotonic() < end:
+            if sink.has(gc.EV_DEVICE_DETECTED) and exe.machIfModule.isSerialPortOpen():
+                break
+            time.sleep(0.02)
+        else:
+            raise AssertionError("progexec did not see the Klipper banner")
+
+        exe.add_event(gc.EV_CMD_RUN, {
+            "gcodeFileName": "run.gcode",
+            "gcodeLines": ["G28 X", "G1 X1", "G1 X2"],
+            "gcodePC": 0,
+            "breakPoints": set(),
+        })
+        end = time.monotonic() + 3
+        while time.monotonic() < end:
+            if any((s or "").strip() == "G28 X" for s in _scripts(fake)) and exe.swState == gc.STATE_RUN:
+                break
+            time.sleep(0.02)
+        else:
+            raise AssertionError(f"run did not start state={exe.swState} scripts={_scripts(fake)}")
+
+        exe.add_event(gc.EV_CMD_RESET, None)
+        _wait_state(
+            exe,
+            lambda: exe.swState in (gc.STATE_IDLE, gc.STATE_BREAK),
+            timeout=2,
+        )
+        assert exe.workingProgramCounter == 0
+
+        exe.add_event(gc.EV_CMD_CLEAR_ALARM, None)
+        assert _wait_method(fake, "printer.firmware_restart", 3)
+        exe.add_event(gc.EV_CMD_HOME, {"y": 0})
+        end = time.monotonic() + 3
+        while time.monotonic() < end:
+            if any((s or "").strip() == "G28 Y" for s in _scripts(fake)):
+                break
+            time.sleep(0.02)
+        else:
+            raise AssertionError(_scripts(fake))
+        # The slow G28 reply and the restart banner must not release the next line.
+        time.sleep(3.2)
+        assert exe.swState in (gc.STATE_IDLE, gc.STATE_BREAK)
+        assert not any((s or "").strip().startswith("G1") for s in _scripts(fake))
+    finally:
+        if exe is not None:
+            exe.add_event(gc.EV_CMD_EXIT, None)
+            exe.join(timeout=3)
+            module = exe.machIfModule
+            if module is not None and getattr(module, "_thread", None) is not None:
+                module.close()
+            if exe.is_alive():
+                exe.join(timeout=3)
+        gc.CONFIG_DATA = old
+        fake.stop()
 
 
 def test_step_advances_on_ok_and_stops_on_error():

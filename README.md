@@ -151,7 +151,7 @@ Classic wx (`gsat-wx.py`) shots for reference.
 
 ### 1.10.1
 
-- **Klipper** machine interface (`klipper`): connect through Moonraker, DRO, jog, step, home, set axis, e-stop, and clear alarm. E-stop, firmware restart, and status query are not queued behind a running G-code line
+- **Klipper** machine interface (`klipper`): connect through Moonraker, DRO, jog, step, home, set axis, e-stop, and clear alarm. E-stop ends a Run; firmware restart does not continue the program
 - **Fix:** gsat-server, gsat-console, and the wx UI open `/machine/Device` even when Virtual CNC is enabled in that process's config. Virtual CNC stays a local PySide setting
 - **Fix:** remove leftover Grbl status prints that ran on every status report
 - gsat-server prints a listen banner at startup (version, interface, host, port, config)

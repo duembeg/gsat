@@ -26,6 +26,7 @@
 import asyncio
 import copy
 import json
+import logging
 import queue
 import threading
 import time
@@ -119,6 +120,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
         self._stop_event = None
         self._user_close = False
         self._owner = listener
+        self._oob_tasks = set()
 
         if listener is not None:
             self.add_event_listener(listener)
@@ -158,7 +160,9 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
                     timeout=self._aiohttp.ClientWSTimeout(ws_receive=None, ws_close=10.0),
                 )
             except Exception as exc:
-                self.notify_event_listeners(gc.EV_ABORT, f"Klipper: connect failed: {exc}\n")
+                self.notify_event_listeners(
+                    gc.EV_ABORT, f"Moonraker connection lost: {exc}\n"
+                )
                 return
 
             self._opened = True
@@ -173,6 +177,8 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
             finally:
                 self._stopped = True
                 self._stop_event.set()
+                for task in list(self._oob_tasks):
+                    task.cancel()
                 reader.cancel()
                 watcher.cancel()
                 for task in (reader, watcher):
@@ -205,7 +211,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
         except Exception as exc:
             reason = str(exc) or exc.__class__.__name__
         finally:
-            unexpected = self._handshake_done and not self._user_close
+            unexpected = not self._user_close
             self._fail_pending("Moonraker connection closed")
             self._stopped = True
             if self._stop_event is not None:
@@ -343,8 +349,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
             return
         if not ident or ident.get("error"):
             msg = _error_message(ident, "identify rejected")
-            self.notify_event_listeners(gc.EV_ABORT, f"Klipper: {msg}\n")
-            self._stopped = True
+            self._fail_handshake(f"Klipper: {msg}\n")
             return
 
         deadline = time.monotonic() + self._connect_timeout_s
@@ -355,20 +360,17 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
                 return
             if not info or info.get("error"):
                 msg = _error_message(info, "server.info failed")
-                self.notify_event_listeners(gc.EV_ABORT, f"Klipper: {msg}\n")
-                self._stopped = True
+                self._fail_handshake(f"Klipper: {msg}\n")
                 return
             state = (info.get("result") or {}).get("klippy_state")
             if state == "ready":
                 break
             now = time.monotonic()
             if now >= deadline:
-                self.notify_event_listeners(
-                    gc.EV_ABORT,
+                self._fail_handshake(
                     f"Klipper: klippy not ready (state={state}) "
-                    f"within {self._connect_timeout_s:.0f}s\n",
+                    f"within {self._connect_timeout_s:.0f}s\n"
                 )
-                self._stopped = True
                 return
             await self._sleep(min(SERVER_INFO_POLL_SEC, deadline - now))
         if self._stopped or state != "ready":
@@ -379,8 +381,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
             return
         if not pinfo or pinfo.get("error"):
             msg = _error_message(pinfo, "printer.info failed")
-            self.notify_event_listeners(gc.EV_ABORT, f"Klipper: {msg}\n")
-            self._stopped = True
+            self._fail_handshake(f"Klipper: {msg}\n")
             return
         self._printer_info = pinfo.get("result") or {}
 
@@ -393,8 +394,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
             return
         if not sub or sub.get("error"):
             msg = _error_message(sub, "subscribe failed")
-            self.notify_event_listeners(gc.EV_ABORT, f"Klipper: {msg}\n")
-            self._stopped = True
+            self._fail_handshake(f"Klipper: {msg}\n")
             return
         _merge_status(self._cache, (sub.get("result") or {}).get("status") or {})
 
@@ -447,20 +447,47 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
             gc.EV_RXDATA,
             {
                 "_gsat": "ready",
+                "announce": False,
                 "info": self._printer_info,
                 "status": copy.deepcopy(self._cache),
             },
         )
+
+    def _fail_handshake(self, message):
+        """Protocol reject. Closing the socket afterwards is not a drop."""
+        self.notify_event_listeners(gc.EV_ABORT, message)
+        self._user_close = True
+        self._stopped = True
+
+    def _spawn_oob(self, item):
+        """E-stop, restart, and status must not wait behind gcode."""
+        task = asyncio.create_task(self._dispatch_user(item))
+        self._oob_tasks.add(task)
+
+        def _done(done):
+            self._oob_tasks.discard(done)
+            if done.cancelled():
+                return
+            exc = done.exception()
+            if exc is None:
+                return
+            logging.getLogger().error("Klipper request failed: %s", exc)
+            self.notify_event_listeners(
+                gc.EV_RXDATA,
+                {"_gsat": "note", "text": f"Klipper: {exc}\n"},
+            )
+
+        task.add_done_callback(_done)
 
     async def _accept_command(self, item):
         """G-code stays one-at-a-time. E-stop, restart, and status skip that line."""
         method = item.get("method")
         if method == "printer.emergency_stop":
             self._discard_queued_gcode()
-            asyncio.create_task(self._dispatch_user(item))
+            self._spawn_oob(item)
             return
         if method in ("printer.firmware_restart", "printer.objects.query"):
-            asyncio.create_task(self._dispatch_user(item))
+            self._spawn_oob(item)
             return
         await self._gcode_q.put(item)
 
@@ -704,7 +731,9 @@ class MachIf_Klipper(mi.MachIf_Base):
             if data.get("status"):
                 self._status = data["status"]
             self._klippy_disconnected = False
-            return self._banner_dict()
+            return self._banner_dict(announce=bool(data.get("announce", True)))
+        if kind == "direct":
+            return data.get("payload") or {}
         if kind == "gcode":
             text = str(data.get("text") or "")
             if text and not text.endswith("\n"):
@@ -760,13 +789,15 @@ class MachIf_Klipper(mi.MachIf_Base):
             return {"rx_data": "ok\n"}
         return {}
 
-    def _banner_dict(self):
+    def _banner_dict(self, announce=True):
         ver = str((self._printer_info or {}).get("software_version") or "")
         banner = f"Klipper {ver} via Moonraker".strip()
-        return {
-            "r": {"init": banner, "fb": ver, "machif": NAME},
-            "rx_data": banner + "\n",
-        }
+        text = {"rx_data": banner + "\n"}
+        # A later ready banner must not satisfy wait_for_acknowledge.
+        if not announce:
+            return text
+        text["r"] = {"init": banner, "fb": ver, "machif": NAME}
+        return text
 
     def _homed_axes(self):
         toolhead = self._status.get("toolhead") or {}
@@ -855,6 +886,19 @@ class MachIf_Klipper(mi.MachIf_Base):
             return
         self._thread.add_event(gc.EV_CMD_TXDATA, item)
 
+    def _send_script(self, script, kind="gcode"):
+        """kind "gcode" owns the Run/Step ack. "manual" is jog, home, and G92."""
+        if self._thread is None or not script:
+            return 0
+        token = None
+        if kind == "gcode":
+            self._rpc_token += 1
+            token = self._rpc_token
+            self._inflight_gcode = token
+            self._outstanding = 1
+        self._rpc("printer.gcode.script", {"script": script}, kind=kind, token=token)
+        return len(script)
+
     def write(self, txData, raw_write=False):
         if isinstance(txData, bytes):
             txData = txData.decode("utf-8", "replace")
@@ -863,14 +907,7 @@ class MachIf_Klipper(mi.MachIf_Base):
         script = str(txData).strip()
         if not script:
             return 0
-        if self._thread is None:
-            return 0
-        self._rpc_token += 1
-        token = self._rpc_token
-        self._inflight_gcode = token
-        self._outstanding = 1
-        self._rpc("printer.gcode.script", {"script": script}, kind="gcode", token=token)
-        return len(str(txData))
+        return self._send_script(script, kind="gcode")
 
     def _axis_words(self, axes):
         words = []
@@ -894,7 +931,7 @@ class MachIf_Klipper(mi.MachIf_Base):
         else:
             script = f"G91\n{line}\nG90"
         self.add_event(gc.EV_TXDATA, script + "\n")
-        self.write(script + "\n")
+        self._send_script(script, kind="manual")
 
     def doMove(self, dict_axis_coor):
         self._send_motion(dict_axis_coor, absolute=True)
@@ -928,15 +965,31 @@ class MachIf_Klipper(mi.MachIf_Base):
                 words.append(axis.upper())
         script = "G28" if not words else "G28 " + " ".join(words)
         self.add_event(gc.EV_TXDATA, script + "\n")
-        self.write(script + "\n")
+        self._send_script(script, kind="manual")
 
     def doSetAxis(self, dict_axis_coor):
         words = self._axis_words(dict_axis_coor)
         script = "G92" if not words else "G92 " + " ".join(words)
         self.add_event(gc.EV_TXDATA, script + "\n")
-        self.write(script + "\n")
+        self._send_script(script, kind="manual")
 
     def doReset(self):
+        # The line still in flight must get its own error ack before we
+        # forget it. Otherwise progexec stays in RUN and a later banner
+        # is taken as that ack.
+        if self._outstanding and self._inflight_gcode is not None:
+            self.add_event(
+                gc.EV_RXDATA,
+                {
+                    "_gsat": "direct",
+                    "payload": {
+                        "r": {},
+                        "f": [0, 1, 0],
+                        "rx_data": "error: E-stop\n",
+                        "rx_data_info": "E-stop",
+                    },
+                },
+            )
         self._outstanding = 0
         self._inflight_gcode = None
         self._init()
