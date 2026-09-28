@@ -148,6 +148,10 @@ Classic wx (`gsat-wx.py`) shots for reference.
 
 ## Changelog
 
+### Unreleased
+
+- **Fix:** gsat-server, gsat-console, and the wx UI open `/machine/Device` even when `/pysideWorkbench/VirtualCnc/Enabled` is still true in that process's config. Virtual CNC remains a local PySide setting.
+
 ### 1.10.0
 
 - **Virtual CNC** (PySide workbench): commanded-motion Path preview (G0/G1/G2/G3 XY); optional Connect target with no serial

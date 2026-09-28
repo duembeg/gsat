@@ -53,10 +53,18 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
     of data sent to the serial port.
     """
 
-    def __init__(self, event_handler):
-        """Init Worker Thread Class."""
+    def __init__(self, event_handler, allow_virtual=False):
+        """Init Worker Thread Class.
+
+        allow_virtual is only for the local PySide UI. gsat-server, the
+        console, and the wx UI leave it false so a stale
+        /pysideWorkbench/VirtualCnc/Enabled in their config cannot override
+        /machine/Device.
+        """
         threading.Thread.__init__(self)
         gc.EventQueueIf.__init__(self)
+
+        self.allow_virtual = bool(allow_virtual)
 
         # init local variables
         self.okToPostEvents = True
@@ -456,16 +464,16 @@ class MachIfExecuteThread(threading.Thread, gc.EventQueueIf):
 
     def init_machine_if_module(self):
         # PySide-only Virtual CNC: not in MACHIF_CLS_LIST (no wx Device entry).
+        # Only the local PySide client passes allow_virtual. The server, console,
+        # and wx UI must follow /machine/Device even if Enabled is stale.
         from modules.machif_virtual import MachIf_Virtual, virtual_cnc_enabled
 
-        if virtual_cnc_enabled():
+        if self.allow_virtual and virtual_cnc_enabled():
             self.machIfModule = MachIf_Virtual()
         else:
             self.machIfModule = mi.GetMachIfModule(self.machIfId)
 
-        if gc.test_verbose_mask(gc.VERBOSE_MASK_MACHIF_EXEC):
-            msg = "init MachIf Module (%s)." % self.machIfModule.getName()
-            self.logger.info(msg)
+        self.logger.info("init MachIf Module (%s)" % self.machIfModule.getName())
 
         self.machIfModule.init()
 
