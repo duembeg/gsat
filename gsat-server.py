@@ -24,6 +24,7 @@
 
 ----------------------------------------------------------------------------"""
 import os
+import socket
 import sys
 import logging
 import argparse
@@ -75,6 +76,35 @@ def get_cli_params():
     return options
 
 
+def listening_lines(version, interface, host, port, config_path, python_ver, system):
+    """Text printed when gsat-server is up, before any client connects."""
+    return [
+        f"gsat server {version} listening",
+        f"interface: {interface}  host: {host}  port: {port}",
+        f"config: {config_path}",
+        f"python: {python_ver}",
+        f"system: {system}",
+    ]
+
+
+def _listen_host():
+    host = socket.gethostname()
+    try:
+        ip = socket.gethostbyname(host)
+    except OSError:
+        ip = ""
+    if ip and ip not in (host, "0.0.0.0"):
+        return f"{host} ({ip})"
+    return host
+
+
+def _listen_system():
+    try:
+        return str(os.uname()).replace("posix.uname_result", "")
+    except AttributeError:
+        return sys.platform
+
+
 """----------------------------------------------------------------------------
     main
 ----------------------------------------------------------------------------"""
@@ -102,10 +132,25 @@ class GsatServer(gc.EventQueueIf):
 
             if self.remote_interface == 'websocket':
                 server = rsws.RemoteServer(self)
+                port = server.port
             elif self.remote_interface == 'socket':
                 server = rs.RemoteServer(self)
+                port = server.tcpPort
             else:
                 raise ValueError(f"unknown remote interface: {self.remote_interface}")
+
+            config_path = getattr(self.configData, "configFileName", "") or ""
+            python_ver = sys.version.replace("\n", " ")
+            for line in listening_lines(
+                vinfo.__version__,
+                self.remote_interface,
+                _listen_host(),
+                port,
+                config_path,
+                python_ver,
+                _listen_system(),
+            ):
+                self.logger.info(line)
 
             # wait for server events
             while True:

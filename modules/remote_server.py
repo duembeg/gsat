@@ -22,6 +22,7 @@
     along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import copy
 import os
 import sys
 import threading
@@ -255,6 +256,9 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
                 machine_device = gc.CONFIG_DATA.get('/machine/Device')
                 machine_port = gc.CONFIG_DATA.get('/machine/Port')
                 machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
+                machine_specific = copy.deepcopy(
+                    gc.CONFIG_DATA.get(f'/machine/MachIfSpecific/{machine_device}')
+                )
 
                 tcp_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/TcpPort')
                 udp_port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/UdpPort')
@@ -287,9 +291,12 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
                             self.machifProgExec.add_event(gc.EV_CMD_UPDATE_CONFIG)
 
                             # close serial port if settings changed
-                            if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
+                            new_device = gc.CONFIG_DATA.get('/machine/Device')
+                            if (machine_device != new_device or
                                machine_port != gc.CONFIG_DATA.get('/machine/Port') or
-                               machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
+                               machine_baud != gc.CONFIG_DATA.get('/machine/Baud') or
+                               machine_specific != gc.CONFIG_DATA.get(
+                                   f'/machine/MachIfSpecific/{new_device}')):
                                 self.machifProgExec.add_event(gc.EV_CMD_EXIT)
                                 self.machifProgExec = mi_progexec.MachIfExecuteThread(self)
                             else:

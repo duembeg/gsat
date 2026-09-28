@@ -22,6 +22,7 @@
     along with gsat.  If not, see <http://www.gnu.org/licenses/>.
 
 ----------------------------------------------------------------------------"""
+import copy
 import os
 import sys
 import asyncio
@@ -444,6 +445,9 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             machine_device = gc.CONFIG_DATA.get('/machine/Device', "")
             machine_port = gc.CONFIG_DATA.get('/machine/Port', "")
             machine_baud = gc.CONFIG_DATA.get('/machine/Baud')
+            machine_specific = copy.deepcopy(
+                gc.CONFIG_DATA.get(f'/machine/MachIfSpecific/{machine_device}')
+            )
 
             port = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/webSocketPort', 61803)
             api_token = gc.CONFIG_DATA.get(f'/remotes/remote{self.remote_index}/ApiToken', "")
@@ -466,9 +470,12 @@ class RemoteServer(threading.Thread, gc.EventQueueIf):
             if not server_needs_restart:
                 if self.machif_prog_exec is not None:
                     # close serial port if settings changed and re-open
-                    if (machine_device != gc.CONFIG_DATA.get('/machine/Device') or
+                    new_device = gc.CONFIG_DATA.get('/machine/Device')
+                    if (machine_device != new_device or
                         machine_port != gc.CONFIG_DATA.get('/machine/Port') or
-                        machine_baud != gc.CONFIG_DATA.get('/machine/Baud')):
+                        machine_baud != gc.CONFIG_DATA.get('/machine/Baud') or
+                        machine_specific != gc.CONFIG_DATA.get(
+                            f'/machine/MachIfSpecific/{new_device}')):
                         self.machif_prog_exec.add_event(gc.EV_CMD_EXIT)
                         self.machif_prog_exec = mi_progexec.MachIfExecuteThread(self)
                     else:

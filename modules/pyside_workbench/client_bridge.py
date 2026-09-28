@@ -132,7 +132,7 @@ class ClientBridge(QObject, gc.EventQueueIf):
             return
 
         self._safe_log("Starting local machine interface ...")
-        self.machif_progexec = mi_progexec.MachIfExecuteThread(self)
+        self.machif_progexec = mi_progexec.MachIfExecuteThread(self, allow_virtual=True)
         self._use_remote = False
 
     def close_local(self):

@@ -32,6 +32,7 @@ For instance, if the GCODE file is a drill program for a PCB, gsat allows you to
 - **grblHAL**: [grblHAL](https://github.com/grblHAL) - Portable grbl-compatible CNC controller for 32-bit platforms
 - **g2core**: [g2core](https://github.com/synthetos/g2/wiki/What-is-g2core) - ARM Port of TinyG motion control system for Arduino Due and Synthetos hardware
 - **TinyG**: [TinyG](https://github.com/synthetos/TinyG/wiki/) - 6-axis motion control system for small to mid-sized machines
+- **Klipper**: via [Moonraker](https://moonraker.readthedocs.io/) WebSocket (`ws://host:7125/websocket`). Device `klipper`; host, port, and optional API key are under device-specific settings, not the serial port
 
 ### CNC Machines Used for Development
 
@@ -62,7 +63,7 @@ python3 -m venv .venv
 
 After `source .venv/bin/activate`, `./gsat-pyside.py` also works because the venv provides `python`. Without the venv, `python3 gsat-pyside.py` will fail with `No module named 'PySide6'`.
 
-`requirements-pyside.txt` already includes `colorama` and `python-socketio` (client + server). `uvicorn` is required to run `gsat-server.py`. The WebSocket server is `socketio.ASGIApp` served by uvicorn (not FastAPI).
+`requirements-pyside.txt` already includes `colorama`, `python-socketio` (client + server), and `aiohttp` (Klipper / Moonraker). `uvicorn` is required to run `gsat-server.py`. The WebSocket server is `socketio.ASGIApp` served by uvicorn (not FastAPI).
 
 **Offline checks (no hardware):**
 
@@ -147,6 +148,13 @@ Classic wx (`gsat-wx.py`) shots for reference.
 ![Settings Dialog](https://raw.githubusercontent.com/duembeg/gsat/1b337421251a26ed622ad3a76953097c447de375/images/screenshoot/settings_dialog.png "Settings Dialog (classic wx)")
 
 ## Changelog
+
+### 1.10.1
+
+- **Klipper** machine interface (`klipper`): connect through Moonraker, DRO, jog, step, home, set axis, e-stop, and clear alarm. E-stop ends a Run; firmware restart does not continue the program
+- **Fix:** gsat-server, gsat-console, and the wx UI open `/machine/Device` even when Virtual CNC is enabled in that process's config. Virtual CNC stays a local PySide setting
+- **Fix:** remove leftover Grbl status prints that ran on every status report
+- gsat-server prints a listen banner at startup (version, interface, host, port, config)
 
 ### 1.10.0
 
