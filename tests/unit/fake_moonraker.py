@@ -53,10 +53,11 @@ def _initial_status(homed):
 class FakeMoonraker:
     """aiohttp websocket server that speaks the Moonraker subset GSAT uses."""
 
-    def __init__(self, required_api_key=None, homed=""):
+    def __init__(self, required_api_key=None, homed="", gcode_delay=0.0):
         # required_api_key is None when the printer trusts the client.
         # A string (including "") means identify must present that exact key.
         self.required_api_key = required_api_key
+        self.gcode_delay = float(gcode_delay or 0.0)
         self.status = _initial_status(homed)
         self.requests = []
         self.host = "127.0.0.1"
@@ -130,7 +131,18 @@ class FakeMoonraker:
             self._ready.set()
             await self._stop_fut
         finally:
+            await self._close_clients()
             await runner.cleanup()
+
+    async def _close_clients(self):
+        with self._lock:
+            clients = list(self._clients)
+        for conn in clients:
+            try:
+                if not conn.ws.closed:
+                    await conn.ws.close()
+            except Exception:
+                pass
 
     async def _handle(self, request):
         ws = web.WebSocketResponse()
@@ -141,7 +153,8 @@ class FakeMoonraker:
         try:
             async for msg in ws:
                 if msg.type == web.WSMsgType.TEXT:
-                    await conn.handle(msg.data)
+                    # A slow gcode.script must not block emergency_stop.
+                    asyncio.create_task(conn.handle(msg.data))
                 elif msg.type in (web.WSMsgType.ERROR, web.WSMsgType.CLOSE, web.WSMsgType.CLOSED):
                     break
         finally:
@@ -169,6 +182,7 @@ class _Connection:
         self.owner = owner
         self.ws = ws
         self.info_calls = 0
+        self._send_lock = asyncio.Lock()
 
     async def handle(self, raw):
         try:
@@ -208,7 +222,10 @@ class _Connection:
         if self.ws.closed:
             return
         try:
-            await self.ws.send_str(raw)
+            async with self._send_lock:
+                if self.ws.closed:
+                    return
+                await self.ws.send_str(raw)
         except Exception:
             return
 
@@ -229,6 +246,8 @@ class _Connection:
         })
 
     async def _gcode(self, rid, script):
+        if self.owner.gcode_delay and _G28_RE.search(str(script).upper()):
+            await asyncio.sleep(self.owner.gcode_delay)
         if "X999" in script:
             await self._error(rid, 400, "Move out of range")
             return

@@ -20,6 +20,7 @@ python-socketio[asyncio-client]>=5.10
 # python-socketio[asyncio-client]; listed here so the dependency is explicit.
 # Imported lazily so the app still starts if aiohttp is missing.
 aiohttp>=3.9
+
 uvicorn>=0.27
 pytest>=8.0
 pillow>=10.0

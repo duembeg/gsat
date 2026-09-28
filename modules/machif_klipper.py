@@ -117,6 +117,8 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
         self._handshake_done = False
         self._opened = False
         self._stop_event = None
+        self._user_close = False
+        self._owner = listener
 
         if listener is not None:
             self.add_event_listener(listener)
@@ -144,7 +146,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
     async def _async_main(self):
         self._loop = asyncio.get_running_loop()
         self._stop_event = asyncio.Event()
-        self._user_q = asyncio.Queue()
+        self._gcode_q = asyncio.Queue()
         self._send_lock = asyncio.Lock()
 
         timeout = self._aiohttp.ClientTimeout(total=None, sock_connect=self._connect_timeout_s)
@@ -183,6 +185,7 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
 
     async def _read_loop(self):
         ws_type = self._aiohttp.WSMsgType
+        reason = "connection closed"
         try:
             async for msg in self._ws:
                 if msg.type == ws_type.TEXT:
@@ -192,13 +195,28 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
                         continue
                     if isinstance(data, dict):
                         self._on_message(data)
-                elif msg.type in (ws_type.CLOSED, ws_type.CLOSING, ws_type.ERROR):
+                elif msg.type == ws_type.ERROR:
+                    exc = self._ws.exception()
+                    reason = str(exc) if exc else "websocket error"
                     break
+                elif msg.type in (ws_type.CLOSED, ws_type.CLOSING):
+                    reason = "connection closed"
+                    break
+        except Exception as exc:
+            reason = str(exc) or exc.__class__.__name__
         finally:
+            unexpected = self._handshake_done and not self._user_close
             self._fail_pending("Moonraker connection closed")
             self._stopped = True
             if self._stop_event is not None:
                 self._stop_event.set()
+            if unexpected:
+                self.notify_event_listeners(
+                    gc.EV_ABORT, f"Moonraker connection lost: {reason}\n"
+                )
+                owner = self._owner
+                if owner is not None and hasattr(owner, "note_link_dead"):
+                    owner.note_link_dead()
 
     def _fail_pending(self, message):
         err = {"code": 1, "message": message}
@@ -252,11 +270,12 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
                     break
                 drained = True
                 if event.event_id == gc.EV_CMD_EXIT:
+                    self._user_close = True
                     self._stopped = True
                     self._stop_event.set()
                     return
                 if event.event_id == gc.EV_CMD_TXDATA and isinstance(event.data, dict):
-                    await self._user_q.put(event.data)
+                    await self._accept_command(event.data)
             if not drained:
                 await asyncio.sleep(0.02)
 
@@ -394,6 +413,8 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
 
         if self._stopped:
             return
+        # Set before the ready event so a drop during startup still reports.
+        self._handshake_done = True
         self._emit_status()
         self.notify_event_listeners(
             gc.EV_RXDATA,
@@ -431,10 +452,45 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
             },
         )
 
+    async def _accept_command(self, item):
+        """G-code stays one-at-a-time. E-stop, restart, and status skip that line."""
+        method = item.get("method")
+        if method == "printer.emergency_stop":
+            self._discard_queued_gcode()
+            asyncio.create_task(self._dispatch_user(item))
+            return
+        if method in ("printer.firmware_restart", "printer.objects.query"):
+            asyncio.create_task(self._dispatch_user(item))
+            return
+        await self._gcode_q.put(item)
+
+    def _discard_queued_gcode(self):
+        """Drop gcode scripts already queued behind the in-flight one."""
+        kept = []
+        while True:
+            try:
+                item = self._gcode_q.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+            if item.get("method") != "printer.gcode.script":
+                kept.append(item)
+                continue
+            script = str((item.get("params") or {}).get("script") or "").strip()
+            first = script.splitlines()[0] if script else "line"
+            self.notify_event_listeners(
+                gc.EV_RXDATA,
+                {
+                    "_gsat": "note",
+                    "text": f"Klipper: dropped queued gcode after E-stop ({first})\n",
+                },
+            )
+        for item in kept:
+            self._gcode_q.put_nowait(item)
+
     async def _serve(self):
         while not self._stopped:
             try:
-                item = await asyncio.wait_for(self._user_q.get(), timeout=0.2)
+                item = await asyncio.wait_for(self._gcode_q.get(), timeout=0.2)
             except asyncio.TimeoutError:
                 continue
             await self._dispatch_user(item)
@@ -445,7 +501,11 @@ class MoonrakerThread(threading.Thread, gc.EventQueueIf):
         kind = item.get("kind") or ""
         token = item.get("token")
         resp = await self._rpc(method, params)
-        if self._stopped and (not resp or resp.get("error", {}).get("message") == "connection closed"):
+        err = (resp or {}).get("error") if isinstance(resp, dict) else None
+        err_msg = err.get("message") if isinstance(err, dict) else ""
+        if self._stopped and (
+            not resp or "connection closed" in str(err_msg).lower()
+        ):
             return
         if (
             method == "printer.objects.query"
@@ -501,12 +561,15 @@ class MachIf_Klipper(mi.MachIf_Base):
         self._rpc_token = 0
         self._seen_nonzero_live = False
         self._klippy_disconnected = False
+        self._last_stat = ""
+        self._dead_thread = None
 
     def _init(self):
         self._outstanding = 0
         self._inflight_gcode = None
         self._seen_nonzero_live = False
         self._klippy_disconnected = False
+        self._last_stat = ""
 
     def factory(self):
         return MachIf_Klipper()
@@ -552,7 +615,15 @@ class MachIf_Klipper(mi.MachIf_Base):
         return {}
 
     def okToSend(self, data):
-        return self._outstanding < 1
+        return self._thread is not None and self._outstanding < 1
+
+    def note_link_dead(self):
+        """The Moonraker socket dropped. Further writes must not use it."""
+        self._outstanding = 0
+        self._inflight_gcode = None
+        if self._thread is not None:
+            self._dead_thread = self._thread
+            self._thread = None
 
     def isSerialPortOpen(self):
         return self._serialPortOpen
@@ -578,8 +649,9 @@ class MachIf_Klipper(mi.MachIf_Base):
         )
 
     def close(self):
-        thread = self._thread
+        thread = self._thread or self._dead_thread
         self._thread = None
+        self._dead_thread = None
         if thread is None:
             return
         if thread.is_alive():
@@ -662,12 +734,19 @@ class MachIf_Klipper(mi.MachIf_Base):
     def _handle_rpc(self, data):
         kind = data.get("kind")
         err = data.get("error")
-        if kind == "gcode" and data.get("token") == self._inflight_gcode:
+        # Only the script okToSend is waiting on may advance the program.
+        # A jog, a finished home, or a reply after E-stop is console text.
+        current = (
+            kind == "gcode"
+            and self._outstanding
+            and data.get("token") == self._inflight_gcode
+        )
+        if current:
             self._outstanding = 0
             self._inflight_gcode = None
         if err:
             msg, code = _rpc_error(err)
-            if kind == "gcode":
+            if current:
                 return {
                     "r": {},
                     "f": [0, code, 0],
@@ -675,9 +754,9 @@ class MachIf_Klipper(mi.MachIf_Base):
                     "rx_data_info": msg,
                 }
             return {"rx_data": f"error: {msg}\n", "rx_data_info": msg}
-        if kind == "gcode":
+        if current:
             return {"r": {}, "f": [0, 0, 0], "rx_data": "ok\n"}
-        if data.get("result") is not None:
+        if kind == "gcode" or data.get("result") is not None:
             return {"rx_data": "ok\n"}
         return {}
 
@@ -748,9 +827,12 @@ class MachIf_Klipper(mi.MachIf_Base):
             "homed": self._homed_axes(),
         }
         out = {"sr": sr}
-        if info:
-            out["rx_data"] = f"{stat}\n"
-            out["rx_data_info"] = info
+        # Shutdown updates arrive on every status push. Say Alarm once.
+        if stat == "Alarm" and self._last_stat != "Alarm":
+            out["rx_data"] = "Alarm\n"
+            if info:
+                out["rx_data_info"] = info
+        self._last_stat = stat
         return out
 
     def _note(self, text):

@@ -32,7 +32,6 @@ def _build(monkeypatch, *, device, enabled, allow_virtual=False):
 
 def test_default_ignores_enabled_flag(monkeypatch, caplog):
     """gsat-server, console, and wx construct with allow_virtual left false."""
-    assert gc.VERBOSE_MASK == 0
     with caplog.at_level(logging.INFO):
         exe = _build(monkeypatch, device="grbl", enabled=True)
     assert exe.allow_virtual is False

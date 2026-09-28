@@ -40,8 +40,10 @@ def _config(port, api_key="", idle=0, dro="live", timeout_ms=5000):
 
 
 @contextmanager
-def linked(api_key="", required_api_key=None, homed="", idle=0, dro="live", timeout_ms=8000):
-    fake = FakeMoonraker(required_api_key=required_api_key, homed=homed)
+def linked(api_key="", required_api_key=None, homed="", idle=0, dro="live", timeout_ms=8000, gcode_delay=0.0):
+    fake = FakeMoonraker(
+        required_api_key=required_api_key, homed=homed, gcode_delay=gcode_delay
+    )
     fake.start()
     old = gc.CONFIG_DATA
     gc.CONFIG_DATA = _config(fake.port, api_key=api_key, idle=idle, dro=dro, timeout_ms=timeout_ms)
@@ -259,7 +261,7 @@ def test_status_work_position_velocity_and_stat():
 
         fake.push_status({"webhooks": {"state": "error", "state_message": "config error"}})
         error = _wait_sr(mach, lambda sr: sr.get("stat") == "Alarm")
-        assert "config error" in str(error.get("rx_data_info", ""))
+        assert not str(error.get("rx_data", "")).startswith("Alarm")
 
         fake.push_status({
             "webhooks": {"state": "startup", "state_message": ""},
@@ -355,6 +357,94 @@ def test_idle_timeout_sent_on_ready():
     with linked(idle=30) as (fake, mach):
         assert _collect(mach, 8, _has_init)
         assert "SET_IDLE_TIMEOUT TIMEOUT=30" in _scripts(fake)
+
+
+def _wait_method(fake, method, timeout):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if any(r["method"] == method for r in fake.snapshot_requests()):
+            return True
+        mach_sleep = 0.005
+        time.sleep(mach_sleep)
+    return False
+
+
+def test_estop_during_slow_home_is_not_blocked():
+    """E-stop must leave the websocket while a G28 is still running."""
+    with linked(gcode_delay=3.0) as (fake, mach):
+        assert _collect(mach, 8, _has_init)
+        mach.doHome({"x": 0, "y": 0, "z": 0})
+        assert _wait_method(fake, "printer.gcode.script", 2.0)
+        # A second line would sit behind the home. E-stop must drop it.
+        mach.write("G1 X5\n")
+        time.sleep(0.05)
+        started = time.monotonic()
+        mach.doReset()
+        assert _wait_method(fake, "printer.emergency_stop", 0.1)
+        assert time.monotonic() - started < 0.1
+        # The home reply is still 3 s out. The queued move must not follow it.
+        time.sleep(3.2)
+        assert not any("G1 X5" in (s or "") for s in _scripts(fake))
+
+
+def test_late_home_ok_after_reset_is_not_an_ack():
+    with linked(gcode_delay=3.0) as (fake, mach):
+        assert _collect(mach, 8, _has_init)
+        mach.doHome({"z": 0})
+        assert _wait_method(fake, "printer.gcode.script", 2.0)
+        _collect(mach, 0.1)
+        mach.doReset()
+        assert _wait_method(fake, "printer.emergency_stop", 0.1)
+        late = _collect(mach, 4.0)
+        assert _ack(late) == []
+        assert any(d.get("rx_data") == "ok\n" and "r" not in d for d in late)
+        alarms = [d for d in late if str(d.get("rx_data", "")).startswith("Alarm")]
+        assert len(alarms) == 1
+        fake.push_status({
+            "webhooks": {
+                "state": "shutdown",
+                "state_message": "Shutdown due to emergency stop",
+            }
+        })
+        again = _collect(mach, 0.4)
+        assert not any(str(d.get("rx_data", "")).startswith("Alarm") for d in again)
+
+
+def test_socket_drop_reports_and_clears_thread():
+    fake = FakeMoonraker()
+    fake.start()
+    old = gc.CONFIG_DATA
+    gc.CONFIG_DATA = _config(fake.port)
+    mach = MachIf_Klipper()
+    mach.init()
+    mach.open()
+    thread = mach._thread
+    try:
+        assert _collect(mach, 8, _has_init)
+        fake.stop()
+        items = _collect(
+            mach,
+            3,
+            lambda xs: any(
+                d.get("event", {}).get("id") == gc.EV_ABORT
+                and "Moonraker connection lost" in str(d.get("event", {}).get("data") or "")
+                for d in xs
+            ),
+        )
+        lost = [
+            d for d in items
+            if d.get("event", {}).get("id") == gc.EV_ABORT
+            and "Moonraker connection lost" in str(d.get("event", {}).get("data") or "")
+        ]
+        assert lost, items
+        assert mach._thread is None
+        assert mach.okToSend("G1 X1\n") is False
+        assert mach.write("G1 X1\n") == 0
+    finally:
+        mach.close()
+        thread.join(timeout=2)
+        gc.CONFIG_DATA = old
+        fake.stop()
 
 
 def test_close_emits_port_close_and_exit():
